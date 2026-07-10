@@ -308,5 +308,54 @@ export const nonArabicCountries = countries.filter(country =>
   !['+966', '+971', '+965', '+974', '+973', '+968', '+20', '+962', '+961', '+964', '+963', '+212', '+213', '+216', '+218', '+249', '+967'].includes(country.code)
 );
 
+// دالة للحصول على اسم الدولة مترجماً
+export const getTranslatedCountryName = (code: string, locale: string): string => {
+  const translations: Record<string, Record<string, string>> = {
+    ar: {
+      '+966': 'السعودية', '+971': 'الإمارات', '+965': 'الكويت', '+974': 'قطر',
+      '+973': 'البحرين', '+968': 'عمان', '+20': 'مصر', '+962': 'الأردن',
+      '+961': 'لبنان', '+964': 'العراق', '+963': 'سوريا', '+212': 'المغرب',
+      '+213': 'الجزائر', '+216': 'تونس', '+218': 'ليبيا', '+249': 'السودان',
+      '+221': 'السنغال', '+225': 'ساحل العاج', '+253': 'جيبوتي', '+34': 'إسبانيا',
+      '+33': 'فرنسا', '+44': 'إنجلترا', '+351': 'البرتغال', '+39': 'إيطاليا',
+      '+30': 'اليونان', '+357': 'قبرص', '+90': 'تركيا', '+66': 'تايلاند',
+      '+967': 'اليمن'
+    },
+    en: {
+      '+966': 'Saudi Arabia', '+971': 'UAE', '+965': 'Kuwait', '+974': 'Qatar',
+      '+973': 'Bahrain', '+968': 'Oman', '+20': 'Egypt', '+962': 'Jordan',
+      '+961': 'Lebanon', '+964': 'Iraq', '+963': 'Syria', '+212': 'Morocco',
+      '+213': 'Algeria', '+216': 'Tunisia', '+218': 'Libya', '+249': 'Sudan',
+      '+221': 'Senegal', '+225': 'Ivory Coast', '+253': 'Djibouti', '+34': 'Spain',
+      '+33': 'France', '+44': 'England', '+351': 'Portugal', '+39': 'Italy',
+      '+30': 'Greece', '+357': 'Cyprus', '+90': 'Turkey', '+66': 'Thailand',
+      '+967': 'Yemen'
+    },
+    es: {
+      '+966': 'Arabia Saudita', '+971': 'EAU', '+965': 'Kuwait', '+974': 'Catar',
+      '+973': 'Baréin', '+968': 'Omán', '+20': 'Egipto', '+962': 'Jordania',
+      '+961': 'Líbano', '+964': 'Irak', '+963': 'Siria', '+212': 'Marruecos',
+      '+213': 'Argelia', '+216': 'Túnez', '+218': 'Libia', '+249': 'Sudán',
+      '+221': 'Senegal', '+225': 'Costa de Marfil', '+253': 'Yibuti', '+34': 'España',
+      '+33': 'Francia', '+44': 'Inglaterra', '+351': 'Portugal', '+39': 'Italia',
+      '+30': 'Grecia', '+357': 'Chipre', '+90': 'Turquía', '+66': 'Tailandia',
+      '+967': 'Yemen'
+    },
+    pt: {
+      '+966': 'Arábia Saudita', '+971': 'EAU', '+965': 'Kuwait', '+974': 'Catar',
+      '+973': 'Bahrein', '+968': 'Omã', '+20': 'Egito', '+962': 'Jordânia',
+      '+961': 'Líbano', '+964': 'Iraque', '+963': 'Síria', '+212': 'Marrocos',
+      '+213': 'Argélia', '+216': 'Tunísia', '+218': 'Líbia', '+249': 'Sudão',
+      '+221': 'Senegal', '+225': 'Costa do Marfim', '+253': 'Djibuti', '+34': 'Espanha',
+      '+33': 'França', '+44': 'Inglaterra', '+351': 'Portugal', '+39': 'Itália',
+      '+30': 'Grécia', '+357': 'Chipre', '+90': 'Turquia', '+66': 'Tailândia',
+      '+967': 'Iêmen'
+    }
+  };
+
+  const localized = translations[locale] || translations['en'];
+  return localized[code] || translations['ar'][code] || code;
+};
+
 
 

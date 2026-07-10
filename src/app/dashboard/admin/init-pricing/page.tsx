@@ -177,7 +177,7 @@ export default function InitPricingPage() {
                                 </li>
                                 <li>
                                     <a
-                                        href="/dashboard/shared/bulk-payment"
+                                        href="/dashboard/shared/payment"
                                         className="font-semibold text-blue-600 hover:underline"
                                     >
                                         صفحة الدفع (سترى الأسعار الجديدة) →

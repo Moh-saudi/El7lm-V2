@@ -61,7 +61,7 @@ export default async function EmailCenterPage() {
 
     return (
         <div className="container mx-auto p-6 max-w-7xl">
-            <Suspense fallback={<div className="p-10 text-center">جاري تحميل بيانات البريد...</div>}>
+            <Suspense fallback={null}>
                 <EmailCenterClient initialLogs={logs} config={config} stats={stats} />
             </Suspense>
         </div>

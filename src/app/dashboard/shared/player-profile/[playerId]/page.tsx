@@ -54,6 +54,7 @@ import {
 } from 'lucide-react';
 // import ReactPlayer from 'react-player/lazy';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -95,9 +96,816 @@ import { Player, PlayerDocument, PlayerFormData, Achievement, Injury, ContractHi
 import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 // import { PlayerVideo } from '@/types/common';
 import 'dayjs/locale/ar';
+import 'dayjs/locale/es';
+import 'dayjs/locale/pt';
 
 // تعيين اللغة العربية لمكتبة dayjs
 dayjs.locale('ar');
+
+const PLAYER_PROFILE_COPY = {
+  ar: {
+    orgTypes: { club: 'نادي', academy: 'أكاديمية', trainer: 'مدرب', agent: 'وكيل لاعبين' },
+    common: {
+      back: 'العودة',
+      loadingPermissions: 'جاري التحقق من الصلاحيات...',
+      noPlayerTitle: 'لاعب غير محدد',
+      noPlayerDesc: 'لم يتم تحديد اللاعب المطلوب عرض تقريره',
+      years: 'سنة',
+      yes: 'نعم',
+      no: 'لا',
+      male: 'ذكر',
+      female: 'أنثى',
+      notSpecified: 'غير محدد',
+      unknown: '--',
+      kg: 'كجم',
+      cm: 'سم',
+      player: 'اللاعب',
+      levelOutOfTen: 'المستوى: {{value}}/10',
+      noDetails: 'لا توجد تفاصيل',
+      noAdditionalNotes: 'لا توجد ملاحظات إضافية',
+      available: 'متوفر',
+      unavailable: 'غير متوفر',
+      loadingData: 'جاري تحميل البيانات...',
+      loadDataError: '⚠️ خطأ في تحميل البيانات',
+      reload: '🔄 إعادة تحميل',
+      playerNotFound: 'لم يتم العثور على بيانات اللاعب',
+      unknownError: 'خطأ غير معروف',
+      fetchPlayerError: 'حدث خطأ أثناء جلب بيانات اللاعب: {{message}}',
+      invalidVideoLink: 'رابط الفيديو {{number}} غير صحيح أو فارغ',
+      invalidVideoUrl: 'رابط الفيديو {{number}} غير صالح',
+      link: 'الرابط: {{url}}',
+    },
+    sections: {
+      basicInfo: 'البيانات الأساسية',
+      fullName: 'الاسم الكامل',
+      birthDate: 'تاريخ الميلاد',
+      nationality: 'الجنسية',
+      gender: 'الجنس',
+      position: 'المركز',
+      brief: 'نبذة مختصرة',
+      guardianInfo: 'بيانات ولي الأمر',
+      guardianMinorNote: 'اللاعب قاصر (أقل من 18 سنة)، بيانات التواصل مع ولي الأمر:',
+      name: 'الاسم',
+      phone: 'رقم الهاتف',
+      residenceContact: 'الإقامة والاتصال',
+      country: 'دولة الإقامة',
+      city: 'المدينة',
+      address: 'العنوان التفصيلي',
+      email: 'البريد الإلكتروني',
+      pitchMap: 'خريطة الملعب',
+      primary: 'الأساسي',
+      secondary: 'الثانوي',
+      primaryDetailed: 'المركز الأساسي (تفصيلي)',
+      secondaryPosition: 'المركز الثانوي',
+      preferredFoot: 'القدم المفضلة',
+      height: 'الطول',
+      weight: 'الوزن',
+      jerseyNumber: 'رقم القميص',
+      sportsCareer: 'المسيرة الرياضية',
+      currentClub: 'النادي الحالي',
+      club: 'النادي',
+      noClub: 'غير مرتبط بنادي',
+      experience: 'خبرة: {{years}} سنوات',
+      contractStart: 'بداية العقد: {{date}}',
+      clubHistory: 'تاريخ الأندية',
+      noClubHistory: 'لا يوجد تاريخ أندية سابق',
+      trainingFoundation: 'التدريب والتأسيس',
+      academies: 'الأكاديميات',
+      privateCoaches: 'المدربين الخاصين',
+      achievements: 'الإنجازات والجوائز',
+      sportsNotes: 'ملاحظات رياضية',
+      educationLevel: 'المستوى التعليمي',
+      graduationYear: 'سنة التخرج',
+      languages: 'اللغات',
+      noLanguages: 'لا توجد لغات مسجلة',
+      courses: 'الدورات والشهادات',
+      noCourses: 'لا توجد دورات مسجلة',
+      vitalSigns: 'القياسات الحيوية',
+      bloodType: 'فصيلة الدم',
+      chronicDiseases: 'أمراض مزمنة',
+      chronicDetails: 'تفاصيل الأمراض المزمنة:',
+      allergies: 'الحساسية',
+      noAllergies: 'لا توجد حساسية مسجلة',
+      medications: 'الأدوية المستمرة',
+      noMedications: 'لا توجد أدوية مسجلة',
+      injuries: 'الإصابات السابقة',
+      fullRecovery: 'تعافي تام',
+      noInjuries: 'لا توجد إصابات مسجلة',
+      surgeries: 'العمليات الجراحية',
+      noSurgeries: 'لا توجد عمليات مسجلة',
+      medicalNotes: 'ملاحظات طبية إضافية',
+      technicalPhysicalAbilities: 'القدرات الفنية والبدنية',
+      mentalAbilities: 'القدرات الذهنية',
+      advancedSkills: 'مهارات متقدمة',
+      weakFoot: 'القدم الضعيفة',
+      skillMoves: 'مهارات المراوغة',
+      attackRate: 'معدل الهجوم',
+      defenseRate: 'معدل الدفاع',
+      technicalSkills: 'المهارات الفنية',
+      physicalSkills: 'المهارات البدنية',
+      socialSkills: 'المهارات الاجتماعية',
+      noObjectives: 'لم يتم تحديد أهداف بعد',
+      objectivesSummary: 'ملخص الأهداف والطموحات',
+      selectedObjectives: 'الأهداف المحددة:',
+      totalObjectives: 'إجمالي الأهداف:',
+      profileImage: 'الصورة الشخصية',
+      additionalImage: 'صورة إضافية {{number}}',
+      images: 'الصور',
+      imageUnavailable: 'صورة غير متاحة',
+      noImages: 'لا توجد صور',
+      noImagesDesc: 'أضف صورة شخصية وصور إضافية لإظهار مهاراتك وإنجازاتك',
+      videos: 'الفيديوهات',
+      videoTitle: 'فيديو {{number}}',
+      videoHint: 'اضغط على الرابط أدناه للمشاهدة',
+      noDescription: 'لا يوجد وصف',
+      noVideos: 'لا توجد فيديوهات',
+      noVideosDesc: 'لم يتم إضافة أي فيديوهات بعد',
+      documents: 'المستندات والشهادات',
+      documentType: 'النوع: {{type}}',
+      noDocuments: 'لا توجد مستندات',
+      noDocumentsDesc: 'لم يتم إضافة أي مستندات بعد',
+      viewDocument: 'عرض المستند',
+      addImagesHint: 'يمكنك إضافة الصور من صفحة تعديل الملف الشخصي',
+      arabicLanguage: 'العربية',
+      contractStatus: 'الحالة التعاقدية',
+      freeAgent: 'لاعب حر (Free Agent)',
+      contracted: 'مرتبط بعقد',
+      loan: 'إعارة',
+      freePlayer: 'لاعب حر',
+      passport: 'جواز السفر',
+      marketValue: 'القيمة السوقية',
+      estimatedValue: 'قيمة تقديرية',
+      contractEnd: 'نهاية العقد',
+      currentAgent: 'وكيل الأعمال الحالي',
+      jobTitle: 'المسمى الوظيفي',
+      whatsapp: 'واتساب',
+      socialAccounts: 'حسابات التواصل الاجتماعي',
+      previousContracts: 'تاريخ التعاقدات السابقة',
+      contractClub: 'النادي: {{club}}',
+      contractPeriod: 'الفترة: {{from}} - {{to}}',
+      contractRole: 'المركز: {{role}}',
+      noPreviousContracts: 'لا توجد تعاقدات سابقة مسجلة',
+      previousAgents: 'سجل وكلاء اللاعبين السابق',
+      agentName: 'الاسم: {{name}}',
+      period: 'الفترة: {{from}} - {{to}}',
+      subscriptionDetails: 'تفاصيل الاشتراك',
+      status: 'الحالة',
+      type: 'النوع',
+      endsAt: 'ينتهي في',
+      tabs: {
+        personal: 'البيانات الشخصية',
+        sports: 'المعلومات الرياضية',
+        education: 'التعليم',
+        medical: 'السجل الطبي',
+        skills: 'المهارات',
+        contracts: 'التعاقدات',
+        objectives: 'الأهداف',
+        media: 'الوسائط',
+        resume: 'السيرة الذاتية',
+      },
+      unavailableTab: 'التبويب غير متوفر',
+      detailedPlayerProfile: 'ملف اللاعب التفصيلي',
+      playerDataNotice: 'جميع البيانات التالية خاصة باللاعب المعروض',
+      playerData: '📋 بيانات اللاعب',
+      independentPlayerTitle: 'لاعب مستقل',
+      independentPlayerDesc: 'هذا اللاعب غير مرتبط بأي جهة حالياً',
+      officialContact: 'جهة الاتصال الرسمية',
+      noOfficialContact: 'لم يتم تحديد جهة اتصال رسمية',
+      noOfficialContactDesc: 'يمكن للاعب إضافة هذه المعلومات في ملفه الشخصي',
+      browsingAs: 'تتصفح بحساب:',
+      active: 'نشط',
+      playerAlt: 'لاعب',
+      goToOrganizationProfile: 'انتقل إلى ملف {{type}}: {{name}}',
+      organizationLogoAlt: 'لوجو {{name}}',
+      clickToOpenType: 'انقر للانتقال لـ {{type}}',
+      independentPlayerTitleLong: 'لاعب مستقل - غير تابع لأي جهة',
+      independentShort: 'مستقل',
+      playerOrganization: 'الجهة التابع لها اللاعب',
+      linkedToType: '✅ تابع ل{{type}}',
+      checking: '⏳ جاري التحقق',
+      you: 'أنت',
+      addedThisPlayer: 'أضفت هذا اللاعب',
+      goToOrganizationPage: 'انتقل إلى صفحة {{type}}',
+      viewType: 'عرض {{type}}',
+      founded: 'تأسس: {{year}}',
+      searchingOrganization: 'جاري البحث عن المنظمة...',
+      checkingRelations: 'فحص الارتباط بالأندية والأكاديميات والمدربين...',
+      checkingAllDatabases: '🔍 يتم فحص جميع قواعد البيانات',
+      loanPlayer: 'لاعب مُعار',
+      contractedPlayer: 'لاعب مرتبط بعقد',
+      linkedCurrentClub: 'مرتبط بنادي حالياً (حسب الملف الشخصي)',
+      contactOfficialEntity: 'يرجى التواصل مع جهة الاتصال الرسمية',
+      canJoinClubOrAcademy: 'يمكنه الانضمام لنادي أو أكاديمية',
+      canContractAgent: 'يمكنه التعاقد مع وكيل لاعبين',
+      canWorkWithTrainer: 'يمكنه العمل مع مدرب شخصي',
+      legalGuardianship: 'الوصاية القانونية',
+      guardianshipAlert: 'تنبيه الوصاية',
+      guardianConsentComplete: 'موافقة ولي الأمر مكتملة',
+      underGuardian: 'تحت وصاية ولي الأمر',
+      canNegotiate: 'يمكن التفاوض واستكمال الإجراءات',
+      waitingGuardianConsent: 'بانتظار موافقة ولي الأمر الرسمية',
+      talentEvaluation: 'تقييم الموهبة',
+      evaluated: 'تم التقييم',
+      underEvaluation: 'تحت التقييم',
+      byTechnicalCommittee: 'من اللجنة الفنية للمنصة',
+    },
+    skills: {
+      ball_control: 'التحكم بالكرة',
+      passing: 'التمرير',
+      shooting: 'التسديد',
+      dribbling: 'المراوغة',
+      heading: 'الضربات الرأسية',
+      tackling: 'العرقلة',
+      marking: 'المراقبة',
+      positioning: 'التموضع',
+      vision: 'الرؤية',
+      decision_making: 'اتخاذ القرار',
+      speed: 'السرعة',
+      strength: 'القوة',
+      stamina: 'التحمل',
+      agility: 'الرشاقة',
+      balance: 'التوازن',
+      flexibility: 'المرونة',
+      jumping: 'الوثب',
+      coordination: 'التنسيق',
+      reaction_time: 'وقت رد الفعل',
+      teamwork: 'العمل الجماعي',
+      communication: 'التواصل',
+      discipline: 'الانضباط',
+      self_confidence: 'الثقة بالنفس',
+      pressure_handling: 'تحمل الضغط',
+      punctuality: 'الالتزام بالمواعيد',
+      leadership: 'القيادة',
+      adaptability: 'القدرة على التكيف',
+      motivation: 'الدافعية',
+      pace: 'السرعة',
+      defending: 'الدفاع',
+      physical: 'البدنية',
+      composure: 'الهدوء',
+      aggression: 'الشراسة',
+    },
+    educationLevels: {
+      primary: 'ابتدائي',
+      middle: 'متوسط',
+      high_school: 'ثانوي',
+      bachelors: 'بكالوريوس',
+      masters: 'ماجستير',
+      phd: 'دكتوراه',
+    },
+    objectives: {
+      professional: 'الاحتراف',
+      trials: 'إجراء التجارب',
+      local_leagues: 'اللعب في الدوريات المحلية',
+      arab_leagues: 'اللعب في الدوريات العربية',
+      european_leagues: 'اللعب في الدوريات الأوروبية',
+      training: 'التدريب والتطوير',
+      other: 'أهداف أخرى',
+    },
+  },
+  en: {
+    orgTypes: { club: 'Club', academy: 'Academy', trainer: 'Trainer', agent: 'Player agent' },
+    common: {
+      back: 'Back',
+      loadingPermissions: 'Checking permissions...',
+      noPlayerTitle: 'No player selected',
+      noPlayerDesc: 'The player to display was not specified',
+      years: 'years',
+      yes: 'Yes',
+      no: 'No',
+      male: 'Male',
+      female: 'Female',
+      notSpecified: 'Not specified',
+      unknown: '--',
+      kg: 'kg',
+      cm: 'cm',
+      player: 'Player',
+      levelOutOfTen: 'Level: {{value}}/10',
+      noDetails: 'No details',
+      noAdditionalNotes: 'No additional notes',
+      available: 'Available',
+      unavailable: 'Unavailable',
+      loadingData: 'Loading data...',
+      loadDataError: '⚠️ Error loading data',
+      reload: '🔄 Reload',
+      playerNotFound: 'Player data was not found',
+      unknownError: 'Unknown error',
+      fetchPlayerError: 'An error occurred while fetching player data: {{message}}',
+      invalidVideoLink: 'Video link {{number}} is invalid or empty',
+      invalidVideoUrl: 'Video link {{number}} is invalid',
+      link: 'Link: {{url}}',
+    },
+    sections: {
+      basicInfo: 'Basic information',
+      fullName: 'Full name',
+      birthDate: 'Birth date',
+      nationality: 'Nationality',
+      gender: 'Gender',
+      position: 'Position',
+      brief: 'Short bio',
+      guardianInfo: 'Guardian information',
+      guardianMinorNote: 'The player is a minor (under 18); guardian contact details:',
+      name: 'Name',
+      phone: 'Phone number',
+      residenceContact: 'Residence and contact',
+      country: 'Country of residence',
+      city: 'City',
+      address: 'Detailed address',
+      email: 'Email',
+      pitchMap: 'Pitch map',
+      primary: 'Primary',
+      secondary: 'Secondary',
+      primaryDetailed: 'Primary position (detailed)',
+      secondaryPosition: 'Secondary position',
+      preferredFoot: 'Preferred foot',
+      height: 'Height',
+      weight: 'Weight',
+      jerseyNumber: 'Jersey number',
+      sportsCareer: 'Sports career',
+      currentClub: 'Current club',
+      club: 'Club',
+      noClub: 'Not linked to a club',
+      experience: 'Experience: {{years}} years',
+      contractStart: 'Contract start: {{date}}',
+      clubHistory: 'Club history',
+      noClubHistory: 'No previous club history',
+      trainingFoundation: 'Training and foundation',
+      academies: 'Academies',
+      privateCoaches: 'Private coaches',
+      achievements: 'Achievements and awards',
+      sportsNotes: 'Sports notes',
+      educationLevel: 'Education level',
+      graduationYear: 'Graduation year',
+      languages: 'Languages',
+      noLanguages: 'No languages registered',
+      courses: 'Courses and certificates',
+      noCourses: 'No courses registered',
+      vitalSigns: 'Vital signs',
+      bloodType: 'Blood type',
+      chronicDiseases: 'Chronic diseases',
+      chronicDetails: 'Chronic disease details:',
+      allergies: 'Allergies',
+      noAllergies: 'No allergies registered',
+      medications: 'Continuous medications',
+      noMedications: 'No medications registered',
+      injuries: 'Previous injuries',
+      fullRecovery: 'Full recovery',
+      noInjuries: 'No injuries registered',
+      surgeries: 'Surgeries',
+      noSurgeries: 'No surgeries registered',
+      medicalNotes: 'Additional medical notes',
+      technicalPhysicalAbilities: 'Technical and physical abilities',
+      mentalAbilities: 'Mental abilities',
+      advancedSkills: 'Advanced skills',
+      weakFoot: 'Weak foot',
+      skillMoves: 'Dribbling skills',
+      attackRate: 'Attack rate',
+      defenseRate: 'Defense rate',
+      technicalSkills: 'Technical skills',
+      physicalSkills: 'Physical skills',
+      socialSkills: 'Social skills',
+      noObjectives: 'No objectives selected yet',
+      objectivesSummary: 'Objectives and ambitions summary',
+      selectedObjectives: 'Selected objectives:',
+      totalObjectives: 'Total objectives:',
+      profileImage: 'Profile image',
+      additionalImage: 'Additional image {{number}}',
+      images: 'Images',
+      imageUnavailable: 'Image unavailable',
+      noImages: 'No images',
+      noImagesDesc: 'Add a profile image and additional photos to show your skills and achievements',
+      videos: 'Videos',
+      videoTitle: 'Video {{number}}',
+      videoHint: 'Click the link below to watch',
+      noDescription: 'No description',
+      noVideos: 'No videos',
+      noVideosDesc: 'No videos have been added yet',
+      documents: 'Documents and certificates',
+      documentType: 'Type: {{type}}',
+      noDocuments: 'No documents',
+      noDocumentsDesc: 'No documents have been added yet',
+      viewDocument: 'View document',
+      addImagesHint: 'You can add images from the profile edit page',
+      arabicLanguage: 'Arabic',
+      contractStatus: 'Contract status',
+      freeAgent: 'Free Agent',
+      contracted: 'Under contract',
+      loan: 'Loan',
+      freePlayer: 'Free player',
+      passport: 'Passport',
+      marketValue: 'Market value',
+      estimatedValue: 'Estimated value',
+      contractEnd: 'Contract end',
+      currentAgent: 'Current business agent',
+      jobTitle: 'Job title',
+      whatsapp: 'WhatsApp',
+      socialAccounts: 'Social media accounts',
+      previousContracts: 'Previous contract history',
+      contractClub: 'Club: {{club}}',
+      contractPeriod: 'Period: {{from}} - {{to}}',
+      contractRole: 'Position: {{role}}',
+      noPreviousContracts: 'No previous contracts registered',
+      previousAgents: 'Previous player agents record',
+      agentName: 'Name: {{name}}',
+      period: 'Period: {{from}} - {{to}}',
+      subscriptionDetails: 'Subscription details',
+      status: 'Status',
+      type: 'Type',
+      endsAt: 'Ends at',
+      tabs: {
+        personal: 'Personal information',
+        sports: 'Sports information',
+        education: 'Education',
+        medical: 'Medical record',
+        skills: 'Skills',
+        contracts: 'Contracts',
+        objectives: 'Objectives',
+        media: 'Media',
+        resume: 'Resume',
+      },
+      unavailableTab: 'Tab unavailable',
+      detailedPlayerProfile: 'Detailed player profile',
+      playerDataNotice: 'All following data belongs to the displayed player',
+      playerData: '📋 Player data',
+      independentPlayerTitle: 'Independent player',
+      independentPlayerDesc: 'This player is not currently linked to any organization',
+      officialContact: 'Official contact',
+      noOfficialContact: 'No official contact specified',
+      noOfficialContactDesc: 'The player can add this information in their profile',
+      browsingAs: 'Browsing as:',
+      active: 'Active',
+      playerAlt: 'Player',
+      goToOrganizationProfile: 'Go to {{type}} profile: {{name}}',
+      organizationLogoAlt: '{{name}} logo',
+      clickToOpenType: 'Click to open {{type}}',
+      independentPlayerTitleLong: 'Independent player - not linked to any organization',
+      independentShort: 'Independent',
+      playerOrganization: 'Player organization',
+      linkedToType: '✅ Linked to {{type}}',
+      checking: '⏳ Checking',
+      you: 'You',
+      addedThisPlayer: 'You added this player',
+      goToOrganizationPage: 'Go to {{type}} page',
+      viewType: 'View {{type}}',
+      founded: 'Founded: {{year}}',
+      searchingOrganization: 'Searching for organization...',
+      checkingRelations: 'Checking club, academy, and trainer links...',
+      checkingAllDatabases: '🔍 Checking all databases',
+      loanPlayer: 'Loan player',
+      contractedPlayer: 'Contracted player',
+      linkedCurrentClub: 'Currently linked to a club according to the profile',
+      contactOfficialEntity: 'Please contact the official contact entity',
+      canJoinClubOrAcademy: 'Can join a club or academy',
+      canContractAgent: 'Can contract with a player agent',
+      canWorkWithTrainer: 'Can work with a personal trainer',
+      legalGuardianship: 'Legal guardianship',
+      guardianshipAlert: 'Guardianship alert',
+      guardianConsentComplete: 'Guardian consent completed',
+      underGuardian: 'Under guardian supervision',
+      canNegotiate: 'Negotiation and procedures can proceed',
+      waitingGuardianConsent: 'Waiting for official guardian consent',
+      talentEvaluation: 'Talent evaluation',
+      evaluated: 'Evaluated',
+      underEvaluation: 'Under evaluation',
+      byTechnicalCommittee: 'By the platform technical committee',
+    },
+    skills: {
+      ball_control: 'Ball control',
+      passing: 'Passing',
+      shooting: 'Shooting',
+      dribbling: 'Dribbling',
+      heading: 'Heading',
+      tackling: 'Tackling',
+      marking: 'Marking',
+      positioning: 'Positioning',
+      vision: 'Vision',
+      decision_making: 'Decision making',
+      speed: 'Speed',
+      strength: 'Strength',
+      stamina: 'Stamina',
+      agility: 'Agility',
+      balance: 'Balance',
+      flexibility: 'Flexibility',
+      jumping: 'Jumping',
+      coordination: 'Coordination',
+      reaction_time: 'Reaction time',
+      teamwork: 'Teamwork',
+      communication: 'Communication',
+      discipline: 'Discipline',
+      self_confidence: 'Self-confidence',
+      pressure_handling: 'Pressure handling',
+      punctuality: 'Punctuality',
+      leadership: 'Leadership',
+      adaptability: 'Adaptability',
+      motivation: 'Motivation',
+      pace: 'Pace',
+      defending: 'Defending',
+      physical: 'Physical',
+      composure: 'Composure',
+      aggression: 'Aggression',
+    },
+    educationLevels: {
+      primary: 'Primary',
+      middle: 'Middle',
+      high_school: 'High school',
+      bachelors: "Bachelor's",
+      masters: "Master's",
+      phd: 'PhD',
+    },
+    objectives: {
+      professional: 'Professional career',
+      trials: 'Trials',
+      local_leagues: 'Play in local leagues',
+      arab_leagues: 'Play in Arab leagues',
+      european_leagues: 'Play in European leagues',
+      training: 'Training and development',
+      other: 'Other goals',
+    },
+  },
+  es: {},
+  pt: {},
+};
+
+const interpolate = (template: string, values: Record<string, string | number> = {}) =>
+  template.replace(/\{\{(\w+)\}\}/g, (_, key) => String(values[key] ?? ''));
+
+const buildPlayerProfileLocale = (overrides: any) => ({
+  ...PLAYER_PROFILE_COPY.en,
+  ...overrides,
+  orgTypes: { ...PLAYER_PROFILE_COPY.en.orgTypes, ...overrides.orgTypes },
+  common: { ...PLAYER_PROFILE_COPY.en.common, ...overrides.common },
+  sections: { ...PLAYER_PROFILE_COPY.en.sections, ...overrides.sections },
+  skills: { ...PLAYER_PROFILE_COPY.en.skills, ...overrides.skills },
+  educationLevels: { ...PLAYER_PROFILE_COPY.en.educationLevels, ...overrides.educationLevels },
+  objectives: { ...PLAYER_PROFILE_COPY.en.objectives, ...overrides.objectives },
+});
+
+(PLAYER_PROFILE_COPY as any).es = buildPlayerProfileLocale({
+  orgTypes: { club: 'Club', academy: 'Academia', trainer: 'Entrenador', agent: 'Agente de jugadores' },
+  common: {
+    back: 'Volver',
+    loadingPermissions: 'Verificando permisos...',
+    noPlayerTitle: 'Jugador no seleccionado',
+    noPlayerDesc: 'No se especificó el jugador que se desea ver',
+    years: 'años',
+    yes: 'Sí',
+    no: 'No',
+    male: 'Masculino',
+    female: 'Femenino',
+    notSpecified: 'No especificado',
+    player: 'Jugador',
+    levelOutOfTen: 'Nivel: {{value}}/10',
+    noDetails: 'Sin detalles',
+    noAdditionalNotes: 'No hay notas adicionales',
+  },
+  sections: {
+    basicInfo: 'Información básica',
+    fullName: 'Nombre completo',
+    birthDate: 'Fecha de nacimiento',
+    nationality: 'Nacionalidad',
+    gender: 'Género',
+    position: 'Posición',
+    brief: 'Resumen breve',
+    guardianInfo: 'Datos del tutor',
+    guardianMinorNote: 'El jugador es menor de edad (menos de 18 años); datos de contacto del tutor:',
+    name: 'Nombre',
+    phone: 'Teléfono',
+    residenceContact: 'Residencia y contacto',
+    country: 'País de residencia',
+    city: 'Ciudad',
+    address: 'Dirección detallada',
+    email: 'Correo electrónico',
+    pitchMap: 'Mapa del campo',
+    primary: 'Principal',
+    secondary: 'Secundaria',
+    primaryDetailed: 'Posición principal (detallada)',
+    secondaryPosition: 'Posición secundaria',
+    preferredFoot: 'Pie preferido',
+    height: 'Altura',
+    weight: 'Peso',
+    jerseyNumber: 'Número de camiseta',
+    sportsCareer: 'Trayectoria deportiva',
+    currentClub: 'Club actual',
+    club: 'Club',
+    noClub: 'No vinculado a un club',
+    experience: 'Experiencia: {{years}} años',
+    contractStart: 'Inicio del contrato: {{date}}',
+    clubHistory: 'Historial de clubes',
+    noClubHistory: 'No hay historial previo de clubes',
+    trainingFoundation: 'Formación y preparación',
+    academies: 'Academias',
+    privateCoaches: 'Entrenadores privados',
+    achievements: 'Logros y premios',
+    sportsNotes: 'Notas deportivas',
+    educationLevel: 'Nivel educativo',
+    graduationYear: 'Año de graduación',
+    languages: 'Idiomas',
+    noLanguages: 'No hay idiomas registrados',
+    courses: 'Cursos y certificados',
+    noCourses: 'No hay cursos registrados',
+    vitalSigns: 'Signos vitales',
+    bloodType: 'Tipo de sangre',
+    chronicDiseases: 'Enfermedades crónicas',
+    chronicDetails: 'Detalles de enfermedades crónicas:',
+    allergies: 'Alergias',
+    noAllergies: 'No hay alergias registradas',
+    medications: 'Medicamentos continuos',
+    noMedications: 'No hay medicamentos registrados',
+    injuries: 'Lesiones anteriores',
+    fullRecovery: 'Recuperación completa',
+    noInjuries: 'No hay lesiones registradas',
+    surgeries: 'Cirugías',
+    noSurgeries: 'No hay cirugías registradas',
+    medicalNotes: 'Notas médicas adicionales',
+    technicalPhysicalAbilities: 'Capacidades técnicas y físicas',
+    mentalAbilities: 'Capacidades mentales',
+    advancedSkills: 'Habilidades avanzadas',
+    weakFoot: 'Pie débil',
+    skillMoves: 'Habilidades de regate',
+    attackRate: 'Ritmo de ataque',
+    defenseRate: 'Ritmo defensivo',
+    technicalSkills: 'Habilidades técnicas',
+    physicalSkills: 'Habilidades físicas',
+    socialSkills: 'Habilidades sociales',
+    noObjectives: 'Aún no se han definido objetivos',
+    objectivesSummary: 'Resumen de objetivos y aspiraciones',
+    selectedObjectives: 'Objetivos seleccionados:',
+    totalObjectives: 'Total de objetivos:',
+  },
+  skills: {
+    ball_control: 'Control de balón',
+    passing: 'Pase',
+    shooting: 'Tiro',
+    dribbling: 'Regate',
+    heading: 'Cabeceo',
+    tackling: 'Entrada',
+    marking: 'Marcaje',
+    positioning: 'Posicionamiento',
+    vision: 'Visión',
+    decision_making: 'Toma de decisiones',
+    speed: 'Velocidad',
+    strength: 'Fuerza',
+    stamina: 'Resistencia',
+    agility: 'Agilidad',
+    balance: 'Equilibrio',
+    flexibility: 'Flexibilidad',
+    jumping: 'Salto',
+    coordination: 'Coordinación',
+    reaction_time: 'Tiempo de reacción',
+    teamwork: 'Trabajo en equipo',
+    communication: 'Comunicación',
+    discipline: 'Disciplina',
+    self_confidence: 'Autoconfianza',
+    pressure_handling: 'Manejo de presión',
+    punctuality: 'Puntualidad',
+    leadership: 'Liderazgo',
+    adaptability: 'Adaptabilidad',
+    motivation: 'Motivación',
+    pace: 'Ritmo',
+    defending: 'Defensa',
+    physical: 'Físico',
+    composure: 'Calma',
+    aggression: 'Agresividad',
+  },
+  educationLevels: { primary: 'Primaria', middle: 'Intermedia', high_school: 'Secundaria', bachelors: 'Licenciatura', masters: 'Maestría', phd: 'Doctorado' },
+  objectives: { professional: 'Carrera profesional', trials: 'Pruebas', local_leagues: 'Jugar en ligas locales', arab_leagues: 'Jugar en ligas árabes', european_leagues: 'Jugar en ligas europeas', training: 'Entrenamiento y desarrollo', other: 'Otros objetivos' },
+});
+
+(PLAYER_PROFILE_COPY as any).pt = buildPlayerProfileLocale({
+  orgTypes: { club: 'Clube', academy: 'Academia', trainer: 'Treinador', agent: 'Agente de jogadores' },
+  common: {
+    back: 'Voltar',
+    loadingPermissions: 'Verificando permissões...',
+    noPlayerTitle: 'Jogador não selecionado',
+    noPlayerDesc: 'O jogador a ser exibido não foi especificado',
+    years: 'anos',
+    yes: 'Sim',
+    no: 'Não',
+    male: 'Masculino',
+    female: 'Feminino',
+    notSpecified: 'Não especificado',
+    player: 'Jogador',
+    levelOutOfTen: 'Nível: {{value}}/10',
+    noDetails: 'Sem detalhes',
+    noAdditionalNotes: 'Não há notas adicionais',
+  },
+  sections: {
+    basicInfo: 'Informações básicas',
+    fullName: 'Nome completo',
+    birthDate: 'Data de nascimento',
+    nationality: 'Nacionalidade',
+    gender: 'Gênero',
+    position: 'Posição',
+    brief: 'Resumo breve',
+    guardianInfo: 'Dados do responsável',
+    guardianMinorNote: 'O jogador é menor de idade (menos de 18 anos); dados de contato do responsável:',
+    name: 'Nome',
+    phone: 'Telefone',
+    residenceContact: 'Residência e contato',
+    country: 'País de residência',
+    city: 'Cidade',
+    address: 'Endereço detalhado',
+    email: 'E-mail',
+    pitchMap: 'Mapa do campo',
+    primary: 'Principal',
+    secondary: 'Secundária',
+    primaryDetailed: 'Posição principal (detalhada)',
+    secondaryPosition: 'Posição secundária',
+    preferredFoot: 'Pé preferido',
+    height: 'Altura',
+    weight: 'Peso',
+    jerseyNumber: 'Número da camisa',
+    sportsCareer: 'Carreira esportiva',
+    currentClub: 'Clube atual',
+    club: 'Clube',
+    noClub: 'Não vinculado a clube',
+    experience: 'Experiência: {{years}} anos',
+    contractStart: 'Início do contrato: {{date}}',
+    clubHistory: 'Histórico de clubes',
+    noClubHistory: 'Não há histórico anterior de clubes',
+    trainingFoundation: 'Treinamento e formação',
+    academies: 'Academias',
+    privateCoaches: 'Treinadores particulares',
+    achievements: 'Conquistas e prêmios',
+    sportsNotes: 'Notas esportivas',
+    educationLevel: 'Nível educacional',
+    graduationYear: 'Ano de formatura',
+    languages: 'Idiomas',
+    noLanguages: 'Não há idiomas registrados',
+    courses: 'Cursos e certificados',
+    noCourses: 'Não há cursos registrados',
+    vitalSigns: 'Sinais vitais',
+    bloodType: 'Tipo sanguíneo',
+    chronicDiseases: 'Doenças crônicas',
+    chronicDetails: 'Detalhes das doenças crônicas:',
+    allergies: 'Alergias',
+    noAllergies: 'Não há alergias registradas',
+    medications: 'Medicamentos contínuos',
+    noMedications: 'Não há medicamentos registrados',
+    injuries: 'Lesões anteriores',
+    fullRecovery: 'Recuperação completa',
+    noInjuries: 'Não há lesões registradas',
+    surgeries: 'Cirurgias',
+    noSurgeries: 'Não há cirurgias registradas',
+    medicalNotes: 'Notas médicas adicionais',
+    technicalPhysicalAbilities: 'Capacidades técnicas e físicas',
+    mentalAbilities: 'Capacidades mentais',
+    advancedSkills: 'Habilidades avançadas',
+    weakFoot: 'Pé fraco',
+    skillMoves: 'Habilidades de drible',
+    attackRate: 'Ritmo de ataque',
+    defenseRate: 'Ritmo defensivo',
+    technicalSkills: 'Habilidades técnicas',
+    physicalSkills: 'Habilidades físicas',
+    socialSkills: 'Habilidades sociais',
+    noObjectives: 'Nenhum objetivo definido ainda',
+    objectivesSummary: 'Resumo de objetivos e ambições',
+    selectedObjectives: 'Objetivos selecionados:',
+    totalObjectives: 'Total de objetivos:',
+  },
+  skills: {
+    ball_control: 'Controle de bola',
+    passing: 'Passe',
+    shooting: 'Finalização',
+    dribbling: 'Drible',
+    heading: 'Cabeceio',
+    tackling: 'Desarme',
+    marking: 'Marcação',
+    positioning: 'Posicionamento',
+    vision: 'Visão',
+    decision_making: 'Tomada de decisão',
+    speed: 'Velocidade',
+    strength: 'Força',
+    stamina: 'Resistência',
+    agility: 'Agilidade',
+    balance: 'Equilíbrio',
+    flexibility: 'Flexibilidade',
+    jumping: 'Salto',
+    coordination: 'Coordenação',
+    reaction_time: 'Tempo de reação',
+    teamwork: 'Trabalho em equipe',
+    communication: 'Comunicação',
+    discipline: 'Disciplina',
+    self_confidence: 'Autoconfiança',
+    pressure_handling: 'Controle sob pressão',
+    punctuality: 'Pontualidade',
+    leadership: 'Liderança',
+    adaptability: 'Adaptabilidade',
+    motivation: 'Motivação',
+    pace: 'Ritmo',
+    defending: 'Defesa',
+    physical: 'Físico',
+    composure: 'Compostura',
+    aggression: 'Agressividade',
+  },
+  educationLevels: { primary: 'Primário', middle: 'Intermediário', high_school: 'Secundário', bachelors: 'Bacharelado', masters: 'Mestrado', phd: 'Doutorado' },
+  objectives: { professional: 'Carreira profissional', trials: 'Testes', local_leagues: 'Jogar em ligas locais', arab_leagues: 'Jogar em ligas árabes', european_leagues: 'Jogar em ligas europeias', training: 'Treinamento e desenvolvimento', other: 'Outros objetivos' },
+});
+
+const getPlayerProfileCopy = (locale: string) => {
+  const base = PLAYER_PROFILE_COPY.en;
+  const selected = (PLAYER_PROFILE_COPY as any)[locale] || base;
+  return buildPlayerProfileLocale(selected);
+};
 
 // دالة التحقق من صحة رابط الصورة
 const getValidImageUrl = (url: string | null | undefined, fallback: string = '/default-player-avatar.png'): string => {
@@ -243,25 +1051,25 @@ const calculateAge = (birthDate: any) => {
 const ORGANIZATION_TYPES = {
   club: {
     collection: 'clubs',
-    type: 'نادي',
+    typeKey: 'club',
     icon: Building2,
     color: 'bg-blue-500'
   },
   academy: {
     collection: 'academies',
-    type: 'أكاديمية',
+    typeKey: 'academy',
     icon: School,
     color: 'bg-green-500'
   },
   trainer: {
     collection: 'trainers',
-    type: 'مدرب',
+    typeKey: 'trainer',
     icon: Users,
     color: 'bg-purple-500'
   },
   agent: {
     collection: 'agents',
-    type: 'وكيل لاعبين',
+    typeKey: 'agent',
     icon: Briefcase,
     color: 'bg-orange-500'
   }
@@ -273,6 +1081,11 @@ function PlayerReportPage() {
   const searchParams = useSearchParams();
   const params = useParams();
   const { user, loading } = useAuth();
+  const { locale } = useTranslation();
+  const copy = getPlayerProfileCopy(locale);
+  useEffect(() => {
+    dayjs.locale({ ar: 'ar', en: 'en', es: 'es', pt: 'pt' }[locale] || 'en');
+  }, [locale]);
   const authError = null;
   const [player, setPlayer] = useState<Player | null>(null);
 
@@ -312,7 +1125,7 @@ function PlayerReportPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 mx-auto mb-4 text-blue-600 animate-spin" />
-          <p className="text-gray-600">جاري التحقق من الصلاحيات...</p>
+          <p className="text-gray-600">{copy.common.loadingPermissions}</p>
         </div>
       </div>
     );
@@ -324,10 +1137,10 @@ function PlayerReportPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-600" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">لاعب غير محدد</h2>
-          <p className="text-gray-600 mb-4">لم يتم تحديد اللاعب المطلوب عرض تقريره</p>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">{copy.common.noPlayerTitle}</h2>
+          <p className="text-gray-600 mb-4">{copy.common.noPlayerDesc}</p>
           <Button onClick={() => router.back()}>
-            العودة
+            {copy.common.back}
           </Button>
         </div>
       </div>
@@ -373,40 +1186,40 @@ function PlayerReportPage() {
 
   // تحويل بيانات المهارات لمخططات الرادار
   const technicalSkillsMapping = {
-    'ball_control': 'التحكم بالكرة',
-    'passing': 'التمرير',
-    'shooting': 'التسديد',
-    'dribbling': 'المراوغة',
-    'heading': 'الضربات الرأسية',
-    'tackling': 'العرقلة',
-    'marking': 'المراقبة',
-    'positioning': 'التموضع',
-    'vision': 'الرؤية',
-    'decision_making': 'اتخاذ القرار'
+    'ball_control': copy.skills.ball_control,
+    'passing': copy.skills.passing,
+    'shooting': copy.skills.shooting,
+    'dribbling': copy.skills.dribbling,
+    'heading': copy.skills.heading,
+    'tackling': copy.skills.tackling,
+    'marking': copy.skills.marking,
+    'positioning': copy.skills.positioning,
+    'vision': copy.skills.vision,
+    'decision_making': copy.skills.decision_making
   };
 
   const physicalSkillsMapping = {
-    'speed': 'السرعة',
-    'strength': 'القوة',
-    'stamina': 'التحمل',
-    'agility': 'الرشاقة',
-    'balance': 'التوازن',
-    'flexibility': 'المرونة',
-    'jumping': 'الوثب',
-    'coordination': 'التنسيق',
-    'reaction_time': 'وقت رد الفعل'
+    'speed': copy.skills.speed,
+    'strength': copy.skills.strength,
+    'stamina': copy.skills.stamina,
+    'agility': copy.skills.agility,
+    'balance': copy.skills.balance,
+    'flexibility': copy.skills.flexibility,
+    'jumping': copy.skills.jumping,
+    'coordination': copy.skills.coordination,
+    'reaction_time': copy.skills.reaction_time
   };
 
   const socialSkillsMapping = {
-    'teamwork': 'العمل الجماعي',
-    'communication': 'التواصل',
-    'discipline': 'الانضباط',
-    'self_confidence': 'الثقة بالنفس',
-    'pressure_handling': 'تحمل الضغط',
-    'punctuality': 'الالتزام بالمواعيد',
-    'leadership': 'القيادة',
-    'adaptability': 'القدرة على التكيف',
-    'motivation': 'الدافعية'
+    'teamwork': copy.skills.teamwork,
+    'communication': copy.skills.communication,
+    'discipline': copy.skills.discipline,
+    'self_confidence': copy.skills.self_confidence,
+    'pressure_handling': copy.skills.pressure_handling,
+    'punctuality': copy.skills.punctuality,
+    'leadership': copy.skills.leadership,
+    'adaptability': copy.skills.adaptability,
+    'motivation': copy.skills.motivation
   };
 
   const technicalSkillsData = createSafeChartData(player?.technical_skills, technicalSkillsMapping);
@@ -454,7 +1267,7 @@ function PlayerReportPage() {
           if (!!userDocData) {
             const userData = userDocData;
             console.log(`✅ [fetchCurrentUserInfo] تم العثور على الحساب:`, {
-              type: orgType.type,
+              type: orgType.typeKey,
               name: userData.name || userData.full_name,
               hasLogo: !!userData.logo
             });
@@ -462,7 +1275,8 @@ function PlayerReportPage() {
             const userInfo = {
               ...userData,
               id: userData.id,
-              type: orgType.type,
+              type: copy.orgTypes[orgType.typeKey],
+              typeKey: orgType.typeKey,
               icon: orgType.icon,
               color: orgType.color
             };
@@ -492,10 +1306,14 @@ function PlayerReportPage() {
 
     // تحديد البوكت المناسب حسب نوع المنظمة
     const bucketMapping: Record<string, string[]> = {
-      'نادي': ['clubavatar', 'club-logos'],
-      'أكاديمية': ['academyavatar', 'academy-logos', 'clubavatar'],
-      'مدرب': ['traineravatar', 'trainer-logos', 'clubavatar'],
-      'وكيل لاعبين': ['agentavatar', 'agent-logos', 'clubavatar']
+      club: ['clubavatar', 'club-logos'],
+      academy: ['academyavatar', 'academy-logos', 'clubavatar'],
+      trainer: ['traineravatar', 'trainer-logos', 'clubavatar'],
+      agent: ['agentavatar', 'agent-logos', 'clubavatar'],
+      '\u0646\u0627\u062f\u064a': ['clubavatar', 'club-logos'],
+      '\u0623\u0643\u0627\u062f\u064a\u0645\u064a\u0629': ['academyavatar', 'academy-logos', 'clubavatar'],
+      '\u0645\u062f\u0631\u0628': ['traineravatar', 'trainer-logos', 'clubavatar'],
+      '\u0648\u0643\u064a\u0644 \u0644\u0627\u0639\u0628\u064a\u0646': ['agentavatar', 'agent-logos', 'clubavatar']
     };
 
     const possibleBuckets = organizationType ?
@@ -640,42 +1458,42 @@ function PlayerReportPage() {
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500" />
           <h3 className="flex gap-2 items-center mb-6 text-xl font-semibold text-gray-800">
             <User className="w-5 h-5 text-blue-600" />
-            البيانات الأساسية
+            {copy.sections.basicInfo}
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="col-span-full md:col-span-1">
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">الاسم الكامل</label>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">{copy.sections.fullName}</label>
               <div className="text-lg font-bold text-gray-900">{player?.full_name || player?.name || '--'}</div>
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">تاريخ الميلاد</label>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">{copy.sections.birthDate}</label>
               <div className="font-medium text-gray-700 flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-gray-400" />
                 {player?.birth_date ? dayjs(player.birth_date).format('DD/MM/YYYY') : '--'}
                 {age !== null && (
                   <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-600">
-                    {age} سنة
+                    {age} {copy.common.years}
                   </span>
                 )}
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">الجنسية</label>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">{copy.sections.nationality}</label>
               <div className="font-medium text-gray-700">{player?.nationality || '--'}</div>
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">الجنس</label>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">{copy.sections.gender}</label>
               <div className="font-medium text-gray-700">
-                {player?.gender === 'male' ? 'ذكر' : player?.gender === 'female' ? 'أنثى' : '--'}
+                {player?.gender === 'male' ? copy.common.male : player?.gender === 'female' ? copy.common.female : copy.common.unknown}
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">المركز</label>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">{copy.sections.position}</label>
               <div className="inline-block">
                 <span className="font-bold text-gray-900 bg-blue-50 px-3 py-1 rounded-full border border-blue-100 text-sm">
                   {player?.primary_position || player?.position || '--'}
@@ -690,7 +1508,7 @@ function PlayerReportPage() {
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 overflow-hidden">
             <h3 className="flex gap-2 items-center mb-4 text-xl font-semibold text-gray-800">
               <FileText className="w-5 h-5 text-gray-600" />
-              نبذة مختصرة
+              {copy.sections.brief}
             </h3>
             <p className="text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100 whitespace-pre-line">
               {player.brief}
@@ -706,18 +1524,18 @@ function PlayerReportPage() {
                 <Shield className="w-6 h-6" />
               </div>
               <div>
-                <h4 className="font-bold text-amber-900 mb-1">بيانات ولي الأمر</h4>
-                <p className="text-amber-700 text-sm mb-4">اللاعب قاصر (أقل من 18 سنة)، بيانات التواصل مع ولي الأمر:</p>
+                <h4 className="font-bold text-amber-900 mb-1">{copy.sections.guardianInfo}</h4>
+                <p className="text-amber-700 text-sm mb-4">{copy.sections.guardianMinorNote}</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {player.guardian_name && (
                     <div className="bg-white/60 p-3 rounded border border-amber-100">
-                      <span className="text-xs text-amber-800 block mb-1">الاسم</span>
+                      <span className="text-xs text-amber-800 block mb-1">{copy.sections.name}</span>
                       <span className="font-semibold text-amber-900">{player.guardian_name}</span>
                     </div>
                   )}
                   {player.guardian_phone && (
                     <div className="bg-white/60 p-3 rounded border border-amber-100">
-                      <span className="text-xs text-amber-800 block mb-1">رقم الهاتف</span>
+                      <span className="text-xs text-amber-800 block mb-1">{copy.sections.phone}</span>
                       <span className="font-semibold text-amber-900" dir="ltr">{player.guardian_phone}</span>
                     </div>
                   )}
@@ -731,21 +1549,21 @@ function PlayerReportPage() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 overflow-hidden">
           <h3 className="flex gap-2 items-center mb-6 text-xl font-semibold text-gray-800">
             <MapPin className="w-5 h-5 text-green-600" />
-            الإقامة والاتصال
+            {copy.sections.residenceContact}
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">دولة الإقامة</label>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">{copy.sections.country}</label>
               <div className="font-medium text-gray-700">{player?.country || '--'}</div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">المدينة</label>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">{copy.sections.city}</label>
               <div className="font-medium text-gray-700">{player?.city || '--'}</div>
             </div>
 
             <div className="col-span-1 md:col-span-2">
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">العنوان التفصيلي</label>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">{copy.sections.address}</label>
               <div className="font-medium text-gray-700 flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-gray-400 mt-1" />
                 <span>{player?.address || '--'}</span>
@@ -756,14 +1574,14 @@ function PlayerReportPage() {
             {canViewPhoneNumber() && (
               <>
                 <div>
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">رقم الهاتف</label>
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">{copy.sections.phone}</label>
                   <div className="font-medium text-gray-700 flex items-center gap-2" dir="ltr">
                     <Phone className="w-4 h-4 text-gray-400" />
                     {player?.phone || '--'}
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">البريد الإلكتروني</label>
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1 block">{copy.sections.email}</label>
                   <div className="font-medium text-gray-700 flex items-center gap-2">
                     <Mail className="w-4 h-4 text-gray-400" />
                     {player?.email || '--'}
@@ -788,7 +1606,7 @@ function PlayerReportPage() {
 
           {/* Pitch Visualization (Spans 1 col on LG, Full on others) */}
           <div className="lg:col-span-1 bg-white rounded-xl border border-gray-100 p-4 shadow-sm flex flex-col items-center">
-            <h4 className="text-sm font-semibold text-gray-500 mb-3 w-full text-center uppercase tracking-wider">خريطة الملعب</h4>
+            <h4 className="text-sm font-semibold text-gray-500 mb-3 w-full text-center uppercase tracking-wider">{copy.sections.pitchMap}</h4>
             <FootballPitch
               primaryPosition={primaryPos}
               secondaryPosition={player?.secondary_position}
@@ -798,13 +1616,13 @@ function PlayerReportPage() {
               {primaryPos && (
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 bg-red-600 rounded-full border border-gray-200" />
-                  <span>الأساسي ({primaryPos})</span>
+                  <span>{copy.sections.primary} ({primaryPos})</span>
                 </div>
               )}
               {player?.secondary_position && (
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 bg-yellow-500 rounded-full border border-gray-200" />
-                  <span>الثانوي ({player.secondary_position})</span>
+                  <span>{copy.sections.secondary} ({player.secondary_position})</span>
                 </div>
               )}
             </div>
@@ -815,13 +1633,13 @@ function PlayerReportPage() {
             {/* Role & Specifics */}
             <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm flex flex-col justify-center">
               <div className="mb-6 text-center">
-                <span className="text-gray-400 text-sm block mb-1">المركز الأساسي (تفصيلي)</span>
+                <span className="text-gray-400 text-sm block mb-1">{copy.sections.primaryDetailed}</span>
                 <span className="text-3xl font-black text-gray-900">{primaryPos || '--'}</span>
                 {player?.detailed_position && <span className="text-blue-600 block mt-1 font-medium text-lg">{player.detailed_position}</span>}
               </div>
               {player?.secondary_position && (
                 <div className="text-center pt-6 border-t border-gray-100">
-                  <span className="text-gray-400 text-sm block mb-1">المركز الثانوي</span>
+                  <span className="text-gray-400 text-sm block mb-1">{copy.sections.secondaryPosition}</span>
                   <span className="text-xl font-bold text-gray-700">{player.secondary_position}</span>
                 </div>
               )}
@@ -832,19 +1650,19 @@ function PlayerReportPage() {
               <div className="relative z-10">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="text-center p-3 bg-gray-50/80 rounded-lg border border-gray-100">
-                    <span className="text-xs text-gray-500 block mb-1">القدم المفضلة</span>
+                    <span className="text-xs text-gray-500 block mb-1">{copy.sections.preferredFoot}</span>
                     <span className="font-bold text-lg text-gray-900">{player?.preferred_foot || player?.foot || '--'}</span>
                   </div>
                   <div className="text-center p-3 bg-gray-50/80 rounded-lg border border-gray-100">
-                    <span className="text-xs text-gray-500 block mb-1">الطول</span>
+                    <span className="text-xs text-gray-500 block mb-1">{copy.sections.height}</span>
                     <span className="font-bold text-lg text-gray-900" dir="ltr">{player?.height ? `${player.height} cm` : '--'}</span>
                   </div>
                   <div className="text-center p-3 bg-gray-50/80 rounded-lg border border-gray-100">
-                    <span className="text-xs text-gray-500 block mb-1">الوزن</span>
+                    <span className="text-xs text-gray-500 block mb-1">{copy.sections.weight}</span>
                     <span className="font-bold text-lg text-gray-900" dir="ltr">{player?.weight ? `${player.weight} kg` : '--'}</span>
                   </div>
                   <div className="text-center p-3 bg-gray-50/80 rounded-lg border border-gray-100">
-                    <span className="text-xs text-gray-500 block mb-1">رقم القميص</span>
+                    <span className="text-xs text-gray-500 block mb-1">{copy.sections.jerseyNumber}</span>
                     <span className="font-bold text-lg text-gray-900">{player?.jersey_number || player?.player_number || '--'}</span>
                   </div>
                 </div>
@@ -857,23 +1675,23 @@ function PlayerReportPage() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex items-center gap-3 bg-gray-50/50">
             <Briefcase className="w-5 h-5 text-indigo-500" />
-            <h3 className="text-lg font-bold text-gray-800">المسيرة الرياضية</h3>
+            <h3 className="text-lg font-bold text-gray-800">{copy.sections.sportsCareer}</h3>
           </div>
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Current Club */}
               <div className="flex flex-col gap-4">
-                <h4 className="font-semibold text-gray-700 mb-2">النادي الحالي</h4>
+                <h4 className="font-semibold text-gray-700 mb-2">{copy.sections.currentClub}</h4>
                 <div className="flex items-center gap-4 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
                   <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-2xl">
                     ⚽
                   </div>
                   <div>
-                    <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">النادي</span>
-                    <div className="text-xl font-bold text-indigo-900">{player?.current_club || 'غير مرتبط بنادي'}</div>
-                    {player?.experience_years && <div className="text-sm text-indigo-700 mt-1">خبرة: {player.experience_years} سنوات</div>}
+                    <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">{copy.sections.club}</span>
+                    <div className="text-xl font-bold text-indigo-900">{player?.current_club || copy.sections.noClub}</div>
+                    {player?.experience_years && <div className="text-sm text-indigo-700 mt-1">{interpolate(copy.sections.experience, { years: player.experience_years })}</div>}
                     {player?.contract_start_date && (
-                      <div className="text-xs text-indigo-500 mt-1">بداية العقد: {player.contract_start_date}</div>
+                      <div className="text-xs text-indigo-500 mt-1">{interpolate(copy.sections.contractStart, { date: player.contract_start_date })}</div>
                     )}
                   </div>
                 </div>
@@ -881,7 +1699,7 @@ function PlayerReportPage() {
 
               {/* History */}
               <div>
-                <h4 className="font-semibold text-gray-700 mb-4">تاريخ الأندية</h4>
+                <h4 className="font-semibold text-gray-700 mb-4">{copy.sections.clubHistory}</h4>
                 <div className="space-y-4 border-r-2 border-gray-100 pr-4 mr-2 max-h-[400px] overflow-y-auto custom-scrollbar">
                   {(player?.club_history && player.club_history.length > 0) ? (
                     player.club_history.map((club: any, i: number) => (
@@ -918,7 +1736,7 @@ function PlayerReportPage() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-gray-400 italic text-sm">لا يوجد تاريخ أندية سابق</p>
+                    <p className="text-gray-400 italic text-sm">{copy.sections.noClubHistory}</p>
                   )}
                 </div>
               </div>
@@ -933,14 +1751,14 @@ function PlayerReportPage() {
               <div className="p-2 bg-purple-100 rounded-lg text-purple-600">
                 <School className="w-5 h-5" />
               </div>
-              <h3 className="text-lg font-bold text-gray-800">التدريب والتأسيس</h3>
+              <h3 className="text-lg font-bold text-gray-800">{copy.sections.trainingFoundation}</h3>
             </div>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Academies */}
               {player?.academies && player.academies.length > 0 && (
                 <div>
                   <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-purple-400" /> الأكاديميات
+                    <Building2 className="w-4 h-4 text-purple-400" /> {copy.sections.academies}
                   </h4>
                   <div className="space-y-3">
                     {player.academies.map((aca: any, i: number) => (
@@ -957,7 +1775,7 @@ function PlayerReportPage() {
               {player?.private_coaches && player.private_coaches.length > 0 && (
                 <div>
                   <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <User className="w-4 h-4 text-indigo-400" /> المدربين الخاصين
+                    <User className="w-4 h-4 text-indigo-400" /> {copy.sections.privateCoaches}
                   </h4>
                   <div className="space-y-3">
                     {player.private_coaches.map((coach: any, i: number) => (
@@ -978,7 +1796,7 @@ function PlayerReportPage() {
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
             <h3 className="flex items-center gap-2 text-lg font-bold text-gray-800 mb-4">
               <Trophy className="w-5 h-5 text-amber-500" />
-              الإنجازات والجوائز
+              {copy.sections.achievements}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {player.achievements.map((ach: any, i: number) => (
@@ -997,7 +1815,7 @@ function PlayerReportPage() {
           <div className="bg-slate-50 p-6 rounded-xl border border-slate-100">
             <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 mb-2">
               <FileText className="w-5 h-5 text-slate-500" />
-              ملاحظات رياضية
+              {copy.sections.sportsNotes}
             </h3>
             <p className="text-slate-700 leading-relaxed">{player.sports_notes}</p>
           </div>
@@ -1009,12 +1827,12 @@ function PlayerReportPage() {
   const renderEducation = () => {
     // Helper to map levels if needed, or just display raw value
     const EDUCATION_LEVEL_LABELS: Record<string, string> = {
-      "primary": "ابتدائي",
-      "middle": "متوسط",
-      "high_school": "ثانوي",
-      "bachelors": "بكالوريوس",
-      "masters": "ماجستير",
-      "phd": "دكتوراه"
+      "primary": copy.educationLevels.primary,
+      "middle": copy.educationLevels.middle,
+      "high_school": copy.educationLevels.high_school,
+      "bachelors": copy.educationLevels.bachelors,
+      "masters": copy.educationLevels.masters,
+      "phd": copy.educationLevels.phd
     };
 
     return (
@@ -1025,7 +1843,7 @@ function PlayerReportPage() {
           <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-100">
             <div className="flex items-center gap-2 mb-2 text-indigo-700 font-semibold">
               <GraduationCap className="w-5 h-5" />
-              المستوى التعليمي
+              {copy.sections.educationLevel}
             </div>
             <div className="text-xl font-bold text-indigo-900">
               {EDUCATION_LEVEL_LABELS[player?.education_level] || player?.education_level || '--'}
@@ -1039,7 +1857,7 @@ function PlayerReportPage() {
           <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
             <div className="flex items-center gap-2 mb-2 text-blue-700 font-semibold">
               <Calendar className="w-5 h-5" />
-              سنة التخرج
+              {copy.sections.graduationYear}
             </div>
             <div className="text-xl font-bold text-blue-900">{player?.graduation_year || '--'}</div>
           </div>
@@ -1049,7 +1867,7 @@ function PlayerReportPage() {
         <div className="bg-teal-50 rounded-lg border border-teal-100 p-4">
           <div className="flex items-center gap-2 mb-4 text-teal-700 font-semibold">
             <Languages className="w-5 h-5" />
-            اللغات
+            {copy.sections.languages}
           </div>
           {player?.languages && player.languages.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -1063,8 +1881,8 @@ function PlayerReportPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {player?.english_level && <div className="bg-white p-3 rounded shadow-sm">🇺🇸 English: {player.english_level}</div>}
-              {player?.arabic_level && <div className="bg-white p-3 rounded shadow-sm">🇸🇦 العربية: {player.arabic_level}</div>}
-              {!player?.english_level && !player?.arabic_level && <div className="text-gray-500 italic">لا توجد لغات مسجلة</div>}
+              {player?.arabic_level && <div className="bg-white p-3 rounded shadow-sm">🇸🇦 {copy.sections.arabicLanguage}: {player.arabic_level}</div>}
+              {!player?.english_level && !player?.arabic_level && <div className="text-gray-500 italic">{copy.sections.noLanguages}</div>}
             </div>
           )}
         </div>
@@ -1073,7 +1891,7 @@ function PlayerReportPage() {
         <div className="bg-orange-50 rounded-lg border border-orange-100 p-4">
           <div className="flex items-center gap-2 mb-4 text-orange-700 font-semibold">
             <Award className="w-5 h-5" />
-            الدورات والشهادات
+            {copy.sections.courses}
           </div>
           {player?.courses && player.courses.length > 0 ? (
             <div className="space-y-3">
@@ -1094,7 +1912,7 @@ function PlayerReportPage() {
               ))}
             </div>
           ) : (
-            <div className="text-gray-500 italic">لا توجد دورات مسجلة</div>
+            <div className="text-gray-500 italic">{copy.sections.noCourses}</div>
           )}
         </div>
       </div>
@@ -1113,36 +1931,36 @@ function PlayerReportPage() {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
           <h4 className="flex items-center gap-2 text-lg font-semibold mb-6">
             <Activity className="w-5 h-5 text-red-500" />
-            القياسات الحيوية
+            {copy.sections.vitalSigns}
           </h4>
           <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
             <div className="bg-gray-50 rounded-lg p-4 text-center">
-              <div className="text-sm text-gray-500 mb-1">الوزن</div>
-              <div className="text-xl font-bold text-gray-900">{player?.weight || '--'} <span className="text-xs font-normal">كجم</span></div>
+              <div className="text-sm text-gray-500 mb-1">{copy.sections.weight}</div>
+              <div className="text-xl font-bold text-gray-900">{player?.weight || '--'} <span className="text-xs font-normal">{copy.common.kg}</span></div>
               {bmi && <div className={`text-xs mt-1 font-medium ${Number(bmi) < 18.5 ? 'text-blue-600' :
                 Number(bmi) < 25 ? 'text-green-600' :
                   'text-orange-600'
                 }`}>BMI: {bmi}</div>}
             </div>
             <div className="bg-gray-50 rounded-lg p-4 text-center">
-              <div className="text-sm text-gray-500 mb-1">الطول</div>
-              <div className="text-xl font-bold text-gray-900">{player?.height || '--'} <span className="text-xs font-normal">سم</span></div>
+              <div className="text-sm text-gray-500 mb-1">{copy.sections.height}</div>
+              <div className="text-xl font-bold text-gray-900">{player?.height || '--'} <span className="text-xs font-normal">{copy.common.cm}</span></div>
             </div>
             <div className="bg-gray-50 rounded-lg p-4 text-center">
-              <div className="text-sm text-gray-500 mb-1">فصيلة الدم</div>
+              <div className="text-sm text-gray-500 mb-1">{copy.sections.bloodType}</div>
               <div className="text-xl font-bold text-red-600 font-mono">{player?.blood_type || '--'}</div>
             </div>
             <div className="bg-gray-50 rounded-lg p-4 text-center">
-              <div className="text-sm text-gray-500 mb-1">أمراض مزمنة</div>
+              <div className="text-sm text-gray-500 mb-1">{copy.sections.chronicDiseases}</div>
               <div className={`text-lg font-bold ${player?.chronic_conditions ? 'text-red-600' : 'text-green-600'}`}>
-                {player?.chronic_conditions ? 'نعم' : 'لا'}
+                {player?.chronic_conditions ? copy.common.yes : copy.common.no}
               </div>
             </div>
           </div>
           {player?.chronic_conditions && (
             <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-100">
-              <div className="font-semibold text-red-800 mb-1">تفاصيل الأمراض المزمنة:</div>
-              <p className="text-red-700 text-sm">{player?.chronic_details || 'لا توجد تفاصيل'}</p>
+              <div className="font-semibold text-red-800 mb-1">{copy.sections.chronicDetails}</div>
+              <p className="text-red-700 text-sm">{player?.chronic_details || copy.common.noDetails}</p>
             </div>
           )}
         </div>
@@ -1154,7 +1972,7 @@ function PlayerReportPage() {
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <h4 className="flex items-center gap-2 text-lg font-semibold mb-4">
                 <AlertTriangle className="w-5 h-5 text-orange-500" />
-                الحساسية
+                {copy.sections.allergies}
               </h4>
               {(player?.allergies_list && player.allergies_list.length > 0) ? (
                 <div className="flex flex-wrap gap-2">
@@ -1167,7 +1985,7 @@ function PlayerReportPage() {
               ) : player?.allergies ? (
                 <p className="text-gray-700">{player.allergies}</p>
               ) : (
-                <p className="text-gray-400 italic">لا توجد حساسية مسجلة</p>
+                <p className="text-gray-400 italic">{copy.sections.noAllergies}</p>
               )}
             </div>
 
@@ -1175,7 +1993,7 @@ function PlayerReportPage() {
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <h4 className="flex items-center gap-2 text-lg font-semibold mb-4">
                 <Pill className="w-5 h-5 text-blue-500" />
-                الأدوية المستمرة
+                {copy.sections.medications}
               </h4>
               {(player?.medications && player.medications.length > 0) ? (
                 <div className="space-y-3">
@@ -1187,7 +2005,7 @@ function PlayerReportPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-400 italic">لا توجد أدوية مسجلة</p>
+                <p className="text-gray-400 italic">{copy.sections.noMedications}</p>
               )}
             </div>
           </div>
@@ -1198,7 +2016,7 @@ function PlayerReportPage() {
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <h4 className="flex items-center gap-2 text-lg font-semibold mb-4">
                 <Activity className="w-5 h-5 text-red-500" />
-                الإصابات السابقة
+                {copy.sections.injuries}
               </h4>
               {(player?.injuries && player.injuries.length > 0) ? (
                 <div className="space-y-3">
@@ -1207,14 +2025,14 @@ function PlayerReportPage() {
                       <div className="font-medium text-gray-900">{injury.type}</div>
                       <div className="flex justify-between mt-1 text-sm">
                         <span className="text-gray-500">{injury.date}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs ${injury.status === 'تعافي تام' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${injury.status === copy.sections.fullRecovery ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                           }`}>{injury.status}</span>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-400 italic">لا توجد إصابات مسجلة</p>
+                <p className="text-gray-400 italic">{copy.sections.noInjuries}</p>
               )}
             </div>
 
@@ -1222,7 +2040,7 @@ function PlayerReportPage() {
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <h4 className="flex items-center gap-2 text-lg font-semibold mb-4">
                 <Stethoscope className="w-5 h-5 text-purple-500" />
-                العمليات الجراحية
+                {copy.sections.surgeries}
               </h4>
               {((player?.surgeries_list && player.surgeries_list.length > 0) || (player?.surgeries && player.surgeries.length > 0)) ? (
                 <div className="space-y-3">
@@ -1234,7 +2052,7 @@ function PlayerReportPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-400 italic">لا توجد عمليات مسجلة</p>
+                <p className="text-gray-400 italic">{copy.sections.noSurgeries}</p>
               )}
             </div>
           </div>
@@ -1242,8 +2060,8 @@ function PlayerReportPage() {
 
         {/* Notes */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-          <h4 className="flex items-center gap-2 text-lg font-semibold mb-4 text-gray-700">ملاحظات طبية إضافية</h4>
-          <p className="text-gray-600 leading-relaxed">{player?.medical_notes || 'لا توجد ملاحظات إضافية'}</p>
+          <h4 className="flex items-center gap-2 text-lg font-semibold mb-4 text-gray-700">{copy.sections.medicalNotes}</h4>
+          <p className="text-gray-600 leading-relaxed">{player?.medical_notes || copy.common.noAdditionalNotes}</p>
         </div>
       </div>
     );
@@ -1255,12 +2073,12 @@ function PlayerReportPage() {
 
     if (hasNewStats) {
       const mainStats = [
-        { label: 'السرعة', value: player?.stats_pace || 0, color: 'text-red-500' },
-        { label: 'التسديد', value: player?.stats_shooting || 0, color: 'text-blue-500' },
-        { label: 'التمرير', value: player?.stats_passing || 0, color: 'text-green-500' },
-        { label: 'المراوغة', value: player?.stats_dribbling || 0, color: 'text-yellow-500' },
-        { label: 'الدفاع', value: player?.stats_defending || 0, color: 'text-purple-500' },
-        { label: 'البدنية', value: player?.stats_physical || 0, color: 'text-gray-500' },
+        { label: copy.skills.speed, value: player?.stats_pace || 0, color: 'text-red-500' },
+        { label: copy.skills.shooting, value: player?.stats_shooting || 0, color: 'text-blue-500' },
+        { label: copy.skills.passing, value: player?.stats_passing || 0, color: 'text-green-500' },
+        { label: copy.skills.dribbling, value: player?.stats_dribbling || 0, color: 'text-yellow-500' },
+        { label: copy.skills.defending, value: player?.stats_defending || 0, color: 'text-purple-500' },
+        { label: copy.skills.physical, value: player?.stats_physical || 0, color: 'text-gray-500' },
       ];
 
       const radarData = mainStats.map(stat => ({
@@ -1270,11 +2088,11 @@ function PlayerReportPage() {
       }));
 
       const mentalStats = [
-        { label: 'الرؤية', value: player?.mentality_vision || 0 },
-        { label: 'القيادة', value: player?.mentality_leadership || 0 },
-        { label: 'الهدوء', value: player?.mentality_composure || 0 },
-        { label: 'العمل الجماعي', value: player?.mentality_teamwork || 0 },
-        { label: 'الشراسة', value: player?.mentality_aggression || 0 },
+        { label: copy.skills.vision, value: player?.mentality_vision || 0 },
+        { label: copy.skills.leadership, value: player?.mentality_leadership || 0 },
+        { label: copy.skills.composure, value: player?.mentality_composure || 0 },
+        { label: copy.skills.teamwork, value: player?.mentality_teamwork || 0 },
+        { label: copy.skills.aggression, value: player?.mentality_aggression || 0 },
       ];
 
       return (
@@ -1283,7 +2101,7 @@ function PlayerReportPage() {
           <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm">
             <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
               <Zap className="w-6 h-6 text-yellow-500" />
-              القدرات الفنية والبدنية
+              {copy.sections.technicalPhysicalAbilities}
             </h3>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
@@ -1294,7 +2112,7 @@ function PlayerReportPage() {
                     <PolarGrid stroke="#e5e7eb" />
                     <PolarAngleAxis dataKey="subject" tick={{ fill: '#374151', fontSize: 13, fontWeight: 500 }} />
                     <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                    <Radar name="اللاعب" dataKey="A" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.5} />
+                    <Radar name={copy.common.player} dataKey="A" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.5} />
                     <ChartTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                   </RadarChart>
                 </ResponsiveContainer>
@@ -1317,7 +2135,7 @@ function PlayerReportPage() {
             <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm h-full">
               <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <Brain className="w-6 h-6 text-purple-500" />
-                القدرات الذهنية
+                {copy.sections.mentalAbilities}
               </h3>
               <div className="space-y-4">
                 {mentalStats.map((stat, i) => (
@@ -1338,13 +2156,13 @@ function PlayerReportPage() {
             <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-sm h-full">
               <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                 <Star className="w-6 h-6 text-amber-500" />
-                مهارات متقدمة
+                {copy.sections.advancedSkills}
               </h3>
               <div className="space-y-6">
                 {/* Stars */}
                 <div className="space-y-4">
                   <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-                    <span className="font-medium text-gray-700">القدم الضعيفة</span>
+                    <span className="font-medium text-gray-700">{copy.sections.weakFoot}</span>
                     <div className="flex gap-1" dir="ltr">
                       {[1, 2, 3, 4, 5].map(s => (
                         <Star key={s} className={`w-5 h-5 ${s <= (player?.weak_foot || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`} />
@@ -1352,7 +2170,7 @@ function PlayerReportPage() {
                     </div>
                   </div>
                   <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-                    <span className="font-medium text-gray-700">مهارات المراوغة</span>
+                    <span className="font-medium text-gray-700">{copy.sections.skillMoves}</span>
                     <div className="flex gap-1" dir="ltr">
                       {[1, 2, 3, 4, 5].map(s => (
                         <Star key={s} className={`w-5 h-5 ${s <= (player?.skill_moves || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`} />
@@ -1366,11 +2184,11 @@ function PlayerReportPage() {
                 {/* Work Rates */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center p-3 border border-gray-100 rounded-lg">
-                    <span className="text-xs text-gray-500 block mb-1">معدل الهجوم</span>
+                    <span className="text-xs text-gray-500 block mb-1">{copy.sections.attackRate}</span>
                     <span className="font-bold text-blue-600">{player?.work_rate_attack || '-'}</span>
                   </div>
                   <div className="text-center p-3 border border-gray-100 rounded-lg">
-                    <span className="text-xs text-gray-500 block mb-1">معدل الدفاع</span>
+                    <span className="text-xs text-gray-500 block mb-1">{copy.sections.defenseRate}</span>
                     <span className="font-bold text-blue-600">{player?.work_rate_defense || '-'}</span>
                   </div>
                 </div>
@@ -1386,14 +2204,14 @@ function PlayerReportPage() {
       <div className="space-y-8">
         {technicalSkillsData.length > 0 && (
           <div>
-            <h3 className="mb-4 text-xl font-semibold">المهارات الفنية</h3>
+            <h3 className="mb-4 text-xl font-semibold">{copy.sections.technicalSkills}</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart data={technicalSkillsData}>
                   <PolarGrid />
                   <PolarAngleAxis dataKey="skill" />
                   <PolarRadiusAxis angle={30} domain={[0, 10]} />
-                  <Radar name="المهارات" dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                  <Radar name={copy.sections.technicalSkills} dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
                   <ChartTooltip />
                 </RadarChart>
               </ResponsiveContainer>
@@ -1402,7 +2220,7 @@ function PlayerReportPage() {
               {technicalSkillsData.map((skillData, index) => (
                 <div key={index} className="p-2 bg-white rounded shadow">
                   <div className="font-semibold">{skillData.skill}</div>
-                  <div className="text-sm text-gray-600">المستوى: {skillData.value}/10</div>
+                  <div className="text-sm text-gray-600">{interpolate(copy.common.levelOutOfTen, { value: skillData.value })}</div>
                 </div>
               ))}
             </div>
@@ -1410,14 +2228,14 @@ function PlayerReportPage() {
         )}
         {physicalSkillsData.length > 0 && (
           <div>
-            <h3 className="mb-4 text-xl font-semibold">المهارات البدنية</h3>
+            <h3 className="mb-4 text-xl font-semibold">{copy.sections.physicalSkills}</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart data={physicalSkillsData}>
                   <PolarGrid />
                   <PolarAngleAxis dataKey="skill" />
                   <PolarRadiusAxis angle={30} domain={[0, 10]} />
-                  <Radar name="المهارات" dataKey="value" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} />
+                  <Radar name={copy.sections.physicalSkills} dataKey="value" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} />
                   <ChartTooltip />
                 </RadarChart>
               </ResponsiveContainer>
@@ -1426,7 +2244,7 @@ function PlayerReportPage() {
               {physicalSkillsData.map((skillData, index) => (
                 <div key={index} className="p-2 bg-white rounded shadow">
                   <div className="font-semibold">{skillData.skill}</div>
-                  <div className="text-sm text-gray-600">المستوى: {skillData.value}/10</div>
+                  <div className="text-sm text-gray-600">{interpolate(copy.common.levelOutOfTen, { value: skillData.value })}</div>
                 </div>
               ))}
             </div>
@@ -1434,14 +2252,14 @@ function PlayerReportPage() {
         )}
         {socialSkillsData.length > 0 && (
           <div>
-            <h3 className="mb-4 text-xl font-semibold">المهارات الاجتماعية</h3>
+            <h3 className="mb-4 text-xl font-semibold">{copy.sections.socialSkills}</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart data={socialSkillsData}>
                   <PolarGrid />
                   <PolarAngleAxis dataKey="skill" />
                   <PolarRadiusAxis angle={30} domain={[0, 10]} />
-                  <Radar name="المهارات" dataKey="value" stroke="#ffc658" fill="#ffc658" fillOpacity={0.6} />
+                  <Radar name={copy.sections.socialSkills} dataKey="value" stroke="#ffc658" fill="#ffc658" fillOpacity={0.6} />
                   <ChartTooltip />
                 </RadarChart>
               </ResponsiveContainer>
@@ -1450,7 +2268,7 @@ function PlayerReportPage() {
               {socialSkillsData.map((skillData, index) => (
                 <div key={index} className="p-2 bg-white rounded shadow">
                   <div className="font-semibold">{skillData.skill}</div>
-                  <div className="text-sm text-gray-600">المستوى: {skillData.value}/10</div>
+                  <div className="text-sm text-gray-600">{interpolate(copy.common.levelOutOfTen, { value: skillData.value })}</div>
                 </div>
               ))}
             </div>
@@ -1478,7 +2296,7 @@ function PlayerReportPage() {
             ) : (
               <div className="col-span-full py-12 text-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
                 <Target className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">لم يتم تحديد أهداف بعد</p>
+                <p className="text-gray-500">{copy.sections.noObjectives}</p>
               </div>
             )}
           </div>
@@ -1488,13 +2306,13 @@ function PlayerReportPage() {
 
     // تعريف الأهداف مع تسمياتها (Logic القديم)
     const objectiveLabels = {
-      professional: 'الاحتراف',
-      trials: 'إجراء التجارب',
-      local_leagues: 'اللعب في الدوريات المحلية',
-      arab_leagues: 'اللعب في الدوريات العربية',
-      european_leagues: 'اللعب في الدوريات الأوروبية',
-      training: 'التدريب والتطوير',
-      other: 'أهداف أخرى'
+      professional: copy.objectives.professional,
+      trials: copy.objectives.trials,
+      local_leagues: copy.objectives.local_leagues,
+      arab_leagues: copy.objectives.arab_leagues,
+      european_leagues: copy.objectives.european_leagues,
+      training: copy.objectives.training,
+      other: copy.objectives.other
     };
 
     return (
@@ -1502,7 +2320,7 @@ function PlayerReportPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {player?.objectives && Object.entries(player.objectives).map(([key, value]: [string, boolean | string]) => {
             const label = objectiveLabels[key as keyof typeof objectiveLabels] || key;
-            const displayValue = typeof value === 'boolean' ? (value ? 'نعم ✅' : 'لا ❌') : value || '--';
+            const displayValue = typeof value === 'boolean' ? (value ? `${copy.common.yes} ✅` : `${copy.common.no} ❌`) : value || '--';
             const bgColor = typeof value === 'boolean'
               ? (value ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200')
               : 'bg-blue-50 border-blue-200';
@@ -1529,16 +2347,16 @@ function PlayerReportPage() {
         {/* عرض ملخص الأهداف */}
         {player?.objectives && (
           <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200">
-            <h4 className="mb-3 text-lg font-semibold text-blue-800">ملخص الأهداف والطموحات</h4>
+            <h4 className="mb-3 text-lg font-semibold text-blue-800">{copy.sections.objectivesSummary}</h4>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="font-medium text-green-700">الأهداف المحددة: </span>
+                <span className="font-medium text-green-700">{copy.sections.selectedObjectives} </span>
                 <span className="font-bold text-green-900">
                   {Object.values(player.objectives).filter(v => v === true).length}
                 </span>
               </div>
               <div>
-                <span className="font-medium text-blue-700">إجمالي الأهداف: </span>
+                <span className="font-medium text-blue-700">{copy.sections.totalObjectives} </span>
                 <span className="font-bold text-blue-900">
                   {Object.keys(player.objectives).length}
                 </span>
@@ -1570,7 +2388,7 @@ function PlayerReportPage() {
       const validProfileImage = getValidImageUrl(player.profile_image_url);
       if (validProfileImage !== '/images/default-avatar.png' && !seenUrls.has(validProfileImage)) {
         console.log('✅ [renderMedia] تم العثور على صورة شخصية صالحة:', validProfileImage);
-        allImages.push({ url: validProfileImage, label: 'الصورة الشخصية', type: 'profile' });
+        allImages.push({ url: validProfileImage, label: copy.sections.profileImage, type: 'profile' });
         seenUrls.add(validProfileImage);
       } else {
         console.log('🚫 [renderMedia] صورة شخصية مكسورة أو مكررة تم فلترتها:', player.profile_image_url);
@@ -1614,7 +2432,7 @@ function PlayerReportPage() {
           const isBrokenSupabaseUrl = imageUrl.includes('supabase.co/storage') || imageUrl.includes('ekyerljzfokqimbabzxm.supabase.co');
 
           if (validImageUrl !== '/images/default-avatar.png' && !isBrokenSupabaseUrl && !seenUrls.has(validImageUrl)) {
-            allImages.push({ url: validImageUrl, label: `صورة إضافية ${index + 1}`, type: 'additional' });
+            allImages.push({ url: validImageUrl, label: interpolate(copy.sections.additionalImage, { number: index + 1 }), type: 'additional' });
             seenUrls.add(validImageUrl);
             console.log(`✅ تم إضافة الصورة ${index + 1} إلى المجموعة`);
           } else {
@@ -1642,10 +2460,10 @@ function PlayerReportPage() {
         {/* قسم جميع الصور */}
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold">الصور</h3>
+            <h3 className="text-xl font-semibold">{copy.sections.images}</h3>
             {allImages.length > 0 && (
               <span className="px-3 py-1 text-sm text-green-800 bg-green-100 rounded-full">
-                {allImages.length} صورة
+                {allImages.length} {copy.sections.images}
               </span>
             )}
           </div>
@@ -1680,7 +2498,7 @@ function PlayerReportPage() {
                       <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      <p className="text-xs">صورة غير متاحة</p>
+                      <p className="text-xs">{copy.sections.imageUnavailable}</p>
                     </div>
                   </div>
                   <div className="absolute top-2 right-2 px-2 py-1 text-xs text-white bg-black bg-opacity-50 rounded">
@@ -1691,7 +2509,7 @@ function PlayerReportPage() {
                   </div>
                   {image.type === 'profile' && (
                     <div className="absolute top-2 left-2 px-2 py-1 text-xs text-white bg-blue-600 rounded">
-                      ⭐ شخصية
+                      ⭐ {copy.sections.profileImage}
                     </div>
                   )}
 
@@ -1703,10 +2521,10 @@ function PlayerReportPage() {
               <svg className="mx-auto mb-4 w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <h3 className="mb-2 text-lg font-medium text-gray-900">لا توجد صور</h3>
-              <p className="mb-4 text-gray-500">أضف صورة شخصية وصور إضافية لإظهار مهاراتك وإنجازاتك</p>
+              <h3 className="mb-2 text-lg font-medium text-gray-900">{copy.sections.noImages}</h3>
+              <p className="mb-4 text-gray-500">{copy.sections.noImagesDesc}</p>
               <div className="text-sm text-gray-400">
-                💡 يمكنك إضافة الصور من صفحة تعديل الملف الشخصي
+                💡 {copy.sections.addImagesHint}
               </div>
             </div>
           )}
@@ -1715,11 +2533,11 @@ function PlayerReportPage() {
         {/* قسم الفيديوهات المحسن */}
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold">الفيديوهات</h3>
+            <h3 className="text-xl font-semibold">{copy.sections.videos}</h3>
             <div className="flex gap-3 items-center">
               {player?.videos && player.videos.length > 0 && (
                 <span className="px-3 py-1 text-sm text-blue-800 bg-blue-100 rounded-full">
-                  {player.videos.length} فيديو
+                  {player.videos.length} {copy.sections.videos}
                 </span>
               )}
             </div>
@@ -1737,7 +2555,7 @@ function PlayerReportPage() {
                   console.log(`❌ رابط الفيديو ${index + 1} فارغ`);
                   return (
                     <div key={index} className="p-4 bg-red-50 rounded-lg border border-red-200">
-                      <p className="text-red-600">رابط الفيديو {index + 1} غير صحيح أو فارغ</p>
+                      <p className="text-red-600">{interpolate(copy.common.invalidVideoLink, { number: index + 1 })}</p>
                     </div>
                   );
                 }
@@ -1760,8 +2578,8 @@ function PlayerReportPage() {
                   console.log(`❌ رابط الفيديو ${index + 1} غير صالح:`, video.url);
                   return (
                     <div key={index} className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <p className="text-yellow-700">رابط الفيديو {index + 1} غير صالح</p>
-                      <p className="text-sm text-yellow-600 mt-1">الرابط: {video.url}</p>
+                      <p className="text-yellow-700">{interpolate(copy.common.invalidVideoUrl, { number: index + 1 })}</p>
+                      <p className="text-sm text-yellow-600 mt-1">{interpolate(copy.common.link, { url: video.url })}</p>
                     </div>
                   );
                 }
@@ -1774,8 +2592,8 @@ function PlayerReportPage() {
                           <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 002 2v8a2 2 0 002 2z" />
                           </svg>
-                          <p className="text-sm">فيديو {index + 1}</p>
-                          <p className="text-xs mt-1">اضغط على الرابط أدناه للمشاهدة</p>
+                          <p className="text-sm">{interpolate(copy.sections.videoTitle, { number: index + 1 })}</p>
+                          <p className="text-xs mt-1">{copy.sections.videoHint}</p>
                         </div>
                       </div>
                       {/* عرض رابط الفيديو للتشخيص */}
@@ -1785,10 +2603,10 @@ function PlayerReportPage() {
                     </div>
                     <div className="p-4">
                       <p className="mb-2 text-sm text-gray-700">
-                        {video.desc || 'لا يوجد وصف'}
+                        {video.desc || copy.sections.noDescription}
                       </p>
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-500">فيديو {index + 1}</span>
+                        <span className="text-xs text-gray-500">{interpolate(copy.sections.videoTitle, { number: index + 1 })}</span>
                         <div className="flex gap-2">
                           <a
                             href={videoUrl}
@@ -1811,8 +2629,8 @@ function PlayerReportPage() {
               <svg className="mx-auto mb-4 w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 002 2v8a2 2 0 002 2z" />
               </svg>
-              <h3 className="mb-2 text-lg font-medium text-gray-900">لا توجد فيديوهات</h3>
-              <p className="mb-4 text-gray-500">لم يتم إضافة أي فيديوهات بعد</p>
+              <h3 className="mb-2 text-lg font-medium text-gray-900">{copy.sections.noVideos}</h3>
+              <p className="mb-4 text-gray-500">{copy.sections.noVideosDesc}</p>
             </div>
           )}
         </div>
@@ -1820,10 +2638,10 @@ function PlayerReportPage() {
         {/* قسم المستندات الجديد */}
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold">المستندات والشهادات</h3>
+            <h3 className="text-xl font-semibold">{copy.sections.documents}</h3>
             {player?.documents && player.documents.length > 0 && (
               <span className="px-3 py-1 text-sm text-purple-800 bg-purple-100 rounded-full">
-                {player.documents.length} مستند
+                {player.documents.length} {copy.sections.documents}
               </span>
             )}
           </div>
@@ -1840,7 +2658,7 @@ function PlayerReportPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="text-sm font-semibold text-gray-900 truncate">{doc.name}</h4>
-                      <p className="mt-1 text-xs text-gray-500">النوع: {doc.type}</p>
+                      <p className="mt-1 text-xs text-gray-500">{interpolate(copy.sections.documentType, { type: doc.type })}</p>
                       <a
                         href={doc.url.startsWith('http') ? doc.url : getSupabaseImageUrl(doc.url, 'documents')}
                         target="_blank"
@@ -1850,7 +2668,7 @@ function PlayerReportPage() {
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
-                        عرض المستند
+                        {copy.sections.viewDocument}
                       </a>
                     </div>
                   </div>
@@ -1862,8 +2680,8 @@ function PlayerReportPage() {
               <svg className="mx-auto mb-4 w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <h3 className="mb-2 text-lg font-medium text-gray-900">لا توجد مستندات</h3>
-              <p className="mb-4 text-gray-500">لم يتم إضافة أي مستندات بعد</p>
+              <h3 className="mb-2 text-lg font-medium text-gray-900">{copy.sections.noDocuments}</h3>
+              <p className="mb-4 text-gray-500">{copy.sections.noDocumentsDesc}</p>
             </div>
           )}
         </div>
@@ -1879,14 +2697,14 @@ function PlayerReportPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* 1. Contract Status */}
         <div className="p-4 bg-blue-50 rounded-lg">
-          <div className="mb-1 font-semibold text-blue-700">الحالة التعاقدية</div>
+          <div className="mb-1 font-semibold text-blue-700">{copy.sections.contractStatus}</div>
           <div className="text-lg font-bold text-blue-900">
-            {status === 'free' ? 'لاعب حر (Free Agent)' :
-              status === 'contracted' ? 'مرتبط بعقد' :
-                status === 'loan' ? 'إعارة' :
+            {status === 'free' ? copy.sections.freeAgent :
+              status === 'contracted' ? copy.sections.contracted :
+                status === 'loan' ? copy.sections.loan :
                   // Fallback
-                  (player?.currently_contracted === 'yes' ? 'مرتبط بعقد' :
-                    player?.currently_contracted === 'no' ? 'لاعب حر' :
+                  (player?.currently_contracted === 'yes' ? copy.sections.contracted :
+                    player?.currently_contracted === 'no' ? copy.sections.freePlayer :
                       player?.contract_status || '--')}
           </div>
         </div>
@@ -1894,22 +2712,22 @@ function PlayerReportPage() {
         {/* 2. Passport Status (Legacy/Admin) */}
         {(player?.has_passport) && (
           <div className="p-4 bg-indigo-50 rounded-lg">
-            <div className="mb-1 font-semibold text-indigo-700">جواز السفر</div>
+            <div className="mb-1 font-semibold text-indigo-700">{copy.sections.passport}</div>
             <div className="text-lg font-bold text-indigo-900">
-              {player?.has_passport === 'yes' ? 'متوفر' : 'غير متوفر'}
+              {player?.has_passport === 'yes' ? copy.common.available : copy.common.unavailable}
             </div>
           </div>
         )}
 
         {/* 3. Market Value (New) */}
         <div className="p-4 bg-green-50 rounded-lg">
-          <div className="mb-1 font-semibold text-green-700">القيمة السوقية</div>
+          <div className="mb-1 font-semibold text-green-700">{copy.sections.marketValue}</div>
           <div className="text-lg font-bold text-green-900" dir="ltr">
             {(player?.market_value !== undefined && player?.market_value !== null)
               ? `${Number(player.market_value).toLocaleString()} €`
               : '--'}
           </div>
-          <div className="text-xs text-green-600 mt-1">قيمة تقديرية</div>
+          <div className="text-xs text-green-600 mt-1">{copy.sections.estimatedValue}</div>
         </div>
 
         {/* 4. Current Club Details (If Contracted) */}
@@ -1917,15 +2735,15 @@ function PlayerReportPage() {
           <div className="col-span-1 md:col-span-2 p-4 bg-gray-50 rounded-lg border border-gray-100">
             <div className="flex flex-wrap gap-8 items-center">
               <div>
-                <div className="text-sm text-gray-500 mb-1">النادي الحالي</div>
+                <div className="text-sm text-gray-500 mb-1">{copy.sections.currentClub}</div>
                 <div className="font-bold text-gray-900 text-lg">{player?.current_club || '--'}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-500 mb-1">بداية العقد</div>
+                <div className="text-sm text-gray-500 mb-1">{copy.sections.contractStart.replace(': {{date}}', '')}</div>
                 <div className="font-bold text-gray-900 text-lg">{player?.contract_start_date ? dayjs(player.contract_start_date).format('DD/MM/YYYY') : '--'}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-500 mb-1">نهاية العقد</div>
+                <div className="text-sm text-gray-500 mb-1">{copy.sections.contractEnd}</div>
                 <div className="font-bold text-gray-900 text-lg">{player?.contract_end_date ? dayjs(player.contract_end_date).format('DD/MM/YYYY') : '--'}</div>
               </div>
             </div>
@@ -1937,18 +2755,18 @@ function PlayerReportPage() {
           <div className="col-span-1 md:col-span-2 p-4 bg-violet-50 rounded-lg border border-violet-100">
             <div className="mb-3 font-semibold text-violet-700 flex items-center gap-2">
               <Briefcase className="w-5 h-5" />
-              وكيل الأعمال الحالي
+              {copy.sections.currentAgent}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {player.agent_name && (
                 <div className="bg-white p-3 rounded shadow-sm">
-                  <span className="text-xs text-violet-500 block">الاسم</span>
+                  <span className="text-xs text-violet-500 block">{copy.sections.name}</span>
                   <span className="font-medium text-violet-900">{player.agent_name}</span>
                 </div>
               )}
               {player.agent_phone && (
                 <div className="bg-white p-3 rounded shadow-sm">
-                  <span className="text-xs text-violet-500 block">رقم الهاتف</span>
+                  <span className="text-xs text-violet-500 block">{copy.sections.phone}</span>
                   <span className="font-medium text-violet-900" dir="ltr">{player.agent_phone}</span>
                 </div>
               )}
@@ -1961,29 +2779,29 @@ function PlayerReportPage() {
           <div className="col-span-1 md:col-span-2 p-4 bg-fuchsia-50 rounded-lg border border-fuchsia-100">
             <div className="mb-3 font-semibold text-fuchsia-700 flex items-center gap-2">
               <Phone className="w-5 h-5" />
-              جهة الاتصال والتفاوض الرسمية
+              {copy.sections.officialContact}
             </div>
             <div className="bg-white p-4 rounded shadow-sm space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <span className="text-xs text-fuchsia-500 block">الاسم</span>
+                  <span className="text-xs text-fuchsia-500 block">{copy.sections.name}</span>
                   <span className="font-medium text-fuchsia-900">{player.official_contact.name || '--'}</span>
                 </div>
                 <div>
-                  <span className="text-xs text-fuchsia-500 block">المسمى الوظيفي</span>
+                  <span className="text-xs text-fuchsia-500 block">{copy.sections.jobTitle}</span>
                   <span className="font-medium text-fuchsia-900">{player.official_contact.title || '--'}</span>
                 </div>
                 <div>
-                  <span className="text-xs text-fuchsia-500 block">رقم الهاتف</span>
+                  <span className="text-xs text-fuchsia-500 block">{copy.sections.phone}</span>
                   <span className="font-medium text-fuchsia-900" dir="ltr">{player.official_contact.phone || '--'}</span>
                 </div>
                 <div>
-                  <span className="text-xs text-fuchsia-500 block">البريد الإلكتروني</span>
+                  <span className="text-xs text-fuchsia-500 block">{copy.sections.email}</span>
                   <span className="font-medium text-fuchsia-900">{player.official_contact.email || '--'}</span>
                 </div>
                 {player.official_contact.whatsapp && (
                   <div>
-                    <span className="text-xs text-fuchsia-500 block">واتساب</span>
+                    <span className="text-xs text-fuchsia-500 block">{copy.sections.whatsapp}</span>
                     <span className="font-medium text-fuchsia-900" dir="ltr">{player.official_contact.whatsapp}</span>
                   </div>
                 )}
@@ -1991,7 +2809,7 @@ function PlayerReportPage() {
 
               {player.official_contact.social_links && Object.values(player.official_contact.social_links).some(v => v) && (
                 <div className="pt-3 border-t border-gray-100">
-                  <span className="text-xs text-fuchsia-500 block mb-2">حسابات التواصل الاجتماعي</span>
+                  <span className="text-xs text-fuchsia-500 block mb-2">{copy.sections.socialAccounts}</span>
                   <div className="flex gap-4">
                     {player.official_contact.social_links.facebook && (
                       <a href={player.official_contact.social_links.facebook} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 transition-colors">
@@ -2022,18 +2840,18 @@ function PlayerReportPage() {
 
         {/* 6. Legacy Contract History */}
         <div className="col-span-1 md:col-span-2 p-4 bg-gray-50 rounded-lg">
-          <div className="mb-2 font-semibold text-gray-700">تاريخ التعاقدات السابقة</div>
+          <div className="mb-2 font-semibold text-gray-700">{copy.sections.previousContracts}</div>
           <div className="space-y-2">
             {player?.contract_history && player.contract_history.length > 0 ? (
               player.contract_history.map((contract: any, idx: number) => (
                 <div key={idx} className="p-2 bg-white rounded shadow-sm">
-                  <div>النادي: {contract.club || '--'}</div>
-                  <div>الفترة: {contract.from} - {contract.to}</div>
-                  <div>المركز: {contract.role || '--'}</div>
+                  <div>{interpolate(copy.sections.contractClub, { club: contract.club || '--' })}</div>
+                  <div>{interpolate(copy.sections.contractPeriod, { from: contract.from || '--', to: contract.to || '--' })}</div>
+                  <div>{interpolate(copy.sections.contractRole, { role: contract.role || '--' })}</div>
                 </div>
               ))
             ) : (
-              <div className="p-2 text-gray-500 bg-white rounded">لا توجد تعاقدات سابقة مسجلة</div>
+              <div className="p-2 text-gray-500 bg-white rounded">{copy.sections.noPreviousContracts}</div>
             )}
           </div>
         </div>
@@ -2041,12 +2859,12 @@ function PlayerReportPage() {
         {/* 7. Legacy Agent History */}
         {player?.agent_history && player.agent_history.length > 0 && (
           <div className="col-span-1 md:col-span-2 p-4 bg-yellow-50 rounded-lg">
-            <div className="mb-2 font-semibold text-yellow-700">سجل وكلاء اللاعبين السابق</div>
+            <div className="mb-2 font-semibold text-yellow-700">{copy.sections.previousAgents}</div>
             <div className="space-y-2">
               {player.agent_history.map((agent: any, idx: number) => (
                 <div key={idx} className="p-2 bg-white rounded shadow-sm">
-                  <div>الاسم: {agent.agent || '--'}</div>
-                  <div>الفترة: {agent.from} - {agent.to}</div>
+                  <div>{interpolate(copy.sections.agentName, { name: agent.agent || '--' })}</div>
+                  <div>{interpolate(copy.sections.period, { from: agent.from || '--', to: agent.to || '--' })}</div>
                 </div>
               ))}
             </div>
@@ -2056,18 +2874,18 @@ function PlayerReportPage() {
         {/* 8. Subscription etc. */}
         {player?.subscription_status && (
           <div className="col-span-1 md:col-span-2 p-4 bg-purple-50 rounded-lg">
-            <div className="mb-2 font-semibold text-purple-700">تفاصيل الاشتراك</div>
+            <div className="mb-2 font-semibold text-purple-700">{copy.sections.subscriptionDetails}</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <span className="text-xs text-purple-600 block">الحالة</span>
+                <span className="text-xs text-purple-600 block">{copy.sections.status}</span>
                 <span className="font-bold">{player?.subscription_status || '--'}</span>
               </div>
               <div>
-                <span className="text-xs text-purple-600 block">النوع</span>
+                <span className="text-xs text-purple-600 block">{copy.sections.type}</span>
                 <span className="font-bold">{player?.subscription_type || '--'}</span>
               </div>
               <div>
-                <span className="text-xs text-purple-600 block">ينتهي في</span>
+                <span className="text-xs text-purple-600 block">{copy.sections.endsAt}</span>
                 <span className="font-bold">{player?.subscription_end ? dayjs(player.subscription_end).format('DD/MM/YYYY') : '--'}</span>
               </div>
             </div>
@@ -2078,15 +2896,15 @@ function PlayerReportPage() {
   };
 
   const TABS = [
-    { name: 'البيانات الشخصية', render: renderPersonalInfo },
-    { name: 'المعلومات الرياضية', render: renderSportsInfo },
-    { name: 'التعليم', render: renderEducation },
-    { name: 'السجل الطبي', render: renderMedicalRecord },
-    { name: 'المهارات', render: renderSkills },
-    { name: 'التعاقدات', render: renderContracts },
-    { name: 'الأهداف', render: renderObjectives },
-    { name: 'الوسائط', render: renderMedia },
-    { name: 'السيرة الذاتية', render: () => <PlayerResume player={player} playerOrganization={playerOrganization} /> },
+    { name: copy.sections.tabs.personal, key: 'personal', render: renderPersonalInfo },
+    { name: copy.sections.tabs.sports, key: 'sports', render: renderSportsInfo },
+    { name: copy.sections.tabs.education, key: 'education', render: renderEducation },
+    { name: copy.sections.tabs.medical, key: 'medical', render: renderMedicalRecord },
+    { name: copy.sections.tabs.skills, key: 'skills', render: renderSkills },
+    { name: copy.sections.tabs.contracts, key: 'contracts', render: renderContracts },
+    { name: copy.sections.tabs.objectives, key: 'objectives', render: renderObjectives },
+    { name: copy.sections.tabs.media, key: 'media', render: renderMedia },
+    { name: copy.sections.tabs.resume, key: 'resume', render: () => <PlayerResume player={player} playerOrganization={playerOrganization} /> },
   ];
 
   // دالة لحساب نسبة اكتمال الملف الشخصي
@@ -2213,7 +3031,7 @@ function PlayerReportPage() {
 
       if (!targetPlayerId) {
         console.error('❌ [fetchPlayerData] لا يوجد معرف لاعب محدد');
-        setError("لم يتم تحديد اللاعب المطلوب");
+        setError(copy.common.noPlayerDesc);
         setIsLoading(false);
         return;
       }
@@ -2225,7 +3043,7 @@ function PlayerReportPage() {
 
         if (!playerId) {
           console.error('❌ [fetchPlayerData] معرف اللاعب غير محدد');
-          setError("لم يتم تحديد اللاعب المطلوب");
+          setError(copy.common.noPlayerDesc);
           setIsLoading(false);
           return;
         }
@@ -2275,7 +3093,7 @@ function PlayerReportPage() {
 
         if (!playerData) {
           console.warn('⚠️ [fetchPlayerData] لم يتم العثور على اللاعب في أي collection:', playerId);
-          setError(`لم يتم العثور على بيانات اللاعب`);
+          setError(copy.common.playerNotFound);
           setIsLoading(false);
           return;
         }
@@ -2404,7 +3222,7 @@ function PlayerReportPage() {
                 return field.trim();
               }
             }
-            return 'غير محدد';
+            return copy.common.notSpecified;
           })(),
           birth_date: (() => {
             const dateFields = [data.birth_date, data.birthDate, data.dateOfBirth, data.birthday, data.dob];
@@ -2559,8 +3377,8 @@ function PlayerReportPage() {
       } catch (error) {
         console.error('❌ [fetchPlayerData] خطأ في جلب بيانات اللاعب:', error);
         if (isMounted) {
-          const errorMessage = error instanceof Error ? error.message : 'خطأ غير معروف';
-          setError(`حدث خطأ أثناء جلب بيانات اللاعب: ${errorMessage}`);
+          const errorMessage = error instanceof Error ? error.message : copy.common.unknownError;
+          setError(interpolate(copy.common.fetchPlayerError, { message: errorMessage }));
           setIsLoading(false);
         }
       }
@@ -2674,7 +3492,18 @@ function PlayerReportPage() {
   const getOrganizationProfileUrl = (organization: any): string => {
     if (!organization || !organization.type || !organization.id) return '';
 
-    switch (organization.type) {
+    const normalizedType = ({
+      club: 'club',
+      academy: 'academy',
+      trainer: 'trainer',
+      agent: 'agent',
+      '\u0646\u0627\u062f\u064a': 'club',
+      '\u0623\u0643\u0627\u062f\u064a\u0645\u064a\u0629': 'academy',
+      '\u0645\u062f\u0631\u0628': 'trainer',
+      '\u0648\u0643\u064a\u0644 \u0644\u0627\u0639\u0628\u064a\u0646': 'agent',
+    } as Record<string, string>)[organization.type] || organization.type;
+
+    switch (normalizedType) {
       case 'club':
         return `/dashboard/club/profile?id=${organization.id}`;
       case 'academy':
@@ -2682,14 +3511,6 @@ function PlayerReportPage() {
       case 'trainer':
         return `/dashboard/trainer/profile?id=${organization.id}`;
       case 'agent':
-        return `/dashboard/agent/profile?id=${organization.id}`;
-      case 'نادي':
-        return `/dashboard/club/profile?id=${organization.id}`;
-      case 'أكاديمية':
-        return `/dashboard/academy/profile?id=${organization.id}`;
-      case 'مدرب':
-        return `/dashboard/trainer/profile?id=${organization.id}`;
-      case 'وكيل لاعبين':
         return `/dashboard/agent/profile?id=${organization.id}`;
       default:
         console.warn('نوع منظمة غير معروف:', organization.type);
@@ -2709,7 +3530,7 @@ function PlayerReportPage() {
               className="flex gap-2 items-center px-4 py-2 text-gray-600 rounded-lg transition-all hover:text-gray-800 hover:bg-gray-100"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span className="font-medium">العودة</span>
+              <span className="font-medium">{copy.common.back}</span>
             </button>
 
             {/* معلومات الحساب المصادق - محسنة للوضوح */}
@@ -2717,7 +3538,7 @@ function PlayerReportPage() {
               <div className="flex gap-3 items-center">
                 {/* تسمية توضيحية */}
                 <div className="pl-3 text-sm font-medium text-gray-500 border-l border-gray-300">
-                  تتصفح بحساب:
+                  {copy.sections.browsingAs}
                 </div>
 
                 <div className="flex gap-3 items-center px-4 py-2 bg-gradient-to-r from-emerald-50 to-blue-50 rounded-lg border border-emerald-200 shadow-sm">
@@ -2729,7 +3550,7 @@ function PlayerReportPage() {
                       {currentUserInfo.name || currentUserInfo.full_name}
                     </div>
                     <div className="text-xs font-medium text-gray-600">
-                      {currentUserInfo.type} • نشط
+                      {currentUserInfo.type} • {copy.sections.active}
                     </div>
                   </div>
 
@@ -2752,7 +3573,7 @@ function PlayerReportPage() {
           <div className="flex justify-center items-center min-h-screen">
             <div className="text-center">
               <div className="mx-auto mb-4 w-16 h-16 rounded-full border-4 border-blue-500 animate-spin border-t-transparent"></div>
-              <p className="text-lg text-gray-600">جاري تحميل البيانات...</p>
+              <p className="text-lg text-gray-600">{copy.common.loadingData}</p>
             </div>
           </div>
         ) : error ? (
@@ -2761,15 +3582,15 @@ function PlayerReportPage() {
               <div className="flex justify-center items-center mx-auto mb-4 w-16 h-16 bg-red-100 rounded-full">
                 <User className="w-8 h-8 text-red-600" />
               </div>
-              <h2 className="mb-2 text-xl font-semibold text-red-600">⚠️ خطأ في تحميل البيانات</h2>
+              <h2 className="mb-2 text-xl font-semibold text-red-600">{copy.common.loadDataError}</h2>
               <p className="mb-4 text-sm leading-relaxed text-gray-600">{error}</p>
 
               {/* تفاصيل إضافية للمطورين */}
               <div className="p-3 mb-4 text-xs text-left bg-gray-50 rounded-lg">
                 <div className="font-mono">
-                  <div>🔍 Player ID: {targetPlayerId || 'غير محدد'}</div>
-                  <div>👤 User ID: {user?.id || 'غير مسجل'}</div>
-                  <div>🔗 View Mode: {playerIdFromUrl ? 'عرض لاعب آخر' : 'عرض الملف الشخصي'}</div>
+                  <div>🔍 Player ID: {targetPlayerId || copy.common.notSpecified}</div>
+                  <div>👤 User ID: {user?.id || copy.common.notSpecified}</div>
+                  <div>🔗 View Mode: {playerIdFromUrl ? copy.sections.detailedPlayerProfile : copy.sections.tabs.personal}</div>
                 </div>
               </div>
 
@@ -2790,7 +3611,7 @@ function PlayerReportPage() {
                   }}
                   className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-lg transition-colors hover:bg-blue-700"
                 >
-                  🔙 العودة
+                  🔙 {copy.common.back}
                 </button>
                 <button
                   onClick={() => {
@@ -2801,7 +3622,7 @@ function PlayerReportPage() {
                   }}
                   className="flex-1 px-4 py-2 text-white bg-gray-600 rounded-lg transition-colors hover:bg-gray-700"
                 >
-                  🔄 إعادة تحميل
+                  {copy.common.reload}
                 </button>
               </div>
             </div>
@@ -2816,8 +3637,8 @@ function PlayerReportPage() {
                     <User className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold">ملف اللاعب التفصيلي</h2>
-                    <p className="text-sm text-blue-100">جميع البيانات التالية خاصة باللاعب المعروض</p>
+                    <h2 className="text-lg font-bold">{copy.sections.detailedPlayerProfile}</h2>
+                    <p className="text-sm text-blue-100">{copy.sections.playerDataNotice}</p>
                   </div>
                 </div>
 
@@ -2833,7 +3654,7 @@ function PlayerReportPage() {
                     className="flex gap-2 items-center px-4 py-2 text-blue-600 bg-white rounded-lg hover:bg-blue-50 transition-colors"
                   >
                     <FileText className="w-4 h-4" />
-                    السيرة الذاتية
+                    {copy.sections.tabs.resume}
                   </button>
                 </div>
               </div>
@@ -2847,7 +3668,7 @@ function PlayerReportPage() {
                 {/* تسمية توضيحية لبيانات اللاعب */}
                 <div className="absolute top-4 left-4">
                   <div className="px-3 py-1 text-xs font-medium text-gray-700 rounded-full shadow-sm backdrop-blur-sm bg-white/90">
-                    📋 بيانات اللاعب
+                    {copy.sections.playerData}
                   </div>
                 </div>
 
@@ -2858,7 +3679,7 @@ function PlayerReportPage() {
                       <div className="overflow-hidden w-32 h-32 bg-white rounded-full border-4 border-white shadow-lg">
                         <img
                           src={getValidImageUrl(player?.profile_image_url)}
-                          alt={player?.full_name || 'لاعب'}
+                          alt={player?.full_name || copy.sections.playerAlt}
                           className="object-cover w-full h-full"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
@@ -2879,12 +3700,15 @@ function PlayerReportPage() {
                             }
                           }}
                           className="absolute -right-2 -bottom-2 w-12 h-12 bg-white rounded-full border-white shadow-lg transition-transform border-3 hover:scale-110 group"
-                          title={`انتقل إلى ملف ${playerOrganization.type}: ${playerOrganization.name || playerOrganization.full_name}`}
+                          title={interpolate(copy.sections.goToOrganizationProfile, {
+                            type: playerOrganization.typeArabic || playerOrganization.type,
+                            name: playerOrganization.name || playerOrganization.full_name || copy.common.notSpecified,
+                          })}
                         >
                           {playerOrganization.logoUrl ? (
                             <img
                               src={playerOrganization.logoUrl}
-                              alt={`لوجو ${playerOrganization.name || playerOrganization.full_name}`}
+                              alt={interpolate(copy.sections.organizationLogoAlt, { name: playerOrganization.name || playerOrganization.full_name || copy.common.notSpecified })}
                               className="object-cover w-full h-full rounded-full group-hover:shadow-md"
                               onError={(e) => {
                                 console.log(`❌ فشل تحميل لوجو ${playerOrganization.type}، استخدام الأيقونة الافتراضية`);
@@ -2905,7 +3729,7 @@ function PlayerReportPage() {
                           {/* نص توضيحي صغير */}
                           <div className="absolute -bottom-1 left-1/2 opacity-0 transition-opacity transform -translate-x-1/2 translate-y-full group-hover:opacity-100">
                             <div className="px-2 py-1 text-xs text-white whitespace-nowrap rounded bg-black/80">
-                              انقر للانتقال لـ {playerOrganization.typeArabic}
+                              {interpolate(copy.sections.clickToOpenType, { type: playerOrganization.typeArabic || playerOrganization.type })}
                             </div>
                           </div>
                         </button>
@@ -2915,14 +3739,14 @@ function PlayerReportPage() {
                       {!organizationLoading && !playerOrganization && (
                         <div
                           className="flex absolute -right-2 -bottom-2 justify-center items-center w-12 h-12 bg-gray-500 rounded-full border-white shadow-lg border-3 group"
-                          title="لاعب مستقل - غير تابع لأي جهة"
+                          title={copy.sections.independentPlayerTitleLong}
                         >
                           <User className="w-6 h-6 text-white" />
 
                           {/* نص توضيحي */}
                           <div className="absolute -bottom-1 left-1/2 opacity-0 transition-opacity transform -translate-x-1/2 translate-y-full group-hover:opacity-100">
                             <div className="px-2 py-1 text-xs text-white whitespace-nowrap rounded bg-black/80">
-                              مستقل
+                              {copy.sections.independentShort}
                             </div>
                           </div>
                         </div>
@@ -2942,18 +3766,18 @@ function PlayerReportPage() {
                       <div className="flex gap-4 items-center text-white/90">
                         <span className="flex gap-1 items-center">
                           <Target className="w-4 h-4" />
-                          {player?.primary_position || player?.position || 'غير محدد'}
+                          {player?.primary_position || player?.position || copy.common.notSpecified}
                         </span>
                         <span className="flex gap-1 items-center">
                           <Calendar className="w-4 h-4" />
                           {(() => {
                             const age = calculateAge(player?.birth_date);
-                            return age ? `${age} سنة` : 'العمر غير محدد';
+                            return age ? `${age} ${copy.common.years}` : copy.common.notSpecified;
                           })()}
                         </span>
                         <span className="flex gap-1 items-center">
                           <MapPin className="w-4 h-4" />
-                          {player?.nationality || player?.country || 'غير محدد'}
+                          {player?.nationality || player?.country || copy.common.notSpecified}
                         </span>
                       </div>
                     </div>
@@ -2969,7 +3793,7 @@ function PlayerReportPage() {
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="flex gap-2 items-center text-lg font-semibold">
                     <Building2 className="w-5 h-5 text-blue-600" />
-                    الجهة التابع لها اللاعب
+                    {copy.sections.playerOrganization}
                   </h3>
 
                   {/* مؤشر الحالة */}
@@ -2980,10 +3804,10 @@ function PlayerReportPage() {
                       : 'bg-yellow-100 text-yellow-800'
                     }`}>
                     {!organizationLoading && playerOrganization
-                      ? `✅ تابع ل${playerOrganization.typeArabic}`
+                      ? interpolate(copy.sections.linkedToType, { type: playerOrganization.typeArabic || playerOrganization.type })
                       : !organizationLoading && !playerOrganization
-                        ? '🔸 مستقل'
-                        : '⏳ جاري التحقق'
+                        ? `🔸 ${copy.sections.independentShort}`
+                        : copy.sections.checking
                     }
                   </div>
                 </div>
@@ -2996,7 +3820,7 @@ function PlayerReportPage() {
                           {playerOrganization.logoUrl ? (
                             <img
                               src={playerOrganization.logoUrl}
-                              alt={`لوجو ${playerOrganization.name || playerOrganization.full_name}`}
+                              alt={interpolate(copy.sections.organizationLogoAlt, { name: playerOrganization.name || playerOrganization.full_name || copy.common.notSpecified })}
                               className="object-cover w-14 h-14 rounded-full border-2 border-white shadow-lg"
                               onError={(e) => {
                                 console.log(`❌ فشل تحميل لوجو ${playerOrganization.type} في القسم الرئيسي`);
@@ -3022,7 +3846,7 @@ function PlayerReportPage() {
                             {/* إظهار إذا كان هو المستخدم الحالي */}
                             {currentUserInfo && playerOrganization.id === currentUserInfo.id && (
                               <span className="px-2 py-1 text-xs font-medium text-green-800 bg-green-100 rounded-full">
-                                أنت
+                                {copy.sections.you}
                               </span>
                             )}
                           </div>
@@ -3041,7 +3865,7 @@ function PlayerReportPage() {
                               return (
                                 <div className="flex gap-1 items-center px-2 py-1 mt-1 text-xs text-blue-600 bg-blue-50 rounded">
                                   <Plus className="w-3 h-3" />
-                                  أضفت هذا اللاعب
+                                  {copy.sections.addedThisPlayer}
                                 </div>
                               );
                             }
@@ -3057,10 +3881,10 @@ function PlayerReportPage() {
                           }}
                           disabled={!getOrganizationProfileUrl(playerOrganization)}
                           className="flex gap-2 items-center px-4 py-2 text-blue-600 rounded-lg border border-blue-200 transition-colors hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed hover:border-blue-300 hover:shadow-sm"
-                          title={`انتقل إلى صفحة ${playerOrganization.typeArabic}`}
+                          title={interpolate(copy.sections.goToOrganizationPage, { type: playerOrganization.typeArabic || playerOrganization.type })}
                         >
                           <ExternalLink className="w-4 h-4" />
-                          <span className="text-sm font-medium">عرض {playerOrganization.typeArabic}</span>
+                          <span className="text-sm font-medium">{interpolate(copy.sections.viewType, { type: playerOrganization.typeArabic || playerOrganization.type })}</span>
                         </button>
                       </div>
                     </div>
@@ -3082,10 +3906,10 @@ function PlayerReportPage() {
                       {playerOrganization.founded && (
                         <div className="flex gap-2 items-center p-2 text-sm text-gray-600 bg-gray-50 rounded-lg">
                           <Calendar className="w-4 h-4 text-gray-400" />
-                          <span>تأسس: {playerOrganization.founded}</span>
+                          <span>{interpolate(copy.sections.founded, { year: playerOrganization.founded })}</span>
                         </div>
                       )}
-                      {playerOrganization.type === 'نادي' && playerOrganization.league && (
+                      {(playerOrganization.type === 'club' || playerOrganization.type === '\u0646\u0627\u062f\u064a') && playerOrganization.league && (
                         <div className="flex gap-2 items-center p-2 text-sm text-gray-600 bg-gray-50 rounded-lg">
                           <Trophy className="w-4 h-4 text-gray-400" />
                           <span>{playerOrganization.league}</span>
@@ -3107,10 +3931,10 @@ function PlayerReportPage() {
                 ) : organizationLoading ? (
                   <div className="py-8 text-center text-gray-500">
                     <div className="mx-auto mb-3 w-8 h-8 rounded-full border-2 border-blue-500 animate-spin border-t-transparent"></div>
-                    <p className="text-sm font-medium">جاري البحث عن المنظمة...</p>
-                    <p className="mt-1 text-xs text-gray-400">فحص الارتباط بالأندية والأكاديميات والمدربين...</p>
+                    <p className="text-sm font-medium">{copy.sections.searchingOrganization}</p>
+                    <p className="mt-1 text-xs text-gray-400">{copy.sections.checkingRelations}</p>
                     <div className="inline-block px-3 py-2 mt-3 text-xs text-blue-600 bg-blue-50 rounded-lg">
-                      🔍 يتم فحص جميع قواعد البيانات
+                      {copy.sections.checkingAllDatabases}
                     </div>
                   </div>
                 ) : (
@@ -3126,7 +3950,7 @@ function PlayerReportPage() {
                           </div>
                           <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                             <p className="mb-1 text-lg font-bold text-blue-900">
-                              {status === 'loan' ? 'لاعب مُعار' : 'لاعب مرتبط بعقد'}
+                              {status === 'loan' ? copy.sections.loanPlayer : copy.sections.contractedPlayer}
                             </p>
                             {player?.current_club && (
                               <p className="mb-1 text-base font-semibold text-blue-800">
@@ -3134,10 +3958,10 @@ function PlayerReportPage() {
                               </p>
                             )}
                             <p className="mb-3 text-xs text-blue-600">
-                              مرتبط بنادي حالياً (حسب الملف الشخصي)
+                              {copy.sections.linkedCurrentClub}
                             </p>
                             <div className="inline-block px-4 py-2 mt-2 text-sm font-medium text-blue-700 bg-white border border-blue-200 rounded-lg shadow-sm">
-                              يرجى التواصل مع جهة الاتصال الرسمية
+                              {copy.sections.contactOfficialEntity}
                             </div>
                           </div>
                         </div>
@@ -3150,20 +3974,20 @@ function PlayerReportPage() {
                           <span className="text-3xl">🔥</span>
                         </div>
                         <div className="p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200">
-                          <p className="mb-1 text-sm font-bold text-gray-700">لاعب مستقل</p>
-                          <p className="mb-3 text-xs text-gray-500">هذا اللاعب غير مرتبط بأي جهة حالياً</p>
+                          <p className="mb-1 text-sm font-bold text-gray-700">{copy.sections.independentPlayerTitle}</p>
+                          <p className="mb-3 text-xs text-gray-500">{copy.sections.independentPlayerDesc}</p>
                           <div className="space-y-2 text-xs">
                             <div className="flex gap-2 justify-center items-center text-gray-600">
                               <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                              <span>يمكنه الانضمام لنادي أو أكاديمية</span>
+                              <span>{copy.sections.canJoinClubOrAcademy}</span>
                             </div>
                             <div className="flex gap-2 justify-center items-center text-gray-600">
                               <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                              <span>يمكنه التعاقد مع وكيل لاعبين</span>
+                              <span>{copy.sections.canContractAgent}</span>
                             </div>
                             <div className="flex gap-2 justify-center items-center text-gray-600">
                               <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                              <span>يمكنه العمل مع مدرب شخصي</span>
+                              <span>{copy.sections.canWorkWithTrainer}</span>
                             </div>
                           </div>
                         </div>
@@ -3183,7 +4007,7 @@ function PlayerReportPage() {
                       <div className="p-4 border-b border-gray-100">
                         <h3 className="flex gap-2 items-center text-lg font-semibold text-gray-900">
                           <ShieldCheck className={`w-5 h-5 ${hasConsent ? 'text-green-600' : 'text-amber-600'}`} />
-                          {hasConsent ? 'الوصاية القانونية' : 'تنبيه الوصاية'}
+                          {hasConsent ? copy.sections.legalGuardianship : copy.sections.guardianshipAlert}
                         </h3>
                       </div>
                       <div className={`p-4 ${hasConsent ? 'bg-green-50' : 'bg-amber-50'}`}>
@@ -3191,10 +4015,10 @@ function PlayerReportPage() {
                           {hasConsent ? <CheckCircle className="w-8 h-8 text-green-600" /> : <AlertTriangle className="w-8 h-8 text-amber-600" />}
                           <div>
                             <div className={`font-bold text-sm ${hasConsent ? 'text-green-800' : 'text-amber-800'}`}>
-                              {hasConsent ? 'موافقة ولي الأمر مكتملة' : 'تحت وصاية ولي الأمر'}
+                              {hasConsent ? copy.sections.guardianConsentComplete : copy.sections.underGuardian}
                             </div>
                             <div className="text-xs text-gray-600 mt-1">
-                              {hasConsent ? 'يمكن التفاوض واستكمال الإجراءات' : 'بانتظار موافقة ولي الأمر الرسمية'}
+                              {hasConsent ? copy.sections.canNegotiate : copy.sections.waitingGuardianConsent}
                             </div>
                           </div>
                         </div>
@@ -3208,7 +4032,7 @@ function PlayerReportPage() {
                   <div className="p-4 border-b border-gray-100">
                     <h3 className="flex gap-2 items-center text-lg font-semibold text-gray-900">
                       <Star className="w-5 h-5 text-purple-600" />
-                      تقييم الموهبة
+                      {copy.sections.talentEvaluation}
                     </h3>
                   </div>
                   <div className="p-4 bg-purple-50">
@@ -3218,10 +4042,10 @@ function PlayerReportPage() {
                       </div>
                       <div>
                         <div className="font-bold text-sm text-purple-900">
-                          {player?.evaluation_status === 'rated' ? 'تم التقييم' : 'تحت التقييم'}
+                          {player?.evaluation_status === 'rated' ? copy.sections.evaluated : copy.sections.underEvaluation}
                         </div>
                         <div className="text-xs text-purple-700 mt-1">
-                          من اللجنة الفنية للمنصة
+                          {copy.sections.byTechnicalCommittee}
                         </div>
                       </div>
                     </div>
@@ -3233,7 +4057,7 @@ function PlayerReportPage() {
               <div className="p-6 bg-white rounded-xl shadow-md">
                 <h3 className="flex gap-2 items-center mb-4 text-lg font-semibold">
                   <Phone className="w-5 h-5 text-green-600" />
-                  جهة الاتصال الرسمية
+                  {copy.sections.officialContact}
                 </h3>
                 {player?.official_contact && (
                   player.official_contact.name ||
@@ -3244,8 +4068,8 @@ function PlayerReportPage() {
                     <div className="flex gap-3 items-center">
                       <User className="w-4 h-4 text-gray-400" />
                       <div>
-                        <div className="font-medium">{player.official_contact.name || 'غير محدد'}</div>
-                        <div className="text-sm text-gray-600">{player.official_contact.title || 'غير محدد'}</div>
+                        <div className="font-medium">{player.official_contact.name || copy.common.notSpecified}</div>
+                        <div className="text-sm text-gray-600">{player.official_contact.title || copy.common.notSpecified}</div>
                       </div>
                     </div>
                     {player.official_contact.phone && (
@@ -3274,8 +4098,8 @@ function PlayerReportPage() {
                 ) : (
                   <div className="py-8 text-center text-gray-500">
                     <User className="mx-auto mb-3 w-12 h-12 text-gray-300" />
-                    <p className="text-sm">لم يتم تحديد جهة اتصال رسمية</p>
-                    <p className="text-xs text-gray-400">يمكن للاعب إضافة هذه المعلومات في ملفه الشخصي</p>
+                    <p className="text-sm">{copy.sections.noOfficialContact}</p>
+                    <p className="text-xs text-gray-400">{copy.sections.noOfficialContactDesc}</p>
                   </div>
                 )}
               </div>
@@ -3288,7 +4112,7 @@ function PlayerReportPage() {
                   {TABS.map((tab, idx) => (
                     <button
                       key={tab.name}
-                      data-tab={tab.name === 'السيرة الذاتية' ? 'resume' : `tab-${idx}`}
+                      data-tab={(tab as any).key === 'resume' ? 'resume' : `tab-${idx}`}
                       onClick={() => setCurrentTab(idx)}
                       className={`px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${currentTab === idx
                         ? 'border-blue-500 text-blue-600 bg-blue-50'
@@ -3302,7 +4126,7 @@ function PlayerReportPage() {
               </div>
 
               <div className="p-6">
-                {TABS[currentTab]?.render?.() || <div>التبويب غير متوفر</div>}
+                {TABS[currentTab]?.render?.() || <div>{copy.sections.unavailableTab}</div>}
               </div>
             </div>
           </>

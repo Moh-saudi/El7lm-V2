@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import SubscriptionStatusPage from '@/components/shared/SubscriptionStatusPage';
 import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
 import { Shield, AlertCircle } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n';
 
 /**
  * صفحة حالة الاشتراك المشتركة لجميع أنواع الحسابات
@@ -16,6 +17,7 @@ import { Shield, AlertCircle } from 'lucide-react';
  * تستخدمها: academy, trainer, agent, club, marketer, admin, player, parent
  */
 export default function SharedSubscriptionStatusPage() {
+  const { t, isRTL } = useTranslation();
   // التحقق من نوع الحساب - السماح لجميع أنواع الحسابات المدعومة
   const { isAuthorized, isCheckingAuth, user, userData, accountType } = useAccountTypeAuth({
     allowedTypes: ['academy', 'trainer', 'agent', 'club', 'marketer', 'admin', 'player', 'parent'],
@@ -43,11 +45,11 @@ export default function SharedSubscriptionStatusPage() {
   // شاشة التحميل أثناء التحقق من الصلاحيات
   if (isCheckingAuth) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50" dir="rtl">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin"></div>
-          <p className="text-gray-600 text-lg">جاري التحقق من صلاحيات الوصول...</p>
-          <p className="text-gray-400 text-sm mt-2">يرجى الانتظار</p>
+          <p className="text-gray-600 text-lg">{t('sharedPages.verifyingAuth')}</p>
+          <p className="text-gray-400 text-sm mt-2">{t('sharedPages.waitPlease')}</p>
         </div>
       </div>
     );
@@ -56,16 +58,16 @@ export default function SharedSubscriptionStatusPage() {
   // التحقق الإضافي من أن المستخدم مسجل دخوله
   if (!user || !userData) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50" dir="rtl">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="text-center max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg">
           <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-500" />
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">غير مصرح بالوصول</h2>
-          <p className="text-gray-600 mb-4">يجب تسجيل الدخول للوصول إلى صفحة حالة الاشتراك</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">{t('sharedPages.unauthorized')}</h2>
+          <p className="text-gray-600 mb-4">{t('sharedPages.loginRequiredSubscription')}</p>
           <a
             href="/auth/login"
             className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
-            تسجيل الدخول
+            {t('sharedPages.login')}
           </a>
         </div>
       </div>
@@ -75,18 +77,18 @@ export default function SharedSubscriptionStatusPage() {
   // التحقق من أن نوع الحساب صحيح
   if (!isAuthorized) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50" dir="rtl">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="text-center max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg">
           <Shield className="w-16 h-16 mx-auto mb-4 text-orange-500" />
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">غير مصرح بالوصول</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">{t('sharedPages.unauthorized')}</h2>
           <p className="text-gray-600 mb-2">
-            نوع حسابك الحالي: <span className="font-bold">{accountType || 'غير محدد'}</span>
+            {t('sharedPages.currentAccountType').replace('{{type}}', accountType || t('sharedPages.unknown'))}
           </p>
           <p className="text-gray-500 text-sm mb-4">
-            لا يمكنك الوصول إلى صفحة حالة الاشتراك بهذا النوع من الحساب
+            {t('sharedPages.cannotAccessSubscription')}
           </p>
           <p className="text-gray-400 text-xs">
-            سيتم توجيهك تلقائياً إلى لوحة التحكم المناسبة...
+            {t('sharedPages.redirectingToDashboard')}
           </p>
         </div>
       </div>
@@ -97,12 +99,12 @@ export default function SharedSubscriptionStatusPage() {
   const validAccountTypes = ['academy', 'trainer', 'agent', 'club', 'marketer', 'admin', 'player', 'parent'];
   if (!accountType || !validAccountTypes.includes(accountType)) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50" dir="rtl">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="text-center max-w-md mx-auto p-8 bg-white rounded-lg shadow-lg">
           <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-500" />
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">خطأ في نوع الحساب</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">{t('sharedPages.accountTypeErrorTitle')}</h2>
           <p className="text-gray-600 mb-4">
-            نوع الحساب غير صحيح أو غير محدد. يرجى التواصل مع الدعم الفني.
+            {t('sharedPages.accountTypeErrorDesc')}
           </p>
         </div>
       </div>
@@ -113,11 +115,11 @@ export default function SharedSubscriptionStatusPage() {
 
   // كل شيء صحيح - عرض صفحة حالة الاشتراك
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6" dir="rtl">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">إدارة الاشتراك</h1>
-          <p className="text-gray-600 font-medium">عرض تفاصيل اشتراك وكشف حساب {accountType}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('subStatus.manageSubscription')}</h1>
+          <p className="text-gray-600 font-medium">{t('sharedPages.subscriptionDesc').replace('{{type}}', accountType)}</p>
         </div>
       </div>
       <SubscriptionStatusPage accountType={accountType} />

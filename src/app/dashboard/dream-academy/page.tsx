@@ -19,8 +19,10 @@ import AcademyHero from '@/components/dream-academy/AcademyHero';
 import CategoryTabs from '@/components/dream-academy/CategoryTabs';
 import { supabase } from '@/lib/supabase/config';
 import type { DreamAcademyCategory } from '@/types/dream-academy';
+import { useTranslation } from '@/lib/i18n';
 
 export default function DreamAcademyPage() {
+  const { t, isRTL } = useTranslation();
   const [selectedGroup, setSelectedGroup] = useState<'languages' | 'life_skills' | 'living_skills' | 'career' | 'other'>('languages');
   const [allCategories, setAllCategories] = useState<DreamAcademyCategory[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<DreamAcademyCategoryId>('english');
@@ -63,7 +65,7 @@ export default function DreamAcademyPage() {
   }, [selectedGroup, allCategories]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50" dir={isRTL ? "rtl" : "ltr"}>
       <div className="container mx-auto px-4 py-8">
         {/* Hero modern */}
         <div className="mb-8">
@@ -81,7 +83,7 @@ export default function DreamAcademyPage() {
               const active = selectedCategoryId === (c.id as any);
               return (
                 <button key={c.id} onClick={() => setSelectedCategoryId(c.id as any)} className={`px-4 py-2 rounded-xl border whitespace-nowrap ${active ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 hover:border-blue-300'}`}>
-                  {(c as any).titleAr || c.title || (c as any).titleEn || c.id}
+                  {isRTL ? ((c as any).titleAr || c.title) : ((c as any).titleEn || c.title || c.id)}
                 </button>
               );
             })}
@@ -92,25 +94,25 @@ export default function DreamAcademyPage() {
 
         {/* Videos Section */}
         <div className="mt-12">
-          <h2 className="text-2xl font-bold mb-4">فيديوهات القسم</h2>
+          <h2 className="text-2xl font-bold mb-4">{t('dreamAcademy.sectionVideos')}</h2>
           <DreamAcademyVideosSection categoryId={selectedCategoryId} />
         </div>
 
         {/* Call to Action */}
         <Card className="mt-12 p-8 bg-gradient-to-r from-blue-500 to-purple-600 text-white text-center">
           <div className="max-w-2xl mx-auto">
-            <h2 className="text-3xl font-bold mb-4">ابدأ رحلة التعلم اليوم!</h2>
+            <h2 className="text-3xl font-bold mb-4">{t('dreamAcademy.startJourneyTitle')}</h2>
             <p className="text-lg mb-6 opacity-90">
-              انضم إلى آلاف الطلاب الذين يطورون مهاراتهم مع مدرسة الحلم
+              {t('dreamAcademy.startJourneyDesc')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100">
                 <BookOpen className="w-5 h-5 mr-2" />
-                استكشف جميع الدورات
+                {t('dreamAcademy.exploreCoursesBtn')}
               </Button>
               <Button size="lg" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-blue-600 transition-all duration-300">
                 <MessageSquare className="w-5 h-5 mr-2" />
-                تواصل معنا
+                {t('dreamAcademy.contactUsBtn')}
               </Button>
             </div>
           </div>

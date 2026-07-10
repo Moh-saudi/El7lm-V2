@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence, useScroll, useAnimation, PanInfo } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
-import { ar } from 'date-fns/locale';
+import { ar, enUS, es, ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -34,6 +34,100 @@ import { toast } from 'react-hot-toast';
 import { normalizeNotificationMetadata, resolveAvatarUrl, SenderContext } from '@/lib/notifications/sender-utils';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Locale, useTranslation } from '@/lib/i18n';
+
+const ADMIN_NOTIFICATIONS_COPY: Record<Locale, {
+  userFallback: string;
+  deleted: string;
+  newNotifications: string;
+  title: string;
+  tabs: Record<'all' | 'mentions' | 'system', string>;
+  emptyTitle: string;
+  emptyDescription: string;
+  others: string;
+  delete: string;
+  reply: string;
+  follow: string;
+}> = {
+  ar: {
+    userFallback: 'مستخدم',
+    deleted: 'تم الحذف',
+    newNotifications: 'إشعارات جديدة',
+    title: 'الإشعارات',
+    tabs: {
+      all: 'الكل',
+      mentions: 'التفاعلات',
+      system: 'النظام',
+    },
+    emptyTitle: 'كل شيء هادئ هنا',
+    emptyDescription: 'لم تتلق أي إشعارات جديدة مؤخراً. سنخبرك بمجرد حدوث شيء ما.',
+    others: '{{count}} آخرين',
+    delete: 'حذف',
+    reply: 'رد',
+    follow: 'متابعة',
+  },
+  en: {
+    userFallback: 'User',
+    deleted: 'Deleted',
+    newNotifications: 'New notifications',
+    title: 'Notifications',
+    tabs: {
+      all: 'All',
+      mentions: 'Interactions',
+      system: 'System',
+    },
+    emptyTitle: 'Everything is quiet here',
+    emptyDescription: 'You have not received any new notifications recently. We will let you know when something happens.',
+    others: '{{count}} others',
+    delete: 'Delete',
+    reply: 'Reply',
+    follow: 'Follow up',
+  },
+  es: {
+    userFallback: 'Usuario',
+    deleted: 'Eliminado',
+    newNotifications: 'Nuevas notificaciones',
+    title: 'Notificaciones',
+    tabs: {
+      all: 'Todo',
+      mentions: 'Interacciones',
+      system: 'Sistema',
+    },
+    emptyTitle: 'Todo está tranquilo aquí',
+    emptyDescription: 'No has recibido notificaciones nuevas recientemente. Te avisaremos cuando ocurra algo.',
+    others: '{{count}} más',
+    delete: 'Eliminar',
+    reply: 'Responder',
+    follow: 'Seguimiento',
+  },
+  pt: {
+    userFallback: 'Usuário',
+    deleted: 'Excluído',
+    newNotifications: 'Novas notificações',
+    title: 'Notificações',
+    tabs: {
+      all: 'Tudo',
+      mentions: 'Interações',
+      system: 'Sistema',
+    },
+    emptyTitle: 'Tudo está tranquilo por aqui',
+    emptyDescription: 'Você não recebeu novas notificações recentemente. Avisaremos quando algo acontecer.',
+    others: '{{count}} outros',
+    delete: 'Excluir',
+    reply: 'Responder',
+    follow: 'Acompanhar',
+  },
+};
+
+const notificationDateLocales = {
+  ar,
+  en: enUS,
+  es,
+  pt: ptBR,
+};
+
+const interpolateNotificationCopy = (template: string, values: Record<string, string | number>) =>
+  template.replace(/\{\{(\w+)\}\}/g, (_, key) => `${values[key] ?? ''}`);
 
 // --- Types ---
 interface Notification {
@@ -69,6 +163,9 @@ const NotificationSkeleton = () => (
 // --- Reusable Notification Feed Component ---
 export function NotificationFeed() {
   const { user } = useAuth();
+  const { locale, isRTL } = useTranslation();
+  const copy = ADMIN_NOTIFICATIONS_COPY[locale] || ADMIN_NOTIFICATIONS_COPY.en;
+  const dateLocale = notificationDateLocales[locale] || enUS;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
@@ -124,7 +221,7 @@ export function NotificationFeed() {
       const metadata = normalizeNotificationMetadata(row.metadata);
 
       let senderInfo = {
-        senderName: row.senderName || metadata?.senderName || 'مستخدم',
+        senderName: row.senderName || metadata?.senderName || copy.userFallback,
         senderAvatar: row.senderAvatar || metadata?.senderAvatar || null,
         senderAccountType: row.senderAccountType || null
       };
@@ -214,7 +311,7 @@ export function NotificationFeed() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, copy.userFallback]);
 
   // --- Filtering ---
   const filteredList = useMemo(() => {
@@ -237,7 +334,7 @@ export function NotificationFeed() {
 
   const handleDelete = async (id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id)); // Optimistic delete
-    toast.success("تم الحذف");
+    toast.success(copy.deleted);
   };
 
   const scrollToTop = () => {
@@ -267,7 +364,7 @@ export function NotificationFeed() {
   };
 
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-900" dir="rtl">
+    <div className="min-h-screen bg-white font-sans text-slate-900" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* 1. New Updates Pill (Sticky) */}
       <AnimatePresence>
@@ -283,7 +380,7 @@ export function NotificationFeed() {
               className="rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200/50 px-6 h-9 text-sm font-medium gap-2"
             >
               <ArrowUp className="w-4 h-4" />
-              إشعارات جديدة
+              {copy.newNotifications}
             </Button>
           </motion.div>
         )}
@@ -292,7 +389,7 @@ export function NotificationFeed() {
       {/* 2. Header */}
       <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-xl border-b border-slate-100">
         <div className="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
-          <h1 className="text-xl font-bold tracking-tight">الإشعارات</h1>
+          <h1 className="text-xl font-bold tracking-tight">{copy.title}</h1>
           <Button variant="ghost" size="icon" className="rounded-full text-slate-400 hover:bg-slate-50 hover:text-slate-900">
             <Settings className="w-5 h-5" />
           </Button>
@@ -301,9 +398,9 @@ export function NotificationFeed() {
         {/* Tabs */}
         <div className="max-w-xl mx-auto flex px-2">
           {[
-            { id: 'all', label: 'الكل' },
-            { id: 'mentions', label: 'التفاعلات' },
-            { id: 'system', label: 'النظام' }
+            { id: 'all', label: copy.tabs.all },
+            { id: 'mentions', label: copy.tabs.mentions },
+            { id: 'system', label: copy.tabs.system }
           ].map(tab => (
             <button
               key={tab.id}
@@ -333,8 +430,8 @@ export function NotificationFeed() {
             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 ring-8 ring-slate-50/50">
               <Bell className="w-8 h-8 text-slate-300" />
             </div>
-            <h3 className="text-lg font-bold text-slate-900">كل شيء هادئ هنا</h3>
-            <p className="text-slate-500 max-w-xs mt-2 leading-relaxed">لم تتلق أي إشعارات جديدة مؤخراً. سنخبرك بمجرد حدوث شيء ما.</p>
+            <h3 className="text-lg font-bold text-slate-900">{copy.emptyTitle}</h3>
+            <p className="text-slate-500 max-w-xs mt-2 leading-relaxed">{copy.emptyDescription}</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-50">
@@ -346,6 +443,8 @@ export function NotificationFeed() {
                 onDelete={handleDelete}
                 getActionIcon={getActionIcon}
                 getActionColor={getActionColor}
+                copy={copy}
+                dateLocale={dateLocale}
               />
             ))}
           </div>
@@ -356,7 +455,7 @@ export function NotificationFeed() {
 }
 
 // --- Notification Item Component (Interactions & Animations) ---
-const NotificationItem = ({ notification, onMarkRead, onDelete, getActionIcon, getActionColor }: any) => {
+const NotificationItem = ({ notification, onMarkRead, onDelete, getActionIcon, getActionColor, copy, dateLocale }: any) => {
 
   // Swipe Handler (Simplified for web, typically meaningful on mobile)
   const handleDragEnd = (event: any, info: PanInfo) => {
@@ -425,14 +524,14 @@ const NotificationItem = ({ notification, onMarkRead, onDelete, getActionIcon, g
             <div className="text-[15px] leading-6">
               <span className="font-bold text-slate-900 hover:underline decoration-slate-300 underline-offset-4">
                 {notification.groupedCount
-                  ? `${notification.senderName} و ${notification.groupedCount - 1} آخرين`
+                  ? `${notification.senderName} ${interpolateNotificationCopy(copy.others, { count: notification.groupedCount - 1 })}`
                   : notification.senderName}
               </span>
               <span className="text-slate-600 mx-1.5">
                 {notification.title}
               </span>
               <span className="text-slate-400 text-sm font-normal">
-                {formatDistanceToNow(notification.createdAt, { locale: ar, addSuffix: true })}
+                {formatDistanceToNow(notification.createdAt, { locale: dateLocale, addSuffix: true })}
               </span>
             </div>
 
@@ -446,7 +545,7 @@ const NotificationItem = ({ notification, onMarkRead, onDelete, getActionIcon, g
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => onDelete(notification.id)} className="text-rose-600 focus:text-rose-700">
                   <Trash2 className="w-4 h-4 ml-2" />
-                  حذف
+                  {copy.delete}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -470,11 +569,11 @@ const NotificationItem = ({ notification, onMarkRead, onDelete, getActionIcon, g
           {notification.category === 'interaction' && (
             <div className="flex items-center gap-2 mt-3">
               <Button size="sm" variant="outline" className="h-8 rounded-full text-xs font-semibold px-4 border-slate-200 hover:bg-slate-50 hover:text-slate-900">
-                رد
+                {copy.reply}
               </Button>
               {notification.type === 'warning' && (
                 <Button size="sm" className="h-8 rounded-full text-xs font-semibold px-4 bg-slate-900 hover:bg-slate-800">
-                  متابعة
+                  {copy.follow}
                 </Button>
               )}
             </div>

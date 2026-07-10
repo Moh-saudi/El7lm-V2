@@ -10,16 +10,19 @@
  */
 
 import UnifiedNotificationsButton from '@/components/shared/UnifiedNotificationsButton';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 import { cn } from '@/lib/utils';
 import { LogOut, Menu, Search, X } from 'lucide-react';
 import React, { useState } from 'react';
 import { useAppShell } from './AppShellContext';
 import HeaderActions from './HeaderActions';
+import { useTranslation } from '@/lib/i18n';
 
 // ─── Search bar ───────────────────────────────────────────────────────────────
 
 function HeaderSearch() {
   const [focused, setFocused] = useState(false);
+  const { t } = useTranslation();
 
   return (
     <div
@@ -35,7 +38,7 @@ function HeaderSearch() {
       <Search size={15} className="flex-shrink-0" />
       <input
         type="text"
-        placeholder="بحث..."
+        placeholder={`${t('common.search')}...`}
         className="flex-1 bg-transparent outline-none text-sm placeholder:text-inherit"
         style={{ color: 'var(--header-text)' }}
         onFocus={() => setFocused(true)}
@@ -104,6 +107,7 @@ export default function AppHeader({
 
           {/* Notifications + Logout */}
           <div className="flex items-center gap-1">
+            <LanguageSwitcher />
             <div className="header-action-btn p-0">
               <UnifiedNotificationsButton />
             </div>

@@ -40,9 +40,18 @@ import { toast } from 'react-toastify';
 import { organizationReferralService } from '@/lib/organization/organization-referral-service';
 import { PlayerJoinRequest } from '@/types/organization-referral';
 import OrgReferralSummaryCard from '@/components/referrals/OrgReferralSummaryCard';
+import { useTranslation } from '@/lib/i18n';
+import {
+  getPlayersManagementAccountName,
+  getPlayersManagementCopy,
+  interpolate
+} from '@/lib/i18n/page-copy/players-management';
 
 export default function AgentPlayersPage() {
   const { user, userData } = useAuth();
+  const { locale, isRTL } = useTranslation();
+  const copy = getPlayersManagementCopy(locale);
+  const accountName = getPlayersManagementAccountName(locale, 'agent');
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -93,7 +102,7 @@ export default function AgentPlayersPage() {
       setPlayers(playersData);
     } catch (error) {
       console.error("Error loading players:", error);
-      toast.error("Failed to load players.");
+      toast.error(copy.toast.loadPlayersFailed);
     } finally {
       setLoading(false);
     }
@@ -213,13 +222,13 @@ export default function AgentPlayersPage() {
     }
     
     if (status === 'active' && end > now) {
-      return <Badge className="text-green-800 bg-green-100 hover:bg-green-200"><CheckCircle className="mr-1 w-3 h-3" />نشط</Badge>;
+      return <Badge className="text-green-800 bg-green-100 hover:bg-green-200"><CheckCircle className="mr-1 w-3 h-3" />{copy.common.active}</Badge>;
     } else if (status === 'active' && end <= now) {
-      return <Badge className="text-yellow-800 bg-yellow-100 hover:bg-yellow-200"><AlertCircle className="mr-1 w-3 h-3" />منتهي</Badge>;
+      return <Badge className="text-yellow-800 bg-yellow-100 hover:bg-yellow-200"><AlertCircle className="mr-1 w-3 h-3" />{copy.common.expired}</Badge>;
     } else if (status === 'expired') {
-      return <Badge className="text-red-800 bg-red-100 hover:bg-red-200"><XCircle className="mr-1 w-3 h-3" />منتهي</Badge>;
+      return <Badge className="text-red-800 bg-red-100 hover:bg-red-200"><XCircle className="mr-1 w-3 h-3" />{copy.common.expired}</Badge>;
     } else {
-      return <Badge className="text-gray-800 bg-gray-100 hover:bg-gray-200"><XCircle className="mr-1 w-3 h-3" />غير نشط</Badge>;
+      return <Badge className="text-gray-800 bg-gray-100 hover:bg-gray-200"><XCircle className="mr-1 w-3 h-3" />{copy.common.inactive}</Badge>;
     }
   };
 
@@ -254,7 +263,7 @@ export default function AgentPlayersPage() {
 
   // Format date
   const formatDate = (date: any) => {
-    if (!date) return 'غير محدد';
+    if (!date) return copy.common.notSpecified;
     try {
       let d: Date;
       if (typeof date === 'object' && date.toDate && typeof date.toDate === 'function') {
@@ -264,22 +273,22 @@ export default function AgentPlayersPage() {
       } else if (typeof date === 'string' || typeof date === 'number') {
         d = new Date(date);
       } else {
-        return 'غير محدد';
+        return copy.common.notSpecified;
       }
       
       if (isNaN(d.getTime())) {
-        return 'غير محدد';
+        return copy.common.notSpecified;
       }
       
-      return d.toLocaleDateString('en-GB');
+      return d.toLocaleDateString(isRTL ? 'ar-EG' : 'en-GB');
     } catch (error) {
-      return 'غير محدد';
+      return copy.common.notSpecified;
     }
   };
 
   // Calculate time ago
   const getTimeAgo = (date: any) => {
-    if (!date) return 'غير محدد';
+    if (!date) return copy.common.notSpecified;
     try {
       let d: Date;
       if (typeof date === 'object' && date.toDate && typeof date.toDate === 'function') {
@@ -298,52 +307,29 @@ export default function AgentPlayersPage() {
       const diffMonths = Math.floor(diffDays / 30);
       
       if (diffMonths > 0) {
-        return `منذ ${diffMonths} شهر`;
+        return interpolate(copy.time.month, { count: diffMonths });
       } else if (diffWeeks > 0) {
-        return `منذ ${diffWeeks} أسبوع`;
+        return interpolate(copy.time.week, { count: diffWeeks });
       } else if (diffDays > 0) {
-        return `منذ ${diffDays} يوم`;
+        return interpolate(copy.time.day, { count: diffDays });
       } else if (diffHours > 0) {
-        return `منذ ${diffHours} ساعة`;
+        return interpolate(copy.time.hour, { count: diffHours });
       } else {
-        return 'منذ قليل';
+        return copy.time.justNow;
       }
     } catch (error) {
-      return 'غير محدد';
+      return copy.common.notSpecified;
     }
   };
 
   // Export to Excel
   const exportToExcel = () => {
-    const headers = [
-      'الاسم الكامل',
-      'تاريخ الميلاد',
-      'العمر',
-      'الجنسية',
-      'المدينة',
-      'الدولة',
-      'الهاتف',
-      'البريد الإلكتروني',
-      'المركز الأساسي',
-      'المركز الثانوي',
-      'القدم المفضلة',
-      'الطول',
-      'الوزن',
-      'سنوات الخبرة',
-      'النادي الحالي',
-      'حالة الاشتراك',
-      'نوع الاشتراك',
-      'تاريخ انتهاء الاشتراك',
-      'عدد الفيديوهات',
-      'عدد الصور',
-      'تاريخ الإنشاء',
-      'آخر تحديث'
-    ];
+    const headers = copy.exportHeaders;
 
     const data = sortedPlayers.map(player => [
       player.full_name || player.name || '',
       formatDate(player.birth_date),
-      calculateAge(player.birth_date) || 'غير محدد',
+      calculateAge(player.birth_date) || copy.common.notSpecified,
       player.nationality || '',
       player.city || '',
       player.country || '',
@@ -392,20 +378,20 @@ export default function AgentPlayersPage() {
       setPlayers(prev => prev.filter(p => p.id !== playerToDelete.id));
       setIsDeleteModalOpen(false);
       setPlayerToDelete(null);
-      alert('تم حذف اللاعب بنجاح!');
+      alert(copy.toast.playerDeleted);
     } catch (error) {
       console.error('خطأ في حذف اللاعب:', error);
-      alert('حدث خطأ أثناء حذف اللاعب');
+      alert(copy.toast.deletePlayerError);
     }
   };
 
   if (loading) {
     return (
-      <main className="flex-1 p-6 mx-4 my-6 bg-gray-50 rounded-lg shadow-inner md:p-10" dir="rtl">
+      <main className="flex-1 p-6 mx-4 my-6 bg-gray-50 rounded-lg shadow-inner md:p-10" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-cyan-600 rounded-full border-t-transparent animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600 text-lg">جاري تحميل اللاعبين...</p>
+            <p className="text-gray-600 text-lg">{copy.common.loadingPlayers}</p>
           </div>
         </div>
       </main>
@@ -413,7 +399,7 @@ export default function AgentPlayersPage() {
   }
 
   return (
-    <main className="flex-1 p-6 mx-4 my-6 bg-gray-50 rounded-lg shadow-inner md:p-10" dir="rtl">
+    <main className="flex-1 p-6 mx-4 my-6 bg-gray-50 rounded-lg shadow-inner md:p-10" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="space-y-6">
         {/* Referrals summary card */}
         <OrgReferralSummaryCard accountType="agent" />
@@ -423,10 +409,10 @@ export default function AgentPlayersPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-blue-600" />
-                <span className="font-medium text-blue-900">لديك {joinRequests.length} طلب انضمام جديد</span>
+                <span className="font-medium text-blue-900">{interpolate(copy.joinRequests.subtitle, { count: joinRequests.length })}</span>
               </div>
               <Button variant="outline" size="sm" onClick={() => setShowJoinRequests(!showJoinRequests)}>
-                {showJoinRequests ? 'إخفاء' : 'عرض'} الطلبات
+                {showJoinRequests ? copy.common.hideList : copy.common.showList}
               </Button>
             </div>
             {showJoinRequests && (
@@ -435,33 +421,33 @@ export default function AgentPlayersPage() {
                   <div key={request.id} className="bg-white rounded-lg p-4 border">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-semibold">{request.playerName}</h4>
-                      <Badge variant="outline">طلب جديد</Badge>
+                      <Badge variant="outline">{copy.common.new}</Badge>
                     </div>
                     <div className="text-sm text-gray-600 mb-3">
                       <p>📧 {request.playerEmail}</p>
-                      {request.playerData?.position && (<p>⚽ المركز: {request.playerData.position}</p>)}
-                      <p>📅 {new Date(request.requestedAt as any).toLocaleDateString('ar')}</p>
+                      {request.playerData?.position && (<p>⚽ {copy.joinRequests.position} {request.playerData.position}</p>)}
+                      <p>📅 {new Date(request.requestedAt as any).toLocaleDateString(isRTL ? 'ar-EG' : 'en-GB')}</p>
                     </div>
                     <div className="flex gap-2">
                       <Button size="sm" onClick={async () => {
                         try {
-                          await organizationReferralService.approveJoinRequest(request.id, user!.id, 'الوكيل');
-                          toast.success('تم قبول اللاعب بنجاح');
+                          await organizationReferralService.approveJoinRequest(request.id, user!.id, accountName);
+                          toast.success(copy.toast.acceptSuccess);
                           loadJoinRequests();
                           loadPlayers();
                         } catch (error) {
-                          toast.error('فشل في قبول اللاعب');
+                          toast.error(copy.toast.acceptFailed);
                         }
-                      }}>✅ قبول</Button>
+                      }}>✅ {copy.common.accept}</Button>
                       <Button size="sm" variant="outline" onClick={async () => {
                         try {
-                          await organizationReferralService.rejectJoinRequest(request.id, user!.id, 'الوكيل', 'تم الرفض');
-                          toast.success('تم رفض الطلب');
+                          await organizationReferralService.rejectJoinRequest(request.id, user!.id, accountName, copy.toast.rejectReason);
+                          toast.success(copy.toast.rejectSuccess);
                           loadJoinRequests();
                         } catch (error) {
-                          toast.error('فشل في رفض الطلب');
+                          toast.error(copy.toast.rejectFailed);
                         }
-                      }}>❌ رفض</Button>
+                      }}>❌ {copy.common.reject}</Button>
                     </div>
                   </div>
                 ))}
@@ -473,8 +459,8 @@ export default function AgentPlayersPage() {
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-cyan-600 mb-2">إدارة اللاعبين</h1>
-            <p className="text-gray-600">إدارة قائمة اللاعبين المتعاقدين مع الوكيل ({players.length} لاعب)</p>
+            <h1 className="text-3xl font-bold text-cyan-600 mb-2">{copy.header.title}</h1>
+            <p className="text-gray-600">{interpolate(copy.header.description, { accountName, count: players.length })}</p>
           </div>
           
           <div className="flex gap-3">
@@ -484,13 +470,13 @@ export default function AgentPlayersPage() {
               disabled={players.length === 0}
             >
               <Download className="mr-2 w-4 h-4" />
-              تصدير Excel
+              {copy.header.exportExcel}
             </Button>
             
             <Link href="/dashboard/agent/players/add">
               <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">
                 <Plus className="mr-2 w-4 h-4" />
-                إضافة لاعب جديد
+                {copy.header.addPlayer}
               </Button>
             </Link>
           </div>
@@ -503,7 +489,7 @@ export default function AgentPlayersPage() {
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 type="text"
-                placeholder="البحث في الاسم، الإيميل، أو الهاتف..."
+                placeholder={copy.filters.searchPlaceholder}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pr-10"
@@ -513,35 +499,35 @@ export default function AgentPlayersPage() {
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger>
                 <Filter className="mr-2 w-4 h-4" />
-                <SelectValue placeholder="حالة الاشتراك" />
+                <SelectValue placeholder={copy.filters.subscriptionStatus} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">جميع الحالات</SelectItem>
-                <SelectItem value="active">نشط</SelectItem>
-                <SelectItem value="inactive">غير نشط</SelectItem>
-                <SelectItem value="expired">منتهي</SelectItem>
+                <SelectItem value="all">{copy.filters.allStatuses}</SelectItem>
+                <SelectItem value="active">{copy.common.active}</SelectItem>
+                <SelectItem value="inactive">{copy.common.inactive}</SelectItem>
+                <SelectItem value="expired">{copy.common.expired}</SelectItem>
               </SelectContent>
             </Select>
             
             <Select value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger>
-                <SelectValue placeholder="الترتيب حسب" />
+                <SelectValue placeholder={copy.filters.sortBy} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="created_at">تاريخ الإضافة</SelectItem>
-                <SelectItem value="updated_at">آخر تحديث</SelectItem>
-                <SelectItem value="name">الاسم</SelectItem>
-                <SelectItem value="subscription_status">حالة الاشتراك</SelectItem>
+                <SelectItem value="created_at">{copy.filters.createdAt}</SelectItem>
+                <SelectItem value="updated_at">{copy.filters.updatedAt}</SelectItem>
+                <SelectItem value="name">{copy.filters.name}</SelectItem>
+                <SelectItem value="subscription_status">{copy.filters.subscriptionStatus}</SelectItem>
               </SelectContent>
             </Select>
             
             <Select value={sortOrder} onValueChange={(value: 'asc' | 'desc') => setSortOrder(value)}>
               <SelectTrigger>
-                <SelectValue placeholder="ترتيب" />
+                <SelectValue placeholder={copy.filters.order} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="desc">تنازلي</SelectItem>
-                <SelectItem value="asc">تصاعدي</SelectItem>
+                <SelectItem value="desc">{copy.filters.descending}</SelectItem>
+                <SelectItem value="asc">{copy.filters.ascending}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -562,10 +548,10 @@ export default function AgentPlayersPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="5">5 لكل صفحة</SelectItem>
-              <SelectItem value="10">10 لكل صفحة</SelectItem>
-              <SelectItem value="25">25 لكل صفحة</SelectItem>
-              <SelectItem value="50">50 لكل صفحة</SelectItem>
+              <SelectItem value="5">{interpolate(copy.filters.perPage, { count: 5 })}</SelectItem>
+              <SelectItem value="10">{interpolate(copy.filters.perPage, { count: 10 })}</SelectItem>
+              <SelectItem value="25">{interpolate(copy.filters.perPage, { count: 25 })}</SelectItem>
+              <SelectItem value="50">{interpolate(copy.filters.perPage, { count: 50 })}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -574,18 +560,18 @@ export default function AgentPlayersPage() {
         {currentPlayers.filter(p => (p as any).joinedViaReferral).length === 0 && currentPlayers.filter(p => !(p as any).joinedViaReferral).length === 0 ? (
           <Card className="p-12 text-center">
             <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">لا توجد نتائج</h3>
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">{copy.results.noResults}</h3>
             <p className="text-gray-500 mb-6">
               {searchTerm || filterStatus !== 'all' 
-                ? 'لم يتم العثور على لاعبين يطابقون معايير البحث' 
-                : 'لم يتم إضافة أي لاعبين للوكيل بعد'
+                ? copy.results.noSearchResults
+                : interpolate(copy.results.noPlayers, { accountName })
               }
             </p>
             {(!searchTerm && filterStatus === 'all') && (
               <Link href="/dashboard/agent/players/add">
                 <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">
                   <Plus className="mr-2 w-4 h-4" />
-                  إضافة لاعب جديد
+                  {copy.header.addPlayer}
                 </Button>
               </Link>
             )}
@@ -600,15 +586,15 @@ export default function AgentPlayersPage() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">اللاعب</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">معلومات الاتصال</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">المركز والمقاسات</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الموقع</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الاشتراك</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الوسائط</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">التواريخ</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الانضمام عبر كود</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">العمليات</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.player}</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.contactInfo}</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.positionMeasurements}</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.location}</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.subscription}</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.media}</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.dates}</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.referralJoin}</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.operations}</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -621,7 +607,7 @@ export default function AgentPlayersPage() {
                             {player.profile_image_url || player.profile_image ? (
                               <img
                                 src={player.profile_image_url || player.profile_image}
-                                alt={`صورة اللاعب ${player.full_name || player.name || 'غير محدد'}`}
+                                alt={interpolate(copy.imageAlt, { name: player.full_name || player.name || copy.common.notSpecified })}
                                 className="object-cover w-12 h-12 rounded-full border border-gray-200"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).src = "/images/default-avatar.png";
@@ -640,7 +626,7 @@ export default function AgentPlayersPage() {
                             <div className="text-sm text-gray-500">
                               {(() => {
                                 const age = calculateAge(player.birth_date);
-                                return age ? `${age} سنة` : 'العمر غير محدد';
+                                return age ? `${age} ${copy.common.years}` : copy.common.ageNotSpecified;
                               })()}
                             </div>
                             <div className="text-xs text-gray-400">
@@ -655,7 +641,7 @@ export default function AgentPlayersPage() {
                                 <div className="text-[11px] text-gray-500">
                                   تاريخ الانضمام: {formatDate((player as any).organizationJoinedAt)}
                                   {(player as any).organizationApprovedBy?.userName && (
-                                    <span className="ml-2">— بواسطة: {(player as any).organizationApprovedBy.userName}</span>
+                                    <span className="ml-2">— {copy.common.by}: {(player as any).organizationApprovedBy.userName}</span>
                                   )}
                                 </div>
                               </div>
@@ -669,15 +655,15 @@ export default function AgentPlayersPage() {
                         <div className="text-sm text-gray-900">
                           <div className="flex gap-1 items-center mb-1">
                             <Phone className="w-3 h-3 text-gray-400" />
-                            {player.phone || 'غير محدد'}
+                              {player.phone || copy.common.notSpecified}
                           </div>
                           <div className="flex gap-1 items-center">
                             <Mail className="w-3 h-3 text-gray-400" />
-                            <span className="text-xs">{player.email || 'غير محدد'}</span>
+                              <span className="text-xs">{player.email || copy.common.notSpecified}</span>
                           </div>
                           <div className="mt-2">{(() => { const pct = getProfileCompletion(player); return (
                             <div>
-                              <div className="flex items-center justify-between text-[11px] text-gray-500"><span>اكتمال الملف</span><span>{pct}%</span></div>
+                                  <div className="flex items-center justify-between text-[11px] text-gray-500"><span>{copy.common.profileCompletion}</span><span>{pct}%</span></div>
                               <div className="w-32 h-1.5 bg-gray-200 rounded">
                                 <div className={`h-1.5 rounded ${pct>=80?'bg-emerald-500':pct>=50?'bg-amber-500':'bg-red-500'}`} style={{ width: `${pct}%` }} />
                               </div>
@@ -690,17 +676,17 @@ export default function AgentPlayersPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
                           <div className="font-medium">
-                            {player.primary_position || player.position || 'غير محدد'}
+                              {player.primary_position || player.position || copy.common.notSpecified}
                           </div>
                           {player.secondary_position && (
                             <div className="text-xs text-gray-500">
-                              ثانوي: {player.secondary_position}
+                                {copy.common.secondary}: {player.secondary_position}
                             </div>
                           )}
                           <div className="mt-1 text-xs text-gray-500">
-                            {player.height && `${player.height} سم`}
+                              {player.height && `${player.height} cm`}
                             {player.height && player.weight && ' • '}
-                            {player.weight && `${player.weight} كج`}
+                              {player.weight && `${player.weight} kg`}
                           </div>
                         </div>
                       </td>
@@ -710,10 +696,10 @@ export default function AgentPlayersPage() {
                         <div className="text-sm text-gray-900">
                           <div className="flex gap-1 items-center mb-1">
                             <MapPin className="w-3 h-3 text-gray-400" />
-                            {player.city || 'غير محدد'}
+                              {player.city || copy.common.notSpecified}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {player.nationality || player.country || 'غير محدد'}
+                              {player.nationality || player.country || copy.common.notSpecified}
                           </div>
                         </div>
                       </td>
@@ -724,7 +710,7 @@ export default function AgentPlayersPage() {
                           {getSubscriptionBadge(player.subscription_status, player.subscription_end)}
                           <div className="mt-1 text-xs text-gray-500">
                             {player.subscription_type && (
-                              <div>نوع: {player.subscription_type}</div>
+                                <div>{copy.common.type}: {player.subscription_type}</div>
                             )}
                             <div className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
@@ -753,7 +739,7 @@ export default function AgentPlayersPage() {
                         <div className="text-xs text-gray-600">
                           <div className="flex gap-1 items-center mb-1">
                             <Plus className="w-3 h-3 text-green-600" />
-                            <span className="font-medium">إضافة:</span>
+                              <span className="font-medium">{copy.common.added}:</span>
                           </div>
                           <div className="mb-2">
                             {formatDate(player.createdAt || player.created_at)}
@@ -762,7 +748,7 @@ export default function AgentPlayersPage() {
                           
                           <div className="flex gap-1 items-center mb-1">
                             <Edit className="w-3 h-3 text-blue-600" />
-                            <span className="font-medium">تحديث:</span>
+                              <span className="font-medium">{copy.common.updated}:</span>
                           </div>
                           <div>
                             {formatDate(player.updated_at)}
@@ -773,10 +759,10 @@ export default function AgentPlayersPage() {
 
                       {/* Referral Info */}
                       <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-700">
-                        <div>الكود: {player.referralCodeUsed || '-'}</div>
-                        <div>التاريخ: {formatDate((player as any).organizationJoinedAt)}</div>
+                          <div>{copy.common.code}: {player.referralCodeUsed || '-'}</div>
+                          <div>{copy.common.date}: {formatDate((player as any).organizationJoinedAt)}</div>
                         {(player as any).organizationApprovedBy?.userName && (
-                          <div>الموافق: {(player as any).organizationApprovedBy.userName}</div>
+                            <div>{copy.common.approver}: {(player as any).organizationApprovedBy.userName}</div>
                         )}
                       </td>
 
@@ -788,7 +774,7 @@ export default function AgentPlayersPage() {
                               variant="outline"
                               size="sm"
                               className="text-green-600 hover:bg-green-50"
-                              title="تعديل البيانات"
+                              title={copy.common.editData}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -832,7 +818,7 @@ export default function AgentPlayersPage() {
                             size="sm"
                             onClick={() => handleDeletePlayer(player)}
                             className="text-red-600 hover:bg-red-50"
-                            title="حذف اللاعب"
+                            title={copy.common.deletePlayer}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -847,20 +833,20 @@ export default function AgentPlayersPage() {
           {/* Players added manually by organization */}
           <Card className="overflow-hidden mt-6">
             <div className="p-4 border-b">
-              <h3 className="font-bold text-gray-800">اللاعبون المضافون بواسطة المنظمة ({currentPlayers.filter(p => !(p as any).joinedViaReferral).length})</h3>
+              <h3 className="font-bold text-gray-800">{interpolate(copy.table.addedByOrganization, { count: currentPlayers.filter(p => !(p as any).joinedViaReferral).length })}</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">اللاعب</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">معلومات الاتصال</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">المركز والمقاسات</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الموقع</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الاشتراك</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الوسائط</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">التواريخ</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">العمليات</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.player}</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.contactInfo}</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.positionMeasurements}</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.location}</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.subscription}</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.media}</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.dates}</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.operations}</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -873,7 +859,7 @@ export default function AgentPlayersPage() {
                             {player.profile_image_url || player.profile_image ? (
                               <img
                                 src={player.profile_image_url || player.profile_image}
-                                alt={`صورة اللاعب ${player.full_name || player.name || 'غير محدد'}`}
+                                alt={interpolate(copy.imageAlt, { name: player.full_name || player.name || copy.common.notSpecified })}
                                 className="object-cover w-12 h-12 rounded-full border border-gray-200"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).src = "/images/default-avatar.png";
@@ -892,7 +878,7 @@ export default function AgentPlayersPage() {
                             <div className="text-sm text-gray-500">
                               {(() => {
                                 const age = calculateAge(player.birth_date);
-                                return age ? `${age} سنة` : 'العمر غير محدد';
+                                return age ? `${age} ${copy.common.years}` : copy.common.ageNotSpecified;
                               })()}
                             </div>
                             <div className="text-xs text-gray-400">#{player.id?.slice(0, 8)}</div>
@@ -903,11 +889,11 @@ export default function AgentPlayersPage() {
                       {/* Contact Info */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          <div className="flex gap-1 items-center mb-1"><Phone className="w-3 h-3 text-gray-400" />{player.phone || 'غير محدد'}</div>
-                          <div className="flex gap-1 items-center"><Mail className="w-3 h-3 text-gray-400" /><span className="text-xs">{player.email || 'غير محدد'}</span></div>
+                          <div className="flex gap-1 items-center mb-1"><Phone className="w-3 h-3 text-gray-400" />{player.phone || copy.common.notSpecified}</div>
+                          <div className="flex gap-1 items-center"><Mail className="w-3 h-3 text-gray-400" /><span className="text-xs">{player.email || copy.common.notSpecified}</span></div>
                           <div className="mt-2">{(() => { const pct = getProfileCompletion(player); return (
                             <div>
-                              <div className="flex items-center justify-between text-[11px] text-gray-500"><span>اكتمال الملف</span><span>{pct}%</span></div>
+                              <div className="flex items-center justify-between text-[11px] text-gray-500"><span>{copy.common.profileCompletion}</span><span>{pct}%</span></div>
                               <div className="w-32 h-1.5 bg-gray-200 rounded">
                                 <div className={`h-1.5 rounded ${pct>=80?'bg-emerald-500':pct>=50?'bg-amber-500':'bg-red-500'}`} style={{ width: `${pct}%` }} />
                               </div>
@@ -919,23 +905,23 @@ export default function AgentPlayersPage() {
                       {/* Position & Measurements */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          <div className="font-medium">{player.primary_position || player.position || 'غير محدد'}</div>
-                          {player.secondary_position && (<div className="text-xs text-gray-500">ثانوي: {player.secondary_position}</div>)}
-                          <div className="mt-1 text-xs text-gray-500">{player.height && `${player.height} سم`}{player.height && player.weight && ' • '}{player.weight && `${player.weight} كج`}</div>
+                          <div className="font-medium">{player.primary_position || player.position || copy.common.notSpecified}</div>
+                          {player.secondary_position && (<div className="text-xs text-gray-500">{copy.common.secondary}: {player.secondary_position}</div>)}
+                          <div className="mt-1 text-xs text-gray-500">{player.height && `${player.height} cm`}{player.height && player.weight && ' • '}{player.weight && `${player.weight} kg`}</div>
                         </div>
                       </td>
 
                       {/* Location */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          <div className="flex gap-1 items-center mb-1"><MapPin className="w-3 ه-3 text-gray-400" />{player.city || 'غير محدد'}</div>
-                          <div className="text-xs text-gray-500">{player.nationality || player.country || 'غير محدد'}</div>
+                          <div className="flex gap-1 items-center mb-1"><MapPin className="w-3 h-3 text-gray-400" />{player.city || copy.common.notSpecified}</div>
+                          <div className="text-xs text-gray-500">{player.nationality || player.country || copy.common.notSpecified}</div>
                         </div>
                       </td>
 
                       {/* Subscription */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm">{getSubscriptionBadge(player.subscription_status, player.subscription_end)}<div className="mt-1 text-xs text-gray-500">{player.subscription_type && (<div>نوع: {player.subscription_type}</div>)}<div className="flex items-center gap-1"><Calendar className="w-3 ه-3" />{formatDate(player.subscription_end)}</div></div></div>
+                        <div className="text-sm">{getSubscriptionBadge(player.subscription_status, player.subscription_end)}<div className="mt-1 text-xs text-gray-500">{player.subscription_type && (<div>{copy.common.type}: {player.subscription_type}</div>)}<div className="flex items-center gap-1"><Calendar className="w-3 h-3" />{formatDate(player.subscription_end)}</div></div></div>
                       </td>
 
                       {/* Media */}
@@ -945,16 +931,16 @@ export default function AgentPlayersPage() {
 
                       {/* Dates */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-xs text-gray-600"><div className="flex gap-1 items-center mb-1"><Plus className="w-3 h-3 text-green-600" /><span className="font-medium">إضافة:</span></div><div className="mb-2">{formatDate(player.createdAt || player.created_at)}<div className="text-gray-400">{getTimeAgo(player.createdAt || player.created_at)}</div></div><div className="flex gap-1 items-center mb-1"><Edit className="w-3 h-3 text-blue-600" /><span className="font-medium">تحديث:</span></div><div>{formatDate(player.updated_at)}<div className="text-gray-400">{getTimeAgo(player.updated_at)}</div></div></div>
+                        <div className="text-xs text-gray-600"><div className="flex gap-1 items-center mb-1"><Plus className="w-3 h-3 text-green-600" /><span className="font-medium">{copy.common.added}:</span></div><div className="mb-2">{formatDate(player.createdAt || player.created_at)}<div className="text-gray-400">{getTimeAgo(player.createdAt || player.created_at)}</div></div><div className="flex gap-1 items-center mb-1"><Edit className="w-3 h-3 text-blue-600" /><span className="font-medium">{copy.common.updated}:</span></div><div>{formatDate(player.updated_at)}<div className="text-gray-400">{getTimeAgo(player.updated_at)}</div></div></div>
                       </td>
 
                       {/* Actions */}
                       <td className="px-6 py-4 text-sm font-medium whitespace-nowrap">
                         <div className="flex gap-2">
-                          <Link href={`/dashboard/agent/players/add?edit=${player.id}`}><Button variant="outline" size="sm" className="text-green-600 hover:bg-green-50" title="تعديل البيانات"><Edit className="w-4 h-4" /></Button></Link>
+                          <Link href={`/dashboard/agent/players/add?edit=${player.id}`}><Button variant="outline" size="sm" className="text-green-600 hover:bg-green-50" title={copy.common.editData}><Edit className="w-4 h-4" /></Button></Link>
                           <CreateLoginAccountButton playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, agent_id: (player as any).agent_id || user?.id, ...player }} source="players" onSuccess={(password) => { console.log(`تم إنشاء حساب للاعب ${player.full_name || player.name} بكلمة المرور: ${password}`); }} />
                           <IndependentAccountCreator playerId={player.id} playerData={{ full_name: player.full_name || player.name, name: player.name || player.full_name, email: player.email, phone: player.phone, whatsapp: (player as any).whatsapp, agent_id: (player as any).agent_id || user?.id, ...player }} source="players" variant="outline" size="sm" className="text-purple-600 hover:bg-purple-50" />
-                          <Button variant="outline" size="sm" onClick={() => handleDeletePlayer(player)} className="text-red-600 hover:bg-red-50" title="حذف اللاعب"><Trash2 className="w-4 ه-4" /></Button>
+                          <Button variant="outline" size="sm" onClick={() => handleDeletePlayer(player)} className="text-red-600 hover:bg-red-50" title={copy.common.deletePlayer}><Trash2 className="w-4 h-4" /></Button>
                         </div>
                       </td>
                     </tr>
@@ -971,7 +957,7 @@ export default function AgentPlayersPage() {
           <Card className="p-4">
             <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
               <div className="text-sm text-gray-600">
-                عرض {startIndex + 1}-{Math.min(endIndex, totalPlayers)} من {totalPlayers} نتيجة
+                {interpolate(copy.results.range, { start: startIndex + 1, end: Math.min(endIndex, totalPlayers), total: totalPlayers })}
               </div>
               
               <div className="flex gap-2 items-center">
@@ -981,7 +967,7 @@ export default function AgentPlayersPage() {
                   onClick={() => setCurrentPage(1)}
                   disabled={currentPage === 1}
                 >
-                  الأولى
+                  {copy.common.first}
                 </Button>
                 
                 <Button
@@ -990,7 +976,7 @@ export default function AgentPlayersPage() {
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
                 >
-                  السابق
+                  {copy.common.previous}
                 </Button>
                 
                 <div className="flex gap-1">
@@ -1026,7 +1012,7 @@ export default function AgentPlayersPage() {
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
                 >
-                  التالي
+                  {copy.common.next}
                 </Button>
                 
                 <Button
@@ -1035,7 +1021,7 @@ export default function AgentPlayersPage() {
                   onClick={() => setCurrentPage(totalPages)}
                   disabled={currentPage === totalPages}
                 >
-                  الأخيرة
+                  {copy.common.last}
                 </Button>
               </div>
             </div>
@@ -1046,10 +1032,9 @@ export default function AgentPlayersPage() {
         {isDeleteModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">تأكيد الحذف</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{copy.modal.deleteTitle}</h3>
               <p className="text-gray-600 mb-6">
-                هل أنت متأكد من حذف اللاعب "{playerToDelete?.full_name || playerToDelete?.name}"؟
-                هذا الإجراء لا يمكن التراجع عنه.
+                {interpolate(copy.modal.deleteMessage, { name: playerToDelete?.full_name || playerToDelete?.name || copy.common.notSpecified })}
               </p>
               <div className="flex gap-3 justify-end">
                 <Button
@@ -1059,13 +1044,13 @@ export default function AgentPlayersPage() {
                     setPlayerToDelete(null);
                   }}
                 >
-                  إلغاء
+                  {copy.common.cancel}
                 </Button>
                 <Button
                   onClick={confirmDelete}
                   className="bg-red-600 hover:bg-red-700 text-white"
                 >
-                  حذف
+                  {copy.common.delete}
                 </Button>
               </div>
             </div>

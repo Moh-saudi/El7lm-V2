@@ -16,28 +16,24 @@ import { MedicalTab } from "./_components/MedicalTab";
 import { SkillsTab } from "./_components/SkillsTab";
 import { EducationTab } from "./_components/EducationTab";
 import { ContractsTab } from "./_components/ContractsTab";
-
-const REQUIRED_PROFILE_FIELDS = [
-  { key: 'name',        label: 'الاسم الكامل' },
-  { key: 'nationality', label: 'الجنسية' },
-  { key: 'position',    label: 'المركز' },
-  { key: 'phone',       label: 'رقم الهاتف' },
-  { key: 'birth_date',  label: 'تاريخ الميلاد' },
-  { key: 'country',     label: 'الدولة' },
-];
+import { useTranslation } from "@/lib/i18n";
 
 // Placeholder for pending tabs
-const PlaceholderTab = ({ title, icon: Icon }: { title: string, icon: any }) => (
-  <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed rounded-xl bg-gray-50 mt-4 animate-in fade-in zoom-in-50 duration-500">
-    <div className="p-4 bg-white rounded-full mb-4 shadow-sm">
-      <Icon className="w-12 h-12 text-gray-300" />
+const PlaceholderTab = ({ title, icon: Icon }: { title: string, icon: any }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed rounded-xl bg-gray-50 mt-4 animate-in fade-in zoom-in-50 duration-500">
+      <div className="p-4 bg-white rounded-full mb-4 shadow-sm">
+        <Icon className="w-12 h-12 text-gray-300" />
+      </div>
+      <h3 className="text-xl font-semibold text-gray-700 mb-2">{title}</h3>
+      <p className="text-gray-500 max-w-sm mx-auto">{t('career.underDevelopment')}</p>
     </div>
-    <h3 className="text-xl font-semibold text-gray-700 mb-2">{title}</h3>
-    <p className="text-gray-500 max-w-sm mx-auto">هذا القسم قيد التطوير حالياً، سيتم إتاحته قريباً بمميزات متقدمة.</p>
-  </div>
-);
+  );
+};
 
 export default function PlayerProfilePage() {
+  const { t } = useTranslation();
 
   const { form, loading, saving, saveProfile, user, isEditing, setIsEditing } = usePlayerProfile();
   const [errorTabs, setErrorTabs] = useState<string[]>([]);
@@ -48,7 +44,16 @@ export default function PlayerProfilePage() {
   const SNOOZE_DAYS = 3;
   const formValues = form.watch();
 
-  const missingFields = REQUIRED_PROFILE_FIELDS.filter(({ key }) => {
+  const requiredProfileFields = [
+    { key: 'name',        label: t('profile.personalTab.fullName') },
+    { key: 'nationality', label: t('profile.personalTab.nationality') },
+    { key: 'position',    label: t('profile.sportsTab.positions.' + form?.getValues('position')) || t('profile.sportsTab.primaryPosition') },
+    { key: 'phone',       label: t('profile.personalTab.phone') },
+    { key: 'birth_date',  label: t('profile.personalTab.birthDate') },
+    { key: 'country',     label: t('profile.personalTab.country') },
+  ];
+
+  const missingFields = requiredProfileFields.filter(({ key }) => {
     const val = formValues[key as keyof typeof formValues];
     return !val || (typeof val === 'string' && !val.trim());
   });
@@ -110,16 +115,16 @@ export default function PlayerProfilePage() {
       setErrorTabs(uniqueErrorTabs);
 
       const tabLabels: Record<string, string> = {
-        personal: 'البيانات الشخصية', sports: 'المعلومات الرياضية', skills: 'المهارات',
-        education: 'التعليم', medical: 'الطبي', contracts: 'العقود', media: 'الوسائط',
+        personal: t('profile.tabPersonal'), sports: t('profile.tabSports'), skills: t('profile.tabSkills'),
+        education: t('profile.tabEducation'), medical: t('profile.tabMedical'), contracts: t('profile.tabContracts'), media: t('profile.tabMedia'),
       };
 
       const errorLabels = uniqueErrorTabs.map(t => tabLabels[t] || t);
 
       toast.error(
         <div className="flex flex-col gap-1">
-          <span className="font-bold">تنبيه: لم يتم الحفظ لوجود بيانات ناقصة</span>
-          <span className="text-sm">يرجى مراجعة التبويبات التالية: {errorLabels.join('، ')}</span>
+          <span className="font-bold">{t('profile.missingFieldsWarning')}</span>
+          <span className="text-sm">{t('profile.checkTabs')} {errorLabels.join('، ')}</span>
         </div>
         , { duration: 5000 });
 
@@ -135,7 +140,7 @@ export default function PlayerProfilePage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50" dir="rtl">
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-gray-500 font-medium">جاري تحميل الملف الشخصي...</p>
+          <p className="text-gray-500 font-medium">{t('profile.loading')}</p>
         </div>
       </div>
     );

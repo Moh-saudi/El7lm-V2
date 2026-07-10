@@ -41,9 +41,18 @@ import { toast } from 'react-toastify';
 import { organizationReferralService } from '@/lib/organization/organization-referral-service';
 import { PlayerJoinRequest } from '@/types/organization-referral';
 import OrgReferralSummaryCard from '@/components/referrals/OrgReferralSummaryCard';
+import { useTranslation } from '@/lib/i18n';
+import {
+  getPlayersManagementAccountName,
+  getPlayersManagementCopy,
+  interpolate
+} from '@/lib/i18n/page-copy/players-management';
 
 export default function TrainerPlayersPage() {
   const { user, userData } = useAuth();
+  const { locale, isRTL } = useTranslation();
+  const copy = getPlayersManagementCopy(locale);
+  const accountName = getPlayersManagementAccountName(locale, 'trainer');
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -95,7 +104,7 @@ export default function TrainerPlayersPage() {
       setPlayers(playersData);
     } catch (error) {
       console.error("Error loading players:", error);
-      toast.error("Failed to load players.");
+      toast.error(copy.toast.loadPlayersFailed);
     } finally {
       setLoading(false);
     }
@@ -215,13 +224,13 @@ export default function TrainerPlayersPage() {
     }
     
     if (status === 'active' && end > now) {
-      return <Badge className="text-green-800 bg-green-100 hover:bg-green-200"><CheckCircle className="mr-1 w-3 h-3" />نشط</Badge>;
+      return <Badge className="text-green-800 bg-green-100 hover:bg-green-200"><CheckCircle className="mr-1 w-3 h-3" />{copy.common.active}</Badge>;
     } else if (status === 'active' && end <= now) {
-      return <Badge className="text-yellow-800 bg-yellow-100 hover:bg-yellow-200"><AlertCircle className="mr-1 w-3 h-3" />منتهي</Badge>;
+      return <Badge className="text-yellow-800 bg-yellow-100 hover:bg-yellow-200"><AlertCircle className="mr-1 w-3 h-3" />{copy.common.expired}</Badge>;
     } else if (status === 'expired') {
-      return <Badge className="text-red-800 bg-red-100 hover:bg-red-200"><XCircle className="mr-1 w-3 h-3" />منتهي</Badge>;
+      return <Badge className="text-red-800 bg-red-100 hover:bg-red-200"><XCircle className="mr-1 w-3 h-3" />{copy.common.expired}</Badge>;
     } else {
-      return <Badge className="text-gray-800 bg-gray-100 hover:bg-gray-200"><XCircle className="mr-1 w-3 h-3" />غير نشط</Badge>;
+      return <Badge className="text-gray-800 bg-gray-100 hover:bg-gray-200"><XCircle className="mr-1 w-3 h-3" />{copy.common.inactive}</Badge>;
     }
   };
 
@@ -256,7 +265,7 @@ export default function TrainerPlayersPage() {
 
   // Format date
   const formatDate = (date: any) => {
-    if (!date) return 'غير محدد';
+    if (!date) return copy.common.notSpecified;
     try {
       let d: Date;
       if (typeof date === 'object' && date.toDate && typeof date.toDate === 'function') {
@@ -267,19 +276,19 @@ export default function TrainerPlayersPage() {
         d = new Date(date);
       }
       
-      return d.toLocaleDateString('en-GB', {
+      return d.toLocaleDateString(isRTL ? 'ar-EG' : 'en-GB', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       });
     } catch (error) {
-      return 'غير محدد';
+      return copy.common.notSpecified;
     }
   };
 
   // Get time ago
   const getTimeAgo = (date: any) => {
-    if (!date) return 'غير محدد';
+    if (!date) return copy.common.notSpecified;
     try {
       let d: Date;
       if (typeof date === 'object' && date.toDate && typeof date.toDate === 'function') {
@@ -293,33 +302,20 @@ export default function TrainerPlayersPage() {
       const now = new Date();
       const diffInSeconds = Math.floor((now.getTime() - d.getTime()) / 1000);
       
-      if (diffInSeconds < 60) return 'الآن';
-      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} دقيقة`;
-      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} ساعة`;
-      if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} يوم`;
-      if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)} شهر`;
-      return `${Math.floor(diffInSeconds / 31536000)} سنة`;
+      if (diffInSeconds < 60) return copy.common.now;
+      if (diffInSeconds < 3600) return interpolate(copy.common.minute, { count: Math.floor(diffInSeconds / 60) });
+      if (diffInSeconds < 86400) return interpolate(copy.time.hour, { count: Math.floor(diffInSeconds / 3600) });
+      if (diffInSeconds < 2592000) return interpolate(copy.time.day, { count: Math.floor(diffInSeconds / 86400) });
+      if (diffInSeconds < 31536000) return interpolate(copy.time.month, { count: Math.floor(diffInSeconds / 2592000) });
+      return interpolate(copy.common.year, { count: Math.floor(diffInSeconds / 31536000) });
     } catch (error) {
-      return 'غير محدد';
+      return copy.common.notSpecified;
     }
   };
 
   // Export to Excel
   const exportToExcel = () => {
-    const headers = [
-      'الاسم الكامل',
-      'البريد الإلكتروني',
-      'رقم الهاتف',
-      'الجنسية',
-      'المدينة',
-      'الموقع الأساسي',
-      'الموقع الثانوي',
-      'العمر',
-      'الطول',
-      'الوزن',
-      'حالة الاشتراك',
-      'تاريخ الإنشاء'
-    ];
+    const headers = copy.exportHeaders;
 
     const data = players.map(player => [
       player.full_name || player.name || '',
@@ -332,7 +328,7 @@ export default function TrainerPlayersPage() {
       calculateAge(player.birth_date) || '',
       player.height || '',
       player.weight || '',
-      player.subscription_status || 'غير نشط',
+      player.subscription_status || copy.common.inactive,
       formatDate(player.createdAt || player.created_at)
     ]);
 
@@ -375,14 +371,14 @@ export default function TrainerPlayersPage() {
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="flex flex-col items-center">
           <div className="w-16 h-16 border-4 border-green-500 rounded-full border-t-transparent animate-spin"></div>
-          <p className="mt-4 text-gray-600">جاري تحميل اللاعبين...</p>
+          <p className="mt-4 text-gray-600">{copy.common.loadingPlayers}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white" dir={isRTL ? 'rtl' : 'ltr'}>
       <main className="container px-4 py-8 mx-auto">
         {/* Referrals summary card */}
         <OrgReferralSummaryCard accountType="trainer" />
@@ -390,8 +386,8 @@ export default function TrainerPlayersPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">إدارة اللاعبين</h1>
-              <p className="text-gray-600">عرض وإدارة جميع اللاعبين المسجلين</p>
+              <h1 className="text-3xl font-bold text-gray-900">{copy.header.title}</h1>
+              <p className="text-gray-600">{copy.header.trainerDescription}</p>
             </div>
             <div className="flex items-center gap-4">
               <Button
@@ -400,12 +396,12 @@ export default function TrainerPlayersPage() {
                 className="flex items-center gap-2"
               >
                 <Download className="w-4 h-4" />
-                تصدير البيانات
+                {copy.header.exportData}
               </Button>
               <Link href="/dashboard/trainer/players/add">
                 <Button className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
                   <Plus className="w-4 h-4" />
-                  إضافة لاعب جديد
+                  {copy.header.addPlayer}
                 </Button>
               </Link>
             </div>
@@ -417,7 +413,7 @@ export default function TrainerPlayersPage() {
               <div className="flex items-center">
                 <Users className="w-8 h-8 text-green-600" />
                 <div className="mr-3">
-                  <p className="text-sm text-gray-600">إجمالي اللاعبين</p>
+                  <p className="text-sm text-gray-600">{copy.stats.totalPlayers}</p>
                   <p className="text-2xl font-bold text-gray-900">{players.length}</p>
                 </div>
               </div>
@@ -426,7 +422,7 @@ export default function TrainerPlayersPage() {
               <div className="flex items-center">
                 <CheckCircle className="w-8 h-8 text-green-600" />
                 <div className="mr-3">
-                  <p className="text-sm text-gray-600">اللاعبين النشطين</p>
+                  <p className="text-sm text-gray-600">{copy.stats.activePlayers}</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {players.filter(p => p.subscription_status === 'active').length}
                   </p>
@@ -437,7 +433,7 @@ export default function TrainerPlayersPage() {
               <div className="flex items-center">
                 <AlertCircle className="w-8 h-8 text-yellow-600" />
                 <div className="mr-3">
-                  <p className="text-sm text-gray-600">الاشتراكات المنتهية</p>
+                  <p className="text-sm text-gray-600">{copy.stats.expiredSubscriptions}</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {players.filter(p => p.subscription_status === 'expired').length}
                   </p>
@@ -448,7 +444,7 @@ export default function TrainerPlayersPage() {
               <div className="flex items-center">
                 <XCircle className="w-8 h-8 text-red-600" />
                 <div className="mr-3">
-                  <p className="text-sm text-gray-600">غير النشطين</p>
+                  <p className="text-sm text-gray-600">{copy.stats.inactivePlayers}</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {players.filter(p => !p.subscription_status || p.subscription_status === 'inactive').length}
                   </p>
@@ -465,7 +461,7 @@ export default function TrainerPlayersPage() {
               <div className="relative">
                 <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
-                  placeholder="البحث بالاسم أو البريد الإلكتروني أو الهاتف..."
+                  placeholder={copy.filters.searchPlaceholder}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pr-10 w-full md:w-80"
@@ -473,13 +469,13 @@ export default function TrainerPlayersPage() {
               </div>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="تصفية حسب الحالة" />
+                  <SelectValue placeholder={copy.filters.subscriptionStatus} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">جميع الحالات</SelectItem>
-                  <SelectItem value="active">نشط</SelectItem>
-                  <SelectItem value="expired">منتهي</SelectItem>
-                  <SelectItem value="inactive">غير نشط</SelectItem>
+                  <SelectItem value="all">{copy.filters.allStatuses}</SelectItem>
+                  <SelectItem value="active">{copy.common.active}</SelectItem>
+                  <SelectItem value="expired">{copy.common.expired}</SelectItem>
+                  <SelectItem value="inactive">{copy.common.inactive}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -490,14 +486,14 @@ export default function TrainerPlayersPage() {
                   size="sm"
                   onClick={() => setViewMode('table')}
                 >
-                  جدول
+                  {copy.common.tableView}
                 </Button>
                 <Button
                   variant={viewMode === 'cards' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setViewMode('cards')}
                 >
-                  بطاقات
+                  {copy.common.cardsView}
                 </Button>
               </div>
             </div>
@@ -509,29 +505,29 @@ export default function TrainerPlayersPage() {
           <>
           <Card className="overflow-hidden">
             <div className="p-4 border-b">
-              <h3 className="font-bold text-gray-800">اللاعبون المنضمون عبر كود الإحالة ({currentPlayers.filter(p => (p as any).joinedViaReferral).length})</h3>
+              <h3 className="font-bold text-gray-800">{interpolate(copy.table.joinedViaReferral, { count: currentPlayers.filter(p => (p as any).joinedViaReferral).length })}</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      اللاعب
+                      {copy.table.player}
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      معلومات الاتصال
+                      {copy.table.contactInfo}
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الموقع</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">العمر</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{copy.table.location}</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{copy.table.age}</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      حالة الاشتراك
+                      {copy.filters.subscriptionStatus}
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      التواريخ
+                      {copy.table.dates}
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الانضمام عبر كود</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{copy.table.referralJoin}</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      الإجراءات
+                      {copy.table.actions}
                     </th>
                   </tr>
                 </thead>
@@ -557,20 +553,20 @@ export default function TrainerPlayersPage() {
                           </div>
                           <div className="mr-4">
                             <div className="text-sm font-medium text-gray-900">
-                              {player.full_name || player.name || 'غير محدد'}
+                              {player.full_name || player.name || copy.common.notSpecified}
                             </div>
                             <div className="text-sm text-gray-500">
-                              {player.nationality || 'غير محدد'}
+                              {player.nationality || copy.common.notSpecified}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{player.email || 'غير محدد'}</div>
-                        <div className="text-sm text-gray-500">{player.phone || 'غير محدد'}</div>
+                        <div className="text-sm text-gray-900">{player.email || copy.common.notSpecified}</div>
+                        <div className="text-sm text-gray-500">{player.phone || copy.common.notSpecified}</div>
                         <div className="mt-2">{(() => { const pct = getProfileCompletion(player); return (
                           <div>
-                            <div className="flex items-center justify-between text-[11px] text-gray-500"><span>اكتمال الملف</span><span>{pct}%</span></div>
+                            <div className="flex items-center justify-between text-[11px] text-gray-500"><span>{copy.common.profileCompletion}</span><span>{pct}%</span></div>
                             <div className="w-32 h-1.5 bg-gray-200 rounded">
                               <div className={`h-1.5 rounded ${pct>=80?'bg-emerald-500':pct>=50?'bg-amber-500':'bg-red-500'}`} style={{ width: `${pct}%` }} />
                             </div>
@@ -579,7 +575,7 @@ export default function TrainerPlayersPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {player.primary_position || player.position || 'غير محدد'}
+                          {player.primary_position || player.position || copy.common.notSpecified}
                         </div>
                         {player.secondary_position && (
                           <div className="text-sm text-gray-500">
@@ -588,7 +584,7 @@ export default function TrainerPlayersPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {calculateAge(player.birth_date) || 'غير محدد'}
+                        {calculateAge(player.birth_date) || copy.common.notSpecified}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getSubscriptionBadge(player.subscription_status || 'inactive', player.subscription_end)}
@@ -597,7 +593,7 @@ export default function TrainerPlayersPage() {
                         <div className="text-xs text-gray-600">
                           <div className="flex gap-1 items-center mb-1">
                             <Plus className="w-3 h-3 text-green-600" />
-                            <span className="font-medium">إضافة:</span>
+                            <span className="font-medium">{copy.common.added}:</span>
                           </div>
                           <div className="mb-2">
                             {formatDate(player.createdAt || player.created_at)}
@@ -606,7 +602,7 @@ export default function TrainerPlayersPage() {
                           
                           <div className="flex gap-1 items-center mb-1">
                             <Edit className="w-3 h-3 text-blue-600" />
-                            <span className="font-medium">تحديث:</span>
+                            <span className="font-medium">{copy.common.updated}:</span>
                           </div>
                           <div>
                             {formatDate(player.updated_at)}
@@ -616,10 +612,10 @@ export default function TrainerPlayersPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="text-xs text-gray-700">
-                          <div>الكود: {player.referralCodeUsed || '-'}</div>
-                          <div>التاريخ: {formatDate((player as any).organizationJoinedAt)}</div>
+                          <div>{copy.common.code}: {player.referralCodeUsed || '-'}</div>
+                          <div>{copy.common.date}: {formatDate((player as any).organizationJoinedAt)}</div>
                           {(player as any).organizationApprovedBy?.userName && (
-                            <div>الموافق: {(player as any).organizationApprovedBy.userName}</div>
+                            <div>{copy.common.approver}: {(player as any).organizationApprovedBy.userName}</div>
                           )}
                         </div>
                       </td>
@@ -639,11 +635,11 @@ export default function TrainerPlayersPage() {
                             <SendMessageButton
                               user={user}
                               userData={userData}
-                              getUserDisplayName={() => (userData as any)?.full_name || (userData as any)?.name || user?.email || 'مستخدم'}
+                              getUserDisplayName={() => (userData as any)?.full_name || (userData as any)?.name || user?.email || copy.common.userFallback}
                               targetUserId={player.id}
                               targetUserName={player.full_name || player.name || ''}
                               targetUserType="player"
-                              buttonText="رسالة"
+                              buttonText={copy.common.message}
                               buttonVariant="outline"
                               buttonSize="sm"
                               redirectToMessages={true}
@@ -702,19 +698,19 @@ export default function TrainerPlayersPage() {
           {/* Players added manually by trainer */}
           <Card className="overflow-hidden mt-6">
             <div className="p-4 border-b">
-              <h3 className="font-bold text-gray-800">اللاعبون المضافون بواسطة المدرب ({currentPlayers.filter(p => !(p as any).joinedViaReferral).length})</h3>
+              <h3 className="font-bold text-gray-800">{interpolate(copy.table.addedByOrganization, { count: currentPlayers.filter(p => !(p as any).joinedViaReferral).length })}</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">اللاعب</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">معلومات الاتصال</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الموقع</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">العمر</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">حالة الاشتراك</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التواريخ</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الإجراءات</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{copy.table.player}</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{copy.table.contactInfo}</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{copy.table.location}</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{copy.table.age}</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{copy.filters.subscriptionStatus}</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{copy.table.dates}</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{copy.table.actions}</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -730,28 +726,28 @@ export default function TrainerPlayersPage() {
                             )}
                           </div>
                           <div className="mr-4">
-                            <div className="text-sm font-medium text-gray-900">{player.full_name || player.name || 'غير محدد'}</div>
-                            <div className="text-sm text-gray-500">{player.nationality || 'غير محدد'}</div>
+                            <div className="text-sm font-medium text-gray-900">{player.full_name || player.name || copy.common.notSpecified}</div>
+                            <div className="text-sm text-gray-500">{player.nationality || copy.common.notSpecified}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{player.email || 'غير محدد'}</div>
-                        <div className="text-sm text-gray-500">{player.phone || 'غير محدد'}</div>
+                        <div className="text-sm text-gray-900">{player.email || copy.common.notSpecified}</div>
+                        <div className="text-sm text-gray-500">{player.phone || copy.common.notSpecified}</div>
                         <div className="mt-2">{(() => { const pct = getProfileCompletion(player); return (
                           <div>
-                            <div className="flex items-center justify-between text-[11px] text-gray-500"><span>اكتمال الملف</span><span>{pct}%</span></div>
+                            <div className="flex items-center justify-between text-[11px] text-gray-500"><span>{copy.common.profileCompletion}</span><span>{pct}%</span></div>
                             <div className="w-32 h-1.5 bg-gray-200 rounded">
                               <div className={`h-1.5 rounded ${pct>=80?'bg-emerald-500':pct>=50?'bg-amber-500':'bg-red-500'}`} style={{ width: `${pct}%` }} />
                             </div>
                           </div>
                         ); })()}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-900">{player.primary_position || player.position || 'غير محدد'}</div>{player.secondary_position && (<div className="text-sm text-gray-500">{player.secondary_position}</div>)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{calculateAge(player.birth_date) || 'غير محدد'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-sm text-gray-900">{player.primary_position || player.position || copy.common.notSpecified}</div>{player.secondary_position && (<div className="text-sm text-gray-500">{player.secondary_position}</div>)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{calculateAge(player.birth_date) || copy.common.notSpecified}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{getSubscriptionBadge(player.subscription_status || 'inactive', player.subscription_end)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-xs text-gray-600"><div className="flex gap-1 items-center mb-1"><Plus className="w-3 h-3 text-green-600" /><span className="font-medium">إضافة:</span></div><div className="mb-2">{formatDate(player.createdAt || player.created_at)}<div className="text-gray-400">{getTimeAgo(player.createdAt || player.created_at)}</div></div><div className="flex gap-1 items-center mb-1"><Edit className="w-3 h-3 text-blue-600" /><span className="font-medium">تحديث:</span></div><div>{formatDate(player.updated_at)}<div className="text-gray-400">{getTimeAgo(player.updated_at)}</div></div></div></td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-2"><Link href={`/dashboard/trainer/players/${player.id}`}><Button variant="outline" size="sm"><Eye className="w-4 h-4" /></Button></Link><Link href={`/dashboard/trainer/players/${player.id}/edit`}><Button variant="outline" size="sm"><Edit className="w-4 h-4" /></Button></Link>{player.id && (<SendMessageButton user={user} userData={userData} getUserDisplayName={() => (userData as any)?.full_name || (userData as any)?.name || user?.email || 'مستخدم'} targetUserId={player.id} targetUserName={player.full_name || player.name || ''} targetUserType="player" buttonText="رسالة" buttonVariant="outline" buttonSize="sm" redirectToMessages={true} />)}<Button variant="outline" size="sm" onClick={() => handleDeletePlayer(player)} className="text-red-600 hover:text-red-800"><Trash2 className="w-4 h-4" /></Button></div></td>
+                      <td className="px-6 py-4 whitespace-nowrap"><div className="text-xs text-gray-600"><div className="flex gap-1 items-center mb-1"><Plus className="w-3 h-3 text-green-600" /><span className="font-medium">{copy.common.added}:</span></div><div className="mb-2">{formatDate(player.createdAt || player.created_at)}<div className="text-gray-400">{getTimeAgo(player.createdAt || player.created_at)}</div></div><div className="flex gap-1 items-center mb-1"><Edit className="w-3 h-3 text-blue-600" /><span className="font-medium">{copy.common.updated}:</span></div><div>{formatDate(player.updated_at)}<div className="text-gray-400">{getTimeAgo(player.updated_at)}</div></div></div></td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium"><div className="flex items-center gap-2"><Link href={`/dashboard/trainer/players/${player.id}`}><Button variant="outline" size="sm"><Eye className="w-4 h-4" /></Button></Link><Link href={`/dashboard/trainer/players/${player.id}/edit`}><Button variant="outline" size="sm"><Edit className="w-4 h-4" /></Button></Link>{player.id && (<SendMessageButton user={user} userData={userData} getUserDisplayName={() => (userData as any)?.full_name || (userData as any)?.name || user?.email || copy.common.userFallback} targetUserId={player.id} targetUserName={player.full_name || player.name || ''} targetUserType="player" buttonText={copy.common.message} buttonVariant="outline" buttonSize="sm" redirectToMessages={true} />)}<Button variant="outline" size="sm" onClick={() => handleDeletePlayer(player)} className="text-red-600 hover:text-red-800"><Trash2 className="w-4 h-4" /></Button></div></td>
                     </tr>
                   ))}
                 </tbody>
@@ -785,26 +781,26 @@ export default function TrainerPlayersPage() {
                     </div>
                     <div className="mr-4 flex-1">
                       <h3 className="text-lg font-semibold text-gray-900">
-                        {player.full_name || player.name || 'غير محدد'}
+                        {player.full_name || player.name || copy.common.notSpecified}
                       </h3>
-                      <p className="text-sm text-gray-500">{player.nationality || 'غير محدد'}</p>
+                      <p className="text-sm text-gray-500">{player.nationality || copy.common.notSpecified}</p>
                       {player.joinedViaReferral && (
                         <div className="mt-1 space-y-1">
                           <div className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                            انضم عبر كود
+                            {copy.common.joinedViaCode}
                             {player.referralCodeUsed && <span className="font-mono">({player.referralCodeUsed})</span>}
                           </div>
                           <div className="text-[11px] text-gray-500">
-                            تاريخ الانضمام: {formatDate((player as any).organizationJoinedAt)}
+                            {copy.common.date}: {formatDate((player as any).organizationJoinedAt)}
                             {(player as any).organizationApprovedBy?.userName && (
-                              <span className="ml-2">— بواسطة: {(player as any).organizationApprovedBy.userName}</span>
+                              <span className="ml-2">— {copy.common.by}: {(player as any).organizationApprovedBy.userName}</span>
                             )}
                           </div>
                         </div>
                       )}
                       {player.joinedViaReferral && (
                         <div className="mt-1 inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                          انضم عبر كود
+                          {copy.common.joinedViaCode}
                           {player.referralCodeUsed && <span className="font-mono">({player.referralCodeUsed})</span>}
                         </div>
                       )}
@@ -814,30 +810,30 @@ export default function TrainerPlayersPage() {
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center text-sm text-gray-600">
                       <Mail className="w-4 h-4 ml-2" />
-                      {player.email || 'غير محدد'}
+                      {player.email || copy.common.notSpecified}
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <Phone className="w-4 h-4 ml-2" />
-                      {player.phone || 'غير محدد'}
+                      {player.phone || copy.common.notSpecified}
                     </div>
                     <div className="pt-1">
                       {isProfileComplete(player) ? (
-                        <Badge className="text-emerald-700 bg-emerald-100">ملف مكتمل</Badge>
+                        <Badge className="text-emerald-700 bg-emerald-100">{copy.common.completeProfile}</Badge>
                       ) : (
-                        <Badge variant="outline" className="text-amber-700 border-amber-300">بحاجة لاستكمال</Badge>
+                        <Badge variant="outline" className="text-amber-700 border-amber-300">{copy.common.incompleteProfile}</Badge>
                       )}
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <MapPin className="w-4 h-4 ml-2" />
-                      {player.city || 'غير محدد'}
+                      {player.city || copy.common.notSpecified}
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <User className="w-4 h-4 ml-2" />
-                      {player.primary_position || player.position || 'غير محدد'}
+                      {player.primary_position || player.position || copy.common.notSpecified}
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <Calendar className="w-4 h-4 ml-2" />
-                      العمر: {calculateAge(player.birth_date) || 'غير محدد'}
+                      {copy.table.age}: {calculateAge(player.birth_date) || copy.common.notSpecified}
                     </div>
                   </div>
                   
@@ -863,11 +859,11 @@ export default function TrainerPlayersPage() {
                         <SendMessageButton
                           user={user}
                           userData={userData}
-                          getUserDisplayName={() => (userData as any)?.full_name || (userData as any)?.name || user?.email || 'مستخدم'}
+                          getUserDisplayName={() => (userData as any)?.full_name || (userData as any)?.name || user?.email || copy.common.userFallback}
                           targetUserId={player.id}
                           targetUserName={player.full_name || player.name || ''}
                           targetUserType="player"
-                          buttonText="رسالة"
+                          buttonText={copy.common.message}
                           buttonVariant="outline"
                           buttonSize="sm"
                           redirectToMessages={true}
@@ -893,10 +889,10 @@ export default function TrainerPlayersPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between mt-6">
             <div className="text-sm text-gray-700">
-              عرض {startIndex + 1} إلى {Math.min(endIndex, totalPlayers)} من {totalPlayers} لاعب
+              {interpolate(copy.results.range, { start: startIndex + 1, end: Math.min(endIndex, totalPlayers), total: totalPlayers })}
               {players.some(p => (p as any)._debug_note) && (
                 <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">
-                  🔍 وضع التشخيص - اللاعبين غير مربوطين بالمدرب
+                  {interpolate(copy.results.diagnostic, { accountName })}
                 </span>
               )}
             </div>
@@ -907,10 +903,10 @@ export default function TrainerPlayersPage() {
                 onClick={() => setCurrentPage(currentPage - 1)}
                 disabled={currentPage === 1}
               >
-                السابق
+                {copy.common.previous}
               </Button>
               <span className="text-sm text-gray-700">
-                صفحة {currentPage} من {totalPages}
+                {currentPage} / {totalPages}
               </span>
               <Button
                 variant="outline"
@@ -918,7 +914,7 @@ export default function TrainerPlayersPage() {
                 onClick={() => setCurrentPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
               >
-                التالي
+                {copy.common.next}
               </Button>
             </div>
           </div>
@@ -928,10 +924,9 @@ export default function TrainerPlayersPage() {
         {isDeleteModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">تأكيد الحذف</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">{copy.modal.deleteTitle}</h3>
               <p className="text-gray-600 mb-6">
-                هل أنت متأكد من حذف اللاعب "{playerToDelete?.full_name || playerToDelete?.name}"؟ 
-                لا يمكن التراجع عن هذا الإجراء.
+                {interpolate(copy.modal.deleteMessage, { name: playerToDelete?.full_name || playerToDelete?.name || copy.common.notSpecified })}
               </p>
               <div className="flex items-center justify-end gap-4">
                 <Button
@@ -941,13 +936,13 @@ export default function TrainerPlayersPage() {
                     setPlayerToDelete(null);
                   }}
                 >
-                  إلغاء
+                  {copy.common.cancel}
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={confirmDelete}
                 >
-                  حذف
+                  {copy.common.delete}
                 </Button>
               </div>
             </div>

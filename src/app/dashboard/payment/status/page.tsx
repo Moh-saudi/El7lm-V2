@@ -1,11 +1,12 @@
 'use client';
 
-import DashboardLayout from "@/components/layout/DashboardLayout.jsx";
+import DashboardLayout from '@/components/layout/DashboardLayout.jsx';
 import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { AlertCircle, Clock, Download, Printer } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { AlertCircle, Download, Printer } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
+import { Locale, useTranslation } from '@/lib/i18n';
 
 interface SubscriptionStatus {
   plan_name: string;
@@ -16,8 +17,6 @@ interface SubscriptionStatus {
   amount: number;
   currency: string;
   currencySymbol: string;
-  receipt_url?: string;
-  receipt_uploaded_at?: string;
   autoRenew: boolean;
   transaction_id: string;
   invoice_number: string;
@@ -29,14 +28,236 @@ interface SubscriptionStatus {
   payment_date: string;
 }
 
+const PAYMENT_STATUS_COPY: Record<Locale, {
+  loading: string;
+  notFoundError: string;
+  fetchError: string;
+  genericError: string;
+  backToPayment: string;
+  noSubscription: string;
+  noActiveSubscription: string;
+  title: string;
+  subtitle: string;
+  status: Record<string, string>;
+  invoice: string;
+  printInvoice: string;
+  downloadInvoice: string;
+  downloadSoon: string;
+  customerInfo: string;
+  subscriptionInfo: string;
+  invoiceNumber: string;
+  issueDate: string;
+  customerName: string;
+  email: string;
+  phone: string;
+  address: string;
+  taxNumber: string;
+  plan: string;
+  amount: string;
+  paymentMethod: string;
+  bankTransfer: string;
+  cardOrOther: string;
+  transactionId: string;
+  paymentDate: string;
+  startDate: string;
+  endDate: string;
+  autoRenew: string;
+  yes: string;
+  no: string;
+  unavailable: string;
+  supportNote: string;
+  thankYou: string;
+  footer: string;
+  electronicInvoice: string;
+  print: string;
+}> = {
+  ar: {
+    loading: 'جاري تحميل البيانات...',
+    notFoundError: 'لم يتم العثور على بيانات الاشتراك',
+    fetchError: 'حدث خطأ أثناء جلب بيانات الاشتراك',
+    genericError: 'حدث خطأ',
+    backToPayment: 'العودة إلى صفحة الدفع',
+    noSubscription: 'لا يوجد اشتراك',
+    noActiveSubscription: 'لم يتم العثور على أي اشتراك نشط',
+    title: 'حالة الدفع والاشتراك',
+    subtitle: 'راجع حالة اشتراكك وتفاصيل الفاتورة',
+    status: { pending: 'في انتظار التأكيد', active: 'نشط', expired: 'منتهي', cancelled: 'ملغي' },
+    invoice: 'فاتورة اشتراك',
+    printInvoice: 'طباعة الفاتورة',
+    downloadInvoice: 'تحميل الفاتورة',
+    downloadSoon: 'سيتم إضافة هذه الميزة قريبًا',
+    customerInfo: 'معلومات العميل',
+    subscriptionInfo: 'تفاصيل الاشتراك',
+    invoiceNumber: 'رقم الفاتورة',
+    issueDate: 'تاريخ الإصدار',
+    customerName: 'الاسم',
+    email: 'البريد الإلكتروني',
+    phone: 'رقم الهاتف',
+    address: 'العنوان',
+    taxNumber: 'الرقم الضريبي',
+    plan: 'الباقة',
+    amount: 'المبلغ',
+    paymentMethod: 'طريقة الدفع',
+    bankTransfer: 'تحويل بنكي',
+    cardOrOther: 'بطاقة ائتمان/أخرى',
+    transactionId: 'رقم العملية',
+    paymentDate: 'تاريخ الدفع',
+    startDate: 'تاريخ بداية الاشتراك',
+    endDate: 'تاريخ نهاية الاشتراك',
+    autoRenew: 'تجديد تلقائي',
+    yes: 'نعم',
+    no: 'لا',
+    unavailable: 'غير متوفر',
+    supportNote: 'نحن هنا دائمًا لدعمك. لأي استفسار أو مساعدة لا تتردد في التواصل معنا عبر البريد أو الهاتف.',
+    thankYou: 'شكرًا لاختيارك منصتنا لتحقيق طموحاتك الرياضية!',
+    footer: 'منصة mesk llc & El7lm - جميع الحقوق محفوظة',
+    electronicInvoice: 'تم إصدار هذه الفاتورة إلكترونيًا ولا تحتاج إلى توقيع.',
+    print: 'طباعة الفاتورة',
+  },
+  en: {
+    loading: 'Loading data...',
+    notFoundError: 'Subscription data was not found',
+    fetchError: 'An error occurred while loading subscription data',
+    genericError: 'An error occurred',
+    backToPayment: 'Back to payment page',
+    noSubscription: 'No subscription',
+    noActiveSubscription: 'No active subscription was found',
+    title: 'Payment and subscription status',
+    subtitle: 'Review your subscription status and invoice details',
+    status: { pending: 'Pending confirmation', active: 'Active', expired: 'Expired', cancelled: 'Cancelled' },
+    invoice: 'Subscription invoice',
+    printInvoice: 'Print invoice',
+    downloadInvoice: 'Download invoice',
+    downloadSoon: 'This feature will be added soon',
+    customerInfo: 'Customer information',
+    subscriptionInfo: 'Subscription details',
+    invoiceNumber: 'Invoice number',
+    issueDate: 'Issue date',
+    customerName: 'Name',
+    email: 'Email',
+    phone: 'Phone',
+    address: 'Address',
+    taxNumber: 'Tax number',
+    plan: 'Plan',
+    amount: 'Amount',
+    paymentMethod: 'Payment method',
+    bankTransfer: 'Bank transfer',
+    cardOrOther: 'Credit card/other',
+    transactionId: 'Transaction ID',
+    paymentDate: 'Payment date',
+    startDate: 'Subscription start date',
+    endDate: 'Subscription end date',
+    autoRenew: 'Auto renew',
+    yes: 'Yes',
+    no: 'No',
+    unavailable: 'Unavailable',
+    supportNote: 'We are always here to support you. For any questions or help, contact us by email or phone.',
+    thankYou: 'Thank you for choosing our platform to pursue your sports ambitions!',
+    footer: 'mesk llc & El7lm platform - All rights reserved',
+    electronicInvoice: 'This invoice was issued electronically and does not require a signature.',
+    print: 'Print invoice',
+  },
+  es: {
+    loading: 'Cargando datos...',
+    notFoundError: 'No se encontraron datos de suscripción',
+    fetchError: 'Ocurrió un error al cargar los datos de suscripción',
+    genericError: 'Ocurrió un error',
+    backToPayment: 'Volver a la página de pago',
+    noSubscription: 'No hay suscripción',
+    noActiveSubscription: 'No se encontró ninguna suscripción activa',
+    title: 'Estado de pago y suscripción',
+    subtitle: 'Revisa el estado de tu suscripción y los detalles de la factura',
+    status: { pending: 'Pendiente de confirmación', active: 'Activo', expired: 'Vencido', cancelled: 'Cancelado' },
+    invoice: 'Factura de suscripción',
+    printInvoice: 'Imprimir factura',
+    downloadInvoice: 'Descargar factura',
+    downloadSoon: 'Esta función se añadirá pronto',
+    customerInfo: 'Información del cliente',
+    subscriptionInfo: 'Detalles de la suscripción',
+    invoiceNumber: 'Número de factura',
+    issueDate: 'Fecha de emisión',
+    customerName: 'Nombre',
+    email: 'Correo electrónico',
+    phone: 'Teléfono',
+    address: 'Dirección',
+    taxNumber: 'Número fiscal',
+    plan: 'Plan',
+    amount: 'Importe',
+    paymentMethod: 'Método de pago',
+    bankTransfer: 'Transferencia bancaria',
+    cardOrOther: 'Tarjeta de crédito/otro',
+    transactionId: 'ID de transacción',
+    paymentDate: 'Fecha de pago',
+    startDate: 'Fecha de inicio',
+    endDate: 'Fecha de finalización',
+    autoRenew: 'Renovación automática',
+    yes: 'Sí',
+    no: 'No',
+    unavailable: 'No disponible',
+    supportNote: 'Siempre estamos aquí para ayudarte. Para cualquier consulta, contáctanos por correo o teléfono.',
+    thankYou: '¡Gracias por elegir nuestra plataforma para lograr tus ambiciones deportivas!',
+    footer: 'Plataforma mesk llc & El7lm - Todos los derechos reservados',
+    electronicInvoice: 'Esta factura fue emitida electrónicamente y no requiere firma.',
+    print: 'Imprimir factura',
+  },
+  pt: {
+    loading: 'Carregando dados...',
+    notFoundError: 'Dados da assinatura não encontrados',
+    fetchError: 'Ocorreu um erro ao carregar os dados da assinatura',
+    genericError: 'Ocorreu um erro',
+    backToPayment: 'Voltar para a página de pagamento',
+    noSubscription: 'Nenhuma assinatura',
+    noActiveSubscription: 'Nenhuma assinatura ativa foi encontrada',
+    title: 'Status do pagamento e assinatura',
+    subtitle: 'Revise o status da assinatura e os detalhes da fatura',
+    status: { pending: 'Aguardando confirmação', active: 'Ativo', expired: 'Expirado', cancelled: 'Cancelado' },
+    invoice: 'Fatura da assinatura',
+    printInvoice: 'Imprimir fatura',
+    downloadInvoice: 'Baixar fatura',
+    downloadSoon: 'Este recurso será adicionado em breve',
+    customerInfo: 'Informações do cliente',
+    subscriptionInfo: 'Detalhes da assinatura',
+    invoiceNumber: 'Número da fatura',
+    issueDate: 'Data de emissão',
+    customerName: 'Nome',
+    email: 'E-mail',
+    phone: 'Telefone',
+    address: 'Endereço',
+    taxNumber: 'Número fiscal',
+    plan: 'Plano',
+    amount: 'Valor',
+    paymentMethod: 'Método de pagamento',
+    bankTransfer: 'Transferência bancária',
+    cardOrOther: 'Cartão de crédito/outro',
+    transactionId: 'ID da transação',
+    paymentDate: 'Data do pagamento',
+    startDate: 'Data de início',
+    endDate: 'Data de término',
+    autoRenew: 'Renovação automática',
+    yes: 'Sim',
+    no: 'Não',
+    unavailable: 'Indisponível',
+    supportNote: 'Estamos sempre aqui para ajudar. Para dúvidas ou suporte, entre em contato por e-mail ou telefone.',
+    thankYou: 'Obrigado por escolher nossa plataforma para realizar suas ambições esportivas!',
+    footer: 'Plataforma mesk llc & El7lm - Todos os direitos reservados',
+    electronicInvoice: 'Esta fatura foi emitida eletronicamente e não requer assinatura.',
+    print: 'Imprimir fatura',
+  },
+};
+
+const paymentStatusBrandName = 'mesk llc & El7lm';
+
 function SubscriptionStatusContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user } = useAuth();
+  const { locale, isRTL } = useTranslation();
+  const copy = PAYMENT_STATUS_COPY[locale] || PAYMENT_STATUS_COPY.en;
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [printing, setPrinting] = useState(false);
+
+  const dateLocale = isRTL ? 'ar-EG' : 'en-US';
+  const formatDate = (value?: string) => value ? new Date(value).toLocaleDateString(dateLocale) : copy.unavailable;
 
   useEffect(() => {
     const fetchSubscriptionStatus = async () => {
@@ -46,155 +267,99 @@ function SubscriptionStatusContent() {
           return;
         }
 
-        const { data, error: fetchError } = await supabase
+        const { data } = await supabase
           .from('subscriptions')
           .select('*')
           .eq('id', user.id)
           .single();
 
-        if (data) {
-          setSubscription(data as SubscriptionStatus);
-        } else {
-          setError('لم يتم العثور على بيانات الاشتراك');
-        }
+        if (data) setSubscription(data as SubscriptionStatus);
+        else setError(copy.notFoundError);
       } catch (err) {
         console.error('Error fetching subscription:', err);
-        setError('حدث خطأ أثناء جلب بيانات الاشتراك');
+        setError(copy.fetchError);
       } finally {
         setLoading(false);
       }
     };
 
     fetchSubscriptionStatus();
-  }, [user, router]);
+  }, [user, router, copy.notFoundError, copy.fetchError]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'active':
-        return 'bg-green-100 text-green-800';
-      case 'expired':
-        return 'bg-red-100 text-red-800';
-      case 'cancelled':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'active': return 'bg-green-100 text-green-800';
+      case 'expired': return 'bg-red-100 text-red-800';
+      case 'cancelled': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'في انتظار التأكيد';
-      case 'active':
-        return 'نشط';
-      case 'expired':
-        return 'منتهي';
-      case 'cancelled':
-        return 'ملغي';
-      default:
-        return status;
-    }
-  };
+  const getStatusText = (status: string) => copy.status[status] || status;
+
+  const rows = subscription ? [
+    [copy.invoiceNumber, subscription.invoice_number],
+    [copy.issueDate, formatDate(subscription.payment_date)],
+    [copy.customerName, subscription.customer_name],
+    [copy.email, subscription.customer_email],
+    [copy.phone, subscription.customer_phone],
+    [copy.address, subscription.billing_address || copy.unavailable],
+    [copy.taxNumber, subscription.tax_number || copy.unavailable],
+    [copy.plan, subscription.plan_name],
+    [copy.amount, `${subscription.amount || ''} ${subscription.currencySymbol || subscription.currency || ''}`],
+    [copy.paymentMethod, subscription.payment_method === 'bank_transfer' ? copy.bankTransfer : copy.cardOrOther],
+    [copy.transactionId, subscription.transaction_id || copy.unavailable],
+    [copy.paymentDate, formatDate(subscription.payment_date)],
+    [copy.startDate, formatDate(subscription.start_date)],
+    [copy.endDate, formatDate(subscription.end_date)],
+    [copy.autoRenew, subscription.autoRenew ? copy.yes : copy.no],
+  ] : [];
 
   const handlePrintInvoice = () => {
-    setPrinting(true);
+    if (!subscription) return;
     const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      setPrinting(false);
-      return;
-    }
+    if (!printWindow) return;
 
+    const dir = isRTL ? 'rtl' : 'ltr';
+    const customerRows = rows.slice(0, 7).map(([label, value]) => `<tr><th>${label}</th><td>${value || copy.unavailable}</td></tr>`).join('');
+    const subscriptionRows = rows.slice(7).map(([label, value]) => `<tr><th>${label}</th><td>${value || copy.unavailable}</td></tr>`).join('');
     const invoiceContent = `
       <!DOCTYPE html>
-      <html dir="rtl">
+      <html dir="${dir}">
         <head>
-          <title>فاتورة اشتراك</title>
+          <title>${copy.invoice}</title>
           <style>
-            body { font-family: 'Cairo', Arial, sans-serif; padding: 0; margin: 0; background: #f7f7fa; }
-            .invoice-container { max-width: 700px; margin: 40px auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 24px #0001; padding: 32px 24px; }
+            body { font-family: Arial, sans-serif; padding: 0; margin: 0; background: #f7f7fa; }
+            .invoice-container { max-width: 760px; margin: 40px auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 24px #0001; padding: 32px 24px; }
             .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #eee; padding-bottom: 16px; margin-bottom: 24px; }
-            .logo { height: 64px; }
-            .company-info { text-align: left; font-size: 14px; color: #444; }
-            .invoice-title { font-size: 2rem; color: #1a237e; font-weight: bold; letter-spacing: 1px; }
-            .section-title { color: #1976d2; font-size: 1.1rem; margin-bottom: 8px; font-weight: bold; }
-            .details-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-            .details-table th, .details-table td { border: 1px solid #e0e0e0; padding: 10px 8px; text-align: right; font-size: 15px; }
-            .details-table th { background: #f0f4fa; color: #1a237e; }
-            .details-table td { background: #fafbfc; }
-            .summary { margin: 24px 0; font-size: 1.1rem; }
-            .summary strong { color: #1976d2; }
-            .footer { border-top: 2px solid #eee; padding-top: 16px; margin-top: 24px; text-align: center; color: #555; font-size: 15px; }
-            .footer .icons { font-size: 1.5rem; margin-bottom: 8px; }
-            .customer-care { background: #e3f2fd; color: #1976d2; border-radius: 8px; padding: 12px; margin: 18px 0; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; justify-content: center; }
-            .thankyou { color: #388e3c; font-size: 1.2rem; margin: 18px 0 0 0; font-weight: bold; }
+            .invoice-title { font-size: 2rem; color: #1a237e; font-weight: bold; }
+            .section-title { color: #1976d2; font-size: 1.1rem; margin: 24px 0 8px; font-weight: bold; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+            th, td { border: 1px solid #e0e0e0; padding: 10px 8px; text-align: ${isRTL ? 'right' : 'left'}; font-size: 15px; }
+            th { background: #f0f4fa; color: #1a237e; width: 38%; }
+            td { background: #fafbfc; }
+            .note { background: #e3f2fd; color: #1976d2; border-radius: 8px; padding: 12px; margin: 18px 0; }
+            .thankyou { color: #388e3c; font-size: 1.1rem; margin-top: 18px; font-weight: bold; }
+            .footer { border-top: 2px solid #eee; padding-top: 16px; margin-top: 24px; text-align: center; color: #555; font-size: 14px; }
             @media print { .no-print { display: none; } body { background: #fff; } .invoice-container { box-shadow: none; } }
           </style>
-          <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
         </head>
         <body>
           <div class="invoice-container">
             <div class="header">
-              <img src="/el7lm-logo.png" alt="Logo" class="logo" />
-              <div class="company-info">
-                <div><b>mesk llc & El7lm</b> <span style="font-size:1.2em;">🚀</span></div>
-                <div>قطر- الدوحة - مركز قطر للمال</div>
-                <div>الرقم الضريبي: 02289</div>
-                <div>البريد: El7lm@mesk.qa</div>
-                <div>هاتف: 97470542458 قطر - 201017799580 مصر</div>
-              </div>
+              <div class="invoice-title">${copy.invoice}</div>
+              <div>${paymentStatusBrandName}</div>
             </div>
-            <div class="invoice-title">فاتورة اشتراك <span style="font-size:1.3em;">🧾</span></div>
-            <div style="margin: 16px 0 24px 0; color:#555;">
-              <b>رقم الفاتورة:</b> ${subscription?.invoice_number || ''} &nbsp; | &nbsp;
-              <b>تاريخ الإصدار:</b> ${subscription?.payment_date ? new Date(subscription.payment_date).toLocaleDateString('en-US') : ''}
-            </div>
-            <div class="section-title">معلومات العميل <span style="font-size:1.1em;">👤</span></div>
-            <table class="details-table">
-              <tr><th>الاسم</th><td>${subscription?.customer_name || ''}</td></tr>
-              <tr><th>البريد الإلكتروني</th><td>${subscription?.customer_email || ''}</td></tr>
-              <tr><th>رقم الهاتف</th><td>${subscription?.customer_phone || ''}</td></tr>
-              <tr><th>العنوان</th><td>${subscription?.billing_address || '-'}</td></tr>
-              <tr><th>الرقم الضريبي</th><td>${subscription?.tax_number || '-'}</td></tr>
-            </table>
-            <div class="section-title">تفاصيل الاشتراك <span style="font-size:1.1em;">💳</span></div>
-            <table class="details-table">
-              <tr><th>الباقة</th><td>${subscription?.plan_name || ''}</td></tr>
-              <tr><th>المبلغ</th><td>${subscription?.amount || ''} ${subscription?.currencySymbol || subscription?.currency || ''}</td></tr>
-              <tr><th>طريقة الدفع</th><td>${subscription?.payment_method === 'bank_transfer' ? 'تحويل بنكي' : 'بطاقة ائتمان/أخرى'}</td></tr>
-              <tr><th>رقم العملية</th><td>${subscription?.transaction_id || '-'}</td></tr>
-              <tr><th>تاريخ الدفع</th><td>${subscription?.payment_date ? new Date(subscription.payment_date).toLocaleDateString('en-US') : ''}</td></tr>
-              <tr><th>تاريخ بداية الاشتراك</th><td>${subscription?.start_date ? new Date(subscription.start_date).toLocaleDateString('en-US') : ''}</td></tr>
-              <tr><th>تاريخ نهاية الاشتراك</th><td>${subscription?.end_date ? new Date(subscription.end_date).toLocaleDateString('en-US') : ''}</td></tr>
-              <tr><th>تجديد تلقائي</th><td>${subscription?.autoRenew ? 'نعم' : 'لا'}</td></tr>
-            </table>
-            <div class="customer-care">
-              <span style="font-size:1.3em;">🤝</span>
-              نحن هنا دائمًا لدعمك! لأي استفسار أو مساعدة لا تتردد في التواصل معنا عبر البريد أو الهاتف.
-            </div>
-            <div class="summary">
-              <span style="font-size:1.2em;">🌟</span>
-              <strong>شكراً لاختيارك منصتنا لتحقيق طموحاتك الرياضية!</strong>
-              <span style="font-size:1.2em;">🏆</span>
-            </div>
-            <div class="thankyou">
-              <span style="font-size:1.5em;">🎉</span> نتمنى لك رحلة نجاح رائعة معنا! <span style="font-size:1.5em;">🚀</span>
-            </div>
-            <div class="footer">
-              <div class="icons">💙 ⚽ 🏅 🥇 🏆</div>
-              منصة mesk llc & El7lm - جميع الحقوق محفوظة &copy; ${new Date().getFullYear()}
-              <div style="margin-top:8px; font-size:13px; color:#888;">تم إصدار هذه الفاتورة إلكترونيًا ولا تحتاج إلى توقيع.</div>
-              <div style="margin-top:18px; text-align:center;">
-                <div style="display:inline-block; border:1px dashed #1976d2; border-radius:8px; padding:12px 24px; background:#f5faff;">
-                  <div style="font-size:1.1em; color:#1976d2; font-weight:bold; margin-bottom:4px;">التوقيع الإلكتروني</div>
-                  <img src="/signature.png" alt="التوقيع الإلكتروني" style="height:48px; margin-bottom:4px;" onerror="this.style.display='none'" />
-                  <div style="font-size:0.95em; color:#555;">تمت الموافقة إلكترونيًا بواسطة إدارة mesk llc & El7lm</div>
-                </div>
-              </div>
-            </div>
-            <div class="no-print" style="text-align: center; margin-top: 20px;">
-              <button onclick="window.print()" style="background:#1976d2;color:#fff;padding:10px 30px;border:none;border-radius:8px;font-size:1.1rem;cursor:pointer;">طباعة الفاتورة</button>
+            <div class="section-title">${copy.customerInfo}</div>
+            <table>${customerRows}</table>
+            <div class="section-title">${copy.subscriptionInfo}</div>
+            <table>${subscriptionRows}</table>
+            <div class="note">${copy.supportNote}</div>
+            <div class="thankyou">${copy.thankYou}</div>
+            <div class="footer">${copy.footer} © ${new Date().getFullYear()}<br />${copy.electronicInvoice}</div>
+            <div class="no-print" style="text-align:center;margin-top:20px;">
+              <button onclick="window.print()" style="background:#1976d2;color:#fff;padding:10px 30px;border:none;border-radius:8px;font-size:1rem;cursor:pointer;">${copy.print}</button>
             </div>
           </div>
         </body>
@@ -203,12 +368,6 @@ function SubscriptionStatusContent() {
 
     printWindow.document.write(invoiceContent);
     printWindow.document.close();
-    setPrinting(false);
-  };
-
-  const handleDownloadInvoice = () => {
-    // يمكن تنفيذ تحميل الفاتورة كملف PDF هنا
-    alert('سيتم إضافة هذه الميزة قريباً');
   };
 
   if (loading) {
@@ -216,42 +375,21 @@ function SubscriptionStatusContent() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
-          <p className="mt-4 text-gray-600">جاري تحميل البيانات...</p>
+          <p className="mt-4 text-gray-600">{copy.loading}</p>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error || !subscription) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="p-6 text-center bg-white rounded-lg shadow-lg">
-          <AlertCircle className="w-12 h-12 mx-auto text-red-500" />
-          <h2 className="mt-4 text-xl font-bold text-gray-800">حدث خطأ</h2>
-          <p className="mt-2 text-gray-600">{error}</p>
-          <button
-            onClick={() => router.push('/dashboard/payment')}
-            className="px-4 py-2 mt-4 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-          >
-            العودة إلى صفحة الدفع
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!subscription) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="p-6 text-center bg-white rounded-lg shadow-lg">
           <AlertCircle className="w-12 h-12 mx-auto text-yellow-500" />
-          <h2 className="mt-4 text-xl font-bold text-gray-800">لا يوجد اشتراك</h2>
-          <p className="mt-2 text-gray-600">لم يتم العثور على أي اشتراك نشط</p>
-          <button
-            onClick={() => router.push('/dashboard/payment')}
-            className="px-4 py-2 mt-4 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-          >
-            العودة إلى صفحة الدفع
+          <h2 className="mt-4 text-xl font-bold text-gray-800">{error ? copy.genericError : copy.noSubscription}</h2>
+          <p className="mt-2 text-gray-600">{error || copy.noActiveSubscription}</p>
+          <button onClick={() => router.push('/dashboard/payment')} className="px-4 py-2 mt-4 text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+            {copy.backToPayment}
           </button>
         </div>
       </div>
@@ -259,208 +397,69 @@ function SubscriptionStatusContent() {
   }
 
   return (
-    <div className="container px-4 py-8 mx-auto">
-      <div className="max-w-4xl mx-auto">
-        <div className="p-6 bg-white rounded-lg shadow-lg">
-          {/* حالة الاشتراك */}
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">حالة الاشتراك</h1>
-            <div className="flex items-center gap-4">
-              <span className={`px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(subscription.status)}`}>
-                {getStatusText(subscription.status)}
-              </span>
-              <div className="flex gap-2">
-                <button
-                  onClick={handlePrintInvoice}
-                  disabled={printing}
-                  className="flex items-center px-3 py-1 text-sm text-white bg-blue-600 rounded hover:bg-blue-700"
-                >
-                  <Printer className="w-4 h-4 ml-1" />
-                  طباعة الفاتورة
-                </button>
-                <button
-                  onClick={handleDownloadInvoice}
-                  className="flex items-center px-3 py-1 text-sm text-white bg-green-600 rounded hover:bg-green-700"
-                >
-                  <Download className="w-4 h-4 ml-1" />
-                  تحميل PDF
-                </button>
-              </div>
+    <DashboardLayout>
+      <div className="min-h-screen bg-slate-50 py-10" dir={isRTL ? 'rtl' : 'ltr'}>
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900">{copy.title}</h1>
+              <p className="text-slate-600 mt-2">{copy.subtitle}</p>
             </div>
+            <span className={`inline-flex w-fit px-4 py-2 rounded-full font-semibold ${getStatusColor(subscription.status)}`}>
+              {getStatusText(subscription.status)}
+            </span>
           </div>
 
-          {/* تفاصيل الاشتراك */}
-          <div className="space-y-6">
-            <div className="p-4 rounded-lg bg-gray-50">
-              <h2 className="mb-4 text-lg font-semibold text-gray-800">تفاصيل الاشتراك</h2>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <p className="text-sm text-gray-500">الباقة</p>
-                  <p className="font-medium">{subscription.plan_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">المبلغ</p>
-                  <p className="font-medium">{subscription.amount} {subscription.currencySymbol || subscription.currency}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">تاريخ البدء</p>
-                  <p className="font-medium">{new Date(subscription.start_date).toLocaleDateString('ar-SA')}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">تاريخ الانتهاء</p>
-                  <p className="font-medium">{new Date(subscription.end_date).toLocaleDateString('ar-SA')}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">رقم المعاملة</p>
-                  <p className="font-medium">{subscription.transaction_id}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">رقم الفاتورة</p>
-                  <p className="font-medium">{subscription.invoice_number}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* معلومات العميل */}
-            <div className="p-4 rounded-lg bg-gray-50">
-              <h2 className="mb-4 text-lg font-semibold text-gray-800">معلومات العميل</h2>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <p className="text-sm text-gray-500">الاسم</p>
-                  <p className="font-medium">{subscription.customer_name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">البريد الإلكتروني</p>
-                  <p className="font-medium">{subscription.customer_email}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">رقم الهاتف</p>
-                  <p className="font-medium">{subscription.customer_phone}</p>
-                </div>
-                {subscription.billing_address && (
-                  <div>
-                    <p className="text-sm text-gray-500">العنوان</p>
-                    <p className="font-medium">{subscription.billing_address}</p>
-                  </div>
-                )}
-                {subscription.tax_number && (
-                  <div>
-                    <p className="text-sm text-gray-500">الرقم الضريبي</p>
-                    <p className="font-medium">{subscription.tax_number}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* معلومات الدفع */}
-            <div className="p-4 rounded-lg bg-gray-50">
-              <h2 className="mb-4 text-lg font-semibold text-gray-800">معلومات الدفع</h2>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-gray-500">طريقة الدفع</p>
-                  <p className="font-medium">
-                    {subscription.payment_method === 'bank_transfer' ? 'تحويل بنكي' : 'بطاقة ائتمان'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">تاريخ الدفع</p>
-                  <p className="font-medium">
-                    {new Date(subscription.payment_date).toLocaleDateString('ar-SA')}
-                  </p>
-                </div>
-                {subscription.receipt_url && (
-                  <div>
-                    <p className="text-sm text-gray-500">صورة الإيصال</p>
-                    <a
-                      href={subscription.receipt_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      عرض الإيصال
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* رسالة الحالة */}
-            {subscription.status === 'pending' && (
-              <div className="p-4 rounded-lg bg-yellow-50">
-                <div className="flex items-start space-x-3 space-x-reverse">
-                  <Clock className="w-5 h-5 mt-1 text-yellow-500" />
-                  <div>
-                    <h3 className="font-medium text-yellow-800">في انتظار التأكيد</h3>
-                    <p className="mt-1 text-sm text-yellow-700">
-                      تم استلام طلب الاشتراك الخاص بك وسيتم مراجعته من قبل إدارة المنصة قريباً.
-                      سيتم إعلامك عبر البريد الإلكتروني عند تأكيد الاشتراك.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* تجديد تلقائي */}
-            <div className="p-4 rounded-lg bg-gray-50">
-              <h2 className="mb-4 text-lg font-semibold text-gray-800">تجديد تلقائي</h2>
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="autoRenew"
-                    checked={subscription.autoRenew}
-                    readOnly
-                    className="w-4 h-4 ml-2 text-blue-600 border-gray-300 rounded"
-                  />
-                  <label htmlFor="autoRenew" className="text-sm text-gray-700">
-                    تفعيل التجديد التلقائي للاشتراك
-                  </label>
-                </div>
-                {subscription.autoRenew && (
-                  <p className="text-sm text-gray-500">
-                    سيتم تجديد اشتراكك تلقائياً في {new Date(subscription.end_date).toLocaleDateString('ar-SA')}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* أزرار التحكم */}
-            <div className="flex justify-end space-x-3 space-x-reverse">
-              <button
-                onClick={() => router.push('/dashboard/payment')}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                العودة
-              </button>
-              {subscription.status === 'pending' && (
-                <button
-                  onClick={() => router.push('/dashboard/payment')}
-                  className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-                >
-                  تحديث الحالة
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
+            <div className="flex items-center justify-between gap-4 mb-6">
+              <h2 className="text-xl font-bold text-slate-900">{copy.invoice}</h2>
+              <div className="flex flex-wrap gap-2">
+                <button onClick={handlePrintInvoice} className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <Printer className="w-4 h-4" />
+                  {copy.printInvoice}
                 </button>
-              )}
+                <button onClick={() => alert(copy.downloadSoon)} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800">
+                  <Download className="w-4 h-4" />
+                  {copy.downloadInvoice}
+                </button>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <section>
+                <h3 className="text-lg font-semibold text-blue-700 mb-3">{copy.customerInfo}</h3>
+                <div className="space-y-3">
+                  {rows.slice(0, 7).map(([label, value]) => (
+                    <div key={label} className="flex justify-between gap-4 p-3 bg-slate-50 rounded-lg">
+                      <span className="text-slate-500">{label}</span>
+                      <span className="font-medium text-slate-900 text-end">{value || copy.unavailable}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+              <section>
+                <h3 className="text-lg font-semibold text-blue-700 mb-3">{copy.subscriptionInfo}</h3>
+                <div className="space-y-3">
+                  {rows.slice(7).map(([label, value]) => (
+                    <div key={label} className="flex justify-between gap-4 p-3 bg-slate-50 rounded-lg">
+                      <span className="text-slate-500">{label}</span>
+                      <span className="font-medium text-slate-900 text-end">{value || copy.unavailable}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
 
 export default function SubscriptionStatusPage() {
   return (
-    <DashboardLayout>
-      <Suspense fallback={
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="w-16 h-16 mx-auto border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
-            <p className="mt-4 text-gray-600">جاري تحميل البيانات...</p>
-          </div>
-        </div>
-      }>
-        <SubscriptionStatusContent />
-      </Suspense>
-    </DashboardLayout>
+    <Suspense fallback={null}>
+      <SubscriptionStatusContent />
+    </Suspense>
   );
 }

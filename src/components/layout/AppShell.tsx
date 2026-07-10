@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * AppShell â€” Root layout orchestrator.
@@ -292,7 +292,7 @@ function InnerShell({ accountType, children, noPadding, showHeader = true, showS
         data = res.data;
         console.log(`[Sidebar] ${cfg.table} by uid=${user.id}:`, { data, error: res.error });
       }
-      applyRow(data as Record<string, unknown> | null);
+      applyRow(data as unknown as Record<string, unknown> | null);
     };
     fetchProfile();
 

@@ -4,11 +4,14 @@ import Comments from '@/components/video/Comments';
 import MessageComposerSheet from '@/components/shared/MessageComposerSheet';
 import PlayerImage from '@/components/ui/player-image';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { useTranslation } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase/config';
 import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 import { safeNavigate } from '@/lib/utils/url-validator';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ar';
+import 'dayjs/locale/es';
+import 'dayjs/locale/pt';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { dispatchNotification } from '@/lib/notifications/notification-dispatcher';
 import {
@@ -38,6 +41,239 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from '
 import ReactPlayer from 'react-player';
 
 dayjs.extend(relativeTime);
+
+type PlayerVideosCopy = {
+  compactMillion: string;
+  compactThousand: string;
+  externalLink: string;
+  errorMessages: Record<'network' | 'format' | 'timeout' | 'unknown', string>;
+  externalNotice: string;
+  slowConnectionHint: string;
+  openBrowserHint: string;
+  unavailableHint: string;
+  retry: string;
+  youtube: string;
+  openInBrowser: string;
+  followedTitle: string;
+  followTitle: string;
+  message: string;
+  noVideosTitle: string;
+  noVideosDesc: string;
+  back: string;
+  defaultPlayer: string;
+  defaultUser: string;
+  loadingVideos: string;
+  forYou: string;
+  following: string;
+  filtersTitle: string;
+  filtersCount: string;
+  clearAll: string;
+  searchPlaceholder: string;
+  position: string;
+  allPositions: string;
+  country: string;
+  allCountries: string;
+  age: string;
+  from: string;
+  to: string;
+  phone: string;
+  phonePlaceholder: string;
+  resultCount: string;
+  showResults: string;
+  swipeUp: string;
+  relativeLocale: string;
+};
+
+const PLAYER_VIDEOS_COPY: Record<string, PlayerVideosCopy> = {
+  ar: {
+    compactMillion: 'م',
+    compactThousand: 'ك',
+    externalLink: 'رابط خارجي',
+    errorMessages: {
+      network: 'تعذّر الوصول للفيديو — تحقق من الاتصال',
+      format: 'صيغة الفيديو غير مدعومة',
+      timeout: 'استغرق التحميل وقتاً طويلاً',
+      unknown: 'تعذّر تشغيل الفيديو',
+    },
+    externalNotice: 'هذا رابط خارجي — ليس خللاً في المنصة',
+    slowConnectionHint: 'قد يكون الاتصال بطيئاً',
+    openBrowserHint: 'جرّب الفتح في المتصفح',
+    unavailableHint: 'قد يكون الفيديو محذوفاً أو خاصاً',
+    retry: 'إعادة المحاولة',
+    youtube: 'يوتيوب',
+    openInBrowser: 'فتح في المتصفح',
+    followedTitle: 'تمت المتابعة',
+    followTitle: 'متابعة',
+    message: 'رسالة',
+    noVideosTitle: 'لا توجد فيديوهات',
+    noVideosDesc: 'لم يرفع اللاعبون فيديوهات بعد',
+    back: 'العودة',
+    defaultPlayer: 'لاعب',
+    defaultUser: 'مستخدم',
+    loadingVideos: 'جاري تحميل الفيديوهات',
+    forYou: 'لك',
+    following: 'متابعة',
+    filtersTitle: 'فلترة اللاعبين',
+    filtersCount: '{{count}} فلتر',
+    clearAll: 'مسح الكل',
+    searchPlaceholder: 'اسم اللاعب أو وصف الفيديو...',
+    position: 'المركز',
+    allPositions: 'كل المراكز',
+    country: 'الدولة',
+    allCountries: 'كل الدول',
+    age: 'السن',
+    from: 'من',
+    to: 'إلى',
+    phone: 'رقم الهاتف',
+    phonePlaceholder: 'ابحث برقم الهاتف...',
+    resultCount: '{{filtered}} فيديو من {{total}}',
+    showResults: 'عرض النتائج ←',
+    swipeUp: 'اسحب للأعلى',
+    relativeLocale: 'ar',
+  },
+  en: {
+    compactMillion: 'M',
+    compactThousand: 'K',
+    externalLink: 'External link',
+    errorMessages: {
+      network: 'Could not reach the video — check your connection',
+      format: 'This video format is not supported',
+      timeout: 'Loading took too long',
+      unknown: 'Could not play the video',
+    },
+    externalNotice: 'This is an external link — it is not a platform issue',
+    slowConnectionHint: 'The connection may be slow',
+    openBrowserHint: 'Try opening it in the browser',
+    unavailableHint: 'The video may be deleted or private',
+    retry: 'Try again',
+    youtube: 'YouTube',
+    openInBrowser: 'Open in browser',
+    followedTitle: 'Following',
+    followTitle: 'Follow',
+    message: 'Message',
+    noVideosTitle: 'No videos',
+    noVideosDesc: 'Players have not uploaded videos yet',
+    back: 'Back',
+    defaultPlayer: 'Player',
+    defaultUser: 'User',
+    loadingVideos: 'Loading videos',
+    forYou: 'For you',
+    following: 'Following',
+    filtersTitle: 'Filter players',
+    filtersCount: '{{count}} filter',
+    clearAll: 'Clear all',
+    searchPlaceholder: 'Player name or video description...',
+    position: 'Position',
+    allPositions: 'All positions',
+    country: 'Country',
+    allCountries: 'All countries',
+    age: 'Age',
+    from: 'From',
+    to: 'To',
+    phone: 'Phone number',
+    phonePlaceholder: 'Search by phone number...',
+    resultCount: '{{filtered}} videos of {{total}}',
+    showResults: 'Show results →',
+    swipeUp: 'Swipe up',
+    relativeLocale: 'en',
+  },
+  es: {
+    compactMillion: 'M',
+    compactThousand: 'K',
+    externalLink: 'Enlace externo',
+    errorMessages: {
+      network: 'No se pudo acceder al video — compruebe su conexión',
+      format: 'Este formato de video no es compatible',
+      timeout: 'La carga tardó demasiado',
+      unknown: 'No se pudo reproducir el video',
+    },
+    externalNotice: 'Este es un enlace externo — no es un problema de la plataforma',
+    slowConnectionHint: 'La conexión puede ser lenta',
+    openBrowserHint: 'Intente abrirlo en el navegador',
+    unavailableHint: 'El video puede haber sido eliminado o ser privado',
+    retry: 'Intentar de nuevo',
+    youtube: 'YouTube',
+    openInBrowser: 'Abrir en navegador',
+    followedTitle: 'Siguiendo',
+    followTitle: 'Seguir',
+    message: 'Mensaje',
+    noVideosTitle: 'No hay videos',
+    noVideosDesc: 'Los jugadores aún no han subido videos',
+    back: 'Volver',
+    defaultPlayer: 'Jugador',
+    defaultUser: 'Usuario',
+    loadingVideos: 'Cargando videos',
+    forYou: 'Para ti',
+    following: 'Siguiendo',
+    filtersTitle: 'Filtrar jugadores',
+    filtersCount: '{{count}} filtro',
+    clearAll: 'Borrar todo',
+    searchPlaceholder: 'Nombre del jugador o descripción del video...',
+    position: 'Posición',
+    allPositions: 'Todas las posiciones',
+    country: 'País',
+    allCountries: 'Todos los países',
+    age: 'Edad',
+    from: 'Desde',
+    to: 'Hasta',
+    phone: 'Teléfono',
+    phonePlaceholder: 'Buscar por número de teléfono...',
+    resultCount: '{{filtered}} videos de {{total}}',
+    showResults: 'Mostrar resultados →',
+    swipeUp: 'Desliza hacia arriba',
+    relativeLocale: 'es',
+  },
+  pt: {
+    compactMillion: 'M',
+    compactThousand: 'K',
+    externalLink: 'Link externo',
+    errorMessages: {
+      network: 'Não foi possível acessar o vídeo — verifique sua conexão',
+      format: 'Este formato de vídeo não é suportado',
+      timeout: 'O carregamento demorou muito',
+      unknown: 'Não foi possível reproduzir o vídeo',
+    },
+    externalNotice: 'Este é um link externo — não é um problema da plataforma',
+    slowConnectionHint: 'A conexão pode estar lenta',
+    openBrowserHint: 'Tente abrir no navegador',
+    unavailableHint: 'O vídeo pode ter sido excluído ou ser privado',
+    retry: 'Tentar novamente',
+    youtube: 'YouTube',
+    openInBrowser: 'Abrir no navegador',
+    followedTitle: 'Seguindo',
+    followTitle: 'Seguir',
+    message: 'Mensagem',
+    noVideosTitle: 'Nenhum vídeo',
+    noVideosDesc: 'Os jogadores ainda não enviaram vídeos',
+    back: 'Voltar',
+    defaultPlayer: 'Jogador',
+    defaultUser: 'Usuário',
+    loadingVideos: 'Carregando vídeos',
+    forYou: 'Para você',
+    following: 'Seguindo',
+    filtersTitle: 'Filtrar jogadores',
+    filtersCount: '{{count}} filtro',
+    clearAll: 'Limpar tudo',
+    searchPlaceholder: 'Nome do jogador ou descrição do vídeo...',
+    position: 'Posição',
+    allPositions: 'Todas as posições',
+    country: 'País',
+    allCountries: 'Todos os países',
+    age: 'Idade',
+    from: 'De',
+    to: 'Até',
+    phone: 'Telefone',
+    phonePlaceholder: 'Pesquisar por telefone...',
+    resultCount: '{{filtered}} vídeos de {{total}}',
+    showResults: 'Mostrar resultados →',
+    swipeUp: 'Deslize para cima',
+    relativeLocale: 'pt',
+  },
+};
+
+function getPlayerVideosCopy(locale: string): PlayerVideosCopy {
+  return PLAYER_VIDEOS_COPY[locale] || PLAYER_VIDEOS_COPY.en;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -117,9 +353,9 @@ function getYoutubeThumbnail(url: string): string | undefined {
   return m ? `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg` : undefined;
 }
 
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}م`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}ك`;
+function formatCount(n: number, copy: PlayerVideosCopy): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}${copy.compactMillion}`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}${copy.compactThousand}`;
   return String(n);
 }
 
@@ -172,13 +408,13 @@ HudButton.displayName = 'HudButton';
 const VideoSlide = memo(({
   video, isActive, isNear, muted, playing,
   onTogglePlay, onLike, onComment, onShare, onFollow, onView, onMessage, onProfileClick,
-  isLiked, isFollowing, router,
+  isLiked, isFollowing, router, copy,
 }: {
   video: Video; isActive: boolean; isNear: boolean; muted: boolean; playing: boolean;
   onTogglePlay: () => void; onLike: (id: string) => void; onComment: (id: string) => void;
   onShare: (v: Video) => void; onFollow: (id: string) => void; onView: (id: string) => void;
   onMessage: (v: Video) => void; onProfileClick: (playerId: string) => void;
-  isLiked: boolean; isFollowing: boolean; router: any;
+  isLiked: boolean; isFollowing: boolean; router: any; copy: PlayerVideosCopy;
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasError, setHasError] = useState(false);
@@ -277,13 +513,6 @@ const VideoSlide = memo(({
 
   const bottomOffset = 'calc(env(safe-area-inset-bottom, 0px) + 28px)';
 
-  const errorMessages: Record<string, string> = {
-    network: 'تعذّر الوصول للفيديو — تحقق من الاتصال',
-    format: 'صيغة الفيديو غير مدعومة',
-    timeout: 'استغرق التحميل وقتاً طويلاً',
-    unknown: 'تعذّر تشغيل الفيديو',
-  };
-
   return (
     <div className="absolute inset-0 bg-black overflow-hidden" onClick={onTogglePlay}>
 
@@ -360,7 +589,7 @@ const VideoSlide = memo(({
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
             </svg>
-            رابط خارجي
+            {copy.externalLink}
           </div>
         </div>
       )}
@@ -374,7 +603,7 @@ const VideoSlide = memo(({
           <div className="w-16 h-16 rounded-full bg-white/8 flex items-center justify-center mb-4 border border-white/10">
             <Play className="w-7 h-7 opacity-30" />
           </div>
-          <p className="font-black text-base mb-1">{errorMessages[errorType]}</p>
+          <p className="font-black text-base mb-1">{copy.errorMessages[errorType]}</p>
 
           {/* External link notice */}
           {!isDirect && (
@@ -385,18 +614,18 @@ const VideoSlide = memo(({
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
               </svg>
-              هذا رابط خارجي — ليس خللاً في المنصة
+              {copy.externalNotice}
             </div>
           )}
 
           {errorType === 'timeout' && isDirect && (
-            <p className="text-xs text-white/40 mb-5">قد يكون الاتصال بطيئاً</p>
+            <p className="text-xs text-white/40 mb-5">{copy.slowConnectionHint}</p>
           )}
           {errorType === 'format' && (
-            <p className="text-xs text-white/40 mb-5">جرّب الفتح في المتصفح</p>
+            <p className="text-xs text-white/40 mb-5">{copy.openBrowserHint}</p>
           )}
           {(errorType === 'network' || errorType === 'unknown') && isDirect && (
-            <p className="text-xs text-white/40 mb-5">قد يكون الفيديو محذوفاً أو خاصاً</p>
+            <p className="text-xs text-white/40 mb-5">{copy.unavailableHint}</p>
           )}
           <div className="flex items-center gap-3 mt-2">
             {/* Retry */}
@@ -404,7 +633,7 @@ const VideoSlide = memo(({
               onClick={handleRetry}
               className="flex items-center gap-2 px-5 py-2.5 bg-white/15 border border-white/20 rounded-full font-bold text-sm active:scale-95 transition-transform"
             >
-              <RefreshCw className="w-4 h-4" /> إعادة المحاولة
+              <RefreshCw className="w-4 h-4" /> {copy.retry}
             </button>
             {/* Open externally */}
             {isYouTube ? (
@@ -412,14 +641,14 @@ const VideoSlide = memo(({
                 onClick={(e) => { e.stopPropagation(); window.open(video.url, '_blank'); }}
                 className="flex items-center gap-2 px-5 py-2.5 bg-red-600/80 rounded-full font-bold text-sm active:scale-95 transition-transform"
               >
-                ▶ يوتيوب
+                ▶ {copy.youtube}
               </button>
             ) : (
               <button
                 onClick={(e) => { e.stopPropagation(); window.open(video.url, '_blank'); }}
                 className="flex items-center gap-2 px-5 py-2.5 bg-white/15 border border-white/20 rounded-full font-bold text-sm active:scale-95 transition-transform"
               >
-                فتح في المتصفح
+                {copy.openInBrowser}
               </button>
             )}
           </div>
@@ -469,7 +698,7 @@ const VideoSlide = memo(({
             className={`flex items-center justify-center w-7 h-7 rounded-full border-2 border-black shadow-lg transition-all duration-200 active:scale-90
               ${isFollowing ? 'bg-green-500' : 'bg-red-500'}`}
             style={{ touchAction: 'manipulation' }}
-            title={isFollowing ? 'تمت المتابعة' : 'متابعة'}
+            title={isFollowing ? copy.followedTitle : copy.followTitle}
           >
             {isFollowing
               ? <UserCheck className="w-3.5 h-3.5 text-white" />
@@ -481,7 +710,7 @@ const VideoSlide = memo(({
         {/* Like */}
         <HudButton
           icon={<Heart className={`w-7 h-7 transition-all duration-150 ${isLiked ? 'fill-current' : ''}`} />}
-          label={formatCount(video.likes)}
+          label={formatCount(video.likes, copy)}
           active={isLiked}
           activeColor="text-red-400"
           activeBg="bg-red-500/25"
@@ -491,28 +720,28 @@ const VideoSlide = memo(({
         {/* Comments */}
         <HudButton
           icon={<MessageCircle className="w-7 h-7" />}
-          label={formatCount(video.comments)}
+          label={formatCount(video.comments, copy)}
           onClick={() => onComment(video.id)}
         />
 
         {/* Share */}
         <HudButton
           icon={<Send className="w-6 h-6" />}
-          label={formatCount(video.shares)}
+          label={formatCount(video.shares, copy)}
           onClick={() => onShare(video)}
         />
 
         {/* Views (display only) */}
         <HudButton
           icon={<Eye className="w-6 h-6 opacity-75" />}
-          label={formatCount(video.views)}
+          label={formatCount(video.views, copy)}
           onClick={() => {}}
         />
 
         {/* Message player */}
         <HudButton
           icon={<MessageSquare className="w-6 h-6" />}
-          label="رسالة"
+          label={copy.message}
           activeColor="text-blue-400"
           activeBg="bg-blue-500/20"
           onClick={() => onMessage(video)}
@@ -555,7 +784,7 @@ const VideoSlide = memo(({
           {video.createdAt && (
             <span className="flex items-center gap-1 shrink-0">
               <Calendar className="w-3 h-3" />
-              {dayjs(video.createdAt).locale('ar').fromNow()}
+              {dayjs(video.createdAt).locale(copy.relativeLocale).fromNow()}
             </span>
           )}
         </div>
@@ -585,20 +814,20 @@ VideoSlide.displayName = 'VideoSlide';
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
-function EmptyState({ onBack }: { onBack: () => void }) {
+function EmptyState({ onBack, copy }: { onBack: () => void; copy: PlayerVideosCopy }) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center px-6 gap-6">
       <Film className="w-20 h-20 opacity-20" />
       <div>
-        <h2 className="text-2xl font-black mb-2">لا توجد فيديوهات</h2>
-        <p className="text-white/50 text-sm">لم يرفع اللاعبون فيديوهات بعد</p>
+        <h2 className="text-2xl font-black mb-2">{copy.noVideosTitle}</h2>
+        <p className="text-white/50 text-sm">{copy.noVideosDesc}</p>
       </div>
       <button
         onClick={onBack}
         className="flex items-center gap-2 px-6 py-3 bg-white/10 border border-white/20 rounded-full font-bold active:scale-95 transition-transform"
       >
         <ArrowRight className="w-4 h-4" />
-        العودة
+        {copy.back}
       </button>
     </div>
   );
@@ -607,6 +836,8 @@ function EmptyState({ onBack }: { onBack: () => void }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps) {
+  const { locale, isRTL } = useTranslation();
+  const copy = useMemo(() => getPlayerVideosCopy(locale), [locale]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -672,7 +903,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
           all.push({
             id: `${d.id}_${idx}`,
             url: videoUrl,
-            playerName: d.full_name || d.name || 'لاعب',
+            playerName: d.full_name || d.name || copy.defaultPlayer,
             playerImage: getPlayerAvatarUrl(d) || '/default-player-avatar.png',
             playerPosition: d.primary_position || '',
             description: v.description || v.desc || '',
@@ -783,7 +1014,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
       await supabase.from(table).update({ likedVideos: next }).eq('id', user.id);
       // Dispatch video_like notification only when adding a like
       if (!liked && user.id !== pid) {
-        const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || 'مستخدم';
+        const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || copy.defaultUser;
         dispatchNotification({
           eventType: 'video_like',
           targetUserId: pid,
@@ -794,7 +1025,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
         });
       }
     } catch {}
-  }, [user, likedVideos, accountType, userData]);
+  }, [user, likedVideos, accountType, userData, copy.defaultUser]);
 
   const handleFollow = useCallback(async (pid: string) => {
     if (!user) return;
@@ -806,7 +1037,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
       await supabase.from(table).update({ following: next }).eq('id', user.id);
       // Dispatch follow notification only when following (not unfollowing)
       if (!isF && user.id !== pid) {
-        const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || 'مستخدم';
+        const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || copy.defaultUser;
         dispatchNotification({
           eventType: 'follow',
           targetUserId: pid,
@@ -816,7 +1047,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
         });
       }
     } catch {}
-  }, [user, following, accountType, userData]);
+  }, [user, following, accountType, userData, copy.defaultUser]);
 
   const handleShare = useCallback((v: Video) => {
     const url = `${window.location.origin}/videos/${v.id}`;
@@ -836,7 +1067,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
         }
       });
       if (user && user.id !== pid) {
-        const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || 'مستخدم';
+        const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || copy.defaultUser;
         dispatchNotification({
           eventType: 'video_share',
           targetUserId: pid,
@@ -847,7 +1078,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
         });
       }
     } catch {}
-  }, [user, userData, accountType]);
+  }, [user, userData, accountType, copy.defaultUser]);
 
   const handleView = useCallback(async (id: string) => {
     if (viewedRef.current.has(id)) return;
@@ -866,7 +1097,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
       }
       // Send video view notification (only if viewer ≠ owner)
       if (user && user.id !== pid) {
-        const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || 'مستخدم';
+        const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || copy.defaultUser;
         dispatchNotification({
           eventType: 'video_view',
           targetUserId: pid,
@@ -877,12 +1108,12 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
         });
       }
     } catch {}
-  }, [user, userData, accountType]);
+  }, [user, userData, accountType, copy.defaultUser]);
 
   const handleProfileClick = useCallback((playerId: string) => {
     if (user && user.id !== playerId && !profileViewedRef.current.has(playerId)) {
       profileViewedRef.current.add(playerId);
-      const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || 'مستخدم';
+      const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || copy.defaultUser;
       dispatchNotification({
         eventType: 'profile_view',
         targetUserId: playerId,
@@ -892,7 +1123,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
       });
     }
     safeNavigate(router, `/dashboard/shared/player-profile/${playerId}`);
-  }, [user, userData, accountType, router]);
+  }, [user, userData, accountType, router, copy.defaultUser]);
 
   const handleMessage = useCallback((v: Video) => {
     setMessageTarget(v);
@@ -909,7 +1140,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
           <div className="absolute inset-0 rounded-full border-4 border-white/10" />
           <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent animate-spin" />
         </div>
-        <p className="text-sm font-bold opacity-50 tracking-wide">جاري تحميل الفيديوهات</p>
+        <p className="text-sm font-bold opacity-50 tracking-wide">{copy.loadingVideos}</p>
       </div>
     );
   }
@@ -918,7 +1149,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
     <div
       className="fixed inset-0 bg-black"
       style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif", zIndex: 60 }}
-      dir="rtl"
+      dir={isRTL ? 'rtl' : 'ltr'}
     >
       {/* Ambient aura background */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
@@ -971,10 +1202,11 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
                 isLiked={likedVideos.includes(video.id)}
                 isFollowing={following.includes(video.playerId)}
                 router={router}
+                copy={copy}
               />
             </div>
           )) : (
-            <EmptyState onBack={() => router.back()} />
+            <EmptyState onBack={() => router.back()} copy={copy} />
           )}
         </div>
 
@@ -1002,7 +1234,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
                 className={`px-5 py-1.5 rounded-full text-sm font-black transition-all duration-200
                   ${filterType === type ? 'bg-white text-black shadow-sm' : 'text-white/50 hover:text-white/80'}`}
               >
-                {type === 'all' ? 'لك' : 'متابعة'}
+                {type === 'all' ? copy.forYou : copy.following}
               </button>
             ))}
           </div>
@@ -1060,10 +1292,10 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-black" style={{ color: 'rgba(255,255,255,0.85)' }}>
                     <Filter className="w-3.5 h-3.5" style={{ color: '#34d399' }} />
-                    فلترة اللاعبين
+                    {copy.filtersTitle}
                     {activeFiltersCount > 0 && (
                       <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full" style={{ background: '#10b981', color: '#fff' }}>
-                        {activeFiltersCount} فلتر
+                        {copy.filtersCount.replace('{{count}}', String(activeFiltersCount))}
                       </span>
                     )}
                   </div>
@@ -1074,7 +1306,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
                         className="text-[10px] font-bold"
                         style={{ color: '#f87171' }}
                       >
-                        مسح الكل
+                        {copy.clearAll}
                       </button>
                     )}
                     <button onClick={() => setShowSearch(false)} style={{ color: 'rgba(255,255,255,0.5)' }}>
@@ -1085,14 +1317,14 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
 
                 {/* Name search */}
                 <div className="relative">
-                  <Search className="absolute right-3 top-2.5 w-3.5 h-3.5 pointer-events-none" style={{ color: 'rgba(255,255,255,0.35)' }} />
+                  <Search className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-2.5 w-3.5 h-3.5 pointer-events-none`} style={{ color: 'rgba(255,255,255,0.35)' }} />
                   <input
                     type="text"
-                    placeholder="اسم اللاعب أو وصف الفيديو..."
+                    placeholder={copy.searchPlaceholder}
                     value={filters.name}
                     onChange={e => setFilters(p => ({ ...p, name: e.target.value }))}
                     autoFocus
-                    className="w-full rounded-xl py-2 pr-9 pl-3 text-xs outline-none transition-colors"
+                    className={`w-full rounded-xl py-2 ${isRTL ? 'pr-9 pl-3' : 'pl-9 pr-3'} text-xs outline-none transition-colors`}
                     style={{
                       background: 'rgba(255,255,255,0.08)',
                       border: '1px solid rgba(255,255,255,0.15)',
@@ -1106,7 +1338,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
                 {/* Position + Country */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <p className="text-[10px] font-bold mb-1 pr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>المركز</p>
+                    <p className="text-[10px] font-bold mb-1 pr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>{copy.position}</p>
                     <select
                       value={filters.position}
                       onChange={e => setFilters(p => ({ ...p, position: e.target.value }))}
@@ -1118,7 +1350,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
                         fontFamily: "'Cairo', 'Tajawal', sans-serif",
                       }}
                     >
-                      <option value="" style={{ background: '#18181b', color: '#fff' }}>كل المراكز</option>
+                      <option value="" style={{ background: '#18181b', color: '#fff' }}>{copy.allPositions}</option>
                       {uniquePositions.map(p => (
                         <option key={p} value={p} style={{ background: '#18181b', color: '#fff' }}>{p}</option>
                       ))}
@@ -1126,7 +1358,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
                   </div>
 
                   <div>
-                    <p className="text-[10px] font-bold mb-1 pr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>الدولة</p>
+                    <p className="text-[10px] font-bold mb-1 pr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>{copy.country}</p>
                     <select
                       value={filters.country}
                       onChange={e => setFilters(p => ({ ...p, country: e.target.value }))}
@@ -1138,7 +1370,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
                         fontFamily: "'Cairo', 'Tajawal', sans-serif",
                       }}
                     >
-                      <option value="" style={{ background: '#18181b', color: '#fff' }}>كل الدول</option>
+                      <option value="" style={{ background: '#18181b', color: '#fff' }}>{copy.allCountries}</option>
                       {uniqueCountries.map(c => (
                         <option key={c} value={c} style={{ background: '#18181b', color: '#fff' }}>{c}</option>
                       ))}
@@ -1148,11 +1380,11 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
 
                 {/* Age range */}
                 <div>
-                  <p className="text-[10px] font-bold mb-1 pr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>السن</p>
+                  <p className="text-[10px] font-bold mb-1 pr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>{copy.age}</p>
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
-                      placeholder="من"
+                      placeholder={copy.from}
                       min={5} max={50}
                       value={filters.ageMin}
                       onChange={e => setFilters(p => ({ ...p, ageMin: e.target.value }))}
@@ -1168,7 +1400,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
                     <span className="text-xs shrink-0" style={{ color: 'rgba(255,255,255,0.3)' }}>—</span>
                     <input
                       type="number"
-                      placeholder="إلى"
+                      placeholder={copy.to}
                       min={5} max={50}
                       value={filters.ageMax}
                       onChange={e => setFilters(p => ({ ...p, ageMax: e.target.value }))}
@@ -1186,10 +1418,10 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
 
                 {/* Phone */}
                 <div>
-                  <p className="text-[10px] font-bold mb-1 pr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>رقم الهاتف</p>
+                  <p className="text-[10px] font-bold mb-1 pr-1" style={{ color: 'rgba(255,255,255,0.45)' }}>{copy.phone}</p>
                   <input
                     type="tel"
-                    placeholder="ابحث برقم الهاتف..."
+                    placeholder={copy.phonePlaceholder}
                     value={filters.phone}
                     onChange={e => setFilters(p => ({ ...p, phone: e.target.value }))}
                     className="w-full rounded-xl py-2 px-3 text-xs outline-none font-mono"
@@ -1206,14 +1438,14 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
                 {/* Result count */}
                 <div className="flex items-center justify-between pt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                   <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                    {filteredVideos.length} فيديو من {videos.length}
+                    {copy.resultCount.replace('{{filtered}}', String(filteredVideos.length)).replace('{{total}}', String(videos.length))}
                   </span>
                   <button
                     onClick={() => setShowSearch(false)}
                     className="text-[10px] font-black"
                     style={{ color: '#34d399' }}
                   >
-                    عرض النتائج ←
+                    {copy.showResults}
                   </button>
                 </div>
               </div>
@@ -1237,7 +1469,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
             >
               <span className="text-white/60 text-lg">↑</span>
             </motion.div>
-            <span className="text-white/50 text-xs font-bold">اسحب للأعلى</span>
+            <span className="text-white/50 text-xs font-bold">{copy.swipeUp}</span>
           </motion.div>
         )}
       </div>

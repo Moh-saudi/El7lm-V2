@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
 import { getBrandingData, BrandingData } from '@/lib/content/branding-service';
-import { countries } from '@/lib/constants/countries';
+import { countries, getTranslatedCountryName } from '@/lib/constants/countries';
 import { validatePhoneForCountry } from '@/lib/validation/phone-validation';
 import { toast, Toaster } from 'sonner';
 import Image from 'next/image';
-import { Loader2, Star, ChevronRight, X } from 'lucide-react';
+import { Loader2, Star, ChevronRight, ChevronLeft, X } from 'lucide-react';
 import type { UserRole } from '@/types';
+import { useTranslation } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 type Step = 'phone' | 'otp';
 
@@ -28,15 +30,16 @@ const getDashboardRoute = (accountType: string) => {
 };
 
 const accountTypes = [
-  { value: 'player',   label: 'لاعب',     emoji: '⚽', desc: 'لاعب كرة قدم' },
-  { value: 'club',     label: 'نادي',      emoji: '🏟️', desc: 'نادي رياضي' },
-  { value: 'academy',  label: 'أكاديمية',  emoji: '🎓', desc: 'أكاديمية تدريب' },
-  { value: 'agent',    label: 'وكيل',      emoji: '🤝', desc: 'وكيل لاعبين' },
-  { value: 'trainer',  label: 'مدرب',      emoji: '💪', desc: 'مدرب رياضي' },
-  { value: 'marketer', label: 'مسوّق',     emoji: '📢', desc: 'مسوّق رياضي' },
+  { value: 'player',   labelKey: 'auth.rolePlayer',     emoji: '⚽', descKey: 'auth.rolePlayerDesc' },
+  { value: 'club',     labelKey: 'auth.roleClub',       emoji: '🏟️', descKey: 'auth.roleClubDesc' },
+  { value: 'academy',  labelKey: 'auth.roleAcademy',    emoji: '🎓', descKey: 'auth.roleAcademyDesc' },
+  { value: 'agent',    labelKey: 'auth.roleAgent',      emoji: '🤝', descKey: 'auth.roleAgentDesc' },
+  { value: 'trainer',  labelKey: 'auth.roleTrainer',    emoji: '💪', descKey: 'auth.roleTrainerDesc' },
+  { value: 'marketer', labelKey: 'auth.roleMarketer',   emoji: '📢', descKey: 'auth.roleMarketerDesc' },
 ];
 
-const TERMS_TEXT = `شروط وأحكام منصة الحلم
+const TERMS_TEXT: Record<string, string> = {
+  ar: `شروط وأحكام منصة الحلم
 
 1. الأهلية والتسجيل
 يجب أن لا يقل عمر المستخدم عن 18 عاماً، أو بموافقة ولي الأمر إن كان أصغر. تتعهد بأن جميع البيانات المدخلة صحيحة.
@@ -56,11 +59,76 @@ const TERMS_TEXT = `شروط وأحكام منصة الحلم
 6. القانون الواجب التطبيق
 تخضع هذه الشروط لقوانين دولة قطر، ويتم الفصل في النزاعات عبر التحكيم في الدوحة.
 
-بضغطك على "إرسال رمز التحقق" فإنك توافق على جميع البنود أعلاه.`;
+بضغطك على "إرسال رمز التحقق" فإنك توافق على جميع البنود أعلاه.`,
+  en: `El7lm Platform Terms & Conditions
+
+1. Eligibility and Registration
+User must be at least 18 years old, or have guardian consent if younger. You warrant that all entered data is correct.
+
+2. Nature of Services
+"El7lm" platform provides analytical tools and display opportunities before clubs, but does not guarantee professionalism or income for the player.
+
+3. Subscriptions and Payments
+The platform accepts electronic payments only. Subscription fees are non-refundable after service activation.
+
+4. Intellectual Property
+All algorithms and logos are the exclusive property of Misk Company. Once you upload any video, you grant the platform a license to use it for analysis and marketing.
+
+5. Privacy
+We collect personal data (name, phone) and sports data to provide the service. You have the right to request deletion of your account via info@el7lm.com.
+
+6. Applicable Law
+These terms are governed by the laws of the State of Qatar, and disputes shall be resolved through arbitration in Doha.
+
+By clicking "Send Verification Code", you agree to all the terms above.`,
+  es: `Términos y condiciones de la plataforma El7lm
+
+1. Elegibilidad y registro
+El usuario debe tener al menos 18 años, o contar con el consentimiento de su tutor si es menor. Usted garantiza que todos los datos ingresados son correctos.
+
+2. Naturaleza de los servicios
+La plataforma "El7lm" proporciona herramientas analíticas y oportunidades de exhibición ante clubes, pero no garantiza el profesionalismo ni ingresos para el jugador.
+
+3. Suscripciones y pagos
+La plataforma solo acepta pagos electrónicos. Las tarifas de suscripción no son reembolsables después de la activación del servicio.
+
+4. Propiedad intelectual
+Todos los algoritmos y logotipos son propiedad exclusiva de Misk Company. Una vez que sube cualquier video, otorga a la plataforma una licencia para usarlo con fines de análisis y marketing.
+
+5. Privacidad
+Recopilamos datos personales (nombre, teléfono) y datos deportivos para proporcionar el servicio. Tiene derecho a solicitar la eliminación de su cuenta a través de info@el7lm.com.
+
+6. Ley aplicable
+Estos términos se rigen por las leyes del Estado de Qatar, y las disputas se resolverán mediante arbitraje en Doha.
+
+Al hacer clic en "Enviar código de verificación", acepta todos los términos anteriores.`,
+  pt: `Termos e Condições da Plataforma El7lm
+
+1. Elegibilidade e Registro
+O usuário deve ter pelo menos 18 anos de idade, ou consentimento do responsável se for menor. Você garante que todos os dados inseridos estão corretos.
+
+2. Natureza dos Serviços
+A plataforma "El7lm" fornece ferramentas analíticas e oportunidades de exibição perante clubes, mas não garante profissionalismo ou renda para o jogador.
+
+3. Assinaturas e Pagamentos
+A plataforma aceita apenas pagamentos eletrônicos. As taxas de assinatura não são reembolsáveis após a ativação do serviço.
+
+4. Propriedade Intelectual
+Todos os algoritmos e logotipos são de propriedade exclusiva da Misk Company. Depois de enviar qualquer vídeo, você concede à plataforma uma licença para usá-lo para análise e marketing.
+
+5. Privacidade
+Coletamos dados pessoais (nome, telefone) e dados esportivos para fornecer o serviço. Você tem o direito de solicitar a exclusão de sua conta via info@el7lm.com.
+
+6. Lei Aplicável
+Estes termos são regidos pelas leis do Estado do Catar, e as disputas serão resolvidas por meio de arbitragem em Doha.
+
+Ao clicar em "Enviar Código de Verificação", você concorda com todos os termos acima.`
+};
 
 export default function RegisterPage() {
   const router = useRouter();
   const { signInWithGoogle, user, userData, loading: authLoading } = useAuth();
+  const { t, locale, isRTL } = useTranslation();
 
   const [branding, setBranding] = useState<BrandingData | null>(null);
   const [step, setStep] = useState<Step>('phone');
@@ -177,11 +245,20 @@ export default function RegisterPage() {
         const data = await res.json();
         if (data.exists) {
           const typeLabels: Record<string, string> = {
-            player: 'لاعب', club: 'نادي', academy: 'أكاديمية',
-            agent: 'وكيل', trainer: 'مدرب', marketer: 'مسوّق', admin: 'مدير',
+            player: t('auth.rolePlayer'),
+            club: t('auth.roleClub'),
+            academy: t('auth.roleAcademy'),
+            agent: t('auth.roleAgent'),
+            trainer: t('auth.roleTrainer'),
+            marketer: t('auth.roleMarketer'),
+            admin: t('auth.roleAdmin'),
           };
           const typeName = typeLabels[data.accountType] || data.accountType || '';
-          setPhoneExistsError(typeName ? `هذا الرقم مسجل بالفعل كـ "${typeName}" — يمكنك تسجيل الدخول` : 'هذا الرقم مسجل بالفعل — يمكنك تسجيل الدخول');
+          setPhoneExistsError(
+            typeName
+              ? t('auth.phoneRegisteredAs').replace('{{role}}', typeName)
+              : t('auth.phoneRegisteredGeneric')
+          );
         } else {
           setPhoneExistsError(null);
         }
@@ -197,16 +274,16 @@ export default function RegisterPage() {
   /* ─── Step 1: Send OTP ─── */
   const handleSendOTP = async () => {
     if (!agreedToTerms) {
-      toast.error('يجب الموافقة على الشروط والأحكام أولاً');
+      toast.error(t('auth.agreeToTermsFirst'));
       return;
     }
     if (!name.trim()) {
-      toast.error('يرجى إدخال اسمك الكامل');
+      toast.error(t('auth.enterFullName'));
       return;
     }
     const cleanPhone = phone.replace(/^0+/, '').trim();
     if (cleanPhone.length < 7) {
-      toast.error('يرجى إدخال رقم واتساب صحيح');
+      toast.error(t('auth.enterValidWhatsapp'));
       return;
     }
 
@@ -229,9 +306,9 @@ export default function RegisterPage() {
         body: JSON.stringify({ phoneNumber: fullPhone, purpose: 'registration', channel: 'whatsapp' }),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'فشل إرسال الرمز');
+      if (!res.ok || !data.success) throw new Error(data.error || t('auth.otpSendFailed'));
 
-      toast.success('تم إرسال رمز التحقق عبر WhatsApp ✅');
+      toast.success(t('auth.otpSentSuccess'));
       setOtp(['', '', '', '', '', '']);
       setStep('otp');
       startResendTimer();
@@ -281,7 +358,7 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        toast.error(data.error || 'رمز غير صحيح');
+        toast.error(data.error || t('auth.forgotPasswordOtpIncorrect'));
         setOtp(['', '', '', '', '', '']);
         setTimeout(() => otpRefs.current[0]?.focus(), 50);
         setVerifyLoading(false);
@@ -292,10 +369,17 @@ export default function RegisterPage() {
         // Existing user — check if selected type matches
         if (data.accountType && data.accountType !== accountType) {
           const typeLabels: Record<string, string> = {
-            player: 'لاعب', club: 'نادي', academy: 'أكاديمية',
-            agent: 'وكيل', trainer: 'مدرب', marketer: 'مسوّق', admin: 'مدير',
+            player: t('auth.rolePlayer'),
+            club: t('auth.roleClub'),
+            academy: t('auth.roleAcademy'),
+            agent: t('auth.roleAgent'),
+            trainer: t('auth.roleTrainer'),
+            marketer: t('auth.roleMarketer'),
+            admin: t('auth.roleAdmin'),
           };
-          toast.error(`هذا الرقم مسجل بالفعل كـ "${typeLabels[data.accountType] || data.accountType}" — سيتم توجيهك للوحتك`);
+          const typeName = typeLabels[data.accountType] || data.accountType;
+          const msg = t('auth.phoneRegisteredRedirect').replace('{{role}}', typeName);
+          toast.error(msg);
         }
         if (data.uid) sessionStorage.setItem('otp_firebase_uid', data.uid);
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -311,7 +395,7 @@ export default function RegisterPage() {
           body: JSON.stringify({ phoneNumber: fullPhone, accountType, name: name.trim() }),
         });
         const createData = await createRes.json();
-        if (!createRes.ok || !createData.success) throw new Error(createData.error || 'فشل إنشاء الحساب');
+        if (!createRes.ok || !createData.success) throw new Error(createData.error || t('auth.createAccountFailed'));
 
         if (createData.uid) sessionStorage.setItem('otp_firebase_uid', createData.uid);
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -337,8 +421,8 @@ export default function RegisterPage() {
         body: JSON.stringify({ phoneNumber: fullPhone, purpose: 'registration', channel: 'whatsapp' }),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'فشل إعادة الإرسال');
-      toast.success('تم إعادة الإرسال ✅');
+      if (!res.ok || !data.success) throw new Error(data.error || t('auth.resendFailed'));
+      toast.success(t('auth.resendSuccess'));
       setOtp(['', '', '', '', '', '']);
       startResendTimer();
       setTimeout(() => otpRefs.current[0]?.focus(), 50);
@@ -352,7 +436,7 @@ export default function RegisterPage() {
   /* ─── Google ─── */
   const handleGoogleSignIn = async () => {
     if (!agreedToTerms) {
-      toast.error('يجب الموافقة على الشروط والأحكام أولاً');
+      toast.error(t('auth.agreeToTermsFirst'));
       return;
     }
     setGoogleLoading(true);
@@ -360,7 +444,7 @@ export default function RegisterPage() {
       const result = await signInWithGoogle(accountType);
       showWelcomePopup(result.userData.full_name || (result.userData as any).name || '', getDashboardRoute(result.userData.accountType || accountType));
     } catch (err: any) {
-      toast.error(err.message || 'فشل تسجيل الدخول بـ Google');
+      toast.error(err.message || t('auth.errorGoogleSignIn'));
     } finally {
       setGoogleLoading(false);
     }
@@ -378,26 +462,26 @@ export default function RegisterPage() {
   if (user && userData && !forceRegister) {
     const dashRoute = getDashboardRoute(userData.accountType);
     return (
-      <div className="min-h-screen bg-[#f7f7f8] flex flex-col items-center justify-center px-4 font-cairo" dir="rtl">
+      <div className="min-h-screen bg-[#f7f7f8] flex flex-col items-center justify-center px-4 font-cairo" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-sm p-7 text-center">
           <div className="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center mx-auto mb-4">
             <span className="text-3xl">👋</span>
           </div>
-          <h2 className="text-lg font-bold text-slate-900 mb-1">أنت مسجل الدخول بالفعل</h2>
+          <h2 className="text-lg font-bold text-slate-900 mb-1">{t('auth.alreadyLoggedIn')}</h2>
           <p className="text-sm text-slate-500 mb-6">
-            {(userData as any).full_name ? `مرحباً ${(userData as any).full_name}` : 'يمكنك الذهاب إلى لوحة التحكم'}
+            {(userData as any).full_name ? `${t('auth.toastGreeting')} ${(userData as any).full_name}` : t('auth.goToDashboard')}
           </p>
           <button
             onClick={() => router.replace(dashRoute)}
             className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition-colors mb-3"
           >
-            الذهاب إلى لوحة التحكم
+            {t('auth.goToDashboard')}
           </button>
           <button
             onClick={async () => { await supabase.auth.signOut(); setForceRegister(true); }}
             className="w-full h-11 border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-medium rounded-lg transition-colors"
           >
-            تسجيل خروج وإنشاء حساب جديد
+            {t('auth.newRegistration')}
           </button>
         </div>
       </div>
@@ -405,8 +489,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f7f8] flex flex-col items-center justify-center py-4 sm:py-10 px-4 font-cairo" dir="rtl">
-      <Toaster position="top-center" dir="rtl" richColors />
+    <div className="min-h-screen bg-[#f7f7f8] flex flex-col items-center justify-center py-4 sm:py-10 px-4 font-cairo relative" dir={isRTL ? 'rtl' : 'ltr'}>
+      <Toaster position="top-center" dir={isRTL ? 'rtl' : 'ltr'} richColors />
 
       {/* Welcome Popup */}
       {welcomeVisible && (
@@ -425,16 +509,16 @@ export default function RegisterPage() {
 
             {/* Text */}
             <h2 className="text-xl font-extrabold text-slate-900 mb-2">
-              {welcomeName ? `مرحباً ${welcomeName}!` : 'مرحباً بك!'}
+              {welcomeName ? `${t('auth.toastGreeting')} ${welcomeName}!` : `${t('auth.toastGreeting')}!`}
             </h2>
             <p className="text-2xl font-black text-slate-900 leading-snug mb-3">
-              خطوة واحدة<br />
+              {t('auth.oneStep')}<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-orange-500">
-                تفصلك عن الاحتراف
+                {t('auth.professionalAway')}
               </span>
             </p>
             <p className="text-sm text-slate-500 mb-6">
-              حسابك جاهز — ابدأ رحلتك نحو القمة الآن 🚀
+              {t('auth.welcomeBackMessage')}
             </p>
 
             {/* Progress bar */}
@@ -444,7 +528,7 @@ export default function RegisterPage() {
                 style={{ animation: 'progress-fill 3s linear forwards' }}
               />
             </div>
-            <p className="text-[10px] text-slate-400 mt-2">جارٍ الانتقال إلى لوحة التحكم...</p>
+            <p className="text-[10px] text-slate-400 mt-2">{t('auth.redirectingToDashboard')}</p>
           </div>
         </div>
       )}
@@ -461,20 +545,20 @@ export default function RegisterPage() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <h2 className="text-sm font-bold text-slate-900">الشروط والأحكام</h2>
-              <button onClick={() => setShowTermsModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors" aria-label="إغلاق نافذة الشروط والأحكام" title="إغلاق">
+              <h2 className="text-sm font-bold text-slate-900">{t('auth.termsAndConditions')}</h2>
+              <button onClick={() => setShowTermsModal(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors" aria-label="Close" title="Close">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="px-5 py-4 max-h-[55vh] overflow-y-auto">
-              <pre className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap font-cairo">{TERMS_TEXT}</pre>
+              <pre className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap font-cairo">{TERMS_TEXT[locale] || TERMS_TEXT.ar}</pre>
             </div>
             <div className="px-5 py-4 border-t border-slate-100">
               <button
                 onClick={() => { setAgreedToTerms(true); setShowTermsModal(false); }}
                 className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition-colors"
               >
-                أوافق على الشروط والأحكام
+                {t('auth.agreeAndClose')}
               </button>
             </div>
           </div>
@@ -490,22 +574,27 @@ export default function RegisterPage() {
       {/* Card */}
       <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-8">
 
-        {/* Logo + heading */}
-        <div className="flex flex-col items-center mb-5 sm:mb-7">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden relative mb-3 flex items-center justify-center bg-slate-100">
+        {/* Logo & Language Switcher Row */}
+        <div className="flex justify-between items-center mb-6">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden relative flex items-center justify-center bg-slate-100">
             {branding?.logoUrl ? (
               <Image src={branding.logoUrl} alt={branding.siteName || 'El7lm'} fill className="object-contain p-1.5" />
             ) : (
               <Star className="w-5 h-5 sm:w-6 sm:h-6 text-slate-700 fill-slate-700" />
             )}
           </div>
+          <LanguageSwitcher variant="light" />
+        </div>
+
+        {/* Heading */}
+        <div className="flex flex-col items-center mb-5 sm:mb-7 text-center">
           <h1 className="text-lg sm:text-xl font-bold text-slate-900">
-            {step === 'phone' ? 'إنشاء حساب' : 'رمز التحقق'}
+            {step === 'phone' ? t('auth.signUpTitle') : t('auth.verificationCode')}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 text-center">
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
             {step === 'phone'
-              ? 'اختر نوعك وأدخل بياناتك'
-              : `مرحباً ${name}، أُرسل رمز التحقق عبر WhatsApp`}
+              ? t('auth.chooseTypeAndEnterDetails')
+              : t('auth.welcomeRegistration').replace('{{name}}', name)}
           </p>
         </div>
 
@@ -515,18 +604,18 @@ export default function RegisterPage() {
 
             {/* Account type — pills on mobile / cards on desktop */}
             <div>
-              <p className="text-[10px] sm:text-xs font-semibold text-slate-400 mb-2 uppercase tracking-widest">أنا...</p>
+              <p className="text-[10px] sm:text-xs font-semibold text-slate-400 mb-2 uppercase tracking-widest">{t('auth.registerStepTitle')}</p>
 
               {isDesktop ? (
                 /* Desktop: 3×2 cards */
                 <div className="grid grid-cols-3 gap-2">
-                  {accountTypes.map(t => {
-                    const active = accountType === t.value;
+                  {accountTypes.map(item => {
+                    const active = accountType === item.value;
                     return (
                       <button
-                        key={t.value}
+                        key={item.value}
                         type="button"
-                        onClick={() => setAccountType(t.value as UserRole)}
+                        onClick={() => setAccountType(item.value as UserRole)}
                         className={`relative flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl border-2 transition-all hover:scale-[1.02] ${
                           active
                             ? 'border-slate-900 bg-slate-900'
@@ -538,9 +627,9 @@ export default function RegisterPage() {
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
                         )}
-                        <span className="text-xl leading-none">{t.emoji}</span>
+                        <span className="text-xl leading-none">{item.emoji}</span>
                         <span className={`text-xs font-semibold ${active ? 'text-white' : 'text-slate-600'}`}>
-                          {t.label}
+                          {t(item.labelKey)}
                         </span>
                       </button>
                     );
@@ -549,21 +638,21 @@ export default function RegisterPage() {
               ) : (
                 /* Mobile: horizontal pills */
                 <div className="flex flex-wrap gap-1.5">
-                  {accountTypes.map(t => {
-                    const active = accountType === t.value;
+                  {accountTypes.map(item => {
+                    const active = accountType === item.value;
                     return (
                       <button
-                        key={t.value}
+                        key={item.value}
                         type="button"
-                        onClick={() => setAccountType(t.value as UserRole)}
+                        onClick={() => setAccountType(item.value as UserRole)}
                         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all active:scale-95 ${
                           active
                             ? 'bg-slate-900 border-slate-900 text-white'
                             : 'bg-white border-slate-200 text-slate-600 hover:border-slate-400'
                         }`}
                       >
-                        <span className="text-sm leading-none">{t.emoji}</span>
-                        <span>{t.label}</span>
+                        <span className="text-sm leading-none">{item.emoji}</span>
+                        <span>{t(item.labelKey)}</span>
                       </button>
                     );
                   })}
@@ -589,7 +678,7 @@ export default function RegisterPage() {
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                   </svg>
-                  <span>المتابعة بـ Google</span>
+                  <span>{t('auth.registerWithGoogle')}</span>
                 </>
               )}
             </button>
@@ -597,7 +686,7 @@ export default function RegisterPage() {
             {/* Divider */}
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px bg-slate-200" />
-              <span className="text-xs text-slate-400">أو عبر WhatsApp</span>
+              <span className="text-xs text-slate-400">{t('auth.whatsappOtpText')}</span>
               <div className="flex-1 h-px bg-slate-200" />
             </div>
 
@@ -607,7 +696,7 @@ export default function RegisterPage() {
               value={name}
               onChange={e => setName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSendOTP()}
-              placeholder="الاسم الكامل"
+              placeholder={t('auth.fullNamePlaceholder')}
               maxLength={60}
               className="w-full h-10 sm:h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
             />
@@ -623,7 +712,7 @@ export default function RegisterPage() {
                 className="w-24 sm:w-28 h-10 sm:h-11 rounded-lg border border-slate-200 bg-white text-xs sm:text-sm text-slate-700 px-2 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
               >
                 {countries.map(c => (
-                  <option key={c.code} value={c.code}>{c.code} {c.name}</option>
+                  <option key={c.code} value={c.code}>{c.code} {getTranslatedCountryName(c.code, locale)}</option>
                 ))}
               </select>
               <input
@@ -631,7 +720,7 @@ export default function RegisterPage() {
                 value={phone}
                 onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
                 onKeyDown={e => e.key === 'Enter' && handleSendOTP()}
-                placeholder="رقم الواتساب"
+                placeholder={t('auth.whatsappPlaceholder')}
                 dir="ltr"
                 maxLength={selectedCountry.phoneLength + 1}
                 className={`flex-1 h-10 sm:h-11 rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
@@ -650,7 +739,7 @@ export default function RegisterPage() {
             {/* 🛡️ Phone already registered feedback */}
             {checkingPhone && phone.length >= 7 && !phoneFormatError && (
               <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                <Loader2 className="w-3 h-3 animate-spin" /> جاري التحقق من الرقم...
+                <Loader2 className="w-3 h-3 animate-spin" /> {t('auth.checkingPhone')}
               </p>
             )}
             {phoneExistsError && (
@@ -661,7 +750,7 @@ export default function RegisterPage() {
                   onClick={() => router.push('/auth/login')}
                   className="underline font-bold hover:text-red-800"
                 >
-                  سجّل الدخول
+                  {t('common.login')}
                 </button>
               </p>
             )}
@@ -681,13 +770,13 @@ export default function RegisterPage() {
                 )}
               </div>
               <span className="text-xs sm:text-sm text-slate-500">
-                أوافق على{' '}
+                {t('auth.agreeTo')}{' '}
                 <button
                   type="button"
                   onClick={e => { e.stopPropagation(); setShowTermsModal(true); }}
                   className="text-slate-900 font-semibold underline underline-offset-2 hover:text-slate-700"
                 >
-                  الشروط والأحكام
+                  {t('auth.termsAndConditions')}
                 </button>
               </span>
             </label>
@@ -699,17 +788,17 @@ export default function RegisterPage() {
               disabled={loading || !agreedToTerms || phone.length < 7 || !!phoneFormatError || !!phoneExistsError || checkingPhone}
               className="w-full h-10 sm:h-11 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'إرسال رمز التحقق عبر WhatsApp'}
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('auth.sendVerificationCode')}
             </button>
 
             <p className="text-center text-xs sm:text-sm text-slate-500">
-              لديك حساب؟{' '}
+              {t('auth.alreadyHaveAccount')}{' '}
               <button
                 type="button"
                 onClick={() => router.push('/auth/login')}
                 className="text-slate-900 font-semibold hover:underline"
               >
-                تسجيل الدخول
+                {t('common.login')}
               </button>
             </p>
           </div>
@@ -722,8 +811,13 @@ export default function RegisterPage() {
             {/* Type badge */}
             <div className="flex justify-center">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full text-xs text-slate-600 font-medium">
-                <span>{accountTypes.find(t => t.value === accountType)?.emoji}</span>
-                <span>{accountTypes.find(t => t.value === accountType)?.label}</span>
+                <span>{accountTypes.find(item => item.value === accountType)?.emoji}</span>
+                <span>
+                  {(() => {
+                    const found = accountTypes.find(item => item.value === accountType);
+                    return found ? t(found.labelKey) : '';
+                  })()}
+                </span>
                 <button
                   type="button"
                   onClick={() => { setStep('phone'); setOtp(['', '', '', '', '', '']); }}
@@ -760,7 +854,7 @@ export default function RegisterPage() {
             {verifyLoading ? (
               <div className="flex items-center justify-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
-                <p className="text-xs text-slate-400">جاري التحقق وإنشاء حسابك...</p>
+                <p className="text-xs text-slate-400">{t('auth.verifyingAndCreating')}</p>
               </div>
             ) : (
               <div className="text-center">
@@ -771,11 +865,11 @@ export default function RegisterPage() {
                     disabled={loading}
                     className="text-sm text-slate-900 font-semibold hover:underline disabled:opacity-50"
                   >
-                    إعادة إرسال الرمز
+                    {t('auth.resendCode')}
                   </button>
                 ) : (
                   <p className="text-sm text-slate-400">
-                    إعادة الإرسال خلال{' '}
+                    {t('auth.resendCountdown')}{' '}
                     <span className="font-mono font-bold text-slate-600">
                       0:{String(resendSeconds).padStart(2, '0')}
                     </span>
@@ -789,8 +883,8 @@ export default function RegisterPage() {
               onClick={() => { setStep('phone'); setOtp(['', '', '', '', '', '']); }}
               className="w-full flex items-center justify-center gap-1 text-sm text-slate-400 hover:text-slate-700 transition-colors"
             >
-              <ChevronRight className="w-4 h-4" />
-              تغيير الرقم أو نوع الحساب
+              {isRTL ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+              {t('auth.changeNumberOrRole')}
             </button>
           </div>
         )}
@@ -798,11 +892,11 @@ export default function RegisterPage() {
 
       {/* Footer */}
       <div className="flex items-center gap-4 mt-5 text-xs text-slate-400">
-        <button type="button" onClick={() => setShowTermsModal(true)} className="hover:text-slate-600 transition-colors">الشروط</button>
+        <button type="button" onClick={() => setShowTermsModal(true)} className="hover:text-slate-600 transition-colors">{t('auth.terms')}</button>
         <span>·</span>
-        <a href="/privacy" className="hover:text-slate-600 transition-colors">الخصوصية</a>
+        <a href="/privacy" className="hover:text-slate-600 transition-colors">{t('auth.privacy')}</a>
         <span>·</span>
-        <a href="/support" className="hover:text-slate-600 transition-colors">المساعدة</a>
+        <a href="/support" className="hover:text-slate-600 transition-colors">{t('auth.support')}</a>
       </div>
     </div>
   );

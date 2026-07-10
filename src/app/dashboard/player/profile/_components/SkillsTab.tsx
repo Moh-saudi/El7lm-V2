@@ -7,6 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Brain, Zap, Star, Sword, Shield, Activity, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n";
 
 // Helper to get color based on stat value
 const getStatColor = (value: number) => {
@@ -60,6 +61,7 @@ const StatSlider = ({ name, label, icon: Icon, description }: { name: string, la
 };
 
 const StarRating = ({ name, label }: { name: string, label: string }) => {
+    const { t } = useTranslation();
     const { control } = useFormContext();
     return (
         <FormField
@@ -85,11 +87,11 @@ const StarRating = ({ name, label }: { name: string, label: string }) => {
                                     ))}
                                 </div>
                                 <div className="text-sm text-gray-500 font-medium">
-                                    {value === 1 && "ضعيف جدًا"}
-                                    {value === 2 && "ضعيف"}
-                                    {value === 3 && "متوسط"}
-                                    {value === 4 && "جيد جدًا"}
-                                    {value === 5 && "عالمي"}
+                                    {value === 1 && t('profile.skillsTab.rating.veryPoor')}
+                                    {value === 2 && t('profile.skillsTab.rating.poor')}
+                                    {value === 3 && t('profile.skillsTab.rating.average')}
+                                    {value === 4 && t('profile.skillsTab.rating.veryGood')}
+                                    {value === 5 && t('profile.skillsTab.rating.worldClass')}
                                 </div>
                             </div>
                         </FormControl>
@@ -102,6 +104,7 @@ const StarRating = ({ name, label }: { name: string, label: string }) => {
 };
 
 export function SkillsTab() {
+    const { t } = useTranslation();
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
@@ -110,15 +113,15 @@ export function SkillsTab() {
                 <Card className="border-blue-100 shadow-sm md:col-span-2">
                     <CardHeader className="flex flex-row items-center gap-3 bg-blue-50/50 pb-4">
                         <div className="p-2 bg-blue-100 rounded-lg text-blue-600"><Zap className="w-5 h-5" /></div>
-                        <CardTitle className="text-lg text-blue-900">القدرات الفنية والبدنية</CardTitle>
+                        <CardTitle className="text-lg text-blue-900">{t('profile.skillsTab.technicalPhysical')}</CardTitle>
                     </CardHeader>
                     <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 p-6">
-                        <StatSlider name="stats_pace" label="السرعة (Pace)" icon={Activity} />
-                        <StatSlider name="stats_shooting" label="التسديد (Shooting)" icon={Target} />
-                        <StatSlider name="stats_passing" label="التمرير (Passing)" icon={Brain} />
-                        <StatSlider name="stats_dribbling" label="المراوغة (Dribbling)" icon={Zap} />
-                        <StatSlider name="stats_defending" label="الدفاع (Defending)" icon={Shield} />
-                        <StatSlider name="stats_physical" label="البدنية (Physical)" icon={Sword} />
+                        <StatSlider name="stats_pace" label={t('profile.skillsTab.pace')} icon={Activity} />
+                        <StatSlider name="stats_shooting" label={t('profile.skillsTab.shooting')} icon={Target} />
+                        <StatSlider name="stats_passing" label={t('profile.skillsTab.passing')} icon={Brain} />
+                        <StatSlider name="stats_dribbling" label={t('profile.skillsTab.dribbling')} icon={Zap} />
+                        <StatSlider name="stats_defending" label={t('profile.skillsTab.defending')} icon={Shield} />
+                        <StatSlider name="stats_physical" label={t('profile.skillsTab.physical')} icon={Sword} />
                     </CardContent>
                 </Card>
 
@@ -126,14 +129,14 @@ export function SkillsTab() {
                 <Card className="border-purple-100 shadow-sm">
                     <CardHeader className="flex flex-row items-center gap-3 bg-purple-50/50 pb-4">
                         <div className="p-2 bg-purple-100 rounded-lg text-purple-600"><Brain className="w-5 h-5" /></div>
-                        <CardTitle className="text-lg text-purple-900">القدرات الذهنية</CardTitle>
+                        <CardTitle className="text-lg text-purple-900">{t('profile.skillsTab.mentalCapacity')}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6 p-6">
-                        <StatSlider name="mentality_vision" label="الرؤية (Vision)" icon={Brain} />
-                        <StatSlider name="mentality_leadership" label="القيادة (Leadership)" icon={Star} />
-                        <StatSlider name="mentality_composure" label="الهدوء (Composure)" icon={Activity} />
-                        <StatSlider name="mentality_teamwork" label="العمل الجماعي" icon={Brain} />
-                        <StatSlider name="mentality_aggression" label="الشراسة (Aggression)" icon={Sword} />
+                        <StatSlider name="mentality_vision" label={t('profile.skillsTab.vision')} icon={Brain} />
+                        <StatSlider name="mentality_leadership" label={t('profile.skillsTab.leadership')} icon={Star} />
+                        <StatSlider name="mentality_composure" label={t('profile.skillsTab.composure')} icon={Activity} />
+                        <StatSlider name="mentality_teamwork" label={t('profile.skillsTab.teamwork')} icon={Brain} />
+                        <StatSlider name="mentality_aggression" label={t('profile.skillsTab.aggression')} icon={Sword} />
                     </CardContent>
                 </Card>
 
@@ -141,12 +144,12 @@ export function SkillsTab() {
                 <Card className="border-amber-100 shadow-sm">
                     <CardHeader className="flex flex-row items-center gap-3 bg-amber-50/50 pb-4">
                         <div className="p-2 bg-amber-100 rounded-lg text-amber-600"><Star className="w-5 h-5" /></div>
-                        <CardTitle className="text-lg text-amber-900">مهارات متقدمة</CardTitle>
+                        <CardTitle className="text-lg text-amber-900">{t('profile.skillsTab.advancedSkills')}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-8 p-6">
                         <div className="grid grid-cols-2 gap-8">
-                            <StarRating name="skill_moves" label="مهارات المراوغة (Skill Moves)" />
-                            <StarRating name="weak_foot" label="القدم الضعيفة (Weak Foot)" />
+                            <StarRating name="skill_moves" label={t('profile.skillsTab.skillMoves')} />
+                            <StarRating name="weak_foot" label={t('profile.skillsTab.weakFoot')} />
                         </div>
 
                         <div className="h-px bg-gray-100" />
@@ -157,13 +160,13 @@ export function SkillsTab() {
                                 name="work_rate_attack"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>معدل الهجوم</FormLabel>
+                                        <FormLabel>{t('profile.skillsTab.attackWorkRate')}</FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value || "Medium"}>
-                                            <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder="اختر" /></SelectTrigger></FormControl>
+                                            <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder={t('profile.skillsTab.select')} /></SelectTrigger></FormControl>
                                             <SelectContent>
-                                                <SelectItem value="Low">منخفض</SelectItem>
-                                                <SelectItem value="Medium">متوسط</SelectItem>
-                                                <SelectItem value="High">مرتفع</SelectItem>
+                                                <SelectItem value="Low">{t('profile.skillsTab.low')}</SelectItem>
+                                                <SelectItem value="Medium">{t('profile.skillsTab.medium')}</SelectItem>
+                                                <SelectItem value="High">{t('profile.skillsTab.high')}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />
@@ -175,13 +178,13 @@ export function SkillsTab() {
                                 name="work_rate_defense"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>معدل الدفاع</FormLabel>
+                                        <FormLabel>{t('profile.skillsTab.defenseWorkRate')}</FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value || "Medium"}>
-                                            <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder="اختر" /></SelectTrigger></FormControl>
+                                            <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder={t('profile.skillsTab.select')} /></SelectTrigger></FormControl>
                                             <SelectContent>
-                                                <SelectItem value="Low">منخفض</SelectItem>
-                                                <SelectItem value="Medium">متوسط</SelectItem>
-                                                <SelectItem value="High">مرتفع</SelectItem>
+                                                <SelectItem value="Low">{t('profile.skillsTab.low')}</SelectItem>
+                                                <SelectItem value="Medium">{t('profile.skillsTab.medium')}</SelectItem>
+                                                <SelectItem value="High">{t('profile.skillsTab.high')}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />

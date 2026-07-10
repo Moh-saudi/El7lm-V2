@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { useTranslation } from '@/lib/i18n';
 import GeideaPaymentModal from '@/components/GeideaPaymentModal';
 import { getCurrencyRates, convertCurrency as convertCurrencyLib, getCurrencyInfo, forceUpdateRates } from '@/lib/currency-rates';
 import { PricingService } from '@/lib/pricing/pricing-service';
@@ -65,25 +66,25 @@ const SUPPORTED_COUNTRIES = COUNTRIES.reduce((acc, c) => ({
 
 const DEFAULT_PAYMENT_METHODS = {
   global: [
-    { id: 'geidea', name: 'بطاقة بنكية', icon: '💳', description: 'ماستركارد، فيزا، مدى', discount: 0, popular: true },
-    { id: 'paypal', name: 'PayPal', icon: '💙', description: 'دفع آمن عالمياً', discount: 0, popular: true },
-    { id: 'bank_transfer', name: 'تحويل بنكي', icon: '🏦', description: 'دفع آمن ومضمون', discount: 0, popular: false }
+    { id: 'geidea', nameKey: 'payment.methodCard', icon: '💳', descKey: 'payment.methodCardDesc', discount: 0, popular: true },
+    { id: 'paypal', nameKey: 'payment.methodPaypal', icon: '💙', descKey: 'payment.methodPaypalDesc', discount: 0, popular: true },
+    { id: 'bank_transfer', nameKey: 'payment.methodBank', icon: '🏦', descKey: 'payment.methodBankDesc', discount: 0, popular: false }
   ],
   SA: [
-    { id: 'geidea', name: 'بطاقة بنكية', icon: '💳', description: 'مدى، فيزا، ماستركارد', discount: 0, popular: true },
-    { id: 'stc_pay', name: 'STC Pay', icon: '📱', description: 'دفع آمن وسريع', discount: 0, popular: true },
-    { id: 'bank_transfer', name: 'تحويل بنكي', icon: '🏦', description: 'دفع آمن ومضمون', discount: 0, popular: false }
+    { id: 'geidea', nameKey: 'payment.methodCard', icon: '💳', descKey: 'payment.methodCardDesc', discount: 0, popular: true },
+    { id: 'stc_pay', nameKey: 'payment.methodStc', icon: '📱', descKey: 'payment.methodStcDesc', discount: 0, popular: true },
+    { id: 'bank_transfer', nameKey: 'payment.methodBank', icon: '🏦', descKey: 'payment.methodBankDesc', discount: 0, popular: false }
   ],
   QA: [
-    { id: 'fawran', name: 'خدمة فورا (Fawran)', icon: '⚡', description: 'تحويل فوري برقم الجوال', discount: 0, popular: true, details: '70900058' },
-    { id: 'bank_transfer', name: 'تحويل بنكي', icon: '🏦', description: 'تحويل مباشر للحساب', discount: 0, popular: false }
+    { id: 'fawran', nameKey: 'payment.methodFawran', icon: '⚡', descKey: 'payment.methodFawranDesc', discount: 0, popular: true, details: '70900058' },
+    { id: 'bank_transfer', nameKey: 'payment.methodBank', icon: '🏦', descKey: 'payment.methodBankDesc', discount: 0, popular: false }
   ],
   EG: [
-    { id: 'geidea', name: 'بطاقة بنكية', icon: '💳', description: 'ماستركارد، فيزا، مدى', discount: 0, popular: true },
-    { id: 'vodafone_cash', name: 'فودافون كاش', icon: '📱', description: 'دفع آمن وسريع', discount: 0, popular: true },
-    { id: 'etisalat_cash', name: 'اتصالات كاش', icon: '💰', description: 'دفع آمن وسريع', discount: 0, popular: false },
-    { id: 'instapay', name: 'انستاباي', icon: '⚡', description: 'دفع آمن وسريع', discount: 0, popular: true },
-    { id: 'bank_transfer', name: 'تحويل بنكي', icon: '🏦', description: 'دفع آمن ومضمون', discount: 0, popular: false }
+    { id: 'geidea', nameKey: 'payment.methodCard', icon: '💳', descKey: 'payment.methodCardDesc', discount: 0, popular: true },
+    { id: 'vodafone_cash', nameKey: 'payment.methodVodafone', icon: '📱', descKey: 'payment.methodStcDesc', discount: 0, popular: true },
+    { id: 'etisalat_cash', nameKey: 'payment.methodEtisalat', icon: '💰', descKey: 'payment.methodStcDesc', discount: 0, popular: false },
+    { id: 'instapay', nameKey: 'payment.methodInstapay', icon: '⚡', descKey: 'payment.methodStcDesc', discount: 0, popular: true },
+    { id: 'bank_transfer', nameKey: 'payment.methodBank', icon: '🏦', descKey: 'payment.methodBankDesc', discount: 0, popular: false }
   ]
 };
 
@@ -104,6 +105,7 @@ interface Partner {
 export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   const { user, userData } = useAuth();
   const router = useRouter();
+  const { t, isRTL } = useTranslation();
 
   // State
   const [selectedPackage, setSelectedPackage] = useState('subscription_6months');
@@ -164,7 +166,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       if (!user) return;
 
       let isCurrentlyActive = false;
-      let detectedPlanName = 'اشتراك نشط';
+      let detectedPlanName = t('payment.activeSubscription');
       let detectedPkgId = '';
       let activeSubscriptionData_raw: any = null;
 
@@ -229,7 +231,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
           setActiveSubscriptionData({
             isActive: true,
             planName: detectedPlanName,
-            planDuration: activeSubscriptionData_raw?.package_duration || activeSubscriptionData_raw?.packageDuration || 'غير محددة',
+            planDuration: activeSubscriptionData_raw?.package_duration || activeSubscriptionData_raw?.packageDuration || t('payment.undefinedDuration'),
             isMaxPlan: !hasHigherPlan,
             daysLeft: daysLeft,
             expiryDate: expiresAt || undefined
@@ -254,11 +256,11 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
     if (!loading && availablePlans.length > 0) {
       detectSubscription();
     }
-  }, [loading, availablePlans, user, userData, accountType, actionParam]);
+  }, [loading, availablePlans, user, userData, accountType, actionParam, t]);
 
   const handleSubmitTicket = async () => {
     if (!ticketSubject.trim() || !ticketMessage.trim() || !user) {
-      toast.error('يرجى ملء جميع الحقول');
+      toast.error(t('payment.fillAllFields'));
       return;
     }
 
@@ -268,7 +270,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       const { data: conversationRef, error: convError } = await supabase.from('support_conversations').insert({
         id: crypto.randomUUID(),
         userId: user.id,
-        userName: userData?.name || user.user_metadata?.full_name || 'مستخدم',
+        userName: userData?.name || user.user_metadata?.full_name || t('payment.defaultUser'),
         userEmail: user.email || '',
         userPhone: userData?.phone || userData?.personal_phone || '',
         userType: accountType,
@@ -288,20 +290,20 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         id: crypto.randomUUID(),
         conversationId: conversationRef.id,
         senderId: user.id,
-        senderName: userData?.name || user.user_metadata?.full_name || 'مستخدم',
+        senderName: userData?.name || user.user_metadata?.full_name || t('payment.defaultUser'),
         senderType: 'user',
         message: ticketMessage.trim(),
         timestamp: now,
         isRead: false
       });
 
-      toast.success('تم إرسال تذكرتك بنجاح');
+      toast.success(t('payment.ticketSentSuccess'));
       setIsSupportModalOpen(false);
       setTicketSubject('');
       setTicketMessage('');
     } catch (error) {
       console.error('Error creating ticket:', error);
-      toast.error('فشل إرسال التذكرة');
+      toast.error(t('payment.ticketSentFailed'));
     } finally {
       setIsSubmittingTicket(false);
     }
@@ -352,7 +354,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       setPromoCode(pendingPromo);
       setAppliedOffer(offer);
       setPromoCodeSuccess(true);
-      toast.success(`تم تطبيق كود الخصم: ${offer.name || pendingPromo}`);
+      toast.success(t('payment.appliedOffer').replace('{{title}}', offer.name || pendingPromo));
       if (typeof window !== 'undefined') localStorage.removeItem('pendingPromoCode');
     }
   }, [availableOffers, urlPromoCode]);
@@ -390,10 +392,9 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                 enabled: serverMethod.enabled === true,
                 details: serverMethod.accountNumber || serverMethod.details || (baseMethod as any).details,
                 instructions: serverMethod.instructions || (baseMethod as any).instructions,
-                // Branding: Force Code-defined branding for SkipCash to override DB pollution (NAPS, etc)
-                name: baseMethod.id === 'skipcash' ? baseMethod.name : (serverMethod.name || baseMethod.name),
+                nameKey: baseMethod.nameKey,
                 icon: baseMethod.icon,
-                description: baseMethod.id === 'skipcash' ? baseMethod.description : (serverMethod.description || baseMethod.description)
+                descKey: baseMethod.descKey
               };
             }
 
@@ -460,7 +461,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       setCurrencyRates(rates);
     } catch (error) {
       console.error('Error loading rates:', error);
-      toast.error('فشل تحميل أسعار العملات');
+      toast.error(t('payment.loadRatesFailed'));
     } finally {
       setRatesLoading(false);
     }
@@ -542,7 +543,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       const playersData: PlayerData[] = (playersRaw || []).map((d: any) => {
         return {
           id: d.id,
-          name: d.full_name || d.name || 'لاعب',
+          name: d.full_name || d.name || t('payment.defaultPlayer'),
           email: d.email,
           phone: d.phone || d.phoneNumber,
           position: d.primary_position || d.position,
@@ -560,7 +561,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       setPlayers(playersData);
     } catch (e) {
       console.error('❌ خطأ في جلب اللاعبين:', e);
-      toast.error('فشل تحميل بيانات اللاعبين');
+      toast.error(t('payment.loadPlayersFailed'));
     } finally {
       setLoading(false);
     }
@@ -654,7 +655,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
     setAppliedOffer(null);
     setAppliedPartner(null);
 
-    if (!promoCode.trim()) { setPromoCodeError('الرجاء إدخال رمز الخصم'); return; }
+    if (!promoCode.trim()) { setPromoCodeError(t('payment.enterPromoCode')); return; }
 
     const codeInput = promoCode.trim().toUpperCase();
 
@@ -663,7 +664,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
     if (offer) {
       setAppliedOffer(offer);
       setPromoCodeSuccess(true);
-      toast.success('تم تطبيق كود الخصم بنجاح');
+      toast.success(t('payment.promoAppliedSuccess'));
       return;
     }
 
@@ -677,18 +678,18 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         if (partnerData.status === 'active' || partnerData.isActive) {
           setAppliedPartner(partnerData);
           setPromoCodeSuccess(true);
-          toast.success(`تم تطبيق خصم الشريك: ${partnerData.partnerName}`);
+          toast.success(t('payment.appliedPartner').replace('{{name}}', partnerData.partnerName));
           setLoading(false);
           return;
         } else {
-          setPromoCodeError('هذا الكود غير نشط حالياً');
+          setPromoCodeError(t('payment.promoCodeInactive'));
         }
       } else {
-        setPromoCodeError('الرمز غير صحيح أو انتهت صلاحيته');
+        setPromoCodeError(t('payment.invalidPromoCode'));
       }
     } catch (error) {
       console.error("Partner code check error", error);
-      setPromoCodeError('حدث خطأ أثناء التحقق من الكود');
+      setPromoCodeError(t('payment.promoCodeCheckError'));
     } finally {
       setLoading(false);
     }
@@ -754,12 +755,12 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
   const handleCheckout = async () => {
     if (!user?.id) {
-      toast.error('يرجى تسجيل الدخول أولاً');
+      toast.error(t('payment.loginRequired'));
       return;
     }
 
     if (selectedCount === 0 && accountType !== 'player') {
-      toast.error('يرجى اختيار لاعب واحد على الأقل');
+      toast.error(t('payment.selectAtLeastOnePlayer'));
       return;
     }
 
@@ -768,7 +769,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
       // Validation for manual payments
       if (isManualMethod && !receiptFile) {
-        toast.error('يرجى رفع صورة إيصال التحويل للمتابعة');
+        toast.error(t('payment.uploadReceiptRequired'));
         setLoading(false);
         return;
       }
@@ -780,9 +781,9 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         currency: currentCurrencyCode,
         paymentMethod: selectedPaymentMethod,
         packageType: selectedPackage,
-        packageName: packages[selectedPackage]?.title || 'اشتراك',
-        packageDuration: packages[selectedPackage]?.period || 'مدة غير محددة',
-        package_duration: packages[selectedPackage]?.period || 'مدة غير محددة',
+        packageName: packages[selectedPackage]?.title || t('payment.genericSub'),
+        packageDuration: packages[selectedPackage]?.period || t('payment.undefinedDuration'),
+        package_duration: packages[selectedPackage]?.period || t('payment.undefinedDuration'),
         playerCount: countForCalculation,
         players: accountType === 'player' ? [user.id] : selectedPlayers.map(p => p.id),
         customerEmail: user.email || '',
@@ -818,14 +819,14 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
       // C. PayPal
       if (selectedPaymentMethod === 'paypal') {
-        toast('سيتم إضافة الدفع عبر PayPal قريباً');
+        toast(t('payment.paypalSoon'));
         setLoading(false);
         return;
       }
 
       // D. Manual Methods (Upload Receipt)
       if (isManualMethod && receiptFile) {
-        toast.loading('جاري رفع الإيصال...', { id: 'upload' });
+        toast.loading(t('payment.processingReceiptUpload'), { id: 'upload' });
 
         const fileExt = receiptFile.name.split('.').pop();
         const path = `receipts/${user.id}/${invoiceId}.${fileExt}`;
@@ -835,14 +836,14 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
         await InvoiceService.submitManualReceipt(invoiceId, receiptUrl);
 
-        toast.success('تم إرسال طلبك بنجاح. سيتم مراجعة الإيصال وتفعيل الاشتراك خلال 24 ساعة.', { id: 'upload' });
+        toast.success(t('payment.receiptUploadSuccess'), { id: 'upload' });
         setReceiptFile(null);
         router.push('/dashboard/shared/subscription-status');
       }
 
     } catch (error: any) {
       console.error('Checkout error:', error);
-      toast.error('حدث خطأ أثناء إتمام الطلب');
+      toast.error(t('payment.checkoutError'));
     } finally {
       setLoading(false);
     }
@@ -869,25 +870,25 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       if (data.success && data.payUrl) {
         window.location.href = data.payUrl;
       } else {
-        const errorMsg = data.error || 'فشل إنشاء عملية الدفع';
+        const errorMsg = data.error || t('payment.paymentInitFailed');
         toast.error(errorMsg);
       }
     } catch (error) {
       console.error(error);
-      toast.error('حدث خطأ غير متوقع في خدمة SkipCash');
+      toast.error(t('payment.skipCashError'));
     }
   };
 
   const handlePaymentSuccess = async (data: any) => {
-    toast.success('تم الدفع بنجاح!');
+    toast.success(t('payment.paymentSuccess'));
     setShowGeideaModal(false);
   };
-  const handlePaymentFailure = (err: any) => { toast.error('فشل عملية الدفع'); };
+  const handlePaymentFailure = (err: any) => { toast.error(t('payment.paymentFailed')); };
 
 
   // --- Render ---
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* Modern Glass Header */}
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-white/20 shadow-sm">
@@ -898,11 +899,11 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
             </div>
             <div>
               <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-700">
-                إدارة الاشتراكات
+                {t('payment.title')}
               </h1>
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                <p className="text-[10px] text-gray-500 font-medium">النظام يعمل بكفاءة</p>
+                <p className="text-[10px] text-gray-500 font-medium">{t('payment.systemActive')}</p>
               </div>
             </div>
           </div>
@@ -931,7 +932,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                   <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
                     <Zap className="w-5 h-5" />
                   </div>
-                  اختر الباقة المناسبة
+                  {t('payment.choosePlan')}
                 </h2>
               </div>
 
@@ -984,8 +985,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                         {pkg.id?.includes('annual') && (
                           <div className="absolute top-0 right-0 z-50 bg-gradient-to-l from-red-500 to-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-md flex items-center gap-1">
                             <span className="animate-pulse">🔥</span>
-                            <span>الأكثر توفيراً</span>
-                            {parseInt(pkg.discount) > 0 && <span className="bg-white/20 px-1 rounded text-white ml-1">وفر {pkg.discount}</span>}
+                            <span>{t('payment.mostSaving')}</span>
+                            {parseInt(pkg.discount) > 0 && <span className="bg-white/20 px-1 rounded text-white ml-1">{t('payment.saveAmount').replace('{{amount}}', pkg.discount)}</span>}
                           </div>
                         )}
 
@@ -1025,7 +1026,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                             ))}
                             {pkg.features?.length > 5 && (
                               <p className={`text-[10px] text-center mt-2 ${isSelected ? 'text-blue-200' : 'text-gray-400'}`}>
-                                + {pkg.features.length - 5} ميزات أخرى
+                                + {pkg.features.length - 5} {t('payment.moreFeatures')}
                               </p>
                             )}
                           </div>
@@ -1068,7 +1069,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                 <div className="p-2 bg-purple-100 rounded-lg text-purple-600">
                   <CreditCard className="w-5 h-5" />
                 </div>
-                وسيلة الدفع المفضلة
+                {t('payment.paymentMethod')}
               </h2>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1114,7 +1115,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                           <p className="text-xs text-gray-500 mt-1">{method.description}</p>
                           {isSelected && method.details && (
                             <div className="mt-3">
-                              <p className="text-[10px] text-gray-500 mb-1 font-bold">رقم التحويل:</p>
+                              <p className="text-[10px] text-gray-500 mb-1 font-bold">{t('payment.transferNumber')}</p>
                               <div className="flex items-center gap-2 group/copy">
                                 <code className="flex-1 text-lg font-black text-indigo-700 bg-white border-2 border-dashed border-indigo-200 px-3 py-1.5 rounded-lg tracking-wider text-center select-all shadow-sm">
                                   {method.details}
@@ -1123,10 +1124,10 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     navigator.clipboard.writeText(method.details);
-                                    toast.success('تم نسخ الرقم');
+                                    toast.success(t('payment.copiedSuccess'));
                                   }}
                                   className="p-2 bg-white border border-gray-200 text-gray-400 rounded-lg hover:text-indigo-600 hover:border-indigo-300 hover:shadow-md transition-all"
-                                  title="نسخ الرقم"
+                                  title={t('payment.copyNumber')}
                                 >
                                   <Copy className="w-4 h-4" />
                                 </button>
@@ -1158,7 +1159,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
               <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
                 <h3 className="font-bold text-sm text-gray-800 flex items-center gap-2">
                   <Users className="w-4 h-4 text-blue-500" />
-                  إدارة اللاعبين
+                  {t('payment.playersManagement')}
                 </h3>
                 <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">{filteredPlayers.length}</span>
               </div>
@@ -1168,7 +1169,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                   <Search className="absolute right-3 top-2.5 w-4 h-4 text-gray-400" />
                   <input
                     type="search"
-                    placeholder="بحث سريع..."
+                    placeholder={t('payment.searchPlaceholder')}
                     className="w-full pl-4 pr-9 py-2 bg-gray-50 border-none rounded-lg text-sm focus:ring-2 focus:ring-blue-100 transition-all font-medium text-gray-700"
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
@@ -1182,7 +1183,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                     <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
                       <Users className="w-6 h-6 text-gray-300" />
                     </div>
-                    <p className="text-xs text-gray-400">لا يوجد لاعبين</p>
+                    <p className="text-xs text-gray-400">{t('payment.noPlayers')}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -1214,7 +1215,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
               </div>
 
               <div className="p-3 border-t border-gray-100 bg-gray-50/50 text-center">
-                <button onClick={toggleSelectAll} className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline">تحديد / إلغاء تحديد الكل</button>
+                <button onClick={toggleSelectAll} className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline">{t('payment.selectAll')}</button>
               </div>
             </div>
 
@@ -1228,7 +1229,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                   <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center">
                     <Trophy className="w-5 h-5" />
                   </div>
-                  ملخص الطلب
+                  {t('payment.orderSummary')}
                 </h3>
 
                 {/* Promo Code */}
@@ -1236,19 +1237,19 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="كود الخصم"
+                      placeholder={t('payment.promoCode')}
                       className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs uppercase font-mono tracking-wider focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                       value={promoCode}
                       onChange={e => setPromoCode(e.target.value)}
                     />
                     <button onClick={handleApplyPromoCode} className="px-3 py-2 bg-gray-800 hover:bg-black text-white text-xs font-bold rounded-lg transition-colors">
-                      تطبيق
+                      {t('payment.apply')}
                     </button>
                   </div>
                   {promoCodeSuccess && (
                     <p className="text-xs text-green-600 mt-2 flex items-center gap-1 font-medium">
                       <CheckCircle className="w-3 h-3" />
-                      {appliedOffer ? `تم تطبيق العرض: ${appliedOffer.title}` : appliedPartner ? `شريك: ${appliedPartner.partnerName}` : 'تم التطبيق'}
+                      {appliedOffer ? t('payment.appliedOffer').replace('{{title}}', appliedOffer.title) : appliedPartner ? t('payment.appliedPartner').replace('{{name}}', appliedPartner.partnerName) : t('payment.appliedSuccess')}
                     </p>
                   )}
                   {promoCodeError && <p className="text-xs text-red-500 mt-2">{promoCodeError}</p>}
@@ -1257,18 +1258,18 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                 {/* Pricing Details */}
                 <div className="space-y-4 mb-6">
                   <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
-                    <span className="text-sm text-gray-500">عدد اللاعبين</span>
+                    <span className="text-sm text-gray-500">{t('payment.playersCount')}</span>
                     <span className="font-bold text-gray-900 bg-white px-3 py-1 rounded-lg shadow-sm border border-gray-100">{selectedCount}</span>
                   </div>
 
                   <div className="px-1 space-y-2">
                     <div className="flex justify-between text-sm text-gray-600">
-                      <span>سعر الباقة للفرد</span>
+                      <span>{t('payment.pricePerPerson')}</span>
                       <span className="font-bold">{subscriptionPrice} {currencySymbol}</span>
                     </div>
                     {offerDiscount > 0 && (
                       <div className="flex justify-between text-sm text-green-600 font-medium">
-                        <span>قيمة الخصم</span>
+                        <span>{t('payment.discountValue')}</span>
                         <span>- {offerDiscount.toFixed(2)} {currencySymbol}</span>
                       </div>
                     )}
@@ -1283,7 +1284,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                     <div className="flex items-start gap-2 mb-3">
                       <div className="p-1 bg-blue-100 rounded text-blue-600 mt-0.5"><Upload className="w-3 h-3" /></div>
                       <div className="text-xs text-gray-600 leading-relaxed">
-                        يرجى تحويل المبلغ المطلوب إلى الرقم الموضح، ثم رفع صورة الإيصال هنا لإتمام الطلب.
+                        {t('payment.manualPaymentTip')}
                       </div>
                     </div>
 
@@ -1297,10 +1298,10 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-bold text-gray-700 truncate">
-                            {receiptFile ? receiptFile.name : 'اضغط لرفع صورة الدفع'}
+                            {receiptFile ? receiptFile.name : t('payment.uploadReceipt')}
                           </p>
                           <p className="text-[10px] text-gray-400">
-                            {receiptFile ? 'تم الرفع بنجاح' : 'JPG, PNG, PDF'}
+                            {receiptFile ? t('payment.uploadSuccess') : 'JPG, PNG, PDF'}
                           </p>
                         </div>
                       </div>
@@ -1311,7 +1312,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
                 {/* Total */}
                 <div className="flex justify-between items-end mb-6">
-                  <span className="text-sm font-bold text-gray-500 mb-1">الإجمالي النهائي</span>
+                  <span className="text-sm font-bold text-gray-500 mb-1">{t('payment.finalTotal')}</span>
                   <span className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
                     {finalPrice.toLocaleString()} <span className="text-xs text-gray-400 font-medium">{selectedPkg?.currency || currencySymbol}</span>
                   </span>
@@ -1325,36 +1326,36 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                 >
                   <span>
                     {!['geidea', 'paypal', 'skipcash'].includes(selectedPaymentMethod)
-                      ? 'تأكيد التحويل وإرسال الإيصال'
-                      : 'إتمام عملية الدفع الإلكتروني'}
+                      ? t('payment.confirmTransfer')
+                      : t('payment.completePayment')}
                   </span>
                   <ArrowLeft className="w-4 h-4" />
                 </button>
 
                 <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-gray-400">
                   <Shield className="w-3 h-3" />
-                  <span>مدفوعات آمنة 100% ومشفرة</span>
+                  <span>{t('payment.securePayments')}</span>
                 </div>
               </div>
             </div>
 
             {/* Support Widget */}
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl shadow-xl shadow-blue-500/10 p-6 text-white text-right" dir="rtl">
-              <h4 className="font-black text-lg mb-2">تحتاج مساعدة؟</h4>
-              <p className="text-blue-100 text-xs mb-6 leading-relaxed">فريق الدعم الفني متواجد لمساعدتك في إتمام عملية الدفع وتفعيل الاشتراكات.</p>
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl shadow-xl shadow-blue-500/10 p-6 text-white text-start" dir={isRTL ? 'rtl' : 'ltr'}>
+              <h4 className="font-black text-lg mb-2">{t('payment.needHelp')}</h4>
+              <p className="text-blue-100 text-xs mb-6 leading-relaxed">{t('payment.supportMessage')}</p>
               <div className="space-y-3">
                 <button
                   onClick={() => window.open(getPrimaryWhatsAppNumber(), '_blank')}
                   className="w-full py-3 bg-white text-blue-600 rounded-xl font-black text-sm hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
                 >
                   <MessageSquare className="w-4 h-4" />
-                  واتساب الدعم
+                  {t('payment.supportWhatsApp')}
                 </button>
                 <button
                   onClick={() => setIsSupportModalOpen(true)}
                   className="w-full py-3 bg-white/10 text-white border border-white/20 rounded-xl font-black text-sm hover:bg-white/20 transition-all"
                 >
-                  فتح تذكرة دعم
+                  {t('payment.openTicket')}
                 </button>
               </div>
             </div>
@@ -1372,8 +1373,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         onPaymentFailure={handlePaymentFailure}
         amount={typeof window !== 'undefined' && window.convertedAmountForGeidea ? window.convertedAmountForGeidea : Math.round(finalPrice)}
         currency="EGP"
-        title="تجديد الاشتراكات"
-        description={`دفع اشتراكات لـ ${selectedCount} لاعبين`}
+        title={t('payment.geideaTitle')}
+        description={t('payment.geideaDesc').replace('{{count}}', String(selectedCount))}
         customerEmail={user?.email || 'customer@example.com'}
         merchantReferenceId={`PAY-${Date.now()}`}
       />
@@ -1381,35 +1382,35 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       {/* Support Ticket Modal */}
       <Dialog open={isSupportModalOpen} onOpenChange={setIsSupportModalOpen}>
         <DialogContent className="w-[95vw] sm:w-[450px] p-0 overflow-hidden bg-white border-none shadow-2xl rounded-[2rem] sm:rounded-[2.5rem]">
-          <div className="p-8 text-right" dir="rtl">
+          <div className="p-8 text-start" dir={isRTL ? 'rtl' : 'ltr'}>
             <div className="flex items-center gap-4 mb-8">
               <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0 shadow-inner">
                 <MessageSquare className="w-7 h-7 text-blue-600" />
               </div>
               <div>
-                <DialogTitle className="text-2xl font-black text-slate-900 leading-none mb-2">الدعم الفني</DialogTitle>
+                <DialogTitle className="text-2xl font-black text-slate-900 leading-none mb-2">{t('payment.supportTicket')}</DialogTitle>
                 <DialogDescription className="text-slate-500 font-bold text-xs uppercase tracking-wider">Help & Support</DialogDescription>
               </div>
             </div>
 
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-black text-slate-700 mr-1">موضوع المشكلة</label>
+                <label className="text-sm font-black text-slate-700 mr-1">{t('payment.issueSubject')}</label>
                 <Input
-                  placeholder="ما هي المشكلة التي تواجهها؟"
+                  placeholder={t('payment.issueSubjectPlaceholder')}
                   value={ticketSubject}
                   onChange={(e) => setTicketSubject(e.target.value)}
-                  className="rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-blue-500 h-12 text-right font-medium transition-all"
+                  className="rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-blue-500 h-12 text-start font-medium transition-all"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-black text-slate-700 mr-1">التفاصيل</label>
+                <label className="text-sm font-black text-slate-700 mr-1">{t('payment.details')}</label>
                 <Textarea
-                  placeholder="اشرح لنا المشكلة بالتفصيل هنا..."
+                  placeholder={t('payment.detailsPlaceholder')}
                   value={ticketMessage}
                   onChange={(e) => setTicketMessage(e.target.value)}
-                  className="min-h-[140px] rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-blue-500 text-right font-medium resize-none leading-relaxed transition-all"
+                  className="min-h-[140px] rounded-2xl border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-blue-500 text-start font-medium resize-none leading-relaxed transition-all"
                 />
               </div>
             </div>
@@ -1425,7 +1426,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                 ) : (
                   <>
                     <Send className="w-5 h-5" />
-                    إرسال الطلب
+                    {t('payment.sendRequest')}
                   </>
                 )}
               </Button>
@@ -1434,7 +1435,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                 onClick={() => setIsSupportModalOpen(false)}
                 className="rounded-2xl h-14 px-6 font-bold text-slate-400 hover:bg-slate-100 transition-all"
               >
-                إلغاء
+                {t('payment.cancel')}
               </Button>
             </div>
           </div>
@@ -1446,7 +1447,6 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         open={isActionModalOpen}
         onOpenChange={(open) => {
           if (!open) {
-            // Only redirect players who don't have a manual action intent
             if (activeSubscriptionData?.isActive && accountType === 'player' && !actionParam) {
               router.push('/dashboard');
             } else {
@@ -1458,7 +1458,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         }}
       >
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-xl p-0 overflow-hidden bg-white border-none shadow-2xl rounded-[2rem] sm:rounded-[2.5rem]">
-          <div className="flex flex-col md:flex-row min-h-[350px]" dir="rtl">
+          <div className="flex flex-col md:flex-row min-h-[350px]" dir={isRTL ? 'rtl' : 'ltr'}>
             {/* Visual Accent Panel */}
             <div className="md:w-1/4 bg-gradient-to-br from-blue-600 via-indigo-700 to-violet-800 p-6 flex flex-col items-center justify-center text-center relative overflow-hidden">
               <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-24 -mt-24 blur-3xl"></div>
@@ -1466,8 +1466,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                 <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-2xl mb-4 mx-auto animate-float">
                   <Zap className="w-8 h-8 text-white fill-white" />
                 </div>
-                <h3 className="text-white text-base font-black mb-1 leading-tight">منصة الحلم</h3>
-                <p className="text-blue-100/60 text-[10px] font-bold px-2 leading-tight">رحلة الاحتراف تبدأ من هنا</p>
+                <h3 className="text-white text-base font-black mb-1 leading-tight">{t('common.dashboard')}</h3>
+                <p className="text-blue-100/60 text-[10px] font-bold px-2 leading-tight">{t('payment.proJourneyStart')}</p>
               </div>
             </div>
 
@@ -1480,48 +1480,48 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
               <div className="relative z-10 w-full">
                 <DialogTitle className="text-2xl md:text-3xl font-black text-slate-900 mb-3 leading-tight">
                   {activeSubscriptionData?.isActive
-                    ? 'إدارة اشتراكك الحالي ⚡'
-                    : 'اشترك في منصة الحلم'}
+                    ? t('payment.yourCurrentSubscription')
+                    : t('payment.joinEl7lm')}
                 </DialogTitle>
                 <DialogDescription className="sr-only">
-                  نافذة إدارة الاشتراك وتجديد أو ترقية الباقة الحالية.
+                  {t('payment.actionModalDesc')}
                 </DialogDescription>
 
                 <div className="text-slate-600 font-bold mb-6 leading-relaxed">
                   {activeSubscriptionData?.isActive ? (
                     <div className="space-y-6">
-                      <p className="text-xs">أهلاً بك! يظهر لدينا أنك مشترك حالياً في:</p>
+                      <p className="text-xs">{t('payment.welcomeSubText')}</p>
 
                       <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 shadow-lg shadow-slate-200/30 flex flex-col md:flex-row items-center gap-4 relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-1.5 h-full bg-blue-600"></div>
-                        <div className="flex-1 text-center md:text-right">
+                        <div className="flex-1 text-center md:text-start">
                           <p className="text-blue-600 text-xl font-black mb-1">{activeSubscriptionData.planName}</p>
                           <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-[10px] text-slate-500">
                             <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200">
-                              <span className="text-slate-900 font-black">{activeSubscriptionData.planDuration || 'مدة غير محددة'}</span>
+                              <span className="text-slate-900 font-black">{activeSubscriptionData.planDuration || t('payment.undefinedDuration')}</span>
                             </div>
                             <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200">
-                              <span className="text-slate-900 font-black">{activeSubscriptionData.daysLeft} يوم متبقي</span>
+                              <span className="text-slate-900 font-black">{activeSubscriptionData.daysLeft} {t('payment.daysLeft')}</span>
                             </div>
                             <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-white border border-slate-200">
-                              <span className="text-slate-900 font-black">{activeSubscriptionData.expiryDate?.toLocaleDateString('ar-EG')}</span>
+                              <span className="text-slate-900 font-black">{activeSubscriptionData.expiryDate?.toLocaleDateString(isRTL ? 'ar-EG' : 'en-US')}</span>
                             </div>
                           </div>
                         </div>
                       </div>
                       <p className="text-xs px-1 leading-relaxed">
                         {activeSubscriptionData.isMaxPlan
-                          ? `استمتع بكافة المميزات الحصرية المتاحة لك الآن.`
-                          : `هل تود الانتقال للباقة السنوية لضمان متابعة مستمرة من الكشافين؟`}
+                          ? t('payment.enjoyFeatures')
+                          : t('payment.upgradePrompt')}
                       </p>
                     </div>
                   ) : (
                     <p className="text-xs leading-loose">
                       {actionParam === 'upgrade'
-                        ? 'اختر إحدى الباقات المميزة للحصول على الوصول كامل لكل مميزات المنصة'
+                        ? t('payment.upgradeDesc')
                         : actionParam === 'renew'
-                          ? 'يمكنك تمديد مدة اشتراكك الحالي بسهولة عبر اختيار الباقة المناسبة'
-                          : 'أهلاً بك! اختر الباقة التي تناسبك لتبدأ رحلتك الاحترافية'}
+                          ? t('payment.renewDesc')
+                          : t('payment.defaultActionDesc')}
                     </p>
                   )}
                 </div>
@@ -1530,13 +1530,13 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                   {activeSubscriptionData?.isActive && !activeSubscriptionData.isMaxPlan && (
                     <div className="bg-orange-50/80 p-3 rounded-xl text-orange-700 text-[11px] font-bold border border-orange-100/50 flex items-start gap-2">
                       <span className="shrink-0">💡</span>
-                      <p>ترقية اشتراكك للسنوي الآن تمنحك خصماً فورياً 30%.</p>
+                      <p>{t('payment.annualDiscountTip')}</p>
                     </div>
                   )}
                   {!activeSubscriptionData?.isActive && (
                     <div className="bg-blue-50/80 backdrop-blur-sm p-4 rounded-2xl text-blue-700 text-sm font-bold leading-relaxed border border-blue-100 flex items-start gap-3">
                       <div className="shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">⭐</div>
-                      <p>سيتم تطبيق الرموز والخصومات المتاحة تلقائياً عند الدفع لضمان حصولك على أفضل سعر.</p>
+                      <p>{t('payment.autoDiscountTip')}</p>
                     </div>
                   )}
 
@@ -1548,8 +1548,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                       >
                         <span>
                           {activeSubscriptionData?.isActive
-                            ? (accountType === 'player' ? 'ترقية أو تمديد الخطة 🚀' : 'إدارة اللاعبين الآن')
-                            : 'استعراض الباقات'}
+                            ? (accountType === 'player' ? t('payment.upgradeOrRenewBtn') : t('payment.managePlayersBtn'))
+                            : t('payment.browsePlansBtn')}
                         </span>
                         <ChevronLeft className="mr-2 w-5 h-5 group-hover:-translate-x-1 transition-transform" />
                       </Button>
@@ -1563,7 +1563,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                           className="flex-1 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl h-14 text-sm font-black shadow-xl shadow-amber-200/50 transition-all"
                         >
                           <Crown className="ml-2 w-4 h-4" />
-                          ترقية أو تمديد الخطة
+                          {t('payment.upgradeOrRenewAction')}
                         </Button>
                       )}
                     </div>
@@ -1575,7 +1575,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                         onClick={() => router.push('/dashboard')}
                         className="flex-1 rounded-xl h-12 text-slate-400 font-bold hover:bg-slate-50"
                       >
-                        لاحقاً
+                        {t('payment.laterBtn')}
                       </Button>
                     </div>
                   </div>

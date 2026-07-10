@@ -4,6 +4,7 @@ import React, {
   useState, useEffect, useCallback, useMemo, useRef,
 } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/lib/i18n';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
 import { uploadPlayerVideo } from '@/lib/firebase/upload-media';
@@ -13,8 +14,8 @@ import {
   MessageCircle, Share2, Calendar, Trash2, Edit3, Plus, Film,
   TrendingUp, Play, X, Link as LinkIcon, CheckCircle2, AlertCircle,
   Clapperboard, Camera, Smartphone, ArrowLeft, ChevronDown,
-  ChevronUp, Zap, Star, Lightbulb, Clock, RotateCw, Trophy,
-  Facebook, ExternalLink, Info, BarChart3,
+  ChevronUp, Zap, Star, Lightbulb, Clock, Trophy,
+  Facebook, Info,
 } from 'lucide-react';
 import { toast, Toaster } from 'react-hot-toast';
 import dayjs from 'dayjs';
@@ -67,8 +68,8 @@ function getCommentCount(v: FirestoreVideo): number {
 }
 
 function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}م`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}ك`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n || 0);
 }
 
@@ -114,14 +115,14 @@ const PLATFORMS = [
     border: 'border-red-200',
     textColor: 'text-red-600',
     icon: Youtube,
-    steps: [
-      'افتح تطبيق YouTube',
-      'انتقل للفيديو الذي تريده',
-      'اضغط "مشاركة" أو Share',
-      'انسخ الرابط',
+    stepsKeys: [
+      'videos.guide.youtube.step1',
+      'videos.guide.youtube.step2',
+      'videos.guide.youtube.step3',
+      'videos.guide.youtube.step4',
     ],
     example: 'https://youtube.com/watch?v=...',
-    note: 'الأفضل للتحميل والمشاهدة — ينصح بتحميل مقاطعك على YouTube',
+    noteKey: 'videos.guide.youtube.note',
   },
   {
     name: 'TikTok',
@@ -130,14 +131,14 @@ const PLATFORMS = [
     border: 'border-gray-300',
     textColor: 'text-gray-700',
     icon: Smartphone,
-    steps: [
-      'افتح TikTok',
-      'افتح الفيديو',
-      'اضغط على "مشاركة" (السهم)',
-      'اختر "نسخ الرابط"',
+    stepsKeys: [
+      'videos.guide.tiktok.step1',
+      'videos.guide.tiktok.step2',
+      'videos.guide.tiktok.step3',
+      'videos.guide.tiktok.step4',
     ],
     example: 'https://vm.tiktok.com/...',
-    note: 'تأكد أن الفيديو عام (Public) وليس خاصاً',
+    noteKey: 'videos.guide.tiktok.note',
   },
   {
     name: 'Vimeo',
@@ -146,14 +147,14 @@ const PLATFORMS = [
     border: 'border-sky-200',
     textColor: 'text-sky-600',
     icon: Film,
-    steps: [
-      'افتح Vimeo',
-      'افتح الفيديو',
-      'اضغط "Share"',
-      'انسخ الرابط المباشر',
+    stepsKeys: [
+      'videos.guide.vimeo.step1',
+      'videos.guide.vimeo.step2',
+      'videos.guide.vimeo.step3',
+      'videos.guide.vimeo.step4',
     ],
     example: 'https://vimeo.com/123456789',
-    note: 'جودة عالية جداً — مناسب للتسليط الاحترافي',
+    noteKey: 'videos.guide.vimeo.note',
   },
   {
     name: 'Facebook',
@@ -162,14 +163,14 @@ const PLATFORMS = [
     border: 'border-blue-200',
     textColor: 'text-blue-600',
     icon: Facebook,
-    steps: [
-      'افتح Facebook',
-      'ابحث عن الفيديو',
-      'اضغط على النقاط الثلاث (⋯)',
-      'اختر "نسخ الرابط"',
+    stepsKeys: [
+      'videos.guide.facebook.step1',
+      'videos.guide.facebook.step2',
+      'videos.guide.facebook.step3',
+      'videos.guide.facebook.step4',
     ],
     example: 'https://fb.watch/...',
-    note: 'تأكد أن الفيديو منشور بشكل عام',
+    noteKey: 'videos.guide.facebook.note',
   },
 ];
 
@@ -180,55 +181,55 @@ const FILMING_TIPS = [
     icon: Lightbulb,
     color: 'text-yellow-500',
     bg: 'bg-yellow-50',
-    title: 'الإضاءة',
-    tips: [
-      'صوّر في مكان مضاء جيداً أو في الهواء الطلق أثناء النهار',
-      'تجنب التصوير ضد الشمس — ضع الشمس خلف الكاميرا',
-      'الإضاءة الطبيعية أفضل من الفلاش الصناعي',
+    titleKey: 'videos.tips.lighting.title',
+    tipsKeys: [
+      'videos.tips.lighting.tip1',
+      'videos.tips.lighting.tip2',
+      'videos.tips.lighting.tip3',
     ],
   },
   {
     icon: Camera,
     color: 'text-blue-500',
     bg: 'bg-blue-50',
-    title: 'الزاوية والإطار',
-    tips: [
-      'صوّر بالوضع الأفقي (Landscape) دائماً للحصول على صورة أوسع',
-      'احرص على ظهور كامل جسمك في الإطار',
-      'ابعد الكاميرا بما يكفي لرؤية حركاتك كلها',
+    titleKey: 'videos.tips.angle.title',
+    tipsKeys: [
+      'videos.tips.angle.tip1',
+      'videos.tips.angle.tip2',
+      'videos.tips.angle.tip3',
     ],
   },
   {
     icon: Clock,
     color: 'text-green-500',
     bg: 'bg-green-50',
-    title: 'المدة والمحتوى',
-    tips: [
-      'المقطع المثالي بين 30 ثانية و3 دقائق',
-      'ابدأ بأفضل لحظاتك في أول 10 ثوانٍ',
-      'يفضل فيديو مهارة واحدة على أكثر من مهارة في نفس المقطع',
+    titleKey: 'videos.tips.duration.title',
+    tipsKeys: [
+      'videos.tips.duration.tip1',
+      'videos.tips.duration.tip2',
+      'videos.tips.duration.tip3',
     ],
   },
   {
     icon: Star,
     color: 'text-purple-500',
     bg: 'bg-purple-50',
-    title: 'المحتوى الاحترافي',
-    tips: [
-      'أضف اسمك ومركزك في أول ثانية باللقطة أو بنص على الفيديو',
-      'نظّف الملعب أو الخلفية قبل التصوير',
-      'سجّل مقاطع تتنوع بين: الضربات، المراوغات، التمريرات',
+    titleKey: 'videos.tips.professional.title',
+    tipsKeys: [
+      'videos.tips.professional.tip1',
+      'videos.tips.professional.tip2',
+      'videos.tips.professional.tip3',
     ],
   },
   {
     icon: Smartphone,
     color: 'text-orange-500',
     bg: 'bg-orange-50',
-    title: 'التقنيات والجودة',
-    tips: [
-      'امسح العدسة قبل التصوير',
-      'أوقف الإشعارات لتجنب انقطاع التصوير',
-      'ارفع على YouTube أو رفع مباشر بجودة أقل من 200MB',
+    titleKey: 'videos.tips.quality.title',
+    tipsKeys: [
+      'videos.tips.quality.tip1',
+      'videos.tips.quality.tip2',
+      'videos.tips.quality.tip3',
     ],
   },
 ];
@@ -236,14 +237,14 @@ const FILMING_TIPS = [
 // ─── Filming Day Suggestions ──────────────────────────────────────────────────
 
 const FILMING_SUGGESTIONS = [
-  { emoji: '⚽', label: 'يوم مباريات', title: 'لقطات من مباراة اليوم' },
-  { emoji: '🦶', label: 'مهارات القدم', title: 'مهارات ومراوغات بالقدم' },
-  { emoji: '🤯', label: 'مهارات الرأس', title: 'تصويب ومهارات بالرأس' },
-  { emoji: '🎯', label: 'يوم التمريرات', title: 'دقة التمريرات والتوزيع' },
-  { emoji: '🛡️', label: 'يوم الدفاع', title: 'مواقف دفاعية واعتراض' },
-  { emoji: '🏃', label: 'السرعة والتحرك', title: 'سرعة التحرك بدون كرة' },
-  { emoji: '🥅', label: 'حراسة المرمى', title: 'تصدي وحراسة مرمى' },
-  { emoji: '✨', label: 'لقطة خاصة', title: 'لقطة مهارة مميزة' },
+  { emoji: '⚽', labelKey: 'videos.suggestions.match.label', titleKey: 'videos.suggestions.match.title' },
+  { emoji: '🦶', labelKey: 'videos.suggestions.foot.label', titleKey: 'videos.suggestions.foot.title' },
+  { emoji: '🤯', labelKey: 'videos.suggestions.head.label', titleKey: 'videos.suggestions.head.title' },
+  { emoji: '🎯', labelKey: 'videos.suggestions.pass.label', titleKey: 'videos.suggestions.pass.title' },
+  { emoji: '🛡️', labelKey: 'videos.suggestions.def.label', titleKey: 'videos.suggestions.def.title' },
+  { emoji: '🏃', labelKey: 'videos.suggestions.speed.label', titleKey: 'videos.suggestions.speed.title' },
+  { emoji: '🥅', labelKey: 'videos.suggestions.gk.label', titleKey: 'videos.suggestions.gk.title' },
+  { emoji: '✨', labelKey: 'videos.suggestions.special.label', titleKey: 'videos.suggestions.special.title' },
 ];
 
 // ─── Weekly Challenge Banner ──────────────────────────────────────────────────
@@ -255,6 +256,7 @@ function WeeklyChallenge({ videosThisWeek }: { videosThisWeek: number }) {
   const daysLeft = 7 - dayjs().day();
   const isComplete = done >= goal;
 
+  const { t } = useTranslation();
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
@@ -273,15 +275,18 @@ function WeeklyChallenge({ videosThisWeek }: { videosThisWeek: number }) {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Zap className="w-4 h-4 text-yellow-300" />
-              <span className="text-white/80 text-xs font-bold uppercase tracking-wider">تحدي الأسبوع</span>
+              <span className="text-white/80 text-xs font-bold uppercase tracking-wider">{t('videos.weeklyChallenge')}</span>
             </div>
             <h3 className="text-white text-xl font-black leading-tight">
-              {isComplete ? 'أنجزت التحدي هذا الأسبوع!' : 'ارفع فيديوين هذا الأسبوع'}
+              {isComplete ? t('videos.weeklyChallengeDone') : t('videos.weeklyChallengeGoal')}
             </h3>
             <p className="text-white/60 text-xs mt-1">
               {isComplete
-                ? 'رائع! ستظهر ملفك في أعلى نتائج البحث'
-                : `${daysLeft} أيام متبقية — ارفع ${goal - done} فيديو ${goal - done === 1 ? 'إضافي' : 'إضافيين'}`
+                ? t('videos.weeklyChallengeGoalDesc')
+                : (goal - done === 1
+                    ? t('videos.weeklyChallengeProgress').replace('{{days}}', String(daysLeft)).replace('{{left}}', String(goal - done))
+                    : t('videos.weeklyChallengeProgressPlural').replace('{{days}}', String(daysLeft)).replace('{{left}}', String(goal - done))
+                  )
               }
             </p>
           </div>
@@ -309,7 +314,7 @@ function WeeklyChallenge({ videosThisWeek }: { videosThisWeek: number }) {
                 ${i < done ? 'bg-yellow-300 border-yellow-300' : 'border-white/30'}`}>
                 {i < done && <CheckCircle2 className="w-3 h-3 text-green-800" />}
               </div>
-              فيديو {i + 1}
+              {t('videos.videoNum').replace('{{num}}', String(i + 1))}
             </div>
           ))}
         </div>
@@ -324,46 +329,43 @@ function QuickUploadButtons({
   onCamera,
   onFile,
   onUrl,
-  disabled,
 }: {
   onCamera: () => void;
   onFile: () => void;
   onUrl: () => void;
-  disabled?: boolean;
 }) {
+  const { t } = useTranslation();
+
   return (
     <div className="grid grid-cols-3 gap-3">
       {/* Camera */}
       <motion.button
         whileTap={{ scale: 0.96 }}
         onClick={onCamera}
-        disabled={disabled}
-        className="flex flex-col items-center gap-2 py-4 px-2 rounded-2xl bg-gradient-to-b from-rose-500 to-red-600 text-white shadow-lg shadow-red-500/25 active:opacity-90 disabled:opacity-50"
+        className="flex flex-col items-center gap-2 py-4 px-2 rounded-2xl bg-gradient-to-b from-rose-500 to-red-600 text-white shadow-lg shadow-red-500/25 active:opacity-90"
       >
         <Camera className="w-7 h-7" />
-        <span className="text-xs font-black leading-tight text-center">تصوير فوري</span>
+        <span className="text-xs font-black leading-tight text-center">{t('videos.cameraUpload')}</span>
       </motion.button>
 
       {/* File */}
       <motion.button
         whileTap={{ scale: 0.96 }}
         onClick={onFile}
-        disabled={disabled}
-        className="flex flex-col items-center gap-2 py-4 px-2 rounded-2xl bg-gradient-to-b from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-500/25 active:opacity-90 disabled:opacity-50"
+        className="flex flex-col items-center gap-2 py-4 px-2 rounded-2xl bg-gradient-to-b from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-500/25 active:opacity-90"
       >
         <Upload className="w-7 h-7" />
-        <span className="text-xs font-black leading-tight text-center">رفع من الجهاز</span>
+        <span className="text-xs font-black leading-tight text-center">{t('videos.deviceUpload')}</span>
       </motion.button>
 
       {/* URL */}
       <motion.button
         whileTap={{ scale: 0.96 }}
         onClick={onUrl}
-        disabled={disabled}
-        className="flex flex-col items-center gap-2 py-4 px-2 rounded-2xl bg-gradient-to-b from-violet-500 to-purple-700 text-white shadow-lg shadow-purple-500/25 active:opacity-90 disabled:opacity-50"
+        className="flex flex-col items-center gap-2 py-4 px-2 rounded-2xl bg-gradient-to-b from-violet-500 to-purple-700 text-white shadow-lg shadow-purple-500/25 active:opacity-90"
       >
         <LinkIcon className="w-7 h-7" />
-        <span className="text-xs font-black leading-tight text-center">رابط فيديو</span>
+        <span className="text-xs font-black leading-tight text-center">{t('videos.linkUpload')}</span>
       </motion.button>
     </div>
   );
@@ -372,6 +374,7 @@ function QuickUploadButtons({
 // ─── Platform Guide ────────────────────────────────────────────────────────────
 
 function PlatformGuide() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--sidebar-border, #e2e8f0)' }}>
@@ -385,7 +388,7 @@ function PlatformGuide() {
             <Info className="w-4 h-4 text-white" />
           </div>
           <span className="font-black text-sm" style={{ color: 'var(--header-text, #0f172a)' }}>
-            كيف أحصل على رابط الفيديو؟
+            {t('videos.guideTitle')}
           </span>
         </div>
         {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
@@ -413,20 +416,20 @@ function PlatformGuide() {
                       {p.name}
                     </div>
                     <ol className="space-y-1.5 mb-3">
-                      {p.steps.map((step, i) => (
+                      {p.stepsKeys.map((stepKey, i) => (
                         <li key={i} className="flex items-start gap-2 text-xs text-gray-700">
                           <span className={`flex-shrink-0 w-4 h-4 rounded-full text-[10px] font-black flex items-center justify-center text-white ${p.textColor.replace('text-', 'bg-')}`}
                             style={{ background: p.color }}>
                             {i + 1}
                           </span>
-                          {step}
+                          {t(stepKey)}
                         </li>
                       ))}
                     </ol>
                     <div className="text-[10px] text-gray-500 bg-white/60 rounded-lg px-2 py-1.5 font-mono break-all">
                       {p.example}
                     </div>
-                    <p className={`text-[10px] mt-2 font-medium ${p.textColor}`}>{p.note}</p>
+                    <p className={`text-[10px] mt-2 font-medium ${p.textColor}`}>{t(p.noteKey)}</p>
                   </div>
                 );
               })}
@@ -441,6 +444,7 @@ function PlatformGuide() {
 // ─── Filming Tips Section ──────────────────────────────────────────────────────
 
 function FilmingTips() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--sidebar-border, #e2e8f0)' }}>
@@ -454,7 +458,7 @@ function FilmingTips() {
             <Trophy className="w-4 h-4 text-white" />
           </div>
           <span className="font-black text-sm" style={{ color: 'var(--header-text, #0f172a)' }}>
-            نصائح التصوير الاحترافي
+            {t('videos.tipsTitle')}
           </span>
         </div>
         {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
@@ -476,16 +480,16 @@ function FilmingTips() {
               {FILMING_TIPS.map((section) => {
                 const Icon = section.icon;
                 return (
-                  <div key={section.title} className={`rounded-xl p-4 ${section.bg}`}>
+                  <div key={section.titleKey} className={`rounded-xl p-4 ${section.bg}`}>
                     <div className={`flex items-center gap-2 font-black text-sm mb-2 ${section.color}`}>
                       <Icon className="w-4 h-4" />
-                      {section.title}
+                      {t(section.titleKey)}
                     </div>
                     <ul className="space-y-1.5">
-                      {section.tips.map((tip, i) => (
+                      {section.tipsKeys.map((tipKey, i) => (
                         <li key={i} className="flex items-start gap-2 text-xs text-gray-700">
                           <CheckCircle2 className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${section.color}`} />
-                          {tip}
+                          {t(tipKey)}
                         </li>
                       ))}
                     </ul>
@@ -521,6 +525,7 @@ function UploadSheet({
   userId: string;
   preloadFile?: File;
 }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<UploadTab>(initialTab);
   const [url, setUrl] = useState(initial?.url || '');
   const [title, setTitle] = useState(initial?.title || '');
@@ -556,12 +561,12 @@ function UploadSheet({
 
   const handleFileSelect = useCallback((selectedFile: File) => {
     if (!selectedFile.type.startsWith('video/')) {
-      toast.error('الملف يجب أن يكون فيديو (mp4, mov, avi...)');
+      toast.error(t('videos.fileError'));
       return;
     }
     const maxMB = 500;
     if (selectedFile.size > maxMB * 1024 * 1024) {
-      toast.error(`حجم الفيديو يتجاوز ${maxMB}MB، يرجى ضغط الفيديو أو رفعه على YouTube`);
+      toast.error(t('videos.sizeError').replace('{{maxMB}}', String(maxMB)));
       return;
     }
     setFile(selectedFile);
@@ -569,7 +574,7 @@ function UploadSheet({
     // Create local preview URL
     const objUrl = URL.createObjectURL(selectedFile);
     setPreview(objUrl);
-  }, [title]);
+  }, [title, t]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -610,26 +615,26 @@ function UploadSheet({
     } catch (err: any) {
       clearInterval(iv);
       console.error('Upload error:', err);
-      toast.error('فشل رفع الفيديو: ' + (err?.message || 'خطأ غير معروف'));
+      toast.error(t('videos.saveError') + ': ' + (err?.message || t('common.unknownError') || 'Error'));
     } finally {
       setUploading(false);
       setUploadProgress(0);
     }
-  }, [file, userId, title, desc, onSave, simulateProgress]);
+  }, [file, userId, title, desc, onSave, simulateProgress, t]);
 
   const handleSubmitUrl = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!url.trim()) { setUrlError('الرابط مطلوب'); return; }
-    try { new URL(url.trim()); } catch { setUrlError('الرابط غير صحيح'); return; }
+    if (!url.trim()) { setUrlError(t('videos.urlRequired')); return; }
+    try { new URL(url.trim()); } catch { setUrlError(t('videos.urlInvalid')); return; }
     setUrlError('');
     const type = isYoutubeUrl(url) ? 'youtube' : isTikTokUrl(url) ? 'other' : isVimeoUrl(url) ? 'vimeo' : 'other';
     onSave({ url: url.trim(), title: title.trim(), desc: desc.trim(), type });
   };
 
   const tabs: { id: UploadTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'camera', label: 'تصوير', icon: <Camera className="w-4 h-4" /> },
-    { id: 'file', label: 'رفع ملف', icon: <Upload className="w-4 h-4" /> },
-    { id: 'url', label: 'رابط', icon: <LinkIcon className="w-4 h-4" /> },
+    { id: 'camera', label: t('videos.cameraUpload'), icon: <Camera className="w-4 h-4" /> },
+    { id: 'file', label: t('videos.deviceUpload'), icon: <Upload className="w-4 h-4" /> },
+    { id: 'url', label: t('videos.linkUpload'), icon: <LinkIcon className="w-4 h-4" /> },
   ];
 
   return (
@@ -658,7 +663,7 @@ function UploadSheet({
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4">
               <h2 className="text-lg font-black text-gray-900">
-                {isEdit ? 'تعديل الفيديو' : 'إضافة فيديو جديد'}
+                {isEdit ? t('videos.editVideo') : t('videos.addNewVideo')}
               </h2>
               {!uploading && (
                 <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
@@ -694,19 +699,19 @@ function UploadSheet({
                   {/* Filming day suggestions */}
                   {!file && (
                     <div>
-                      <p className="text-xs font-black text-gray-500 mb-2.5">💡 اختر نوع الفيديو اليوم:</p>
+                      <p className="text-xs font-black text-gray-500 mb-2.5">{t('videos.chooseVideoType')}</p>
                       <div className="grid grid-cols-2 gap-2">
                         {FILMING_SUGGESTIONS.map((s) => (
                           <button
-                            key={s.label}
+                            key={s.labelKey}
                             type="button"
-                            onClick={() => { setTitle(s.title); cameraInputRef.current?.click(); }}
+                            onClick={() => { setTitle(t(s.titleKey)); cameraInputRef.current?.click(); }}
                             className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-right active:scale-95 transition-transform hover:border-rose-300 hover:bg-rose-50"
                           >
                             <span className="text-xl leading-none">{s.emoji}</span>
                             <div>
-                              <p className="text-xs font-black text-gray-800 leading-tight">{s.label}</p>
-                              <p className="text-[10px] text-gray-400 leading-tight mt-0.5">{s.title}</p>
+                              <p className="text-xs font-black text-gray-880 leading-tight">{t(s.labelKey)}</p>
+                              <p className="text-[10px] text-gray-400 leading-tight mt-0.5">{t(s.titleKey)}</p>
                             </div>
                           </button>
                         ))}
@@ -732,12 +737,12 @@ function UploadSheet({
                     </div>
                     <div className="text-center">
                       <p className="font-black text-rose-600 text-base">
-                        {file ? 'تغيير التصوير' : 'افتح الكاميرا الآن'}
+                        {file ? t('videos.changeFilming') : t('videos.openCameraNow')}
                       </p>
-                      <p className="text-rose-400 text-xs mt-0.5">اضغط هنا لتصوير مقطعك مباشرة</p>
+                      <p className="text-rose-400 text-xs mt-0.5">{t('videos.openCameraDesc')}</p>
                     </div>
                     <div className="flex gap-2 flex-wrap justify-center">
-                      {['الوضع الأفقي أفضل', 'إضاءة كافية', 'مدة 30ث - 3د'].map(tip => (
+                      {[t('videos.tips.landscape'), t('videos.tips.sufficientLighting'), t('videos.tips.durationTip')].map(tip => (
                         <span key={tip} className="text-[11px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full font-bold">
                           {tip}
                         </span>
@@ -781,15 +786,15 @@ function UploadSheet({
                     </div>
                     <div className="text-center">
                       <p className="font-black text-blue-600 text-lg">
-                        {file ? 'تغيير الملف' : 'اختر فيديو من جهازك'}
+                        {file ? t('videos.changeFile') : t('videos.selectFile')}
                       </p>
                       <p className="text-blue-400 text-sm mt-1">
-                        MP4, MOV, AVI — الحد الأقصى 500MB
+                        {t('videos.maxSizeTip')}
                       </p>
                     </div>
                     {!file && (
                       <div className="text-[11px] text-blue-500 bg-blue-100 px-3 py-1.5 rounded-full font-bold">
-                        يُرفع مباشرةً وبأمان على منصتنا
+                        {t('videos.safeUploadTip')}
                       </div>
                     )}
                   </div>
@@ -824,7 +829,7 @@ function UploadSheet({
                   {/* Platform quick pick */}
                   {!isEdit && (
                     <div>
-                      <p className="text-xs font-bold text-gray-500 mb-2">منصات مدعومة:</p>
+                      <p className="text-xs font-bold text-gray-500 mb-2">{t('videos.supportedPlatforms')}</p>
                       <div className="flex gap-2 flex-wrap">
                         {PLATFORMS.map(p => {
                           const Icon = p.icon;
@@ -837,15 +842,16 @@ function UploadSheet({
                         })}
                         <div className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border bg-gray-50 border-gray-200 text-gray-600">
                           <LinkIcon className="w-3.5 h-3.5" />
-                          رابط مباشر
+                          {t('videos.directLink')}
                         </div>
                       </div>
                     </div>
                   )}
 
+                  {/* Input URL */}
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1.5">
-                      رابط الفيديو <span className="text-red-500">*</span>
+                      {t('videos.videoUrl')} <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -873,7 +879,7 @@ function UploadSheet({
 
                   {ytThumb && (
                     <div className="rounded-xl overflow-hidden aspect-video border border-gray-200">
-                      <img src={ytThumb} alt="معاينة" className="w-full h-full object-cover" />
+                      <img src={ytThumb} alt="Preview" className="w-full h-full object-cover" />
                     </div>
                   )}
                 </div>
@@ -881,12 +887,12 @@ function UploadSheet({
 
               {/* ── Shared fields: Title + Desc ── */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">عنوان الفيديو</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">{t('videos.videoTitle')}</label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="مثال: هدف رائع من مسافة 30 متر"
+                  placeholder={t('videos.videoTitlePlaceholder')}
                   maxLength={80}
                   style={{ fontSize: '16px' }}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:border-blue-400 focus:bg-white outline-none transition-colors"
@@ -894,11 +900,11 @@ function UploadSheet({
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">وصف (اختياري)</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">{t('videos.videoDesc')}</label>
                 <textarea
                   value={desc}
                   onChange={(e) => setDesc(e.target.value)}
-                  placeholder="صف المهارة أو اللقطة..."
+                  placeholder={t('videos.videoDescPlaceholder')}
                   rows={2}
                   maxLength={200}
                   style={{ fontSize: '16px' }}
@@ -912,7 +918,7 @@ function UploadSheet({
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-bold text-blue-700 flex items-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      جاري رفع الفيديو...
+                      {t('videos.uploading')}
                     </span>
                     <span className="font-black text-blue-600">{Math.round(uploadProgress)}%</span>
                   </div>
@@ -923,7 +929,7 @@ function UploadSheet({
                       transition={{ duration: 0.3 }}
                     />
                   </div>
-                  <p className="text-[11px] text-gray-400 text-center">لا تغلق الصفحة أثناء الرفع</p>
+                  <p className="text-[11px] text-gray-400 text-center">{t('videos.dontClosePage')}</p>
                 </div>
               )}
 
@@ -938,14 +944,14 @@ function UploadSheet({
                         bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Upload className="w-5 h-5" />
-                      رفع الفيديو
+                      {t('videos.uploadFileBtn')}
                     </button>
                   ) : (
                     <button
                       onClick={handleSubmitUrl}
                       className="w-full py-4 rounded-2xl font-black text-base bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/25 flex items-center justify-center gap-2 transition-colors"
                     >
-                      {isEdit ? <><Edit3 className="w-5 h-5" /> حفظ التعديلات</> : <><Plus className="w-5 h-5" /> إضافة الفيديو</>}
+                      {isEdit ? <><Save className="w-5 h-5" /> {t('videos.saveChanges')}</> : <><Plus className="w-5 h-5" /> {t('videos.addVideo')}</>}
                     </button>
                   )}
                 </>
@@ -966,6 +972,7 @@ function VideoCard({
   video: FirestoreVideo; index: number;
   onEdit: (i: number) => void; onDelete: (i: number) => void;
 }) {
+  const { t } = useTranslation();
   const thumb = getVideoThumbnail(video);
   const commentCount = getCommentCount(video);
   const uploadDate = getUploadDate(video);
@@ -981,7 +988,7 @@ function VideoCard({
     >
       <div className="relative aspect-video bg-gray-900 overflow-hidden">
         {thumb
-          ? <img src={thumb} alt={video.title || 'فيديو'} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          ? <img src={thumb} alt={video.title || t('videos.video')} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
           : <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
               <VideoIcon className="w-10 h-10 text-white/20" />
@@ -1004,12 +1011,12 @@ function VideoCard({
         {/* Platform badge */}
         {isYT && (
           <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-            <Youtube className="w-3 h-3" /> YouTube
+            <Youtube className="w-3 h-3" /> {videoProviders.youtube.name}
           </div>
         )}
         {video.type === 'uploaded' && (
           <div className="absolute top-2 right-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-            <Upload className="w-3 h-3" /> مرفوع
+            <Upload className="w-3 h-3" /> {t('videos.uploaded')}
           </div>
         )}
 
@@ -1028,30 +1035,34 @@ function VideoCard({
 
       <div className="p-3.5">
         <h3 className="font-bold text-gray-900 text-sm line-clamp-2 mb-2.5 leading-snug">
-          {video.title || video.desc || 'بدون عنوان'}
+          {video.title || video.desc || t('videos.noTitle')}
         </h3>
         <div className="flex items-center gap-3 flex-wrap">
           <span className="flex items-center gap-1 text-xs text-gray-500">
             <Eye className="w-3.5 h-3.5 text-blue-500" />
             <span className="font-semibold text-gray-700">{formatCount(video.views || 0)}</span>
+            <span className="text-[10px] text-gray-400">{t('videos.views')}</span>
           </span>
           <span className="flex items-center gap-1 text-xs text-gray-500">
             <Heart className="w-3.5 h-3.5 text-red-500" />
             <span className="font-semibold text-gray-700">{formatCount(video.likes || 0)}</span>
+            <span className="text-[10px] text-gray-400">{t('videos.likes')}</span>
           </span>
           <span className="flex items-center gap-1 text-xs text-gray-500">
             <MessageCircle className="w-3.5 h-3.5 text-green-500" />
             <span className="font-semibold text-gray-700">{formatCount(commentCount)}</span>
+            <span className="text-[10px] text-gray-400">{t('videos.comments')}</span>
           </span>
           <span className="flex items-center gap-1 text-xs text-gray-500">
             <Share2 className="w-3.5 h-3.5 text-purple-500" />
             <span className="font-semibold text-gray-700">{formatCount(video.shares || 0)}</span>
+            <span className="text-[10px] text-gray-400">{t('videos.shares')}</span>
           </span>
         </div>
         {uploadDate && (
           <div className="flex items-center gap-1 text-[11px] text-gray-400 mt-2">
             <Calendar className="w-3 h-3" />
-            {dayjs(uploadDate).locale('ar').fromNow()}
+            {dayjs(uploadDate).locale(t('common.dayjsLocale') || 'ar').fromNow()}
           </div>
         )}
       </div>
@@ -1064,6 +1075,8 @@ function VideoCard({
 function DeleteConfirm({ isOpen, onConfirm, onCancel, title }: {
   isOpen: boolean; onConfirm: () => void; onCancel: () => void; title: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -1077,13 +1090,13 @@ function DeleteConfirm({ isOpen, onConfirm, onCancel, title }: {
               <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
                 <Trash2 className="w-7 h-7 text-red-600" />
               </div>
-              <h3 className="font-black text-gray-900 text-lg mb-2">حذف الفيديو؟</h3>
+              <h3 className="font-black text-gray-900 text-lg mb-2">{t('videos.deleteTitle')}</h3>
               <p className="text-gray-500 text-sm mb-6">
-                سيتم حذف <strong>"{title || 'هذا الفيديو'}"</strong> نهائياً
+                {t('videos.deleteConfirmDesc').replace('{{title}}', title || t('videos.noTitle'))}
               </p>
               <div className="flex gap-3">
-                <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50">إلغاء</button>
-                <button onClick={onConfirm} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-black hover:bg-red-700">حذف</button>
+                <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-gray-200 font-bold text-gray-600 hover:bg-gray-50">{t('videos.cancel')}</button>
+                <button onClick={onConfirm} className="flex-1 py-3 rounded-xl bg-red-600 text-white font-black hover:bg-red-700">{t('videos.delete')}</button>
               </div>
             </div>
           </motion.div>
@@ -1096,6 +1109,7 @@ function DeleteConfirm({ isOpen, onConfirm, onCancel, title }: {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function VideosPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [videos, setVideos] = useState<FirestoreVideo[]>([]);
@@ -1121,11 +1135,11 @@ export default function VideosPage() {
         setIsLoading(true);
         const { data } = await supabase.from('players').select('*').eq('id', user!.id).maybeSingle();
         if (data) setVideos(data.videos || []);
-      } catch { toast.error('خطأ في تحميل الفيديوهات'); }
+      } catch { toast.error(t('videos.loadingError')); }
       finally { setIsLoading(false); }
     };
     fetchVideos();
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, t]);
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const stats = useMemo(() => ({
@@ -1143,12 +1157,12 @@ export default function VideosPage() {
     try {
       await supabase.from('players').update({ videos, updated_at: new Date().toISOString() }).eq('id', user!.id);
       setHasUnsavedChanges(false);
-      toast.success('تم الحفظ بنجاح', {
+      toast.success(t('videos.saveSuccess'), {
         style: { borderRadius: '16px', background: '#1e293b', color: '#fff', fontFamily: "'Cairo', sans-serif" },
       });
-    } catch { toast.error('فشل في الحفظ'); }
+    } catch { toast.error(t('videos.saveError')); }
     finally { setIsSaving(false); }
-  }, [user, videos, isSaving]);
+  }, [user, videos, isSaving, t]);
 
   // ── Add / Edit ─────────────────────────────────────────────────────────────
   const handleFormSave = useCallback((data: Partial<FirestoreVideo>) => {
@@ -1172,10 +1186,10 @@ export default function VideosPage() {
     setShowForm(false);
     setEditIndex(null);
     setPendingCameraFile(null);
-    toast.success(editIndex !== null ? 'تم التعديل — احفظ التغييرات' : 'تمت الإضافة — لا تنسَ الحفظ!', {
+    toast.success(editIndex !== null ? t('videos.saveChangesFirst') : t('videos.addedReminder'), {
       style: { borderRadius: '16px', background: '#1e293b', color: '#fff', fontFamily: "'Cairo', sans-serif" },
     });
-  }, [editIndex]);
+  }, [editIndex, t]);
 
   const handleEdit = useCallback((idx: number) => {
     setEditIndex(idx);
@@ -1183,14 +1197,13 @@ export default function VideosPage() {
     setShowForm(true);
   }, []);
 
-  // ── Delete ─────────────────────────────────────────────────────────────────
   const handleDeleteConfirm = useCallback(() => {
     if (deleteIndex === null) return;
     setVideos(prev => prev.filter((_, i) => i !== deleteIndex));
     setHasUnsavedChanges(true);
     setDeleteIndex(null);
-    toast.success('تم الحذف');
-  }, [deleteIndex]);
+    toast.success(t('videos.deleteSuccess'));
+  }, [deleteIndex, t]);
 
   // ── Unsaved warning ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1205,7 +1218,7 @@ export default function VideosPage() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4" style={{ fontFamily: "'Cairo', sans-serif" }}>
         <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
           className="w-14 h-14 rounded-full border-4 border-blue-100 border-t-blue-600" />
-        <p className="text-gray-500 font-medium">جاري تحميل مكتبة الفيديوهات...</p>
+        <p className="text-gray-500 font-medium">{t('videos.loadingLibrary')}</p>
       </div>
     );
   }
@@ -1225,10 +1238,10 @@ export default function VideosPage() {
             </div>
             <div>
               <h1 className="text-base font-black" style={{ color: 'var(--header-text, #0f172a)' }}>
-                مكتبة الفيديوهات
+                {t('videos.title')}
               </h1>
               <p className="text-[11px]" style={{ color: 'var(--header-text-muted, #64748b)' }}>
-                {stats.count}/{MAX_VIDEOS} فيديو
+                {t('videos.videoCount').replace('{{count}}', String(stats.count)).replace('{{max}}', String(MAX_VIDEOS))}
               </p>
             </div>
           </div>
@@ -1237,7 +1250,7 @@ export default function VideosPage() {
             <button onClick={() => router.push('/dashboard/player/player-videos')}
               className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors"
               style={{ background: 'var(--main-bg, #f1f5f9)', color: 'var(--header-text-muted, #64748b)' }}>
-              <Film className="w-3.5 h-3.5" /> وضع السينما
+              <Film className="w-3.5 h-3.5" /> {t('videos.cinemaMode')}
             </button>
             <motion.button onClick={handleSave} disabled={isSaving || !hasUnsavedChanges}
               animate={hasUnsavedChanges ? { scale: [1, 1.04, 1] } : {}}
@@ -1245,7 +1258,7 @@ export default function VideosPage() {
               className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all
                 ${hasUnsavedChanges ? 'bg-blue-600 text-white shadow-sm' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
               {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              حفظ
+              {t('videos.save')}
             </motion.button>
           </div>
         </div>
@@ -1260,10 +1273,10 @@ export default function VideosPage() {
         {videos.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {[
-              { icon: VideoIcon, value: stats.count, label: 'فيديو', color: 'text-blue-600', bg: 'bg-blue-50' },
-              { icon: Eye, value: stats.views, label: 'مشاهدة', color: 'text-sky-600', bg: 'bg-sky-50' },
-              { icon: Heart, value: stats.likes, label: 'إعجاب', color: 'text-red-500', bg: 'bg-red-50' },
-              { icon: MessageCircle, value: stats.comments, label: 'تعليق', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { icon: VideoIcon, value: stats.count, label: t('videos.video'), color: 'text-blue-600', bg: 'bg-blue-50' },
+              { icon: Eye, value: stats.views, label: t('videos.views'), color: 'text-sky-600', bg: 'bg-sky-50' },
+              { icon: Heart, value: stats.likes, label: t('videos.likes'), color: 'text-red-500', bg: 'bg-red-50' },
+              { icon: MessageCircle, value: stats.comments, label: t('videos.comments'), color: 'text-emerald-600', bg: 'bg-emerald-50' },
             ].map(({ icon: Icon, value, label, color, bg }) => (
               <div key={label} className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex flex-col items-center gap-1">
                 <div className={`w-8 h-8 rounded-xl ${bg} flex items-center justify-center`}>
@@ -1283,12 +1296,12 @@ export default function VideosPage() {
               className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200">
               <div className="flex items-center gap-2 text-amber-700">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                <span className="text-sm font-bold">تغييرات غير محفوظة</span>
+                <span className="text-sm font-bold">{t('videos.unsavedChanges')}</span>
               </div>
               <button onClick={handleSave} disabled={isSaving}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 text-white text-xs font-black">
                 {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                حفظ الآن
+                {t('videos.saveNow')}
               </button>
             </motion.div>
           )}
@@ -1315,7 +1328,7 @@ export default function VideosPage() {
                 e.target.value = '';
               }}
             />
-            <p className="text-xs font-black text-gray-500 mb-2.5 uppercase tracking-wide">أضف فيديو جديد</p>
+            <p className="text-xs font-black text-gray-500 mb-2.5 uppercase tracking-wide">{t('videos.addNewVideo')}</p>
             <QuickUploadButtons
               onCamera={() => pageCameraInputRef.current?.click()}
               onFile={() => { setEditIndex(null); setFormTab('file'); setShowForm(true); }}
@@ -1335,11 +1348,11 @@ export default function VideosPage() {
           <>
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-black" style={{ color: 'var(--header-text, #0f172a)' }}>
-                فيديوهاتي ({videos.length})
+                {t('videos.myVideos').replace('{{count}}', String(videos.length))}
               </h2>
               <button onClick={() => router.push('/dashboard/player/player-videos')}
                 className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800">
-                <Film className="w-3.5 h-3.5" /> السينما <ArrowLeft className="w-3 h-3" />
+                <Film className="w-3.5 h-3.5" /> {t('videos.cinema')} <ArrowLeft className="w-3 h-3" />
               </button>
             </div>
 
@@ -1353,7 +1366,7 @@ export default function VideosPage() {
                     onClick={() => { setEditIndex(null); setFormTab('url'); setShowForm(true); }}
                     className="aspect-video rounded-2xl border-2 border-dashed border-gray-200 hover:border-blue-400 hover:bg-blue-50/50 flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-blue-500 transition-all group">
                     <Plus className="w-8 h-8" />
-                    <span className="text-xs font-bold">{MAX_VIDEOS - videos.length} متبقٍ</span>
+                    <span className="text-xs font-bold">{t('videos.remaining').replace('{{count}}', String(MAX_VIDEOS - videos.length))}</span>
                   </motion.button>
                 )}
               </div>
@@ -1366,10 +1379,10 @@ export default function VideosPage() {
               <Film className="w-10 h-10 text-blue-400" />
             </div>
             <h2 className="text-xl font-black mb-2" style={{ color: 'var(--header-text, #1e293b)' }}>
-              لا توجد فيديوهات بعد
+              {t('videos.noVideosYet')}
             </h2>
             <p className="text-sm text-gray-500 max-w-xs mx-auto">
-              استخدم الأزرار أعلاه لإضافة أول فيديو لك
+              {t('videos.noVideosDesc')}
             </p>
           </motion.div>
         )}
@@ -1403,7 +1416,7 @@ export default function VideosPage() {
             style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}>
             <button onClick={handleSave}
               className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-blue-600 text-white font-black shadow-2xl shadow-blue-500/40 hover:bg-blue-700">
-              <Save className="w-5 h-5" /> حفظ التغييرات
+              <Save className="w-5 h-5" /> {t('videos.saveChanges')}
             </button>
           </motion.div>
         )}

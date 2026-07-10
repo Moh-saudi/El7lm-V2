@@ -3,11 +3,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getBrandingData, BrandingData } from '@/lib/content/branding-service';
-import { countries } from '@/lib/constants/countries';
+import { countries, getTranslatedCountryName } from '@/lib/constants/countries';
 import { validatePhoneForCountry } from '@/lib/validation/phone-validation';
 import { toast, Toaster } from 'sonner';
 import Image from 'next/image';
-import { Loader2, Star, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Star, ChevronRight, ChevronLeft, Eye, EyeOff } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 type Method = 'whatsapp' | 'email';
 type WhatsAppStep = 'phone' | 'otp' | 'password' | 'success';
@@ -17,6 +19,7 @@ export default function ForgotPasswordPage() {
   const router = useRouter();
   const [branding, setBranding] = useState<BrandingData | null>(null);
   const [method, setMethod] = useState<Method>('whatsapp');
+  const { t, locale, isRTL } = useTranslation();
 
   /* ─── WhatsApp flow state ─── */
   const [waStep, setWaStep] = useState<WhatsAppStep>('phone');
@@ -89,7 +92,7 @@ export default function ForgotPasswordPage() {
   /* ─── WhatsApp handlers ─── */
   const handleSendOTP = async () => {
     const clean = phone.replace(/^0+/, '').trim();
-    if (clean.length < 7) { toast.error('يرجى إدخال رقم واتساب صحيح'); return; }
+    if (clean.length < 7) { toast.error(t('auth.forgotPasswordEnterValidWhatsapp')); return; }
     if (phoneFormatError) { toast.error(`⚠️ ${phoneFormatError}`); return; }
 
     setSendLoading(true);
@@ -101,7 +104,7 @@ export default function ForgotPasswordPage() {
       });
       const checkData = await checkRes.json();
       if (!checkData.exists) {
-        toast.error('رقم الهاتف غير مسجل في المنصة');
+        toast.error(t('auth.forgotPasswordPhoneNotRegistered'));
         return;
       }
       const res = await fetch('/api/otp/send', {
@@ -110,8 +113,8 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ phoneNumber: fullPhone, purpose: 'password_reset', channel: 'whatsapp' }),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'فشل إرسال الرمز');
-      toast.success('تم إرسال رمز التحقق عبر WhatsApp ✅');
+      if (!res.ok || !data.success) throw new Error(data.error || t('auth.otpSendFailed'));
+      toast.success(t('auth.forgotPasswordOtpSent'));
       setOtp(['', '', '', '', '', '']);
       setWaStep('otp');
       startResendTimer();
@@ -158,7 +161,7 @@ export default function ForgotPasswordPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        toast.error(data.error || 'رمز غير صحيح');
+        toast.error(t('auth.forgotPasswordOtpIncorrect'));
         setOtp(['', '', '', '', '', '']);
         setTimeout(() => otpRefs.current[0]?.focus(), 50);
         return;
@@ -180,8 +183,8 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ phoneNumber: fullPhone, purpose: 'password_reset', channel: 'whatsapp' }),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'فشل إعادة الإرسال');
-      toast.success('تم إعادة الإرسال ✅');
+      if (!res.ok || !data.success) throw new Error(data.error || t('auth.resendFailed'));
+      toast.success(t('auth.resendSuccess'));
       setOtp(['', '', '', '', '', '']);
       startResendTimer();
       setTimeout(() => otpRefs.current[0]?.focus(), 50);
@@ -193,8 +196,8 @@ export default function ForgotPasswordPage() {
   };
 
   const handleResetPassword = async () => {
-    if (newPassword.length < 8) { toast.error('كلمة المرور يجب أن تكون 8 أحرف على الأقل'); return; }
-    if (newPassword !== confirmPassword) { toast.error('كلمتا المرور غير متطابقتين'); return; }
+    if (newPassword.length < 8) { toast.error(t('auth.resetPasswordReqLength')); return; }
+    if (newPassword !== confirmPassword) { toast.error(t('auth.passwordsDoNotMatch')); return; }
     setResetLoading(true);
     try {
       const res = await fetch('/api/auth/reset-password', {
@@ -203,7 +206,7 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ phoneNumber: fullPhone, newPassword }),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'فشل تغيير كلمة المرور');
+      if (!res.ok || !data.success) throw new Error(data.error || t('auth.passwordResetError'));
       setWaStep('success');
     } catch (err: any) {
       toast.error(err.message);
@@ -215,7 +218,7 @@ export default function ForgotPasswordPage() {
   /* ─── Email handler ─── */
   const handleSendResetEmail = async () => {
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast.error('يرجى إدخال بريد إلكتروني صحيح');
+      toast.error(t('auth.forgotPasswordEnterValidEmail'));
       return;
     }
     setEmailLoading(true);
@@ -226,7 +229,7 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'فشل إرسال الرابط');
+      if (!res.ok || !data.success) throw new Error(data.error || t('auth.resetLinkSendFailed'));
       setEmailStep('sent');
     } catch (err: any) {
       toast.error(err.message);
@@ -245,24 +248,26 @@ export default function ForgotPasswordPage() {
   const waStepIndex: Record<WhatsAppStep, number> = { phone: 0, otp: 1, password: 2, success: 2 };
 
   const pageTitle = () => {
-    if (method === 'email') return emailStep === 'sent' ? 'تم الإرسال!' : 'نسيت كلمة المرور';
-    if (waStep === 'success') return 'تم بنجاح!';
-    if (waStep === 'password') return 'كلمة مرور جديدة';
-    if (waStep === 'otp') return 'رمز التحقق';
-    return 'نسيت كلمة المرور';
+    if (method === 'email') return emailStep === 'sent' ? t('auth.forgotPasswordSentTitle') : t('auth.forgotPasswordTitle');
+    if (waStep === 'success') return t('auth.forgotPasswordSuccessTitle');
+    if (waStep === 'password') return t('auth.newPasswordLabel');
+    if (waStep === 'otp') return t('auth.otpTitle');
+    return t('auth.forgotPasswordTitle');
   };
 
   const pageSubtitle = () => {
-    if (method === 'email') return emailStep === 'sent' ? 'تحقق من صندوق بريدك الإلكتروني' : 'سنرسل رابط إعادة التعيين لبريدك';
-    if (waStep === 'success') return 'يمكنك الآن تسجيل الدخول بكلمة مرورك الجديدة';
-    if (waStep === 'password') return 'أدخل كلمة المرور الجديدة';
-    if (waStep === 'otp') return 'أُرسل رمز التحقق عبر WhatsApp';
-    return 'أدخل رقم واتساب المسجل في حسابك';
+    if (method === 'email') return emailStep === 'sent' ? t('auth.forgotPasswordSentSubtitle') : t('auth.forgotPasswordEmailSubtitle');
+    if (waStep === 'success') return t('auth.forgotPasswordSuccessSubtitle');
+    if (waStep === 'password') return t('auth.forgotPasswordPasswordSubtitle');
+    if (waStep === 'otp') return t('auth.forgotPasswordOtpSubtitle');
+    return t('auth.forgotPasswordPhoneSubtitle');
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f7f8] flex flex-col items-center justify-center py-4 sm:py-10 px-4 font-cairo" dir="rtl">
-      <Toaster position="top-center" dir="rtl" richColors />
+    <div className="min-h-screen bg-[#f7f7f8] flex flex-col items-center justify-center py-4 sm:py-10 px-4 font-cairo relative" dir={isRTL ? 'rtl' : 'ltr'}>
+      <Toaster position="top-center" dir={isRTL ? 'rtl' : 'ltr'} richColors />
+
+
 
       {/* Progress dots — WhatsApp only */}
       {method === 'whatsapp' && !isSuccess && (
@@ -282,16 +287,21 @@ export default function ForgotPasswordPage() {
       {/* Card */}
       <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-8">
 
-        {/* Logo + heading */}
-        <div className="flex flex-col items-center mb-5 sm:mb-6">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden relative mb-3 flex items-center justify-center bg-slate-100">
+        {/* Logo & Language Switcher Row */}
+        <div className="flex justify-between items-center mb-6">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden relative flex items-center justify-center bg-slate-100">
             {branding?.logoUrl
               ? <Image src={branding.logoUrl} alt={branding.siteName || 'El7lm'} fill className="object-contain p-1.5" />
               : <Star className="w-5 h-5 sm:w-6 sm:h-6 text-slate-700 fill-slate-700" />
             }
           </div>
+          <LanguageSwitcher variant="light" />
+        </div>
+
+        {/* Heading */}
+        <div className="flex flex-col items-center mb-5 sm:mb-6 text-center">
           <h1 className="text-lg sm:text-xl font-bold text-slate-900">{pageTitle()}</h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 text-center">{pageSubtitle()}</p>
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">{pageSubtitle()}</p>
         </div>
 
         {/* ── Method toggle (only on first step) ── */}
@@ -304,7 +314,7 @@ export default function ForgotPasswordPage() {
                 method === 'whatsapp' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              <span>💬</span> واتساب
+              <span>💬</span> {t('auth.forgotPasswordMethodWhatsapp')}
             </button>
             <button
               type="button"
@@ -313,7 +323,7 @@ export default function ForgotPasswordPage() {
                 method === 'email' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              <span>✉️</span> البريد الإلكتروني
+              <span>✉️</span> {t('auth.forgotPasswordMethodEmail')}
             </button>
           </div>
         )}
@@ -333,7 +343,7 @@ export default function ForgotPasswordPage() {
                 className="w-24 sm:w-28 h-10 sm:h-11 rounded-lg border border-slate-200 bg-white text-xs sm:text-sm text-slate-700 px-2 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
               >
                 {countries.map(c => (
-                  <option key={c.code} value={c.code}>{c.code} {c.name}</option>
+                  <option key={c.code} value={c.code}>{c.code} {getTranslatedCountryName(c.code, locale)}</option>
                 ))}
               </select>
               <input
@@ -341,7 +351,7 @@ export default function ForgotPasswordPage() {
                 value={phone}
                 onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
                 onKeyDown={e => e.key === 'Enter' && handleSendOTP()}
-                placeholder="رقم الواتساب"
+                placeholder={t('auth.forgotPasswordInputPhone')}
                 dir="ltr"
                 maxLength={selectedCountry.phoneLength + 1}
                 className={`flex-1 h-10 sm:h-11 rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
@@ -356,7 +366,7 @@ export default function ForgotPasswordPage() {
               disabled={sendLoading || phone.length < 7 || !!phoneFormatError}
               className="w-full h-10 sm:h-11 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {sendLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'إرسال رمز التحقق عبر WhatsApp'}
+              {sendLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('auth.forgotPasswordBtnSendOtp')}
             </button>
           </div>
         )}
@@ -369,8 +379,8 @@ export default function ForgotPasswordPage() {
                 <span>{fullPhone}</span>
                 <button type="button" onClick={() => { setWaStep('phone'); setOtp(['', '', '', '', '', '']); }}
                   className="text-slate-400 hover:text-slate-700 transition-colors leading-none"
-                  aria-label="تغيير الرقم"
-                  title="تغيير الرقم">✕</button>
+                  aria-label={t('auth.changePhone')}
+                  title={t('auth.changePhone')}>✕</button>
               </div>
             </div>
             <div className="flex justify-center gap-2 sm:gap-2.5" dir="ltr">
@@ -390,19 +400,19 @@ export default function ForgotPasswordPage() {
             {verifyLoading ? (
               <div className="flex items-center justify-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
-                <p className="text-xs text-slate-400">جاري التحقق...</p>
+                <p className="text-xs text-slate-400">{t('auth.verifying')}</p>
               </div>
             ) : (
               <div className="text-center">
                 {canResend
-                  ? <button type="button" onClick={handleResend} disabled={sendLoading} className="text-sm text-slate-900 font-semibold hover:underline disabled:opacity-50">إعادة إرسال الرمز</button>
-                  : <p className="text-sm text-slate-400">إعادة الإرسال خلال <span className="font-mono font-bold text-slate-600">0:{String(resendSeconds).padStart(2, '0')}</span></p>
+                  ? <button type="button" onClick={handleResend} disabled={sendLoading} className="text-sm text-slate-900 font-semibold hover:underline disabled:opacity-50">{t('auth.forgotPasswordResendOtp')}</button>
+                  : <p className="text-sm text-slate-400">{t('auth.forgotPasswordResendingIn')} <span className="font-mono font-bold text-slate-600">0:{String(resendSeconds).padStart(2, '0')}</span></p>
                 }
               </div>
             )}
             <button type="button" onClick={() => { setWaStep('phone'); setOtp(['', '', '', '', '', '']); }}
               className="w-full flex items-center justify-center gap-1 text-sm text-slate-400 hover:text-slate-700 transition-colors">
-              <ChevronRight className="w-4 h-4" /> تغيير الرقم
+              {isRTL ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />} {t('auth.changePhone')}
             </button>
           </div>
         )}
@@ -412,13 +422,15 @@ export default function ForgotPasswordPage() {
           <div className="space-y-3 sm:space-y-4">
             <div className="relative">
               <input type={showPass ? 'text' : 'password'} value={newPassword}
-                onChange={e => setNewPassword(e.target.value)} placeholder="كلمة المرور الجديدة"
-                className="w-full h-10 sm:h-11 rounded-lg border border-slate-200 bg-white px-3 pl-10 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
+                onChange={e => setNewPassword(e.target.value)} placeholder={t('auth.newPasswordLabel')}
+                className={`w-full h-10 sm:h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all ${
+                  isRTL ? 'pl-10 text-right pr-3' : 'pr-10 text-left pl-3'
+                }`}
               />
               <button type="button" onClick={() => setShowPass(v => !v)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                aria-label={showPass ? 'إخفاء كلمة المرور الجديدة' : 'إظهار كلمة المرور الجديدة'}
-                title={showPass ? 'إخفاء كلمة المرور الجديدة' : 'إظهار كلمة المرور الجديدة'}>
+                className={`absolute top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 ${isRTL ? 'left-3' : 'right-3'}`}
+                aria-label={showPass ? t('auth.hidePassword') : t('auth.showPassword')}
+                title={showPass ? t('auth.hidePassword') : t('auth.showPassword')}>
                 {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
@@ -426,24 +438,26 @@ export default function ForgotPasswordPage() {
               <input type={showConfirm ? 'text' : 'password'} value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
-                placeholder="تأكيد كلمة المرور"
-                className={`w-full h-10 sm:h-11 rounded-lg border bg-white px-3 pl-10 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                placeholder={t('auth.confirmPasswordLabel')}
+                className={`w-full h-10 sm:h-11 rounded-lg border bg-white px-3 text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:border-transparent transition-all ${
+                  isRTL ? 'pl-10 text-right pr-3' : 'pr-10 text-left pl-3'
+                } ${
                   confirmPassword && confirmPassword !== newPassword ? 'border-red-300 focus:ring-red-400' : 'border-slate-200 focus:ring-slate-900'
                 }`}
               />
               <button type="button" onClick={() => setShowConfirm(v => !v)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                aria-label={showConfirm ? 'إخفاء تأكيد كلمة المرور' : 'إظهار تأكيد كلمة المرور'}
-                title={showConfirm ? 'إخفاء تأكيد كلمة المرور' : 'إظهار تأكيد كلمة المرور'}>
+                className={`absolute top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 ${isRTL ? 'left-3' : 'right-3'}`}
+                aria-label={showConfirm ? t('auth.hidePasswordConfirmation') : t('auth.showPasswordConfirmation')}
+                title={showConfirm ? t('auth.hidePasswordConfirmation') : t('auth.showPasswordConfirmation')}>
                 {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            {confirmPassword && confirmPassword !== newPassword && <p className="text-xs text-red-500">كلمتا المرور غير متطابقتين</p>}
-            {newPassword.length > 0 && newPassword.length < 8 && <p className="text-xs text-orange-500">⚠️ يجب أن تكون 8 أحرف على الأقل</p>}
+            {confirmPassword && confirmPassword !== newPassword && <p className="text-xs text-red-500">{t('auth.passwordsDoNotMatch')}</p>}
+            {newPassword.length > 0 && newPassword.length < 8 && <p className="text-xs text-orange-500">⚠️ {t('auth.resetPasswordReqLength')}</p>}
             <button type="button" onClick={handleResetPassword}
               disabled={resetLoading || newPassword.length < 8 || newPassword !== confirmPassword}
               className="w-full h-10 sm:h-11 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-              {resetLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حفظ كلمة المرور الجديدة'}
+              {resetLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('auth.forgotPasswordBtnSavePassword')}
             </button>
           </div>
         )}
@@ -458,7 +472,7 @@ export default function ForgotPasswordPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSendResetEmail()}
-              placeholder="البريد الإلكتروني المسجل"
+              placeholder={t('auth.forgotPasswordInputEmail')}
               dir="ltr"
               className="w-full h-10 sm:h-11 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
             />
@@ -468,7 +482,7 @@ export default function ForgotPasswordPage() {
               disabled={emailLoading || !email.trim()}
               className="w-full h-10 sm:h-11 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {emailLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'إرسال رابط إعادة التعيين'}
+              {emailLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('auth.forgotPasswordBtnSendEmail')}
             </button>
           </div>
         )}
@@ -483,10 +497,10 @@ export default function ForgotPasswordPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <p className="text-sm text-slate-500">يمكنك الآن تسجيل الدخول بكلمة مرورك الجديدة</p>
+            <p className="text-sm text-slate-500">{t('auth.forgotPasswordSuccessSubtitle')}</p>
             <button type="button" onClick={() => router.push('/auth/login')}
               className="w-full h-10 sm:h-11 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg transition-colors">
-              تسجيل الدخول
+              {t('common.login')}
             </button>
           </div>
         )}
@@ -500,26 +514,26 @@ export default function ForgotPasswordPage() {
               </svg>
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-medium text-slate-700">تم إرسال الرابط إلى</p>
+              <p className="text-sm font-medium text-slate-700">{t('auth.forgotPasswordSentTitle')}</p>
               <p className="text-sm font-bold text-slate-900 dir-ltr" dir="ltr">{email}</p>
             </div>
-            <div className="w-full bg-slate-50 rounded-xl p-4 text-right space-y-2">
-              <p className="text-xs font-semibold text-slate-600">الخطوات التالية:</p>
+            <div className={`w-full bg-slate-50 rounded-xl p-4 space-y-2 ${isRTL ? 'text-right' : 'text-left'}`}>
+              <p className="text-xs font-semibold text-slate-600">{t('auth.forgotPasswordNextSteps')}</p>
               <ol className="text-xs text-slate-500 space-y-1 list-decimal list-inside">
-                <li>افتح صندوق البريد الإلكتروني</li>
-                <li>ابحث عن رسالة من منصة الحلم</li>
-                <li>اضغط على رابط إعادة التعيين</li>
+                <li>{t('auth.forgotPasswordNextStep1')}</li>
+                <li>{t('auth.forgotPasswordNextStep2')}</li>
+                <li>{t('auth.forgotPasswordNextStep3')}</li>
               </ol>
             </div>
             <div className="flex gap-2 w-full">
               <button type="button"
                 onClick={() => { setEmailStep('input'); setEmail(''); }}
                 className="flex-1 h-10 border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
-                تغيير البريد
+                {t('auth.forgotPasswordChangeEmail')}
               </button>
               <button type="button" onClick={() => router.push('/auth/login')}
                 className="flex-1 h-10 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors">
-                تسجيل الدخول
+                {t('common.login')}
               </button>
             </div>
           </div>
@@ -528,9 +542,9 @@ export default function ForgotPasswordPage() {
         {/* ── Back link (first steps only) ── */}
         {!isInProgress && !isSuccess && (
           <p className="text-center text-xs sm:text-sm text-slate-500 mt-4">
-            تذكرت كلمة المرور؟{' '}
+            {t('auth.forgotPasswordRemember')}{' '}
             <button type="button" onClick={() => router.push('/auth/login')} className="text-slate-900 font-semibold hover:underline">
-              تسجيل الدخول
+              {t('common.login')}
             </button>
           </p>
         )}
@@ -538,9 +552,9 @@ export default function ForgotPasswordPage() {
 
       {/* Footer */}
       <div className="flex items-center gap-4 mt-5 text-xs text-slate-400">
-        <a href="/privacy" className="hover:text-slate-600 transition-colors">الخصوصية</a>
+        <a href="/privacy" className="hover:text-slate-600 transition-colors">{t('auth.privacy')}</a>
         <span>·</span>
-        <a href="/support" className="hover:text-slate-600 transition-colors">المساعدة</a>
+        <a href="/support" className="hover:text-slate-600 transition-colors">{t('auth.support')}</a>
       </div>
     </div>
   );

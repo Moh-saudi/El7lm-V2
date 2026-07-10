@@ -1,20 +1,22 @@
 'use client';
-import { Suspense } from 'react';
-import SharedPlayerForm from '../../../shared/player-form/page';
-import { useSearchParams } from 'next/navigation';
 
-function AddClubPlayerContent() {
-  const searchParams = useSearchParams();
-  const editId = searchParams.get('edit');
-  const mode = editId ? 'edit' : 'add';
-
-  return <SharedPlayerForm mode={mode} accountType="club" playerId={editId || undefined} />;
-}
+import { useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function AddClubPlayer() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <AddClubPlayerContent />
-    </Suspense>
-  );
-} 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+
+    if (editId) {
+      router.replace(`/dashboard/shared/player-form?mode=edit&accountType=club&playerId=${editId}`);
+      return;
+    }
+
+    router.replace('/dashboard/shared/player-form?mode=add&accountType=club');
+  }, [router, searchParams]);
+
+  return null;
+}

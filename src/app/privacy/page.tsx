@@ -3,9 +3,12 @@
 import PublicLayout from "@/components/layout/PublicLayout.jsx";
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/lib/i18n';
 
 export default function PrivacyPage() {
   const router = useRouter();
+  const { t, isRTL, locale } = useTranslation();
+
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
       window.history.back();
@@ -13,9 +16,14 @@ export default function PrivacyPage() {
       router.push('/');
     }
   };
+
+  const todayStr = typeof window !== 'undefined'
+    ? new Date().toLocaleDateString({ ar: 'ar-QA', en: 'en-GB', es: 'es-ES', pt: 'pt-PT' }[locale])
+    : '';
+
   return (
     <PublicLayout>
-      <div className="min-h-screen bg-gray-50 py-12">
+      <div className="min-h-screen bg-gray-50 py-12" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white rounded-lg shadow-lg p-8">
             {/* Header */}
@@ -24,164 +32,157 @@ export default function PrivacyPage() {
                 onClick={handleBack}
                 className="mb-6 px-4 py-2 bg-gray-100 rounded hover:bg-gray-200 text-gray-700 font-medium"
               >
-                العودة
+                {t('privacy.back')}
               </button>
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">سياسة الخصوصية</h1>
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">{t('privacy.title')}</h1>
               <p className="text-lg text-gray-600">
-                آخر تحديث: {new Date().toLocaleDateString('ar-SA')}
+                {t('privacy.lastUpdate')} {todayStr}
               </p>
             </div>
 
             {/* Content */}
             <div className="prose prose-lg max-w-none">
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">مقدمة</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t('privacy.introTitle')}</h2>
                 <p className="text-gray-600 leading-relaxed">
-                  نحن في منصة الحلم (el7lm) تحت مِيسك القابضة ملتزمون بحماية خصوصيتك وحماية بياناتك الشخصية.
-                  تشرح هذه السياسة كيفية جمعنا واستخدامنا وحماية معلوماتك عند استخدام خدماتنا.
+                  {t('privacy.introDesc')}
                 </p>
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">المعلومات التي نجمعها</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t('privacy.dataCollectionTitle')}</h2>
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-800 mb-2">المعلومات الشخصية</h3>
+                    <h3 className="text-lg font-medium text-gray-800 mb-2">{t('privacy.personalInfo')}</h3>
                     <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li>الاسم الكامل</li>
-                      <li>عنوان البريد الإلكتروني</li>
-                      <li>رقم الهاتف</li>
-                      <li>تاريخ الميلاد</li>
-                      <li>الجنسية والدولة</li>
-                      <li>المعلومات الرياضية والمهارات</li>
+                      <li>{t('privacy.personalFullName')}</li>
+                      <li>{t('privacy.personalEmail')}</li>
+                      <li>{t('privacy.personalPhone')}</li>
+                      <li>{t('privacy.personalDOB')}</li>
+                      <li>{t('privacy.personalNationality')}</li>
+                      <li>{t('privacy.personalSports')}</li>
                     </ul>
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-medium text-gray-800 mb-2">المعلومات التقنية</h3>
+                    <h3 className="text-lg font-medium text-gray-800 mb-2">{t('privacy.technicalInfo')}</h3>
                     <ul className="list-disc list-inside text-gray-600 space-y-1">
-                      <li>عنوان IP</li>
-                      <li>نوع المتصفح والجهاز</li>
-                      <li>معلومات التصفح والاستخدام</li>
-                      <li>ملفات تعريف الارتباط (Cookies)</li>
+                      <li>{t('privacy.technicalIP')}</li>
+                      <li>{t('privacy.technicalBrowser')}</li>
+                      <li>{t('privacy.technicalBrowsing')}</li>
+                      <li>{t('privacy.technicalCookies')}</li>
                     </ul>
                   </div>
                 </div>
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">كيفية استخدام المعلومات</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t('privacy.dataUsageTitle')}</h2>
                 <ul className="list-disc list-inside text-gray-600 space-y-2">
-                  <li>إنشاء وإدارة حسابك على المنصة</li>
-                  <li>تقديم خدماتنا وتحسين تجربة المستخدم</li>
-                  <li>التواصل معك بخصوص الخدمات والتحديثات</li>
-                  <li>معالجة المدفوعات والاشتراكات</li>
-                  <li>عرض ملفك الشخصي للأندية والمسؤولين المهتمين</li>
-                  <li>تحليل الاستخدام لتحسين الخدمات</li>
-                  <li>الامتثال للمتطلبات القانونية</li>
+                  <li>{t('privacy.dataUsageAccount')}</li>
+                  <li>{t('privacy.dataUsageServices')}</li>
+                  <li>{t('privacy.dataUsageCommunication')}</li>
+                  <li>{t('privacy.dataUsagePayments')}</li>
+                  <li>{t('privacy.dataUsageProfile')}</li>
+                  <li>{t('privacy.dataUsageAnalytics')}</li>
+                  <li>{t('privacy.dataUsageLegal')}</li>
                 </ul>
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">مشاركة المعلومات</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t('privacy.dataSharingTitle')}</h2>
                 <p className="text-gray-600 leading-relaxed mb-4">
-                  نحن لا نبيع أو نؤجر معلوماتك الشخصية لأطراف ثالثة. قد نشارك معلوماتك في الحالات التالية:
+                  {t('privacy.dataSharingIntro')}
                 </p>
                 <ul className="list-disc list-inside text-gray-600 space-y-2">
-                  <li><strong>الأندية والمؤسسات الرياضية:</strong> بموافقتك المسبقة لعرض ملفك الشخصي</li>
-                  <li><strong>مقدمي الخدمات:</strong> للمساعدة في تشغيل المنصة (معالجة الدفعات، الاستضافة)</li>
-                  <li><strong>المتطلبات القانونية:</strong> عند الضرورة للامتثال للقوانين</li>
-                  <li><strong>حماية الحقوق:</strong> لحماية حقوقنا أو حقوق المستخدمين الآخرين</li>
+                  <li><strong>{t('privacy.dataSharingClubs')}</strong> {t('privacy.dataSharingClubsDesc')}</li>
+                  <li><strong>{t('privacy.dataSharingProviders')}</strong> {t('privacy.dataSharingProvidersDesc')}</li>
+                  <li><strong>{t('privacy.dataSharingLegal')}</strong> {t('privacy.dataSharingLegalDesc')}</li>
+                  <li><strong>{t('privacy.dataSharingRights')}</strong> {t('privacy.dataSharingRightsDesc')}</li>
                 </ul>
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">أمان البيانات</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t('privacy.securityTitle')}</h2>
                 <p className="text-gray-600 leading-relaxed mb-4">
-                  نتخذ تدابير أمنية متقدمة لحماية معلوماتك:
+                  {t('privacy.securityIntro')}
                 </p>
                 <ul className="list-disc list-inside text-gray-600 space-y-2">
-                  <li>تشفير البيانات أثناء النقل والتخزين</li>
-                  <li>مراقبة الأنظمة على مدار الساعة</li>
-                  <li>التحديث المستمر للبروتوكولات الأمنية</li>
-                  <li>تقييد الوصول للبيانات للموظفين المخولين فقط</li>
-                  <li>النسخ الاحتياطي المنتظم للبيانات</li>
+                  <li>{t('privacy.securityEncryption')}</li>
+                  <li>{t('privacy.securityMonitoring')}</li>
+                  <li>{t('privacy.securityUpdates')}</li>
+                  <li>{t('privacy.securityAccess')}</li>
+                  <li>{t('privacy.securityBackup')}</li>
                 </ul>
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">حقوقك</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t('privacy.rightsTitle')}</h2>
                 <p className="text-gray-600 leading-relaxed mb-4">
-                  لديك الحقوق التالية فيما يتعلق ببياناتك الشخصية:
+                  {t('privacy.rightsIntro')}
                 </p>
                 <ul className="list-disc list-inside text-gray-600 space-y-2">
-                  <li><strong>الوصول:</strong> طلب نسخة من بياناتك الشخصية</li>
-                  <li><strong>التصحيح:</strong> تصحيح البيانات غير الدقيقة</li>
-                  <li><strong>الحذف:</strong> طلب حذف بياناتك في ظروف معينة</li>
-                  <li><strong>التقييد:</strong> تقييد معالجة بياناتك</li>
-                  <li><strong>النقل:</strong> الحصول على بياناتك بتنسيق قابل للنقل</li>
-                  <li><strong>الاعتراض:</strong> الاعتراض على معالجة بياناتك</li>
+                  <li><strong>{t('privacy.rightsAccess')}</strong> {t('privacy.rightsAccessDesc')}</li>
+                  <li><strong>{t('privacy.rightsCorrection')}</strong> {t('privacy.rightsCorrectionDesc')}</li>
+                  <li><strong>{t('privacy.rightsDeletion')}</strong> {t('privacy.rightsDeletionDesc')}</li>
+                  <li><strong>{t('privacy.rightsRestriction')}</strong> {t('privacy.rightsRestrictionDesc')}</li>
+                  <li><strong>{t('privacy.rightsPortability')}</strong> {t('privacy.rightsPortabilityDesc')}</li>
+                  <li><strong>{t('privacy.rightsObjection')}</strong> {t('privacy.rightsObjectionDesc')}</li>
                 </ul>
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">ملفات تعريف الارتباط</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t('privacy.cookiesTitle')}</h2>
                 <p className="text-gray-600 leading-relaxed mb-4">
-                  نستخدم ملفات تعريف الارتباط لتحسين تجربتك على المنصة:
+                  {t('privacy.cookiesIntro')}
                 </p>
                 <ul className="list-disc list-inside text-gray-600 space-y-2">
-                  <li><strong>ملفات ضرورية:</strong> لضمان عمل المنصة بشكل صحيح</li>
-                  <li><strong>ملفات الأداء:</strong> لفهم كيفية استخدامك للمنصة</li>
-                  <li><strong>ملفات التفضيلات:</strong> لحفظ إعداداتك المفضلة</li>
-                  <li><strong>ملفات التسويق:</strong> لعرض محتوى مخصص (بموافقتك)</li>
+                  <li><strong>{t('privacy.cookiesEssential')}</strong> {t('privacy.cookiesEssentialDesc')}</li>
+                  <li><strong>{t('privacy.cookiesPerformance')}</strong> {t('privacy.cookiesPerformanceDesc')}</li>
+                  <li><strong>{t('privacy.cookiesPreferences')}</strong> {t('privacy.cookiesPreferencesDesc')}</li>
+                  <li><strong>{t('privacy.cookiesMarketing')}</strong> {t('privacy.cookiesMarketingDesc')}</li>
                 </ul>
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">الاحتفاظ بالبيانات</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t('privacy.retentionTitle')}</h2>
                 <p className="text-gray-600 leading-relaxed">
-                  نحتفظ ببياناتك الشخصية طالما كان حسابك نشطاً أو حسب الحاجة لتقديم الخدمات.
-                  بعد حذف الحساب، نحتفظ ببعض البيانات لفترة محددة للامتثال للمتطلبات القانونية
-                  أو لحل النزاعات.
+                  {t('privacy.retentionDesc')}
                 </p>
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">خصوصية الأطفال</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t('privacy.childrenTitle')}</h2>
                 <p className="text-gray-600 leading-relaxed">
-                  خدماتنا مخصصة للمستخدمين الذين تبلغ أعمارهم 13 عاماً أو أكثر.
-                  إذا كان عمرك أقل من 18 عاماً، يجب الحصول على موافقة ولي الأمر قبل استخدام الخدمة.
+                  {t('privacy.childrenDesc')}
                 </p>
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">التغييرات على هذه السياسة</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t('privacy.changesTitle')}</h2>
                 <p className="text-gray-600 leading-relaxed">
-                  قد نقوم بتحديث سياسة الخصوصية من وقت لآخر. سنقوم بإشعارك بأي تغييرات مهمة
-                  عبر البريد الإلكتروني أو من خلال إشعار على المنصة. استمرار استخدامك للخدمة
-                  بعد التغييرات يعني موافقتك على السياسة المحدثة.
+                  {t('privacy.changesDesc')}
                 </p>
               </section>
 
               <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">التواصل معنا</h2>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">{t('privacy.contactTitle')}</h2>
                 <p className="text-gray-600 leading-relaxed mb-4">
-                  إذا كان لديك أسئلة حول سياسة الخصوصية أو ممارساتنا في حماية البيانات،
-                  يمكنك التواصل معنا:
+                  {t('privacy.contactDesc')}
                 </p>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <ul className="text-gray-600 space-y-2">
-                    <li><strong>البريد الإلكتروني:</strong> info@el7lm.com</li>
-                    <li><strong>الهاتف (قطر):</strong> 97470542458</li>
-                    <li><strong>الهاتف (مصر):</strong> 01017799580</li>
-                    <li><strong>العنوان:</strong> الدوحة، قطر</li>
+                    <li><strong>{t('privacy.contactEmail')}</strong> info@el7lm.com</li>
+                    <li><strong>{t('privacy.contactPhoneQatar')}</strong> +974 7054 2458</li>
+                    <li><strong>{t('privacy.contactPhoneEgypt')}</strong> +20 1017799580</li>
+                    <li><strong>{t('privacy.contactAddress')}</strong> {t('contact.addressQatar')}</li>
                   </ul>
                 </div>
               </section>
 
               <div className="border-t pt-6 mt-8">
                 <p className="text-sm text-gray-500 text-center">
-                  © {new Date().getFullYear()} الحلم (el7lm) تحت مِيسك القابضة. جميع الحقوق محفوظة.
+                  © {new Date().getFullYear()} {t('privacy.copyright')}
                 </p>
               </div>
             </div>
@@ -190,4 +191,4 @@ export default function PrivacyPage() {
       </div>
     </PublicLayout>
   );
-} 
+}

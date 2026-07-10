@@ -7,22 +7,33 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, BookOpen, Languages, Award, Plus, Trash2, Calendar } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 
-const LANGUAGES_LIST = [
-    "العربية", "English", "Français", "Deutsch", "Español", "Italiano", "Türkçe", "Other"
+const getTranslatedLanguagesList = (t: any) => [
+    { value: "Arabic", label: t("profile.educationTab.languagesList.ar") },
+    { value: "English", label: t("profile.educationTab.languagesList.en") },
+    { value: "French", label: t("profile.educationTab.languagesList.fr") },
+    { value: "German", label: t("profile.educationTab.languagesList.de") },
+    { value: "Spanish", label: t("profile.educationTab.languagesList.es") },
+    { value: "Italian", label: t("profile.educationTab.languagesList.it") },
+    { value: "Turkish", label: t("profile.educationTab.languagesList.tr") },
+    { value: "Other", label: t("profile.educationTab.languagesList.other") },
 ];
 
-const EDUCATION_LEVELS = [
-    { value: "primary", label: "ابتدائي" },
-    { value: "middle", label: "متوسط" },
-    { value: "high_school", label: "ثانوي" },
-    { value: "bachelors", label: "بكالوريوس" },
-    { value: "masters", label: "ماجستير" },
-    { value: "phd", label: "دكتوراه" },
+const getTranslatedEducationLevels = (t: any) => [
+    { value: "primary", label: t("profile.educationTab.educationLevels.primary") },
+    { value: "middle", label: t("profile.educationTab.educationLevels.middle") },
+    { value: "high_school", label: t("profile.educationTab.educationLevels.highSchool") },
+    { value: "bachelors", label: t("profile.educationTab.educationLevels.bachelors") },
+    { value: "masters", label: t("profile.educationTab.educationLevels.masters") },
+    { value: "phd", label: t("profile.educationTab.educationLevels.phd") },
 ];
 
 export function EducationTab() {
+    const { t } = useTranslation();
     const { control } = useFormContext();
+    const educationLevels = getTranslatedEducationLevels(t);
+    const languagesList = getTranslatedLanguagesList(t);
 
     const { fields: langFields, append: appendLang, remove: removeLang } = useFieldArray({
         control,
@@ -46,7 +57,7 @@ export function EducationTab() {
                     <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
                         <GraduationCap className="w-5 h-5" />
                     </div>
-                    <CardTitle className="text-lg text-indigo-900">التعليم الأكاديمي</CardTitle>
+                    <CardTitle className="text-lg text-indigo-900">{t('profile.educationTab.academicTitle')}</CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
                     <FormField
@@ -54,11 +65,11 @@ export function EducationTab() {
                         name="education_level"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>المستوى التعليمي</FormLabel>
+                                <FormLabel>{t('profile.educationTab.educationLevel')}</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value || ""}>
-                                    <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder="اختر المستوى" /></SelectTrigger></FormControl>
+                                    <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder={t('profile.educationTab.selectLevel')} /></SelectTrigger></FormControl>
                                     <SelectContent>
-                                        {EDUCATION_LEVELS.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+                                        {educationLevels.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -71,9 +82,9 @@ export function EducationTab() {
                         name="graduation_year"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>سنة التخرج (المتوقعة)</FormLabel>
+                                <FormLabel>{t('profile.educationTab.graduationYear')}</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value || ""}>
-                                    <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder="اختر السنة" /></SelectTrigger></FormControl>
+                                    <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder={t('profile.educationTab.selectYear')} /></SelectTrigger></FormControl>
                                     <SelectContent className="h-60">
                                         {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
                                     </SelectContent>
@@ -88,8 +99,8 @@ export function EducationTab() {
                             name="school_name"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>اسم المدرسة / الجامعة</FormLabel>
-                                    <FormControl><Input placeholder="اسم المؤسسة التعليمية" className="bg-white" {...field} value={field.value || ""} /></FormControl>
+                                    <FormLabel>{t('profile.educationTab.schoolName')}</FormLabel>
+                                    <FormControl><Input placeholder={t('profile.educationTab.schoolPlaceholder')} className="bg-white" {...field} value={field.value || ""} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -104,9 +115,9 @@ export function EducationTab() {
                     <CardHeader className="flex flex-row items-center justify-between bg-teal-50/50 pb-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-teal-100 rounded-lg text-teal-600"><Languages className="w-5 h-5" /></div>
-                            <CardTitle className="text-lg text-teal-900">اللغات</CardTitle>
+                            <CardTitle className="text-lg text-teal-900">{t('profile.educationTab.languages')}</CardTitle>
                         </div>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => appendLang({ language: '', level: 'Intermediate' })}><Plus className="w-4 h-4" /></Button>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => appendLang({ language: 'English', level: 'Intermediate' })}><Plus className="w-4 h-4" /></Button>
                     </CardHeader>
                     <CardContent className="space-y-4 p-6">
                         {langFields.map((field, index) => (
@@ -115,8 +126,8 @@ export function EducationTab() {
                                     <FormField control={control} name={`languages.${index}.language`} render={({ field }) => (
                                         <FormItem><FormControl>
                                             <Select onValueChange={field.onChange} value={field.value || ""}>
-                                                <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder="اللغة" /></SelectTrigger></FormControl>
-                                                <SelectContent>{LANGUAGES_LIST.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
+                                                <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder={t('profile.educationTab.language')} /></SelectTrigger></FormControl>
+                                                <SelectContent>{languagesList.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}</SelectContent>
                                             </Select>
                                         </FormControl></FormItem>
                                     )} />
@@ -125,12 +136,12 @@ export function EducationTab() {
                                     <FormField control={control} name={`languages.${index}.level`} render={({ field }) => (
                                         <FormItem><FormControl>
                                             <Select onValueChange={field.onChange} value={field.value || ""}>
-                                                <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder="المستوى" /></SelectTrigger></FormControl>
+                                                <FormControl><SelectTrigger className="bg-white"><SelectValue placeholder={t('profile.educationTab.level')} /></SelectTrigger></FormControl>
                                                 <SelectContent>
-                                                    <SelectItem value="Beginner">مبتدأ</SelectItem>
-                                                    <SelectItem value="Intermediate">متوسط</SelectItem>
-                                                    <SelectItem value="Advanced">متقدم</SelectItem>
-                                                    <SelectItem value="Native">لغة أم</SelectItem>
+                                                    <SelectItem value="Beginner">{t('profile.educationTab.levels.beginner')}</SelectItem>
+                                                    <SelectItem value="Intermediate">{t('profile.educationTab.levels.intermediate')}</SelectItem>
+                                                    <SelectItem value="Advanced">{t('profile.educationTab.levels.advanced')}</SelectItem>
+                                                    <SelectItem value="Native">{t('profile.educationTab.levels.native')}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </FormControl></FormItem>
@@ -139,7 +150,7 @@ export function EducationTab() {
                                 <Button type="button" variant="ghost" size="icon" onClick={() => removeLang(index)} className="text-red-500"><Trash2 className="w-4 h-4" /></Button>
                             </div>
                         ))}
-                        {langFields.length === 0 && <p className="text-center text-sm text-gray-400">لا يوجد لغات مسجلة</p>}
+                        {langFields.length === 0 && <p className="text-center text-sm text-gray-400">{t('profile.educationTab.noLanguages')}</p>}
                     </CardContent>
                 </Card>
 
@@ -148,7 +159,7 @@ export function EducationTab() {
                     <CardHeader className="flex flex-row items-center justify-between bg-orange-50/50 pb-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-orange-100 rounded-lg text-orange-600"><Award className="w-5 h-5" /></div>
-                            <CardTitle className="text-lg text-orange-900">الدورات والشهادات</CardTitle>
+                            <CardTitle className="text-lg text-orange-900">{t('profile.educationTab.courses')}</CardTitle>
                         </div>
                         <Button type="button" variant="ghost" size="sm" onClick={() => appendCourse({ name: '' })}><Plus className="w-4 h-4" /></Button>
                     </CardHeader>
@@ -156,14 +167,14 @@ export function EducationTab() {
                         {courseFields.map((field, index) => (
                             <div key={field.id} className="p-3 bg-gray-50 rounded-lg relative group space-y-3">
                                 <Button type="button" variant="ghost" size="icon" onClick={() => removeCourse(index)} className="absolute top-2 left-2 text-red-500 h-6 w-6 p-0"><Trash2 className="w-3 h-3" /></Button>
-                                <FormField control={control} name={`courses.${index}.name`} render={({ field }) => <Input placeholder="اسم الدورة / الشهادة" {...field} className="bg-white h-9" value={field.value || ""} />} />
+                                <FormField control={control} name={`courses.${index}.name`} render={({ field }) => <Input placeholder={t('profile.educationTab.coursePlaceholder')} {...field} className="bg-white h-9" value={field.value || ""} />} />
                                 <div className="grid grid-cols-2 gap-2">
-                                    <FormField control={control} name={`courses.${index}.organization`} render={({ field }) => <Input placeholder="الجهة المانحة" {...field} className="bg-white h-9" value={field.value || ""} />} />
+                                    <FormField control={control} name={`courses.${index}.organization`} render={({ field }) => <Input placeholder={t('profile.educationTab.organizationPlaceholder')} {...field} className="bg-white h-9" value={field.value || ""} />} />
                                     <FormField control={control} name={`courses.${index}.date`} render={({ field }) => <Input type="date" {...field} className="bg-white h-9" value={field.value || ""} />} />
                                 </div>
                             </div>
                         ))}
-                        {courseFields.length === 0 && <p className="text-center text-sm text-gray-400">لا يوجد دورات مسجلة</p>}
+                        {courseFields.length === 0 && <p className="text-center text-sm text-gray-400">{t('profile.educationTab.noCourses')}</p>}
                     </CardContent>
                 </Card>
             </div>

@@ -27,8 +27,10 @@ import { SUPPORTED_COUNTRIES, getCitiesByCountry } from "@/lib/cities-data";
 import { ProfileFormValues } from "../schemas/profile";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n";
 
 export function PersonalTab() {
+    const { t } = useTranslation();
     const form = useFormContext<ProfileFormValues>();
     const { watch, setValue, control } = form;
 
@@ -73,8 +75,8 @@ export function PersonalTab() {
                         <User className="w-6 h-6" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold text-gray-900">البيانات الأساسية</h3>
-                        <p className="text-sm text-gray-500">المعلومات الشخصية التي ستظهر في ملفك</p>
+                        <h3 className="text-xl font-bold text-gray-900">{t('profile.personalTab.basicInfo')}</h3>
+                        <p className="text-sm text-gray-500">{t('profile.personalTab.basicInfoDesc')}</p>
                     </div>
                 </div>
 
@@ -86,10 +88,10 @@ export function PersonalTab() {
                             name="name"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>الاسم الكامل</FormLabel>
+                                    <FormLabel>{t('profile.personalTab.fullName')}</FormLabel>
                                     <FormControl>
                                         <Input
-                                            placeholder="الاسم الثلاثي أو الرباعي"
+                                            placeholder={t('profile.personalTab.fullNamePlaceholder')}
                                             className="h-12 text-lg bg-gray-50/50 focus:bg-white transition-all"
                                             {...field}
                                             value={field.value || ''}
@@ -107,7 +109,7 @@ export function PersonalTab() {
                         name="birth_date"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>تاريخ الميلاد</FormLabel>
+                                <FormLabel>{t('profile.personalTab.birthDate')}</FormLabel>
                                 <FormControl>
                                     <div className="relative">
                                         <Input
@@ -121,7 +123,7 @@ export function PersonalTab() {
                                 </FormControl>
                                 {age > 0 && (
                                     <FormDescription className={cn("mt-2 font-medium", isMinor ? "text-amber-600" : "text-green-600")}>
-                                        العمر الحالي: {age} سنة
+                                        {t('profile.personalTab.currentAge').replace('{{age}}', String(age))}
                                     </FormDescription>
                                 )}
                                 <FormMessage />
@@ -135,11 +137,11 @@ export function PersonalTab() {
                         name="nationality"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>الجنسية</FormLabel>
+                                <FormLabel>{t('profile.personalTab.nationality')}</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value || ""}>
                                     <FormControl>
                                         <SelectTrigger className="h-12 bg-gray-50/50 focus:bg-white">
-                                            <SelectValue placeholder="اختر الجنسية" />
+                                            <SelectValue placeholder={t('profile.personalTab.selectNationality')} />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent className="max-h-[300px]">
@@ -161,7 +163,7 @@ export function PersonalTab() {
                             name="gender"
                             render={({ field }) => (
                                 <FormItem className="space-y-3">
-                                    <FormLabel>الجنس</FormLabel>
+                                    <FormLabel>{t('profile.personalTab.gender')}</FormLabel>
                                     <FormControl>
                                         <div className="flex gap-4">
                                             {['male', 'female'].map((g) => (
@@ -182,7 +184,7 @@ export function PersonalTab() {
                                                         checked={field.value === g}
                                                         onChange={() => field.onChange(g)}
                                                     />
-                                                    <span className="text-lg font-medium">{g === 'male' ? 'ذكر' : 'أنثى'}</span>
+                                                    <span className="text-lg font-medium">{g === 'male' ? t('profile.personalTab.male') : t('profile.personalTab.female')}</span>
                                                 </label>
                                             ))}
                                         </div>
@@ -201,10 +203,10 @@ export function PersonalTab() {
                             name={"brief" as any}
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>نبذة مختصرة</FormLabel>
+                                    <FormLabel>{t('profile.personalTab.brief')}</FormLabel>
                                     <FormControl>
                                         <Textarea
-                                            placeholder="اكتب نبذة مختصرة عن مسيرتك وطموحك... (ستظهر في أعلى ملفك الشخصي)"
+                                            placeholder={t('profile.personalTab.briefPlaceholder')}
                                             className="min-h-[100px] bg-gray-50/50 focus:bg-white text-base"
                                             {...field}
                                             value={field.value || ''}
@@ -223,9 +225,9 @@ export function PersonalTab() {
                 isMinor && (
                     <Alert className="bg-amber-50 border-amber-200 text-amber-900 shadow-sm animate-in zoom-in-95 duration-300">
                         <ShieldAlert className="h-6 w-6 text-amber-600 ml-3" />
-                        <AlertTitle className="text-lg font-bold text-amber-800 mb-2">مطلوب موافقة ولي الأمر</AlertTitle>
+                        <AlertTitle className="text-lg font-bold text-amber-800 mb-2">{t('profile.personalTab.parentConsentTitle')}</AlertTitle>
                         <AlertDescription className="text-amber-700 leading-relaxed">
-                            بما أن عمر اللاعب أقل من 18 سنة، يتطلب النظام تسجيل بيانات ولي الأمر للموافقة على فتح الحساب وإدارة العقود المستقبلية.
+                            {t('profile.personalTab.parentConsentDesc')}
                         </AlertDescription>
 
                         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-amber-200/50">
@@ -234,9 +236,9 @@ export function PersonalTab() {
                                 name="guardian_name"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-amber-900">اسم ولي الأمر</FormLabel>
+                                        <FormLabel className="text-amber-900">{t('profile.personalTab.parentName')}</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="الاسم الكامل" className="bg-white border-amber-200 focus:border-amber-400" {...field} value={field.value || ''} />
+                                            <Input placeholder={t('profile.personalTab.fullName')} className="bg-white border-amber-200 focus:border-amber-400" {...field} value={field.value || ''} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -247,7 +249,7 @@ export function PersonalTab() {
                                 name="guardian_phone"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-amber-900">رقم واتساب ولي الأمر</FormLabel>
+                                        <FormLabel className="text-amber-900">{t('profile.personalTab.parentPhone')}</FormLabel>
                                         <FormControl>
                                             <div className="relative">
                                                 <Input
@@ -260,7 +262,7 @@ export function PersonalTab() {
                                             </div>
                                         </FormControl>
                                         <FormDescription className="text-xs text-amber-700">
-                                            هل هذا الرقم عليه واتساب؟ يفضل استخدامه للتواصل الرسمي.
+                                            {t('profile.personalTab.parentPhoneDesc')}
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>
@@ -278,8 +280,8 @@ export function PersonalTab() {
                         <MapPin className="w-6 h-6" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold text-gray-900">معلومات الإقامة والاتصال</h3>
-                        <p className="text-sm text-gray-500">كيف يمكن للأندية والوكلاء التواصل معك</p>
+                        <h3 className="text-xl font-bold text-gray-900">{t('profile.personalTab.residenceContact')}</h3>
+                        <p className="text-sm text-gray-500">{t('profile.personalTab.residenceContactDesc')}</p>
                     </div>
                 </div>
 
@@ -290,11 +292,11 @@ export function PersonalTab() {
                         name="country"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>دولة الإقامة</FormLabel>
+                                <FormLabel>{t('profile.personalTab.country')}</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value || ""}>
                                     <FormControl>
                                         <SelectTrigger className="h-12 bg-gray-50/50 focus:bg-white">
-                                            <SelectValue placeholder="اختر الدولة" />
+                                            <SelectValue placeholder={t('profile.personalTab.selectCountry')} />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent className="max-h-[300px]">
@@ -314,7 +316,7 @@ export function PersonalTab() {
                         name="city"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>المدينة</FormLabel>
+                                <FormLabel>{t('profile.personalTab.city')}</FormLabel>
                                 <Select
                                     onValueChange={field.onChange}
                                     // defaultValue={field.value}
@@ -323,7 +325,7 @@ export function PersonalTab() {
                                 >
                                     <FormControl>
                                         <SelectTrigger className="h-12 bg-gray-50/50 focus:bg-white">
-                                            <SelectValue placeholder={selectedCountry ? "اختر المدينة" : "اختر الدولة أولاً"} />
+                                            <SelectValue placeholder={selectedCountry ? t('profile.personalTab.selectCity') : t('profile.personalTab.selectCountryFirst')} />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent className="max-h-[300px]">
@@ -344,10 +346,10 @@ export function PersonalTab() {
                             name="address"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>العنوان التفصيلي</FormLabel>
+                                    <FormLabel>{t('profile.personalTab.detailedAddress')}</FormLabel>
                                     <FormControl>
                                         <Input
-                                            placeholder="الشارع، المنطقة، رقم المبنى..."
+                                            placeholder={t('profile.personalTab.detailedAddressPlaceholder')}
                                             className="h-12 bg-gray-50/50 focus:bg-white"
                                             {...field}
                                             value={field.value || ''}
@@ -365,7 +367,7 @@ export function PersonalTab() {
                         name="phone"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>رقم الهاتف</FormLabel>
+                                <FormLabel>{t('profile.personalTab.phone')}</FormLabel>
                                 <FormControl>
                                     <div className="relative">
                                         <Input className="h-12 pl-10 text-left ltr bg-gray-50/50 focus:bg-white" placeholder="+966..." {...field} />
@@ -383,7 +385,7 @@ export function PersonalTab() {
                         name="email"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>البريد الإلكتروني</FormLabel>
+                                <FormLabel>{t('profile.personalTab.email')}</FormLabel>
                                 <FormControl>
                                     <div className="relative">
                                         <Input className="h-12 pl-10 text-left ltr bg-gray-50/50 focus:bg-white" type="email" {...field} />

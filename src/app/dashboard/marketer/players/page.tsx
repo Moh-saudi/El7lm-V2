@@ -36,9 +36,18 @@ import { toast } from 'sonner';
 import { organizationReferralService } from '@/lib/organization/organization-referral-service';
 import { PlayerJoinRequest } from '@/types/organization-referral';
 import OrgReferralSummaryCard from '@/components/referrals/OrgReferralSummaryCard';
+import { useTranslation } from '@/lib/i18n';
+import {
+  getPlayersManagementAccountName,
+  getPlayersManagementCopy,
+  interpolate
+} from '@/lib/i18n/page-copy/players-management';
 
 export default function MarketerPlayersPage() {
   const { user, userData } = useAuth();
+  const { locale, isRTL } = useTranslation();
+  const copy = getPlayersManagementCopy(locale);
+  const accountName = getPlayersManagementAccountName(locale, 'marketer');
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -88,7 +97,7 @@ export default function MarketerPlayersPage() {
 
     } catch (error) {
       console.error("Error loading players:", error);
-      toast.error("Failed to load players.");
+      toast.error(copy.toast.loadPlayersFailed);
     } finally {
       setLoading(false);
     }
@@ -164,11 +173,11 @@ export default function MarketerPlayersPage() {
 
   // Format date helper
   const formatDate = (date: any) => {
-    if (!date) return 'غير محدد';
+    if (!date) return copy.common.notSpecified;
     try {
       const d = new Date(date);
-      return d.toLocaleDateString('ar-EG');
-    } catch (e) { return 'غير محدد'; }
+      return d.toLocaleDateString(isRTL ? 'ar-EG' : 'en-GB');
+    } catch (e) { return copy.common.notSpecified; }
   };
 
   const calculateAge = (dob: any) => {
@@ -180,18 +189,25 @@ export default function MarketerPlayersPage() {
   };
 
   const getTimeAgo = (date: any) => {
-    if (!date) return 'غير محدد';
+    if (!date) return copy.common.notSpecified;
     try {
       const d = new Date(date);
       const now = new Date();
       const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-      if (diffDays === 0) return 'اليوم';
-      return `منذ ${diffDays} يوم`;
+      if (diffDays === 0) return copy.time.justNow;
+      return interpolate(copy.time.day, { count: diffDays });
     } catch { return ''; }
   };
 
   const exportToExcel = () => {
-    const headers = ['الاسم', 'الهاتف', 'البريد', 'البلد', 'المدينة', 'تاريخ الانضمام'];
+    const headers = [
+      copy.table.player,
+      copy.exportHeaders[6],
+      copy.exportHeaders[7],
+      copy.exportHeaders[5],
+      copy.exportHeaders[4],
+      copy.exportHeaders[20],
+    ];
     const rows = sortedPlayers.map(p => [
       p.full_name || (p as any).name,
       p.phone,
@@ -224,20 +240,20 @@ export default function MarketerPlayersPage() {
       setPlayers(prev => prev.filter(p => p.id !== playerToDelete!.id));
       setIsDeleteModalOpen(false);
       setPlayerToDelete(null);
-      toast.success('تم حذف اللاعب بنجاح');
+      toast.success(copy.toast.playerDeleted);
     } catch (error) {
       console.error('Error deleting player:', error);
-      toast.error('حدث خطأ أثناء حذف اللاعب');
+      toast.error(copy.toast.deletePlayerError);
     }
   };
 
   if (loading) {
     return (
-      <main className="flex-1 p-6 mx-4 my-6 bg-gray-50 rounded-lg shadow-inner md:p-10" dir="rtl">
+      <main className="flex-1 p-6 mx-4 my-6 bg-gray-50 rounded-lg shadow-inner md:p-10" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-cyan-600 rounded-full border-t-transparent animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600 text-lg">جاري تحميل اللاعبين...</p>
+            <p className="text-gray-600 text-lg">{copy.common.loadingPlayers}</p>
           </div>
         </div>
       </main>
@@ -245,7 +261,7 @@ export default function MarketerPlayersPage() {
   }
 
   return (
-    <main className="flex-1 p-6 mx-4 my-6 bg-gray-50 rounded-lg shadow-inner md:p-10" dir="rtl">
+    <main className="flex-1 p-6 mx-4 my-6 bg-gray-50 rounded-lg shadow-inner md:p-10" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="space-y-6">
         {/* Referrals summary card */}
         <OrgReferralSummaryCard accountType="marketer" />
@@ -258,8 +274,10 @@ export default function MarketerPlayersPage() {
                   <User className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900">طلبات الانضمام الجديدة</h3>
-                  <p className="text-xs text-gray-500">لديك {joinRequests.length} لاعب بانتظار الموافقة</p>
+                  <h3 className="font-bold text-gray-900">{copy.joinRequests.title}</h3>
+                  <p className="text-xs text-gray-500">
+                    {interpolate(copy.joinRequests.subtitle, { count: joinRequests.length })}
+                  </p>
                 </div>
               </div>
               <Button
@@ -268,7 +286,7 @@ export default function MarketerPlayersPage() {
                 onClick={() => setShowJoinRequests(!showJoinRequests)}
                 className="gap-2"
               >
-                {showJoinRequests ? 'إخفاء القائمة' : 'عرض القائمة'}
+                {showJoinRequests ? copy.common.hideList : copy.common.showList}
                 {showJoinRequests ? <Eye className="w-4 h-4" /> : <Filter className="w-4 h-4" />}
               </Button>
             </div>
@@ -292,7 +310,7 @@ export default function MarketerPlayersPage() {
                           </div>
                         </div>
                         <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
-                          جديد
+                          {copy.common.new}
                         </Badge>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
@@ -301,17 +319,17 @@ export default function MarketerPlayersPage() {
                           className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200"
                           onClick={async () => {
                             try {
-                              await organizationReferralService.approveJoinRequest(request.id, user!.id, 'المسوق');
-                              toast.success('تم قبول اللاعب بنجاح');
+                              await organizationReferralService.approveJoinRequest(request.id, user!.id, accountName);
+                              toast.success(copy.toast.acceptSuccess);
                               loadJoinRequests();
                               loadPlayers();
                             } catch (error) {
-                              toast.error('فشل في قبول اللاعب');
+                              toast.error(copy.toast.acceptFailed);
                             }
                           }}
                         >
                           <CheckCircle className="w-4 h-4 mr-1.5" />
-                          قبول
+                          {copy.common.accept}
                         </Button>
                         <Button
                           size="sm"
@@ -319,16 +337,16 @@ export default function MarketerPlayersPage() {
                           className="w-full border-red-100 text-red-600 hover:bg-red-50 hover:border-red-200"
                           onClick={async () => {
                             try {
-                              await organizationReferralService.rejectJoinRequest(request.id, user!.id, 'المسوق', 'تم الرفض');
-                              toast.success('تم رفض الطلب');
+                              await organizationReferralService.rejectJoinRequest(request.id, user!.id, accountName, copy.toast.rejectReason);
+                              toast.success(copy.toast.rejectSuccess);
                               loadJoinRequests();
                             } catch (error) {
-                              toast.error('فشل في رفض الطلب');
+                              toast.error(copy.toast.rejectFailed);
                             }
                           }}
                         >
                           <XCircle className="w-4 h-4 mr-1.5" />
-                          رفض
+                          {copy.common.reject}
                         </Button>
                       </div>
                     </div>
@@ -342,8 +360,10 @@ export default function MarketerPlayersPage() {
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-cyan-600 mb-2">إدارة اللاعبين</h1>
-            <p className="text-gray-600">إدارة قائمة اللاعبين التابعين للوكالة ({players.length} لاعب)</p>
+            <h1 className="text-3xl font-bold text-cyan-600 mb-2">{copy.header.title}</h1>
+            <p className="text-gray-600">
+              {interpolate(copy.header.description, { accountName, count: players.length })}
+            </p>
           </div>
 
           <div className="flex gap-3">
@@ -353,13 +373,13 @@ export default function MarketerPlayersPage() {
               disabled={players.length === 0}
             >
               <Download className="mr-2 w-4 h-4" />
-              تصدير Excel
+              {copy.header.exportExcel}
             </Button>
 
             <Link href="/dashboard/marketer/players/add">
               <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">
                 <Plus className="mr-2 w-4 h-4" />
-                إضافة لاعب جديد
+                {copy.header.addPlayer}
               </Button>
             </Link>
           </div>
@@ -372,32 +392,32 @@ export default function MarketerPlayersPage() {
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 type="text"
-                placeholder="البحث..."
+                placeholder={copy.filters.searchPlaceholder}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pr-10"
               />
             </div>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger><SelectValue placeholder="الحالة" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={copy.filters.subscriptionStatus} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">جميع الحالات</SelectItem>
-                <SelectItem value="active">نشط</SelectItem>
-                <SelectItem value="inactive">غير نشط</SelectItem>
+                <SelectItem value="all">{copy.filters.allStatuses}</SelectItem>
+                <SelectItem value="active">{copy.common.active}</SelectItem>
+                <SelectItem value="inactive">{copy.common.inactive}</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger><SelectValue placeholder="الترتيب" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={copy.filters.sortBy} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="created_at">تاريخ الإضافة</SelectItem>
-                <SelectItem value="name">الاسم</SelectItem>
+                <SelectItem value="created_at">{copy.filters.createdAt}</SelectItem>
+                <SelectItem value="name">{copy.filters.name}</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sortOrder} onValueChange={(value: any) => setSortOrder(value)}>
-              <SelectTrigger><SelectValue placeholder="ترتيب" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={copy.filters.order} /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="desc">تنازلي</SelectItem>
-                <SelectItem value="asc">تصاعدي</SelectItem>
+                <SelectItem value="desc">{copy.filters.descending}</SelectItem>
+                <SelectItem value="asc">{copy.filters.ascending}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -407,20 +427,22 @@ export default function MarketerPlayersPage() {
         {currentPlayers.filter(p => (p as any).joinedViaReferral).length > 0 && (
           <Card className="overflow-hidden">
             <div className="p-4 border-b">
-              <h3 className="font-bold text-gray-800">اللاعبون المنضمون عبر كود الإحالة ({currentPlayers.filter(p => (p as any).joinedViaReferral).length})</h3>
+              <h3 className="font-bold text-gray-800">
+                {interpolate(copy.table.joinedViaReferral, { count: currentPlayers.filter(p => (p as any).joinedViaReferral).length })}
+              </h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">اللاعب</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">معلومات الاتصال</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">المركز والمقاسات</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الموقع</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الاشتراك</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">التواريخ</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الانضمام عبر كود</th>
-                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">العمليات</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.player}</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.contactInfo}</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.positionMeasurements}</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.location}</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.subscription}</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.dates}</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.referralJoin}</th>
+                    <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.operations}</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -434,37 +456,37 @@ export default function MarketerPlayersPage() {
                             </div>
                           </div>
                           <div className="mr-4">
-                            <div className="text-sm font-medium text-gray-900">{player.full_name || (player as any).name}</div>
+                            <div className="text-sm font-medium text-gray-900">{player.full_name || (player as any).name || copy.common.playerFallback}</div>
                             <div className="text-xs text-gray-400">#{player.id.slice(0, 8)}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm">
-                          <div className="flex items-center gap-1"><Phone className="w-3 h-3 text-gray-400" /> {player.phone}</div>
-                          <div className="flex items-center gap-1"><Mail className="w-3 h-3 text-gray-400" /> {player.email}</div>
+                          <div className="flex items-center gap-1"><Phone className="w-3 h-3 text-gray-400" /> {player.phone || copy.common.notSpecified}</div>
+                          <div className="flex items-center gap-1"><Mail className="w-3 h-3 text-gray-400" /> {player.email || copy.common.notSpecified}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm">
-                          <div>{player.primary_position || (player as any).position || '-'}</div>
+                          <div>{player.primary_position || (player as any).position || copy.common.notSpecified}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm">
-                          <div>{player.city}</div>
-                          <div className="text-xs text-gray-500">{player.country}</div>
+                          <div>{player.city || copy.common.notSpecified}</div>
+                          <div className="text-xs text-gray-500">{player.country || copy.common.notSpecified}</div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        {player.subscription_status === 'active' ? <Badge className="bg-green-100 text-green-800">نشط</Badge> : <Badge className="bg-gray-100 text-gray-800">غير نشط</Badge>}
+                        {player.subscription_status === 'active' ? <Badge className="bg-green-100 text-green-800">{copy.common.active}</Badge> : <Badge className="bg-gray-100 text-gray-800">{copy.common.inactive}</Badge>}
                       </td>
                       <td className="px-6 py-4 text-xs">
-                        <div>إضافة: {formatDate((player as any).created_at || (player as any).createdAt)}</div>
+                        <div>{copy.common.added}: {formatDate((player as any).created_at || (player as any).createdAt)}</div>
                       </td>
                       <td className="px-6 py-4 text-xs">
-                        <div>الكود: {(player as any).referralCodeUsed || '-'}</div>
-                        <div>التاريخ: {formatDate((player as any).organizationJoinedAt)}</div>
+                        <div>{copy.common.code}: {(player as any).referralCodeUsed || '-'}</div>
+                        <div>{copy.common.date}: {formatDate((player as any).organizationJoinedAt)}</div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex gap-2">
@@ -483,19 +505,21 @@ export default function MarketerPlayersPage() {
         {/* Players Added by Org Table */}
         <Card className="overflow-hidden mt-6">
           <div className="p-4 border-b">
-            <h3 className="font-bold text-gray-800">اللاعبون المضافون بواسطة المنظمة ({currentPlayers.filter(p => !(p as any).joinedViaReferral).length})</h3>
+            <h3 className="font-bold text-gray-800">
+              {interpolate(copy.table.addedByOrganization, { count: currentPlayers.filter(p => !(p as any).joinedViaReferral).length })}
+            </h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
-                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">اللاعب</th>
-                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">معلومات الاتصال</th>
-                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">المركز والمقاسات</th>
-                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الموقع</th>
-                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">الاشتراك</th>
-                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">التواريخ</th>
-                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">العمليات</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.player}</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.contactInfo}</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.positionMeasurements}</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.location}</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.subscription}</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.dates}</th>
+                  <th className="px-6 py-4 text-xs font-medium tracking-wider text-right uppercase">{copy.table.operations}</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -522,7 +546,7 @@ export default function MarketerPlayersPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm">
-                        <div>{player.primary_position || (player as any).position || '-'}</div>
+                          <div>{player.primary_position || (player as any).position || copy.common.notSpecified}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -532,10 +556,10 @@ export default function MarketerPlayersPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      {player.subscription_status === 'active' ? <Badge className="bg-green-100 text-green-800">نشط</Badge> : <Badge className="bg-gray-100 text-gray-800">غير نشط</Badge>}
+                        {player.subscription_status === 'active' ? <Badge className="bg-green-100 text-green-800">{copy.common.active}</Badge> : <Badge className="bg-gray-100 text-gray-800">{copy.common.inactive}</Badge>}
                     </td>
                     <td className="px-6 py-4 text-xs">
-                      <div>إضافة: {formatDate((player as any).created_at || (player as any).createdAt)}</div>
+                      <div>{copy.common.added}: {formatDate((player as any).created_at || (player as any).createdAt)}</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
@@ -548,7 +572,7 @@ export default function MarketerPlayersPage() {
                   </tr>
                 ))}
                 {currentPlayers.filter(p => !(p as any).joinedViaReferral).length === 0 && (
-                  <tr><td colSpan={7} className="text-center py-4 text-gray-500">لا توجد نتائج</td></tr>
+                  <tr><td colSpan={7} className="text-center py-4 text-gray-500">{copy.results.noResults}</td></tr>
                 )}
               </tbody>
             </table>
@@ -559,9 +583,9 @@ export default function MarketerPlayersPage() {
         {totalPages > 1 && (
           <Card className="p-4 mt-4">
             <div className="flex justify-between items-center">
-              <Button variant="outline" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>السابق</Button>
+              <Button variant="outline" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>{copy.common.previous}</Button>
               <span>{currentPage} / {totalPages}</span>
-              <Button variant="outline" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>التالي</Button>
+              <Button variant="outline" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>{copy.common.next}</Button>
             </div>
           </Card>
         )}
@@ -570,11 +594,13 @@ export default function MarketerPlayersPage() {
         {isDeleteModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full">
-              <h3 className="text-lg font-bold mb-4">تأكيد الحذف</h3>
-              <p className="mb-4">هل أنت متأكد من حذف هذا اللاعب؟</p>
+              <h3 className="text-lg font-bold mb-4">{copy.modal.deleteTitle}</h3>
+              <p className="mb-4">
+                {interpolate(copy.modal.deleteMessage, { name: playerToDelete?.full_name || (playerToDelete as any)?.name || copy.common.playerFallback })}
+              </p>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>إلغاء</Button>
-                <Button className="bg-red-600 text-white" onClick={confirmDelete}>حذف</Button>
+                <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>{copy.common.cancel}</Button>
+                <Button className="bg-red-600 text-white" onClick={confirmDelete}>{copy.common.delete}</Button>
               </div>
             </div>
           </div>

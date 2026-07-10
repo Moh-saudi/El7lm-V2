@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight, Check, Plus, Trash, X } from 'lucide-react';
 import PlayerLoginCredentials from '@/components/shared/PlayerLoginCredentials';
 import { SUPPORTED_COUNTRIES, getCitiesByCountry, getCountryFromCity } from '@/data/countries-from-register';
 import { AccountType, uploadPlayerProfileImage } from '@/lib/firebase/upload-media';
+import { useTranslation } from '@/lib/i18n';
 import { createPlayerLoginAccount, checkPlayerHasLoginAccount } from '@/lib/utils/player-login-account';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -136,24 +137,730 @@ const STEPS = {
   CONTRACTS: 7,
 };
 
-const STEP_TITLES = {
-  [STEPS.PERSONAL]: 'البيانات الشخصية',
-  [STEPS.EDUCATION]: 'المعلومات التعليمية',
-  [STEPS.MEDICAL]: 'السجل الطبي',
-  [STEPS.SPORTS]: 'المعلومات الرياضية',
-  [STEPS.SKILLS]: 'المهارات والقدرات',
-  [STEPS.OBJECTIVES]: 'الأهداف والطموحات',
-  [STEPS.MEDIA]: 'الصور والفيديوهات',
-  [STEPS.CONTRACTS]: 'العقود والاتصالات',
+const PLAYER_FORM_COPY = {
+  ar: {
+    stepTitles: {
+      [STEPS.PERSONAL]: 'البيانات الشخصية',
+      [STEPS.EDUCATION]: 'المعلومات التعليمية',
+      [STEPS.MEDICAL]: 'السجل الطبي',
+      [STEPS.SPORTS]: 'المعلومات الرياضية',
+      [STEPS.SKILLS]: 'المهارات والقدرات',
+      [STEPS.OBJECTIVES]: 'الأهداف والطموحات',
+      [STEPS.MEDIA]: 'الصور والفيديوهات',
+      [STEPS.CONTRACTS]: 'العقود والاتصالات',
+    },
+    accountTypes: { club: 'النادي', academy: 'الأكاديمية', trainer: 'المدرب', agent: 'الوكيل', marketer: 'المسوق', admin: 'المسؤول' },
+    positions: [
+      { value: 'حارس مرمى', label: 'حارس مرمى' },
+      { value: 'مدافع أيمن', label: 'مدافع أيمن' },
+      { value: 'مدافع أيسر', label: 'مدافع أيسر' },
+      { value: 'قلب دفاع', label: 'قلب دفاع' },
+      { value: 'وسط دفاعي', label: 'وسط دفاعي' },
+      { value: 'وسط', label: 'وسط' },
+      { value: 'جناح أيمن', label: 'جناح أيمن' },
+      { value: 'جناح أيسر', label: 'جناح أيسر' },
+      { value: 'مهاجم صريح', label: 'مهاجم صريح' },
+      { value: 'مهاجم ثاني', label: 'مهاجم ثاني' },
+    ],
+    educationLevels: [
+      { value: 'ابتدائي', label: 'ابتدائي' },
+      { value: 'متوسط', label: 'متوسط' },
+      { value: 'ثانوي', label: 'ثانوي' },
+      { value: 'دبلوم', label: 'دبلوم' },
+      { value: 'بكالوريوس', label: 'بكالوريوس' },
+      { value: 'ماجستير', label: 'ماجستير' },
+      { value: 'دكتوراه', label: 'دكتوراه' },
+    ],
+    languageLevels: [
+      { value: 'مبتدئ', label: 'مبتدئ' },
+      { value: 'متوسط', label: 'متوسط' },
+      { value: 'متقدم', label: 'متقدم' },
+      { value: 'محترف', label: 'محترف' },
+    ],
+    footPreferences: [
+      { value: 'اليمنى', label: 'اليمنى' },
+      { value: 'اليسرى', label: 'اليسرى' },
+      { value: 'كلتاهما', label: 'كلتاهما' },
+    ],
+    skills: {
+      technical: [
+        { value: 'السيطرة على الكرة', label: 'السيطرة على الكرة' },
+        { value: 'التمرير', label: 'التمرير' },
+        { value: 'التهديف', label: 'التهديف' },
+        { value: 'المراوغة', label: 'المراوغة' },
+        { value: 'التحكم بالكرة', label: 'التحكم بالكرة' },
+        { value: 'اللعب الهوائي', label: 'اللعب الهوائي' },
+      ],
+      physical: [
+        { value: 'السرعة', label: 'السرعة' },
+        { value: 'القوة', label: 'القوة' },
+        { value: 'التحمل', label: 'التحمل' },
+        { value: 'المرونة', label: 'المرونة' },
+        { value: 'التوازن', label: 'التوازن' },
+        { value: 'رد الفعل', label: 'رد الفعل' },
+      ],
+      social: [
+        { value: 'القيادة', label: 'القيادة' },
+        { value: 'العمل الجماعي', label: 'العمل الجماعي' },
+        { value: 'التواصل', label: 'التواصل' },
+        { value: 'الانضباط', label: 'الانضباط' },
+        { value: 'الثقة بالنفس', label: 'الثقة بالنفس' },
+        { value: 'تحمل الضغط', label: 'تحمل الضغط' },
+      ],
+    },
+    objectives: [
+      { value: 'اللعب في الدوري المحلي', label: 'اللعب في الدوري المحلي' },
+      { value: 'اللعب في الدوري الأوروبي', label: 'اللعب في الدوري الأوروبي' },
+      { value: 'اللعب في المنتخب الوطني', label: 'اللعب في المنتخب الوطني' },
+      { value: 'المعايشات الدولية', label: 'المعايشات الدولية' },
+      { value: 'المعايشات المحلية', label: 'المعايشات المحلية' },
+      { value: 'الاحتراف', label: 'الاحتراف' },
+      { value: 'الاشتراك في أندية استثمارية', label: 'الاشتراك في أندية استثمارية' },
+      { value: 'تعليم اللغة الإنجليزية', label: 'تعليم اللغة الإنجليزية' },
+      { value: 'الحصول على منحة دراسية', label: 'الحصول على منحة دراسية' },
+      { value: 'أن أصبح مدرب كرة قدم', label: 'أن أصبح مدرب كرة قدم' },
+      { value: 'فتح أكاديمية كرة قدم', label: 'فتح أكاديمية كرة قدم' },
+      { value: 'اللعب في الأولمبياد', label: 'اللعب في الأولمبياد' },
+      { value: 'الحصول على جوائز فردية', label: 'الحصول على جوائز فردية' },
+    ],
+    referralSources: {
+      social_media: 'وسائل التواصل الاجتماعي',
+      friend: 'صديق أو معارف',
+      coach: 'مدرب',
+      club: 'نادي',
+      internet: 'البحث على الإنترنت',
+      advertisement: 'إعلان',
+      other: 'أخرى',
+    },
+    errors: {
+      fullNameRequired: 'الاسم الكامل مطلوب',
+      birthDateRequired: 'تاريخ الميلاد مطلوب',
+      minAge: 'يجب أن يكون العمر 3 سنوات على الأقل',
+      maxAge: 'يجب أن يكون العمر أقل من 50 سنة',
+      nationalityRequired: 'الجنسية مطلوبة',
+      countryRequired: 'الدولة مطلوبة',
+      cityRequired: 'المدينة مطلوبة',
+      phoneRequired: 'رقم الهاتف مطلوب',
+      emailRequired: 'البريد الإلكتروني مطلوب',
+      primaryPositionRequired: 'المركز الأساسي مطلوب',
+      preferredFootRequired: 'القدم المفضلة مطلوبة',
+      duplicateData: 'بيانات مكررة',
+      unknownError: 'خطأ غير معروف',
+      noPermission: 'ليس لديك صلاحية تعديل بيانات هذا اللاعب',
+      playerNotFound: 'اللاعب غير موجود في قاعدة البيانات',
+      loadPlayer: 'حدث خطأ أثناء جلب بيانات اللاعب',
+      save: 'حدث خطأ في حفظ البيانات',
+      invalidMode: 'لا يمكن تحديد وضع الحفظ',
+      loginWithoutEmail: 'لا يمكن إنشاء حساب تسجيل دخول بدون إيميل',
+      loginCreate: 'حدث خطأ في إنشاء حساب تسجيل الدخول',
+      loginFailed: 'فشل في إنشاء حساب الدخول: {{message}}',
+      uploadProfile: 'فشل في رفع الصورة الشخصية',
+      duplicateEmail: 'الإيميل ({{value}}) مسجل مسبقاً في قائمة {{collection}}.',
+      duplicatePhone: 'رقم الهاتف ({{value}}) مسجل مسبقاً في قائمة {{collection}}.',
+      collections: { users: 'المستخدمين', players: 'اللاعبين', organizations: 'المنظمات' },
+    },
+    status: {
+      loading: 'جاري تحميل بيانات اللاعب...',
+      savingBlocked: 'نموذج اللاعب قيد الحفظ بالفعل',
+      profileUploaded: 'تم رفع الصورة الشخصية بنجاح',
+      addSuccess: 'تمت إضافة اللاعب بنجاح',
+      addWithLoginSuccess: 'تمت إضافة اللاعب وإنشاء حساب الدخول بنجاح!',
+      updateSuccess: 'تم تحديث بيانات اللاعب بنجاح',
+      loginCreated: 'تم إنشاء حساب تسجيل الدخول بنجاح!',
+      uploadingImage: 'جاري رفع الصورة...',
+      uploadingImages: 'جاري رفع الصور...',
+      uploadingVideo: 'جاري رفع الفيديو...',
+    },
+    ui: {
+      back: 'العودة',
+      retry: 'إعادة المحاولة',
+      errorTitle: 'حدث خطأ',
+      addTitle: 'إضافة لاعب جديد',
+      editTitle: 'تعديل بيانات اللاعب',
+      addSubtitle: 'إضافة لاعب جديد من خلال {{accountType}}',
+      editSubtitle: 'تعديل وتحديث بيانات اللاعب',
+      profileImage: 'الصورة الشخصية',
+      addImage: 'إضافة صورة',
+      addImages: 'إضافة صور',
+      fullName: 'الاسم الكامل *',
+      birthDate: 'تاريخ الميلاد *',
+      nationality: 'الجنسية *',
+      country: 'الدولة *',
+      city: 'المدينة *',
+      phone: 'رقم الهاتف *',
+      email: 'البريد الإلكتروني *',
+      whatsapp: 'رقم الواتساب',
+      address: 'العنوان التفصيلي',
+      brief: 'نبذة شخصية',
+      selectNationality: 'اختر الجنسية',
+      selectCountry: 'اختر الدولة',
+      selectCity: 'اختر المدينة',
+      selectCountryFirst: 'اختر الدولة أولاً',
+      cityHint: '💡 يمكنك كتابة اسم المدينة للبحث، أو النقر في الحقل لرؤية كل مدن {{country}}',
+      cityWarning: '⚠️ يرجى اختيار الدولة أولاً لتتمكن من اختيار المدينة',
+      fullNamePlaceholder: 'أدخل الاسم الكامل',
+      phonePlaceholder: 'أدخل رقم الهاتف',
+      emailPlaceholder: 'أدخل البريد الإلكتروني',
+      whatsappPlaceholder: 'أدخل رقم الواتساب',
+      addressPlaceholder: 'العنوان الكامل (الحي، الشارع، رقم المبنى...)',
+      briefPlaceholder: 'اكتب نبذة مختصرة عن اللاعب...',
+      primaryPosition: 'المركز الأساسي *',
+      secondaryPosition: 'المركز الثانوي',
+      preferredFoot: 'القدم المفضلة *',
+      experienceYears: 'سنوات الخبرة',
+      playerNumber: 'رقم اللاعب الحالي',
+      favoriteNumber: 'الرقم المفضل',
+      selectPrimaryPosition: 'اختر المركز الأساسي',
+      selectSecondaryPosition: 'اختر المركز الثانوي',
+      selectPreferredFoot: 'اختر القدم المفضلة',
+      experiencePlaceholder: 'عدد سنوات الخبرة',
+      playerNumberPlaceholder: 'رقم القميص الحالي',
+      favoriteNumberPlaceholder: 'الرقم المفضل',
+      clubHistory: 'تاريخ الأندية',
+      clubName: 'اسم النادي',
+      fromYear: 'من (سنة)',
+      toYear: 'إلى (سنة)',
+      addClub: 'إضافة نادي',
+      sportsNotes: 'ملاحظات رياضية',
+      sportsNotesPlaceholder: 'أي ملاحظات أو معلومات إضافية عن الأداء الرياضي...',
+      educationLevel: 'المستوى التعليمي',
+      graduationYear: 'سنة التخرج',
+      degree: 'التخصص/الدرجة العلمية',
+      englishLevel: 'مستوى اللغة الإنجليزية',
+      arabicLevel: 'مستوى اللغة العربية',
+      spanishLevel: 'مستوى اللغة الإسبانية',
+      selectEducation: 'اختر المستوى التعليمي',
+      selectGraduationYear: 'اختر سنة التخرج',
+      selectLevel: 'اختر المستوى',
+      degreePlaceholder: 'مثال: إدارة أعمال، هندسة، طب...',
+      trainingCourses: 'الدورات التدريبية',
+      courseName: 'اسم الدورة التدريبية',
+      addCourse: 'إضافة دورة تدريبية',
+      bloodType: 'فصيلة الدم',
+      selectBloodType: 'اختر فصيلة الدم',
+      height: 'الطول (سم)',
+      weight: 'الوزن (كغ)',
+      heightPlaceholder: 'الطول بالسنتيمتر',
+      weightPlaceholder: 'الوزن بالكيلوغرام',
+      hasChronic: 'يوجد أمراض مزمنة',
+      chronicDetails: 'تفاصيل الأمراض المزمنة',
+      chronicPlaceholder: 'اذكر تفاصيل الأمراض المزمنة...',
+      allergies: 'الحساسية (إن وجدت)',
+      allergiesPlaceholder: 'اذكر أي حساسية معروفة...',
+      medicalNotes: 'ملاحظات طبية إضافية',
+      medicalNotesPlaceholder: 'أي ملاحظات طبية أخرى...',
+      surgeries: 'العمليات الجراحية',
+      surgeryType: 'نوع العملية الجراحية',
+      addSurgery: 'إضافة عملية جراحية',
+      mediaLimitImage: 'الحد الأقصى: 5MB. الصيغ المدعومة: JPG, PNG, GIF',
+      additionalImages: 'صور إضافية',
+      imageAlt: 'صورة {{number}}',
+      skillVideos: 'روابط فيديوهات المهارات',
+      videoUrl: 'رابط الفيديو (YouTube, Vimeo, etc.)',
+      videoDescription: 'وصف الفيديو',
+      addVideoLink: 'إضافة رابط فيديو',
+      uploadVideos: 'رفع ملفات الفيديو',
+      uploadVideo: 'رفع فيديو',
+      mediaLimitVideo: 'الحد الأقصى: 50MB. الصيغ المدعومة: MP4, MOV, AVI',
+      skillsHint: 'قيم المهارات من 1 (ضعيف) إلى 10 (ممتاز)',
+      technicalSkills: 'المهارات التقنية',
+      physicalSkills: 'المهارات البدنية',
+      socialSkills: 'المهارات الاجتماعية',
+      otherGoals: 'أهداف أخرى',
+      otherGoalsPlaceholder: 'اذكر أهدافك الأخرى...',
+      contractStatus: 'الوضع التعاقدي الحالي',
+      hasContract: 'هل لديك عقد حالياً؟',
+      yes: 'نعم',
+      no: 'لا',
+      currentClub: 'النادي الحالي',
+      currentClubPlaceholder: 'اسم النادي الحالي (إن وجد)',
+      officialContact: 'معلومات الاتصال الرسمية',
+      contactName: 'اسم جهة الاتصال',
+      contactNamePlaceholder: 'اسم المسؤول/الوكيل/ولي الأمر',
+      contactTitle: 'المنصب/الصفة',
+      contactTitlePlaceholder: 'مثال: والد، وكيل، مدير...',
+      contactPhone: 'رقم الهاتف',
+      contactPhonePlaceholder: 'رقم هاتف جهة الاتصال',
+      contactEmail: 'البريد الإلكتروني',
+      contactEmailPlaceholder: 'البريد الإلكتروني لجهة الاتصال',
+      additionalInfo: 'معلومات إضافية',
+      hasPassport: 'هل تملك جواز سفر؟',
+      referralQuestion: 'كيف تعرفت على منصتنا؟',
+      selectReferral: 'اختر المصدر',
+      stageFallback: 'المرحلة {{number}}: {{title}}',
+      allStagesComplete: 'جميع المراحل مكتملة! يمكنك حفظ البيانات الآن.',
+      createLoginAccount: 'إنشاء حساب تسجيل دخول للاعب (مع خيارات مشاركة سهلة)',
+      unifiedPassword: '✨ كلمة المرور الموحدة:',
+      loginShareHint: '📱 سيتم عرض بيانات الدخول مع خيارات إرسال عبر الواتساب، SMS، أو طباعة',
+      loginChangeHint: '🔒 يمكن للاعب تغيير كلمة المرور بعد الدخول الأول',
+      viewCredentialsHint: 'انقر على زر "عرض بيانات الدخول" لمشاهدة التفاصيل وخيارات المشاركة',
+      viewCredentials: 'عرض بيانات الدخول',
+      previous: 'السابق',
+      cancel: 'إلغاء',
+      next: 'التالي',
+      addPlayer: 'إضافة اللاعب',
+      saveChanges: 'حفظ التعديلات',
+      organization: 'المنظمة',
+    },
+  },
+  en: {
+    stepTitles: {
+      [STEPS.PERSONAL]: 'Personal details',
+      [STEPS.EDUCATION]: 'Education',
+      [STEPS.MEDICAL]: 'Medical record',
+      [STEPS.SPORTS]: 'Sports information',
+      [STEPS.SKILLS]: 'Skills and abilities',
+      [STEPS.OBJECTIVES]: 'Goals and ambitions',
+      [STEPS.MEDIA]: 'Photos and videos',
+      [STEPS.CONTRACTS]: 'Contracts and contacts',
+    },
+    accountTypes: { club: 'club', academy: 'academy', trainer: 'trainer', agent: 'agent', marketer: 'marketer', admin: 'admin' },
+    positions: [
+      { value: 'حارس مرمى', label: 'Goalkeeper' },
+      { value: 'مدافع أيمن', label: 'Right back' },
+      { value: 'مدافع أيسر', label: 'Left back' },
+      { value: 'قلب دفاع', label: 'Center back' },
+      { value: 'وسط دفاعي', label: 'Defensive midfielder' },
+      { value: 'وسط', label: 'Midfielder' },
+      { value: 'جناح أيمن', label: 'Right winger' },
+      { value: 'جناح أيسر', label: 'Left winger' },
+      { value: 'مهاجم صريح', label: 'Striker' },
+      { value: 'مهاجم ثاني', label: 'Second striker' },
+    ],
+    educationLevels: [
+      { value: 'ابتدائي', label: 'Primary' },
+      { value: 'متوسط', label: 'Intermediate' },
+      { value: 'ثانوي', label: 'Secondary' },
+      { value: 'دبلوم', label: 'Diploma' },
+      { value: 'بكالوريوس', label: "Bachelor's" },
+      { value: 'ماجستير', label: "Master's" },
+      { value: 'دكتوراه', label: 'Doctorate' },
+    ],
+    languageLevels: [
+      { value: 'مبتدئ', label: 'Beginner' },
+      { value: 'متوسط', label: 'Intermediate' },
+      { value: 'متقدم', label: 'Advanced' },
+      { value: 'محترف', label: 'Professional' },
+    ],
+    footPreferences: [
+      { value: 'اليمنى', label: 'Right' },
+      { value: 'اليسرى', label: 'Left' },
+      { value: 'كلتاهما', label: 'Both' },
+    ],
+    skills: {
+      technical: [
+        { value: 'السيطرة على الكرة', label: 'Ball control' },
+        { value: 'التمرير', label: 'Passing' },
+        { value: 'التهديف', label: 'Shooting' },
+        { value: 'المراوغة', label: 'Dribbling' },
+        { value: 'التحكم بالكرة', label: 'First touch' },
+        { value: 'اللعب الهوائي', label: 'Aerial play' },
+      ],
+      physical: [
+        { value: 'السرعة', label: 'Speed' },
+        { value: 'القوة', label: 'Strength' },
+        { value: 'التحمل', label: 'Endurance' },
+        { value: 'المرونة', label: 'Flexibility' },
+        { value: 'التوازن', label: 'Balance' },
+        { value: 'رد الفعل', label: 'Reaction' },
+      ],
+      social: [
+        { value: 'القيادة', label: 'Leadership' },
+        { value: 'العمل الجماعي', label: 'Teamwork' },
+        { value: 'التواصل', label: 'Communication' },
+        { value: 'الانضباط', label: 'Discipline' },
+        { value: 'الثقة بالنفس', label: 'Self-confidence' },
+        { value: 'تحمل الضغط', label: 'Pressure handling' },
+      ],
+    },
+    objectives: [
+      { value: 'اللعب في الدوري المحلي', label: 'Play in the local league' },
+      { value: 'اللعب في الدوري الأوروبي', label: 'Play in a European league' },
+      { value: 'اللعب في المنتخب الوطني', label: 'Play for the national team' },
+      { value: 'المعايشات الدولية', label: 'International trials' },
+      { value: 'المعايشات المحلية', label: 'Local trials' },
+      { value: 'الاحتراف', label: 'Become professional' },
+      { value: 'الاشتراك في أندية استثمارية', label: 'Join investment clubs' },
+      { value: 'تعليم اللغة الإنجليزية', label: 'Learn English' },
+      { value: 'الحصول على منحة دراسية', label: 'Get a scholarship' },
+      { value: 'أن أصبح مدرب كرة قدم', label: 'Become a football coach' },
+      { value: 'فتح أكاديمية كرة قدم', label: 'Open a football academy' },
+      { value: 'اللعب في الأولمبياد', label: 'Play in the Olympics' },
+      { value: 'الحصول على جوائز فردية', label: 'Win individual awards' },
+    ],
+    referralSources: {
+      social_media: 'Social media',
+      friend: 'Friend or acquaintance',
+      coach: 'Coach',
+      club: 'Club',
+      internet: 'Internet search',
+      advertisement: 'Advertisement',
+      other: 'Other',
+    },
+    errors: {
+      fullNameRequired: 'Full name is required',
+      birthDateRequired: 'Birth date is required',
+      minAge: 'Age must be at least 3 years',
+      maxAge: 'Age must be under 50 years',
+      nationalityRequired: 'Nationality is required',
+      countryRequired: 'Country is required',
+      cityRequired: 'City is required',
+      phoneRequired: 'Phone number is required',
+      emailRequired: 'Email is required',
+      primaryPositionRequired: 'Primary position is required',
+      preferredFootRequired: 'Preferred foot is required',
+      duplicateData: 'Duplicate data',
+      unknownError: 'Unknown error',
+      noPermission: 'You do not have permission to edit this player',
+      playerNotFound: 'Player was not found in the database',
+      loadPlayer: 'An error occurred while loading player data',
+      save: 'An error occurred while saving the data',
+      invalidMode: 'Unable to determine save mode',
+      loginWithoutEmail: 'A login account cannot be created without an email',
+      loginCreate: 'An error occurred while creating the login account',
+      loginFailed: 'Failed to create login account: {{message}}',
+      uploadProfile: 'Failed to upload profile image',
+      duplicateEmail: 'Email ({{value}}) is already registered in {{collection}}.',
+      duplicatePhone: 'Phone number ({{value}}) is already registered in {{collection}}.',
+      collections: { users: 'users', players: 'players', organizations: 'organizations' },
+    },
+    status: {
+      loading: 'Loading player data...',
+      savingBlocked: 'Player form save is already in progress',
+      profileUploaded: 'Profile image uploaded successfully',
+      addSuccess: 'Player added successfully',
+      addWithLoginSuccess: 'Player added and login account created successfully!',
+      updateSuccess: 'Player data updated successfully',
+      loginCreated: 'Login account created successfully!',
+      uploadingImage: 'Uploading image...',
+      uploadingImages: 'Uploading images...',
+      uploadingVideo: 'Uploading video...',
+    },
+    ui: {
+      back: 'Back',
+      retry: 'Try again',
+      errorTitle: 'Something went wrong',
+      addTitle: 'Add new player',
+      editTitle: 'Edit player data',
+      addSubtitle: 'Add a new player through {{accountType}}',
+      editSubtitle: 'Edit and update player data',
+      profileImage: 'Profile image',
+      addImage: 'Add image',
+      addImages: 'Add images',
+      fullName: 'Full name *',
+      birthDate: 'Birth date *',
+      nationality: 'Nationality *',
+      country: 'Country *',
+      city: 'City *',
+      phone: 'Phone number *',
+      email: 'Email *',
+      whatsapp: 'WhatsApp number',
+      address: 'Detailed address',
+      brief: 'Personal brief',
+      selectNationality: 'Select nationality',
+      selectCountry: 'Select country',
+      selectCity: 'Select city',
+      selectCountryFirst: 'Select country first',
+      cityHint: '💡 You can type the city name to search, or click the field to see all cities in {{country}}',
+      cityWarning: '⚠️ Please select a country first to choose a city',
+      fullNamePlaceholder: 'Enter full name',
+      phonePlaceholder: 'Enter phone number',
+      emailPlaceholder: 'Enter email address',
+      whatsappPlaceholder: 'Enter WhatsApp number',
+      addressPlaceholder: 'Full address (district, street, building number...)',
+      briefPlaceholder: 'Write a short brief about the player...',
+      primaryPosition: 'Primary position *',
+      secondaryPosition: 'Secondary position',
+      preferredFoot: 'Preferred foot *',
+      experienceYears: 'Years of experience',
+      playerNumber: 'Current player number',
+      favoriteNumber: 'Favorite number',
+      selectPrimaryPosition: 'Select primary position',
+      selectSecondaryPosition: 'Select secondary position',
+      selectPreferredFoot: 'Select preferred foot',
+      experiencePlaceholder: 'Number of years of experience',
+      playerNumberPlaceholder: 'Current jersey number',
+      favoriteNumberPlaceholder: 'Favorite number',
+      clubHistory: 'Club history',
+      clubName: 'Club name',
+      fromYear: 'From (year)',
+      toYear: 'To (year)',
+      addClub: 'Add club',
+      sportsNotes: 'Sports notes',
+      sportsNotesPlaceholder: 'Any additional notes or information about sports performance...',
+      educationLevel: 'Education level',
+      graduationYear: 'Graduation year',
+      degree: 'Major/degree',
+      englishLevel: 'English level',
+      arabicLevel: 'Arabic level',
+      spanishLevel: 'Spanish level',
+      selectEducation: 'Select education level',
+      selectGraduationYear: 'Select graduation year',
+      selectLevel: 'Select level',
+      degreePlaceholder: 'Example: Business, Engineering, Medicine...',
+      trainingCourses: 'Training courses',
+      courseName: 'Training course name',
+      addCourse: 'Add training course',
+      bloodType: 'Blood type',
+      selectBloodType: 'Select blood type',
+      height: 'Height (cm)',
+      weight: 'Weight (kg)',
+      heightPlaceholder: 'Height in centimeters',
+      weightPlaceholder: 'Weight in kilograms',
+      hasChronic: 'Has chronic conditions',
+      chronicDetails: 'Chronic condition details',
+      chronicPlaceholder: 'Mention chronic condition details...',
+      allergies: 'Allergies (if any)',
+      allergiesPlaceholder: 'Mention any known allergies...',
+      medicalNotes: 'Additional medical notes',
+      medicalNotesPlaceholder: 'Any other medical notes...',
+      surgeries: 'Surgeries',
+      surgeryType: 'Surgery type',
+      addSurgery: 'Add surgery',
+      mediaLimitImage: 'Maximum: 5MB. Supported formats: JPG, PNG, GIF',
+      additionalImages: 'Additional images',
+      imageAlt: 'Image {{number}}',
+      skillVideos: 'Skill video links',
+      videoUrl: 'Video link (YouTube, Vimeo, etc.)',
+      videoDescription: 'Video description',
+      addVideoLink: 'Add video link',
+      uploadVideos: 'Upload video files',
+      uploadVideo: 'Upload video',
+      mediaLimitVideo: 'Maximum: 50MB. Supported formats: MP4, MOV, AVI',
+      skillsHint: 'Rate skills from 1 (poor) to 10 (excellent)',
+      technicalSkills: 'Technical skills',
+      physicalSkills: 'Physical skills',
+      socialSkills: 'Social skills',
+      otherGoals: 'Other goals',
+      otherGoalsPlaceholder: 'Mention your other goals...',
+      contractStatus: 'Current contract status',
+      hasContract: 'Do you currently have a contract?',
+      yes: 'Yes',
+      no: 'No',
+      currentClub: 'Current club',
+      currentClubPlaceholder: 'Current club name (if any)',
+      officialContact: 'Official contact information',
+      contactName: 'Contact name',
+      contactNamePlaceholder: 'Responsible person/agent/guardian name',
+      contactTitle: 'Position/role',
+      contactTitlePlaceholder: 'Example: Parent, agent, manager...',
+      contactPhone: 'Phone number',
+      contactPhonePlaceholder: 'Contact phone number',
+      contactEmail: 'Email',
+      contactEmailPlaceholder: 'Contact email address',
+      additionalInfo: 'Additional information',
+      hasPassport: 'Do you have a passport?',
+      referralQuestion: 'How did you hear about our platform?',
+      selectReferral: 'Select source',
+      stageFallback: 'Stage {{number}}: {{title}}',
+      allStagesComplete: 'All stages are complete! You can save the data now.',
+      createLoginAccount: 'Create a login account for the player (with easy sharing options)',
+      unifiedPassword: '✨ Unified password:',
+      loginShareHint: '📱 Login data will be shown with sharing options via WhatsApp, SMS, or print',
+      loginChangeHint: '🔒 The player can change the password after the first login',
+      viewCredentialsHint: 'Click "View login credentials" to see details and sharing options',
+      viewCredentials: 'View login credentials',
+      previous: 'Previous',
+      cancel: 'Cancel',
+      next: 'Next',
+      addPlayer: 'Add player',
+      saveChanges: 'Save changes',
+      organization: 'Organization',
+    },
+  },
+  es: {},
+  pt: {},
 };
 
-// Account type labels
-const ACCOUNT_TYPE_LABELS = {
-  club: 'النادي',
-  academy: 'الأكاديمية',
-  trainer: 'المدرب',
-  agent: 'الوكيل'
+const cloneLabels = (items: Array<{ value: string; label: string }>, labels: string[]) =>
+  items.map((item, index) => ({ ...item, label: labels[index] || item.label }));
+
+const buildPlayerFormLocale = (overrides: any) => {
+  const base = PLAYER_FORM_COPY.en;
+  return {
+    ...base,
+    ...overrides,
+    stepTitles: { ...base.stepTitles, ...overrides.stepTitles },
+    accountTypes: { ...base.accountTypes, ...overrides.accountTypes },
+    referralSources: { ...base.referralSources, ...overrides.referralSources },
+    errors: { ...base.errors, ...overrides.errors },
+    status: { ...base.status, ...overrides.status },
+    ui: { ...base.ui, ...overrides.ui },
+    skills: { ...base.skills, ...overrides.skills },
+  };
 };
+
+(PLAYER_FORM_COPY as any).es = buildPlayerFormLocale({
+  stepTitles: {
+    [STEPS.PERSONAL]: 'Datos personales',
+    [STEPS.EDUCATION]: 'Educación',
+    [STEPS.MEDICAL]: 'Historial médico',
+    [STEPS.SPORTS]: 'Información deportiva',
+    [STEPS.SKILLS]: 'Habilidades y capacidades',
+    [STEPS.OBJECTIVES]: 'Objetivos y aspiraciones',
+    [STEPS.MEDIA]: 'Fotos y videos',
+    [STEPS.CONTRACTS]: 'Contratos y contactos',
+  },
+  accountTypes: { club: 'club', academy: 'academia', trainer: 'entrenador', agent: 'agente', marketer: 'promotor', admin: 'administrador' },
+  positions: cloneLabels(PLAYER_FORM_COPY.en.positions, ['Portero', 'Lateral derecho', 'Lateral izquierdo', 'Defensa central', 'Mediocentro defensivo', 'Mediocampista', 'Extremo derecho', 'Extremo izquierdo', 'Delantero centro', 'Segundo delantero']),
+  educationLevels: cloneLabels(PLAYER_FORM_COPY.en.educationLevels, ['Primaria', 'Intermedia', 'Secundaria', 'Diploma', 'Licenciatura', 'Maestría', 'Doctorado']),
+  languageLevels: cloneLabels(PLAYER_FORM_COPY.en.languageLevels, ['Principiante', 'Intermedio', 'Avanzado', 'Profesional']),
+  footPreferences: cloneLabels(PLAYER_FORM_COPY.en.footPreferences, ['Derecha', 'Izquierda', 'Ambas']),
+  skills: {
+    technical: cloneLabels(PLAYER_FORM_COPY.en.skills.technical, ['Control del balón', 'Pase', 'Tiro', 'Regate', 'Primer toque', 'Juego aéreo']),
+    physical: cloneLabels(PLAYER_FORM_COPY.en.skills.physical, ['Velocidad', 'Fuerza', 'Resistencia', 'Flexibilidad', 'Equilibrio', 'Reacción']),
+    social: cloneLabels(PLAYER_FORM_COPY.en.skills.social, ['Liderazgo', 'Trabajo en equipo', 'Comunicación', 'Disciplina', 'Confianza en sí mismo', 'Manejo de presión']),
+  },
+  objectives: cloneLabels(PLAYER_FORM_COPY.en.objectives, ['Jugar en la liga local', 'Jugar en una liga europea', 'Jugar con la selección nacional', 'Pruebas internacionales', 'Pruebas locales', 'Profesionalizarme', 'Unirme a clubes de inversión', 'Aprender inglés', 'Obtener una beca', 'Convertirme en entrenador de fútbol', 'Abrir una academia de fútbol', 'Jugar en los Juegos Olímpicos', 'Ganar premios individuales']),
+  referralSources: { social_media: 'Redes sociales', friend: 'Amigo o conocido', coach: 'Entrenador', club: 'Club', internet: 'Búsqueda en Internet', advertisement: 'Anuncio', other: 'Otro' },
+  errors: {
+    fullNameRequired: 'El nombre completo es obligatorio',
+    birthDateRequired: 'La fecha de nacimiento es obligatoria',
+    minAge: 'La edad debe ser de al menos 3 años',
+    maxAge: 'La edad debe ser menor de 50 años',
+    nationalityRequired: 'La nacionalidad es obligatoria',
+    countryRequired: 'El país es obligatorio',
+    cityRequired: 'La ciudad es obligatoria',
+    phoneRequired: 'El teléfono es obligatorio',
+    emailRequired: 'El correo electrónico es obligatorio',
+    primaryPositionRequired: 'La posición principal es obligatoria',
+    preferredFootRequired: 'El pie preferido es obligatorio',
+    duplicateData: 'Datos duplicados',
+    unknownError: 'Error desconocido',
+    noPermission: 'No tienes permiso para editar este jugador',
+    playerNotFound: 'El jugador no existe en la base de datos',
+    loadPlayer: 'Ocurrió un error al cargar los datos del jugador',
+    save: 'Ocurrió un error al guardar los datos',
+    invalidMode: 'No se pudo determinar el modo de guardado',
+    loginWithoutEmail: 'No se puede crear una cuenta de acceso sin correo electrónico',
+    loginCreate: 'Ocurrió un error al crear la cuenta de acceso',
+    loginFailed: 'No se pudo crear la cuenta de acceso: {{message}}',
+    uploadProfile: 'No se pudo subir la imagen de perfil',
+    duplicateEmail: 'El correo ({{value}}) ya está registrado en {{collection}}.',
+    duplicatePhone: 'El teléfono ({{value}}) ya está registrado en {{collection}}.',
+    collections: { users: 'usuarios', players: 'jugadores', organizations: 'organizaciones' },
+  },
+  status: {
+    loading: 'Cargando datos del jugador...',
+    addSuccess: 'Jugador agregado correctamente',
+    addWithLoginSuccess: 'Jugador agregado y cuenta de acceso creada correctamente.',
+    updateSuccess: 'Datos del jugador actualizados correctamente',
+    loginCreated: 'Cuenta de acceso creada correctamente.',
+    uploadingImage: 'Subiendo imagen...',
+    uploadingImages: 'Subiendo imágenes...',
+    uploadingVideo: 'Subiendo video...',
+  },
+  ui: {
+    back: 'Volver', retry: 'Reintentar', errorTitle: 'Ocurrió un error', addTitle: 'Agregar nuevo jugador', editTitle: 'Editar datos del jugador',
+    addSubtitle: 'Agregar un nuevo jugador a través de {{accountType}}', editSubtitle: 'Editar y actualizar los datos del jugador',
+    profileImage: 'Imagen de perfil', addImage: 'Agregar imagen', addImages: 'Agregar imágenes',
+    fullName: 'Nombre completo *', birthDate: 'Fecha de nacimiento *', nationality: 'Nacionalidad *', country: 'País *', city: 'Ciudad *', phone: 'Teléfono *', email: 'Correo electrónico *', whatsapp: 'Número de WhatsApp',
+    address: 'Dirección detallada', brief: 'Resumen personal', selectNationality: 'Selecciona la nacionalidad', selectCountry: 'Selecciona el país', selectCity: 'Selecciona la ciudad', selectCountryFirst: 'Selecciona primero el país',
+    cityHint: '💡 Puedes escribir el nombre de la ciudad para buscar, o hacer clic en el campo para ver todas las ciudades de {{country}}', cityWarning: '⚠️ Selecciona primero el país para poder elegir la ciudad',
+    fullNamePlaceholder: 'Ingresa el nombre completo', phonePlaceholder: 'Ingresa el teléfono', emailPlaceholder: 'Ingresa el correo electrónico', whatsappPlaceholder: 'Ingresa el número de WhatsApp',
+    addressPlaceholder: 'Dirección completa (barrio, calle, número de edificio...)', briefPlaceholder: 'Escribe un breve resumen sobre el jugador...',
+    primaryPosition: 'Posición principal *', secondaryPosition: 'Posición secundaria', preferredFoot: 'Pie preferido *', experienceYears: 'Años de experiencia', playerNumber: 'Número actual del jugador', favoriteNumber: 'Número favorito',
+    selectPrimaryPosition: 'Selecciona la posición principal', selectSecondaryPosition: 'Selecciona la posición secundaria', selectPreferredFoot: 'Selecciona el pie preferido',
+    experiencePlaceholder: 'Número de años de experiencia', playerNumberPlaceholder: 'Número actual de camiseta', favoriteNumberPlaceholder: 'Número favorito',
+    clubHistory: 'Historial de clubes', clubName: 'Nombre del club', fromYear: 'Desde (año)', toYear: 'Hasta (año)', addClub: 'Agregar club', sportsNotes: 'Notas deportivas', sportsNotesPlaceholder: 'Notas o información adicional sobre el rendimiento deportivo...',
+    educationLevel: 'Nivel educativo', graduationYear: 'Año de graduación', degree: 'Especialidad/título', englishLevel: 'Nivel de inglés', arabicLevel: 'Nivel de árabe', spanishLevel: 'Nivel de español', selectEducation: 'Selecciona el nivel educativo', selectGraduationYear: 'Selecciona el año de graduación', selectLevel: 'Selecciona el nivel', degreePlaceholder: 'Ejemplo: Administración, Ingeniería, Medicina...',
+    trainingCourses: 'Cursos de formación', courseName: 'Nombre del curso', addCourse: 'Agregar curso',
+    bloodType: 'Tipo de sangre', selectBloodType: 'Selecciona el tipo de sangre', height: 'Altura (cm)', weight: 'Peso (kg)', heightPlaceholder: 'Altura en centímetros', weightPlaceholder: 'Peso en kilogramos',
+    hasChronic: 'Tiene enfermedades crónicas', chronicDetails: 'Detalles de enfermedades crónicas', chronicPlaceholder: 'Menciona los detalles de las enfermedades crónicas...', allergies: 'Alergias (si existen)', allergiesPlaceholder: 'Menciona alergias conocidas...', medicalNotes: 'Notas médicas adicionales', medicalNotesPlaceholder: 'Cualquier otra nota médica...', surgeries: 'Cirugías', surgeryType: 'Tipo de cirugía', addSurgery: 'Agregar cirugía',
+    mediaLimitImage: 'Máximo: 5MB. Formatos admitidos: JPG, PNG, GIF', additionalImages: 'Imágenes adicionales', imageAlt: 'Imagen {{number}}', skillVideos: 'Enlaces de videos de habilidades', videoUrl: 'Enlace del video (YouTube, Vimeo, etc.)', videoDescription: 'Descripción del video', addVideoLink: 'Agregar enlace de video', uploadVideos: 'Subir archivos de video', uploadVideo: 'Subir video', mediaLimitVideo: 'Máximo: 50MB. Formatos admitidos: MP4, MOV, AVI',
+    skillsHint: 'Califica las habilidades del 1 (débil) al 10 (excelente)', technicalSkills: 'Habilidades técnicas', physicalSkills: 'Habilidades físicas', socialSkills: 'Habilidades sociales',
+    otherGoals: 'Otros objetivos', otherGoalsPlaceholder: 'Menciona tus otros objetivos...', contractStatus: 'Estado contractual actual', hasContract: '¿Tienes contrato actualmente?', yes: 'Sí', no: 'No', currentClub: 'Club actual', currentClubPlaceholder: 'Nombre del club actual (si existe)',
+    officialContact: 'Información de contacto oficial', contactName: 'Nombre del contacto', contactNamePlaceholder: 'Responsable/agente/tutor', contactTitle: 'Cargo/rol', contactTitlePlaceholder: 'Ejemplo: padre, agente, director...', contactPhone: 'Teléfono', contactPhonePlaceholder: 'Teléfono del contacto', contactEmail: 'Correo electrónico', contactEmailPlaceholder: 'Correo del contacto',
+    additionalInfo: 'Información adicional', hasPassport: '¿Tienes pasaporte?', referralQuestion: '¿Cómo conociste nuestra plataforma?', selectReferral: 'Selecciona la fuente',
+    stageFallback: 'Etapa {{number}}: {{title}}', allStagesComplete: 'Todas las etapas están completas. Ya puedes guardar los datos.', createLoginAccount: 'Crear una cuenta de acceso para el jugador (con opciones fáciles para compartir)', unifiedPassword: '✨ Contraseña unificada:', loginShareHint: '📱 Se mostrarán los datos de acceso con opciones para WhatsApp, SMS o impresión', loginChangeHint: '🔒 El jugador puede cambiar la contraseña después del primer acceso', viewCredentialsHint: 'Haz clic en "Ver credenciales" para ver los detalles y opciones de compartir', viewCredentials: 'Ver credenciales', previous: 'Anterior', cancel: 'Cancelar', next: 'Siguiente', addPlayer: 'Agregar jugador', saveChanges: 'Guardar cambios', organization: 'Organización',
+  },
+});
+
+(PLAYER_FORM_COPY as any).pt = buildPlayerFormLocale({
+  stepTitles: {
+    [STEPS.PERSONAL]: 'Dados pessoais',
+    [STEPS.EDUCATION]: 'Educação',
+    [STEPS.MEDICAL]: 'Histórico médico',
+    [STEPS.SPORTS]: 'Informações esportivas',
+    [STEPS.SKILLS]: 'Habilidades e capacidades',
+    [STEPS.OBJECTIVES]: 'Objetivos e ambições',
+    [STEPS.MEDIA]: 'Fotos e vídeos',
+    [STEPS.CONTRACTS]: 'Contratos e contatos',
+  },
+  accountTypes: { club: 'clube', academy: 'academia', trainer: 'treinador', agent: 'agente', marketer: 'promotor', admin: 'administrador' },
+  positions: cloneLabels(PLAYER_FORM_COPY.en.positions, ['Goleiro', 'Lateral direito', 'Lateral esquerdo', 'Zagueiro', 'Volante', 'Meio-campista', 'Ponta direita', 'Ponta esquerda', 'Centroavante', 'Segundo atacante']),
+  educationLevels: cloneLabels(PLAYER_FORM_COPY.en.educationLevels, ['Primário', 'Intermediário', 'Secundário', 'Diploma', 'Bacharelado', 'Mestrado', 'Doutorado']),
+  languageLevels: cloneLabels(PLAYER_FORM_COPY.en.languageLevels, ['Iniciante', 'Intermediário', 'Avançado', 'Profissional']),
+  footPreferences: cloneLabels(PLAYER_FORM_COPY.en.footPreferences, ['Direito', 'Esquerdo', 'Ambos']),
+  skills: {
+    technical: cloneLabels(PLAYER_FORM_COPY.en.skills.technical, ['Controle de bola', 'Passe', 'Finalização', 'Drible', 'Primeiro toque', 'Jogo aéreo']),
+    physical: cloneLabels(PLAYER_FORM_COPY.en.skills.physical, ['Velocidade', 'Força', 'Resistência', 'Flexibilidade', 'Equilíbrio', 'Reação']),
+    social: cloneLabels(PLAYER_FORM_COPY.en.skills.social, ['Liderança', 'Trabalho em equipe', 'Comunicação', 'Disciplina', 'Autoconfiança', 'Controle sob pressão']),
+  },
+  objectives: cloneLabels(PLAYER_FORM_COPY.en.objectives, ['Jogar na liga local', 'Jogar em uma liga europeia', 'Jogar pela seleção nacional', 'Testes internacionais', 'Testes locais', 'Profissionalizar-me', 'Entrar em clubes de investimento', 'Aprender inglês', 'Obter bolsa de estudos', 'Tornar-me treinador de futebol', 'Abrir uma academia de futebol', 'Jogar nas Olimpíadas', 'Ganhar prêmios individuais']),
+  referralSources: { social_media: 'Redes sociais', friend: 'Amigo ou conhecido', coach: 'Treinador', club: 'Clube', internet: 'Pesquisa na Internet', advertisement: 'Anúncio', other: 'Outro' },
+  errors: {
+    fullNameRequired: 'O nome completo é obrigatório',
+    birthDateRequired: 'A data de nascimento é obrigatória',
+    minAge: 'A idade deve ser de pelo menos 3 anos',
+    maxAge: 'A idade deve ser menor que 50 anos',
+    nationalityRequired: 'A nacionalidade é obrigatória',
+    countryRequired: 'O país é obrigatório',
+    cityRequired: 'A cidade é obrigatória',
+    phoneRequired: 'O telefone é obrigatório',
+    emailRequired: 'O e-mail é obrigatório',
+    primaryPositionRequired: 'A posição principal é obrigatória',
+    preferredFootRequired: 'O pé preferido é obrigatório',
+    duplicateData: 'Dados duplicados',
+    unknownError: 'Erro desconhecido',
+    noPermission: 'Você não tem permissão para editar este jogador',
+    playerNotFound: 'O jogador não foi encontrado no banco de dados',
+    loadPlayer: 'Ocorreu um erro ao carregar os dados do jogador',
+    save: 'Ocorreu um erro ao salvar os dados',
+    invalidMode: 'Não foi possível determinar o modo de salvamento',
+    loginWithoutEmail: 'Não é possível criar uma conta de acesso sem e-mail',
+    loginCreate: 'Ocorreu um erro ao criar a conta de acesso',
+    loginFailed: 'Falha ao criar a conta de acesso: {{message}}',
+    uploadProfile: 'Falha ao enviar a imagem de perfil',
+    duplicateEmail: 'O e-mail ({{value}}) já está registrado em {{collection}}.',
+    duplicatePhone: 'O telefone ({{value}}) já está registrado em {{collection}}.',
+    collections: { users: 'usuários', players: 'jogadores', organizations: 'organizações' },
+  },
+  status: {
+    loading: 'Carregando dados do jogador...',
+    addSuccess: 'Jogador adicionado com sucesso',
+    addWithLoginSuccess: 'Jogador adicionado e conta de acesso criada com sucesso.',
+    updateSuccess: 'Dados do jogador atualizados com sucesso',
+    loginCreated: 'Conta de acesso criada com sucesso.',
+    uploadingImage: 'Enviando imagem...',
+    uploadingImages: 'Enviando imagens...',
+    uploadingVideo: 'Enviando vídeo...',
+  },
+  ui: {
+    back: 'Voltar', retry: 'Tentar novamente', errorTitle: 'Ocorreu um erro', addTitle: 'Adicionar novo jogador', editTitle: 'Editar dados do jogador',
+    addSubtitle: 'Adicionar um novo jogador por meio de {{accountType}}', editSubtitle: 'Editar e atualizar os dados do jogador',
+    profileImage: 'Imagem de perfil', addImage: 'Adicionar imagem', addImages: 'Adicionar imagens',
+    fullName: 'Nome completo *', birthDate: 'Data de nascimento *', nationality: 'Nacionalidade *', country: 'País *', city: 'Cidade *', phone: 'Telefone *', email: 'E-mail *', whatsapp: 'Número do WhatsApp',
+    address: 'Endereço detalhado', brief: 'Resumo pessoal', selectNationality: 'Selecione a nacionalidade', selectCountry: 'Selecione o país', selectCity: 'Selecione a cidade', selectCountryFirst: 'Selecione primeiro o país',
+    cityHint: '💡 Você pode digitar o nome da cidade para pesquisar ou clicar no campo para ver todas as cidades de {{country}}', cityWarning: '⚠️ Selecione primeiro o país para escolher a cidade',
+    fullNamePlaceholder: 'Digite o nome completo', phonePlaceholder: 'Digite o telefone', emailPlaceholder: 'Digite o e-mail', whatsappPlaceholder: 'Digite o número do WhatsApp',
+    addressPlaceholder: 'Endereço completo (bairro, rua, número do prédio...)', briefPlaceholder: 'Escreva um breve resumo sobre o jogador...',
+    primaryPosition: 'Posição principal *', secondaryPosition: 'Posição secundária', preferredFoot: 'Pé preferido *', experienceYears: 'Anos de experiência', playerNumber: 'Número atual do jogador', favoriteNumber: 'Número favorito',
+    selectPrimaryPosition: 'Selecione a posição principal', selectSecondaryPosition: 'Selecione a posição secundária', selectPreferredFoot: 'Selecione o pé preferido',
+    experiencePlaceholder: 'Número de anos de experiência', playerNumberPlaceholder: 'Número atual da camisa', favoriteNumberPlaceholder: 'Número favorito',
+    clubHistory: 'Histórico de clubes', clubName: 'Nome do clube', fromYear: 'De (ano)', toYear: 'Até (ano)', addClub: 'Adicionar clube', sportsNotes: 'Notas esportivas', sportsNotesPlaceholder: 'Notas ou informações adicionais sobre o desempenho esportivo...',
+    educationLevel: 'Nível educacional', graduationYear: 'Ano de formatura', degree: 'Especialidade/título', englishLevel: 'Nível de inglês', arabicLevel: 'Nível de árabe', spanishLevel: 'Nível de espanhol', selectEducation: 'Selecione o nível educacional', selectGraduationYear: 'Selecione o ano de formatura', selectLevel: 'Selecione o nível', degreePlaceholder: 'Exemplo: Administração, Engenharia, Medicina...',
+    trainingCourses: 'Cursos de treinamento', courseName: 'Nome do curso', addCourse: 'Adicionar curso',
+    bloodType: 'Tipo sanguíneo', selectBloodType: 'Selecione o tipo sanguíneo', height: 'Altura (cm)', weight: 'Peso (kg)', heightPlaceholder: 'Altura em centímetros', weightPlaceholder: 'Peso em quilogramas',
+    hasChronic: 'Tem doenças crônicas', chronicDetails: 'Detalhes das doenças crônicas', chronicPlaceholder: 'Informe os detalhes das doenças crônicas...', allergies: 'Alergias (se houver)', allergiesPlaceholder: 'Informe alergias conhecidas...', medicalNotes: 'Notas médicas adicionais', medicalNotesPlaceholder: 'Outras notas médicas...', surgeries: 'Cirurgias', surgeryType: 'Tipo de cirurgia', addSurgery: 'Adicionar cirurgia',
+    mediaLimitImage: 'Máximo: 5MB. Formatos aceitos: JPG, PNG, GIF', additionalImages: 'Imagens adicionais', imageAlt: 'Imagem {{number}}', skillVideos: 'Links de vídeos de habilidades', videoUrl: 'Link do vídeo (YouTube, Vimeo, etc.)', videoDescription: 'Descrição do vídeo', addVideoLink: 'Adicionar link de vídeo', uploadVideos: 'Enviar arquivos de vídeo', uploadVideo: 'Enviar vídeo', mediaLimitVideo: 'Máximo: 50MB. Formatos aceitos: MP4, MOV, AVI',
+    skillsHint: 'Avalie as habilidades de 1 (fraco) a 10 (excelente)', technicalSkills: 'Habilidades técnicas', physicalSkills: 'Habilidades físicas', socialSkills: 'Habilidades sociais',
+    otherGoals: 'Outros objetivos', otherGoalsPlaceholder: 'Informe seus outros objetivos...', contractStatus: 'Status contratual atual', hasContract: 'Você tem contrato atualmente?', yes: 'Sim', no: 'Não', currentClub: 'Clube atual', currentClubPlaceholder: 'Nome do clube atual (se houver)',
+    officialContact: 'Informações de contato oficial', contactName: 'Nome do contato', contactNamePlaceholder: 'Responsável/agente/responsável legal', contactTitle: 'Cargo/função', contactTitlePlaceholder: 'Exemplo: pai, agente, gerente...', contactPhone: 'Telefone', contactPhonePlaceholder: 'Telefone do contato', contactEmail: 'E-mail', contactEmailPlaceholder: 'E-mail do contato',
+    additionalInfo: 'Informações adicionais', hasPassport: 'Você tem passaporte?', referralQuestion: 'Como conheceu nossa plataforma?', selectReferral: 'Selecione a fonte',
+    stageFallback: 'Etapa {{number}}: {{title}}', allStagesComplete: 'Todas as etapas estão completas. Você já pode salvar os dados.', createLoginAccount: 'Criar uma conta de acesso para o jogador (com opções fáceis de compartilhamento)', unifiedPassword: '✨ Senha unificada:', loginShareHint: '📱 Os dados de acesso serão exibidos com opções de WhatsApp, SMS ou impressão', loginChangeHint: '🔒 O jogador pode alterar a senha após o primeiro acesso', viewCredentialsHint: 'Clique em "Ver credenciais" para ver detalhes e opções de compartilhamento', viewCredentials: 'Ver credenciais', previous: 'Anterior', cancel: 'Cancelar', next: 'Próximo', addPlayer: 'Adicionar jogador', saveChanges: 'Salvar alterações', organization: 'Organização',
+  },
+});
 
 // Default player fields
 const defaultPlayerFields: PlayerFormData = {
@@ -223,47 +930,13 @@ const defaultPlayerFields: PlayerFormData = {
 };
 
 // Reference data
-const POSITIONS = [
-  'حارس مرمى',
-  'مدافع أيمن',
-  'مدافع أيسر',
-  'قلب دفاع',
-  'وسط دفاعي',
-  'وسط',
-  'جناح أيمن',
-  'جناح أيسر',
-  'مهاجم صريح',
-  'مهاجم ثاني'
-];
-
 // استخدام أسماء الدول من SUPPORTED_COUNTRIES كجنسيات
 const NATIONALITIES = SUPPORTED_COUNTRIES.map(country => country.name).sort();
 
 const COUNTRIES = SUPPORTED_COUNTRIES;
 
-const EDUCATION_LEVELS = [
-  'ابتدائي',
-  'متوسط',
-  'ثانوي',
-  'دبلوم',
-  'بكالوريوس',
-  'ماجستير',
-  'دكتوراه'
-];
-
-const LANGUAGE_LEVELS = [
-  'مبتدئ',
-  'متوسط',
-  'متقدم',
-  'محترف'
-];
-
 const BLOOD_TYPES = [
   'A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'
-];
-
-const FOOT_PREFERENCES = [
-  'اليمنى', 'اليسرى', 'كلتاهما'
 ];
 
 // Loading Component
@@ -296,12 +969,40 @@ const ErrorMessage: React.FC<{ message: string }> = ({ message }) => (
 );
 
 // Validation functions
-const validatePersonalInfo = (data: PlayerFormData): FormErrors => {
+const interpolate = (template: string, values: Record<string, string | number> = {}) =>
+  template.replace(/\{\{(\w+)\}\}/g, (_, key) => String(values[key] ?? ''));
+
+const getPlayerFormCopy = (locale: string) => {
+  const base = PLAYER_FORM_COPY.en as any;
+  const selected = (PLAYER_FORM_COPY as any)[locale] || base;
+  return {
+    ...base,
+    ...selected,
+    stepTitles: { ...base.stepTitles, ...selected.stepTitles },
+    accountTypes: { ...base.accountTypes, ...selected.accountTypes },
+    errors: { ...base.errors, ...selected.errors },
+    status: { ...base.status, ...selected.status },
+    ui: { ...base.ui, ...selected.ui },
+    referralSources: { ...base.referralSources, ...selected.referralSources },
+    positions: selected.positions?.length ? selected.positions : base.positions,
+    educationLevels: selected.educationLevels?.length ? selected.educationLevels : base.educationLevels,
+    languageLevels: selected.languageLevels?.length ? selected.languageLevels : base.languageLevels,
+    footPreferences: selected.footPreferences?.length ? selected.footPreferences : base.footPreferences,
+    skills: {
+      technical: selected.skills?.technical?.length ? selected.skills.technical : base.skills.technical,
+      physical: selected.skills?.physical?.length ? selected.skills.physical : base.skills.physical,
+      social: selected.skills?.social?.length ? selected.skills.social : base.skills.social,
+    },
+    objectives: selected.objectives?.length ? selected.objectives : base.objectives,
+  };
+};
+
+const validatePersonalInfo = (data: PlayerFormData, copy: ReturnType<typeof getPlayerFormCopy>): FormErrors => {
   const errors: FormErrors = {};
-  if (!data.full_name) errors.full_name = 'الاسم الكامل مطلوب';
+  if (!data.full_name) errors.full_name = copy.errors.fullNameRequired;
 
   if (!data.birth_date) {
-    errors.birth_date = 'تاريخ الميلاد مطلوب';
+    errors.birth_date = copy.errors.birthDateRequired;
   } else {
     const birthDate = new Date(data.birth_date);
     const today = new Date();
@@ -313,26 +1014,26 @@ const validatePersonalInfo = (data: PlayerFormData): FormErrors => {
     }
 
     if (age < 3) {
-      errors.birth_date = 'يجب أن يكون العمر 3 سنوات على الأقل';
+      errors.birth_date = copy.errors.minAge;
     }
 
     if (age > 50) {
-      errors.birth_date = 'يجب أن يكون العمر أقل من 50 سنة';
+      errors.birth_date = copy.errors.maxAge;
     }
   }
 
-  if (!data.nationality) errors.nationality = 'الجنسية مطلوبة';
-  if (!data.country) errors.country = 'الدولة مطلوبة';
-  if (!data.city) errors.city = 'المدينة مطلوبة';
-  if (!data.phone) errors.phone = 'رقم الهاتف مطلوب';
-  if (!data.email) errors.email = 'البريد الإلكتروني مطلوب';
+  if (!data.nationality) errors.nationality = copy.errors.nationalityRequired;
+  if (!data.country) errors.country = copy.errors.countryRequired;
+  if (!data.city) errors.city = copy.errors.cityRequired;
+  if (!data.phone) errors.phone = copy.errors.phoneRequired;
+  if (!data.email) errors.email = copy.errors.emailRequired;
   return errors;
 };
 
-const validateSports = (data: PlayerFormData): FormErrors => {
+const validateSports = (data: PlayerFormData, copy: ReturnType<typeof getPlayerFormCopy>): FormErrors => {
   const errors: FormErrors = {};
-  if (!data.primary_position) errors.primary_position = 'المركز الأساسي مطلوب';
-  if (!data.preferred_foot) errors.preferred_foot = 'القدم المفضلة مطلوبة';
+  if (!data.primary_position) errors.primary_position = copy.errors.primaryPositionRequired;
+  if (!data.preferred_foot) errors.preferred_foot = copy.errors.preferredFootRequired;
   return errors;
 };
 
@@ -359,6 +1060,14 @@ export default function SharedPlayerForm({
 } = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { locale, isRTL } = useTranslation();
+  const copy = getPlayerFormCopy(locale);
+  const stepTitles = copy.stepTitles;
+  const positions = copy.positions;
+  const educationLevels = copy.educationLevels;
+  const languageLevels = copy.languageLevels;
+  const footPreferences = copy.footPreferences;
+  const referralSourceEntries = Object.entries(copy.referralSources) as Array<[string, string]>;
   const { user, loading } = useAuth();
 
   // استخدم البراميترز من props إذا وُجدت، وإلا من URL
@@ -496,7 +1205,7 @@ export default function SharedPlayerForm({
       }
     } catch (error) {
       console.error('Error uploading profile image:', error);
-      alert('❌ فشل في رفع الصورة الشخصية - ' + (error instanceof Error ? error.message : 'خطأ غير معروف'));
+        alert(`❌ ${copy.errors.uploadProfile} - ` + (error instanceof Error ? error.message : copy.errors.unknownError));
     } finally {
       setUploadingProfileImage(false);
     }
@@ -532,7 +1241,7 @@ export default function SharedPlayerForm({
             data.marketerId   === user?.id ||
             accountType       === 'admin';
           if (!isOwner) {
-            setError('ليس لديك صلاحية تعديل بيانات هذا اللاعب');
+            setError(copy.errors.noPermission);
             setIsLoading(false);
             return;
           }
@@ -546,7 +1255,7 @@ export default function SharedPlayerForm({
           setError(null);
         } else {
           console.error('[player-form] ❌ اللاعب غير موجود في قاعدة البيانات');
-          setError('اللاعب غير موجود في قاعدة البيانات');
+          setError(copy.errors.playerNotFound);
         }
       } else {
         // Add mode - load user data and set defaults
@@ -555,7 +1264,7 @@ export default function SharedPlayerForm({
       }
     } catch (err) {
       console.error('[player-form] ❌ خطأ أثناء جلب بيانات اللاعب:', err);
-      setError('حدث خطأ أثناء جلب بيانات اللاعب');
+      setError(copy.errors.loadPlayer);
     } finally {
       setIsLoading(false);
     }
@@ -609,7 +1318,7 @@ export default function SharedPlayerForm({
         },
 
         // تحديد المصدر
-        ref_source: `تم إضافته من قبل ${getAccountTypeTitle(accountType)}: ${userData?.full_name || userData?.name || user.user_metadata?.full_name || ''}`
+        ref_source: `${copy.ui.addTitle} - ${getAccountTypeTitle(accountType)}: ${userData?.full_name || userData?.name || user.user_metadata?.full_name || ''}`
       };
 
       console.log('[loadUserDefaultData] ✅ البيانات الافتراضية المحضرة:', defaultData);
@@ -630,12 +1339,12 @@ export default function SharedPlayerForm({
   // Helper function to get account type title
   const getAccountTypeTitle = (type: string) => {
     const titles = {
-      club: 'النادي',
-      academy: 'الأكاديمية',
-      trainer: 'المدرب',
-      agent: 'الوكيل'
+      club: copy.accountTypes.club,
+      academy: copy.accountTypes.academy,
+      trainer: copy.accountTypes.trainer,
+      agent: copy.accountTypes.agent
     };
-    return titles[type as keyof typeof titles] || 'المسؤول';
+    return titles[type as keyof typeof titles] || copy.accountTypes.admin;
   };
 
   // Effects - محسنة للأداء
@@ -762,11 +1471,11 @@ export default function SharedPlayerForm({
     let allErrors: FormErrors = {};
 
     // Validate personal info
-    const personalErrors = validatePersonalInfo(formData);
+    const personalErrors = validatePersonalInfo(formData, copy);
     allErrors = { ...allErrors, ...personalErrors };
 
     // Validate sports info
-    const sportsErrors = validateSports(formData);
+    const sportsErrors = validateSports(formData, copy);
     allErrors = { ...allErrors, ...sportsErrors };
 
     setFormErrors(allErrors);
@@ -777,6 +1486,12 @@ export default function SharedPlayerForm({
     if (!email && !phone) return { unique: true };
 
     const collectionsToCheck = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents'];
+    const getCollectionLabel = (collection: string) =>
+      collection === 'users'
+        ? copy.errors.collections.users
+        : collection === 'players'
+          ? copy.errors.collections.players
+          : copy.errors.collections.organizations;
 
     for (const coll of collectionsToCheck) {
       if (email) {
@@ -792,7 +1507,7 @@ export default function SharedPlayerForm({
           return {
             unique: false,
             field: 'email',
-            message: `الإيميل (${email}) مسجل مسبقاً في قائمة ${coll === 'users' ? 'المستخدمين' : coll === 'players' ? 'اللاعبين' : 'المنظمات'}.`
+            message: interpolate(copy.errors.duplicateEmail, { value: email, collection: getCollectionLabel(coll) })
           };
         }
       }
@@ -810,7 +1525,7 @@ export default function SharedPlayerForm({
           return {
             unique: false,
             field: 'phone',
-            message: `رقم الهاتف (${phone}) مسجل مسبقاً في قائمة ${coll === 'users' ? 'المستخدمين' : coll === 'players' ? 'اللاعبين' : 'المنظمات'}.`
+            message: interpolate(copy.errors.duplicatePhone, { value: phone, collection: getCollectionLabel(coll) })
           };
         }
       }
@@ -824,7 +1539,7 @@ export default function SharedPlayerForm({
     let errors: FormErrors = {};
 
     if (currentStep === STEPS.PERSONAL) {
-      errors = validatePersonalInfo(formData);
+      errors = validatePersonalInfo(formData, copy);
 
       if (Object.keys(errors).length === 0) {
         setIsSaving(true); // استخدام مؤشر التحميل
@@ -833,13 +1548,13 @@ export default function SharedPlayerForm({
 
         if (!unique) {
           toast.error(message);
-          setFormErrors({ [field as string]: 'بيانات مكررة' });
+          setFormErrors({ [field as string]: copy.errors.duplicateData });
           return;
         }
       }
     }
     else if (currentStep === STEPS.SPORTS) {
-      errors = validateSports(formData);
+      errors = validateSports(formData, copy);
     }
 
     if (Object.keys(errors).length > 0) {
@@ -848,7 +1563,7 @@ export default function SharedPlayerForm({
     }
 
     setFormErrors({});
-    setCurrentStep(prev => Math.min(prev + 1, Object.keys(STEP_TITLES).length - 1));
+    setCurrentStep(prev => Math.min(prev + 1, Object.keys(stepTitles).length - 1));
   };
 
   const handlePrevious = () => {
@@ -929,7 +1644,7 @@ export default function SharedPlayerForm({
           .select('id')
           .single();
         if (insertErr) throw insertErr;
-        setSuccessMessage('تمت إضافة اللاعب بنجاح');
+        setSuccessMessage(copy.status.addSuccess);
 
         // إنشاء حساب تسجيل دخول تلقائياً مع كلمة مرور ثابتة
         if (createLoginAccount && mode === 'add' && updateData.email) {
@@ -971,18 +1686,18 @@ export default function SharedPlayerForm({
               // عرض مكون بيانات الاعتماد
               setShowLoginCredentials(true);
 
-              setSuccessMessage('تمت إضافة اللاعب وإنشاء حساب الدخول بنجاح!');
+              setSuccessMessage(copy.status.addWithLoginSuccess);
               console.log('[player-form] تم إنشاء حساب تسجيل الدخول بنجاح');
             } else {
-              toast.error(`فشل في إنشاء حساب الدخول: ${result.message}`);
+              toast.error(interpolate(copy.errors.loginFailed, { message: result.message }));
               console.error('فشل في إنشاء حساب الدخول:', result.message);
             }
           } catch (error) {
             console.error('خطأ في إنشاء حساب الدخول:', error);
-            toast.error('حدث خطأ في إنشاء حساب تسجيل الدخول');
+            toast.error(copy.errors.loginCreate);
           }
         } else if (createLoginAccount && mode === 'add' && !updateData.email) {
-          toast.error('لا يمكن إنشاء حساب تسجيل دخول بدون إيميل');
+          toast.error(copy.errors.loginWithoutEmail);
         }
       } else if (mode === 'edit' && playerId) {
         // تعديل لاعب موجود
@@ -991,9 +1706,9 @@ export default function SharedPlayerForm({
           .update(updateData)
           .eq('id', playerId);
         if (updateErr) throw updateErr;
-        setSuccessMessage('تم تحديث بيانات اللاعب بنجاح');
+        setSuccessMessage(copy.status.updateSuccess);
       } else {
-        setError('لا يمكن تحديد وضع الحفظ');
+        setError(copy.errors.invalidMode);
         return;
       }
 
@@ -1007,7 +1722,7 @@ export default function SharedPlayerForm({
 
     } catch (err) {
       console.error('Error saving player:', err);
-      setError('حدث خطأ في حفظ البيانات');
+      setError(copy.errors.save);
     } finally {
       setIsSaving(false);
     }
@@ -1023,7 +1738,7 @@ export default function SharedPlayerForm({
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="flex flex-col items-center">
           <div className="w-16 h-16 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
-          <p className="mt-4 text-gray-600">جاري تحميل بيانات اللاعب...</p>
+          <p className="mt-4 text-gray-600">{copy.status.loading}</p>
         </div>
       </div>
     );
@@ -1033,14 +1748,14 @@ export default function SharedPlayerForm({
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="p-8 text-center bg-white rounded-lg shadow-md">
-          <h2 className="mb-4 text-2xl font-semibold text-red-600">حدث خطأ</h2>
+          <h2 className="mb-4 text-2xl font-semibold text-red-600">{copy.ui.errorTitle}</h2>
           <p className="mb-6 text-gray-600">{error}</p>
           <button onClick={() => {
             // إعادة تحميل الصفحة بطريقة آمنة
             if (typeof window !== 'undefined') {
               window.location.href = window.location.href;
             }
-          }} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">إعادة المحاولة</button>
+          }} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">{copy.ui.retry}</button>
         </div>
       </div>
     );
@@ -1063,7 +1778,7 @@ export default function SharedPlayerForm({
               password={createdAccountInfo.password}
               accountOwner={{
                 name: (user as any)?.full_name || user?.user_metadata?.full_name,
-                organizationName: (user as any)?.organizationName || (user as any)?.full_name || 'المنظمة',
+                organizationName: (user as any)?.organizationName || (user as any)?.full_name || copy.ui.organization,
                 phone: (user as any)?.phone,
                 whatsapp: (user as any)?.whatsapp,
                 accountType: accountType
@@ -1086,17 +1801,17 @@ export default function SharedPlayerForm({
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
               >
                 <ArrowRight className="w-5 h-5" />
-                العودة
+                {copy.ui.back}
               </button>
             </div>
 
             <h1 className="text-3xl font-bold text-gray-900">
-              {mode === 'add' ? 'إضافة لاعب جديد' : 'تعديل بيانات اللاعب'}
+              {mode === 'add' ? copy.ui.addTitle : copy.ui.editTitle}
             </h1>
             <p className="mt-2 text-gray-600">
               {mode === 'add'
-                ? `إضافة لاعب جديد من خلال ${ACCOUNT_TYPE_LABELS[accountType]}`
-                : 'تعديل وتحديث بيانات اللاعب'
+                ? interpolate(copy.ui.addSubtitle, { accountType: copy.accountTypes[accountType] || accountType })
+                : copy.ui.editSubtitle
               }
             </p>
           </div>
@@ -1104,7 +1819,7 @@ export default function SharedPlayerForm({
           {/* Progress Steps */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
-              {Object.entries(STEP_TITLES).map(([step, title]) => (
+              {(Object.entries(stepTitles) as Array<[string, string]>).map(([step, title]) => (
                 <div
                   key={step}
                   className={`flex items-center ${parseInt(step) <= currentStep ? 'text-blue-600' : 'text-gray-400'
@@ -1129,11 +1844,11 @@ export default function SharedPlayerForm({
             {/* النماذج حسب الخطوة */}
             {currentStep === STEPS.PERSONAL && (
               <div className="space-y-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">البيانات الشخصية</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">{copy.stepTitles[STEPS.PERSONAL]}</h3>
 
                 {/* الصورة الشخصية */}
                 <div className="bg-gray-50 p-6 rounded-lg mb-6">
-                  <h4 className="text-md font-semibold text-gray-800 mb-4">الصورة الشخصية</h4>
+                  <h4 className="text-md font-semibold text-gray-800 mb-4">{copy.ui.profileImage}</h4>
 
                   <div className="flex items-center space-x-6 space-x-reverse">
                     <div className="flex-shrink-0">
@@ -1141,7 +1856,7 @@ export default function SharedPlayerForm({
                         <div className="relative">
                           <img
                             src={formData.profile_image.url}
-                            alt="الصورة الشخصية"
+                            alt={copy.ui.profileImage}
                             className="w-30 h-30 rounded-full object-cover border-4 border-white shadow-lg"
                             style={{ width: '120px', height: '120px' }}
                             onError={(e) => {
@@ -1160,7 +1875,7 @@ export default function SharedPlayerForm({
                         <div className="w-30 h-30 rounded-full bg-gray-200 flex items-center justify-center">
                           <div className="text-gray-400 text-center">
                             <Plus className="w-8 h-8 mx-auto mb-2" />
-                            <span className="text-sm">إضافة صورة</span>
+                            <span className="text-sm">{copy.ui.addImage}</span>
                           </div>
                         </div>
                       )}
@@ -1180,7 +1895,7 @@ export default function SharedPlayerForm({
                         disabled={uploadingProfileImage}
                       />
                       {uploadingProfileImage && (
-                        <p className="text-sm text-blue-600 mt-2">جاري رفع الصورة...</p>
+                        <p className="text-sm text-blue-600 mt-2">{copy.status.uploadingImage}</p>
                       )}
                     </div>
                   </div>
@@ -1190,7 +1905,7 @@ export default function SharedPlayerForm({
                   {/* الاسم الكامل */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      الاسم الكامل *
+                      {copy.ui.fullName}
                     </label>
                     <input
                       type="text"
@@ -1198,7 +1913,7 @@ export default function SharedPlayerForm({
                       value={formData.full_name}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="أدخل الاسم الكامل"
+                      placeholder={copy.ui.fullNamePlaceholder}
                     />
                     {formErrors.full_name && (
                       <p className="text-red-500 text-sm mt-1">{formErrors.full_name}</p>
@@ -1208,7 +1923,7 @@ export default function SharedPlayerForm({
                   {/* تاريخ الميلاد */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      تاريخ الميلاد *
+                      {copy.ui.birthDate}
                     </label>
                     <input
                       type="date"
@@ -1225,7 +1940,7 @@ export default function SharedPlayerForm({
                   {/* الجنسية */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      الجنسية *
+                      {copy.ui.nationality}
                     </label>
                     <select
                       name="nationality"
@@ -1233,7 +1948,7 @@ export default function SharedPlayerForm({
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">اختر الجنسية</option>
+                      <option value="">{copy.ui.selectNationality}</option>
                       {NATIONALITIES.map(nationality => (
                         <option key={nationality} value={nationality}>
                           {nationality}
@@ -1248,7 +1963,7 @@ export default function SharedPlayerForm({
                   {/* الدولة */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      الدولة *
+                      {copy.ui.country}
                     </label>
                     <select
                       name="country"
@@ -1256,7 +1971,7 @@ export default function SharedPlayerForm({
                       onChange={(e) => handleCountryChange(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">اختر الدولة</option>
+                      <option value="">{copy.ui.selectCountry}</option>
                       {COUNTRIES.map(country => (
                         <option key={country.id || country.code} value={country.name}>
                           {country.name}
@@ -1271,7 +1986,7 @@ export default function SharedPlayerForm({
                   {/* المدينة */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      المدينة *
+                      {copy.ui.city}
                     </label>
                     <select
                       name="city"
@@ -1280,7 +1995,7 @@ export default function SharedPlayerForm({
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       disabled={!formData.country}
                     >
-                      <option value="">{formData.country ? "اختر المدينة" : "اختر الدولة أولاً"}</option>
+                      <option value="">{formData.country ? copy.ui.selectCity : copy.ui.selectCountryFirst}</option>
                       {availableCities.map((city) => (
                         <option key={city} value={city}>
                           {city}
@@ -1294,13 +2009,13 @@ export default function SharedPlayerForm({
 
                     {formData.country && (
                       <p className="mt-1 text-xs text-blue-600">
-                        💡 يمكنك كتابة اسم المدينة للبحث، أو النقر في الحقل لرؤية كل مدن {formData.country}
+                        {interpolate(copy.ui.cityHint, { country: formData.country })}
                       </p>
                     )}
 
                     {!formData.country && (
                       <p className="mt-1 text-xs text-amber-600">
-                        ⚠️ يرجى اختيار الدولة أولاً لتتمكن من اختيار المدينة
+                        {copy.ui.cityWarning}
                       </p>
                     )}
                   </div>
@@ -1308,7 +2023,7 @@ export default function SharedPlayerForm({
                   {/* رقم الهاتف */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      رقم الهاتف *
+                      {copy.ui.phone}
                     </label>
                     <input
                       type="tel"
@@ -1316,7 +2031,7 @@ export default function SharedPlayerForm({
                       value={formData.phone}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="أدخل رقم الهاتف"
+                      placeholder={copy.ui.phonePlaceholder}
                     />
                     {formErrors.phone && (
                       <p className="text-red-500 text-sm mt-1">{formErrors.phone}</p>
@@ -1326,7 +2041,7 @@ export default function SharedPlayerForm({
                   {/* البريد الإلكتروني */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      البريد الإلكتروني *
+                      {copy.ui.email}
                     </label>
                     <input
                       type="email"
@@ -1334,7 +2049,7 @@ export default function SharedPlayerForm({
                       value={formData.email}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="أدخل البريد الإلكتروني"
+                      placeholder={copy.ui.emailPlaceholder}
                     />
                     {formErrors.email && (
                       <p className="text-red-500 text-sm mt-1">{formErrors.email}</p>
@@ -1344,7 +2059,7 @@ export default function SharedPlayerForm({
                   {/* الواتساب */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      رقم الواتساب
+                      {copy.ui.whatsapp}
                     </label>
                     <input
                       type="tel"
@@ -1352,7 +2067,7 @@ export default function SharedPlayerForm({
                       value={formData.whatsapp}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="أدخل رقم الواتساب"
+                      placeholder={copy.ui.whatsappPlaceholder}
                     />
                   </div>
                 </div>
@@ -1360,7 +2075,7 @@ export default function SharedPlayerForm({
                 {/* العنوان التفصيلي */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    العنوان التفصيلي
+                    {copy.ui.address}
                   </label>
                   <textarea
                     name="address"
@@ -1368,14 +2083,14 @@ export default function SharedPlayerForm({
                     onChange={handleInputChange}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="العنوان الكامل (الحي، الشارع، رقم المبنى...)"
+                    placeholder={copy.ui.addressPlaceholder}
                   />
                 </div>
 
                 {/* نبذة شخصية */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    نبذة شخصية
+                    {copy.ui.brief}
                   </label>
                   <textarea
                     name="brief"
@@ -1383,7 +2098,7 @@ export default function SharedPlayerForm({
                     onChange={handleInputChange}
                     rows={4}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="اكتب نبذة مختصرة عن اللاعب..."
+                    placeholder={copy.ui.briefPlaceholder}
                   />
                 </div>
               </div>
@@ -1392,13 +2107,13 @@ export default function SharedPlayerForm({
             {/* المعلومات الرياضية */}
             {currentStep === STEPS.SPORTS && (
               <div className="space-y-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">المعلومات الرياضية</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">{copy.stepTitles[STEPS.SPORTS]}</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* المركز الأساسي */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      المركز الأساسي *
+                      {copy.ui.primaryPosition}
                     </label>
                     <select
                       name="primary_position"
@@ -1406,10 +2121,10 @@ export default function SharedPlayerForm({
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">اختر المركز الأساسي</option>
-                      {POSITIONS.map(position => (
-                        <option key={position} value={position}>
-                          {position}
+                      <option value="">{copy.ui.selectPrimaryPosition}</option>
+                      {positions.map((position: { value: string; label: string }) => (
+                        <option key={position.value} value={position.value}>
+                          {position.label}
                         </option>
                       ))}
                     </select>
@@ -1421,7 +2136,7 @@ export default function SharedPlayerForm({
                   {/* المركز الثانوي */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      المركز الثانوي
+                      {copy.ui.secondaryPosition}
                     </label>
                     <select
                       name="secondary_position"
@@ -1429,10 +2144,10 @@ export default function SharedPlayerForm({
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">اختر المركز الثانوي</option>
-                      {POSITIONS.map(position => (
-                        <option key={position} value={position}>
-                          {position}
+                      <option value="">{copy.ui.selectSecondaryPosition}</option>
+                      {positions.map((position: { value: string; label: string }) => (
+                        <option key={position.value} value={position.value}>
+                          {position.label}
                         </option>
                       ))}
                     </select>
@@ -1441,7 +2156,7 @@ export default function SharedPlayerForm({
                   {/* القدم المفضلة */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      القدم المفضلة *
+                      {copy.ui.preferredFoot}
                     </label>
                     <select
                       name="preferred_foot"
@@ -1449,10 +2164,10 @@ export default function SharedPlayerForm({
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">اختر القدم المفضلة</option>
-                      {FOOT_PREFERENCES.map(foot => (
-                        <option key={foot} value={foot}>
-                          {foot}
+                      <option value="">{copy.ui.selectPreferredFoot}</option>
+                      {footPreferences.map((foot: { value: string; label: string }) => (
+                        <option key={foot.value} value={foot.value}>
+                          {foot.label}
                         </option>
                       ))}
                     </select>
@@ -1464,7 +2179,7 @@ export default function SharedPlayerForm({
                   {/* سنوات الخبرة */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      سنوات الخبرة
+                      {copy.ui.experienceYears}
                     </label>
                     <input
                       type="number"
@@ -1474,14 +2189,14 @@ export default function SharedPlayerForm({
                       min="0"
                       max="30"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="عدد سنوات الخبرة"
+                      placeholder={copy.ui.experiencePlaceholder}
                     />
                   </div>
 
                   {/* رقم اللاعب الحالي */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      رقم اللاعب الحالي
+                      {copy.ui.playerNumber}
                     </label>
                     <input
                       type="number"
@@ -1491,14 +2206,14 @@ export default function SharedPlayerForm({
                       min="1"
                       max="99"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="رقم القميص الحالي"
+                      placeholder={copy.ui.playerNumberPlaceholder}
                     />
                   </div>
 
                   {/* الرقم المفضل */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      الرقم المفضل
+                      {copy.ui.favoriteNumber}
                     </label>
                     <input
                       type="number"
@@ -1508,14 +2223,14 @@ export default function SharedPlayerForm({
                       min="1"
                       max="99"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="الرقم المفضل"
+                      placeholder={copy.ui.favoriteNumberPlaceholder}
                     />
                   </div>
                 </div>
 
                 {/* الأندية */}
                 <div className="bg-green-50 p-6 rounded-lg">
-                  <h4 className="text-md font-semibold text-green-800 mb-4">تاريخ الأندية</h4>
+                  <h4 className="text-md font-semibold text-green-800 mb-4">{copy.ui.clubHistory}</h4>
 
                   {formData.club_history?.map((club, index) => (
                     <div key={index} className="flex items-center gap-4 mb-4 p-3 bg-white rounded-lg">
@@ -1528,7 +2243,7 @@ export default function SharedPlayerForm({
                             newClubs[index] = { ...newClubs[index], name: e.target.value };
                             setFormData(prev => ({ ...prev, club_history: newClubs }));
                           }}
-                          placeholder="اسم النادي"
+                          placeholder={copy.ui.clubName}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md"
                         />
                       </div>
@@ -1541,7 +2256,7 @@ export default function SharedPlayerForm({
                             newClubs[index] = { ...newClubs[index], from: e.target.value };
                             setFormData(prev => ({ ...prev, club_history: newClubs }));
                           }}
-                          placeholder="من (سنة)"
+                          placeholder={copy.ui.fromYear}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md"
                         />
                       </div>
@@ -1554,7 +2269,7 @@ export default function SharedPlayerForm({
                             newClubs[index] = { ...newClubs[index], to: e.target.value };
                             setFormData(prev => ({ ...prev, club_history: newClubs }));
                           }}
-                          placeholder="إلى (سنة)"
+                          placeholder={copy.ui.toYear}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md"
                         />
                       </div>
@@ -1578,14 +2293,14 @@ export default function SharedPlayerForm({
                     className="flex items-center gap-2 text-green-600 hover:text-green-800"
                   >
                     <Plus className="w-4 h-4" />
-                    إضافة نادي
+                    {copy.ui.addClub}
                   </button>
                 </div>
 
                 {/* ملاحظات رياضية */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    ملاحظات رياضية
+                    {copy.ui.sportsNotes}
                   </label>
                   <textarea
                     name="sports_notes"
@@ -1593,7 +2308,7 @@ export default function SharedPlayerForm({
                     onChange={handleInputChange}
                     rows={4}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="أي ملاحظات أو معلومات إضافية عن الأداء الرياضي..."
+                    placeholder={copy.ui.sportsNotesPlaceholder}
                   />
                 </div>
               </div>
@@ -1602,13 +2317,13 @@ export default function SharedPlayerForm({
             {/* المعلومات التعليمية */}
             {currentStep === STEPS.EDUCATION && (
               <div className="space-y-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">المعلومات التعليمية</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">{copy.stepTitles[STEPS.EDUCATION]}</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* المستوى التعليمي */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      المستوى التعليمي
+                      {copy.ui.educationLevel}
                     </label>
                     <select
                       name="education_level"
@@ -1616,10 +2331,10 @@ export default function SharedPlayerForm({
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">اختر المستوى التعليمي</option>
-                      {EDUCATION_LEVELS.map(level => (
-                        <option key={level} value={level}>
-                          {level}
+                      <option value="">{copy.ui.selectEducation}</option>
+                      {educationLevels.map((level: { value: string; label: string }) => (
+                        <option key={level.value} value={level.value}>
+                          {level.label}
                         </option>
                       ))}
                     </select>
@@ -1628,7 +2343,7 @@ export default function SharedPlayerForm({
                   {/* سنة التخرج */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      سنة التخرج
+                      {copy.ui.graduationYear}
                     </label>
                     <select
                       name="graduation_year"
@@ -1636,7 +2351,7 @@ export default function SharedPlayerForm({
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">اختر سنة التخرج</option>
+                      <option value="">{copy.ui.selectGraduationYear}</option>
                       {Array.from({ length: 31 }, (_, i) => 2000 + i).map(year => (
                         <option key={year} value={year}>
                           {year}
@@ -1648,7 +2363,7 @@ export default function SharedPlayerForm({
                   {/* التخصص */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      التخصص/الدرجة العلمية
+                      {copy.ui.degree}
                     </label>
                     <input
                       type="text"
@@ -1656,14 +2371,14 @@ export default function SharedPlayerForm({
                       value={formData.degree}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="مثال: إدارة أعمال، هندسة، طب..."
+                      placeholder={copy.ui.degreePlaceholder}
                     />
                   </div>
 
                   {/* مستوى اللغة الإنجليزية */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      مستوى اللغة الإنجليزية
+                      {copy.ui.englishLevel}
                     </label>
                     <select
                       name="english_level"
@@ -1671,10 +2386,10 @@ export default function SharedPlayerForm({
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">اختر المستوى</option>
-                      {LANGUAGE_LEVELS.map(level => (
-                        <option key={level} value={level}>
-                          {level}
+                      <option value="">{copy.ui.selectLevel}</option>
+                      {languageLevels.map((level: { value: string; label: string }) => (
+                        <option key={level.value} value={level.value}>
+                          {level.label}
                         </option>
                       ))}
                     </select>
@@ -1683,7 +2398,7 @@ export default function SharedPlayerForm({
                   {/* مستوى اللغة العربية */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      مستوى اللغة العربية
+                      {copy.ui.arabicLevel}
                     </label>
                     <select
                       name="arabic_level"
@@ -1691,10 +2406,10 @@ export default function SharedPlayerForm({
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">اختر المستوى</option>
-                      {LANGUAGE_LEVELS.map(level => (
-                        <option key={level} value={level}>
-                          {level}
+                      <option value="">{copy.ui.selectLevel}</option>
+                      {languageLevels.map((level: { value: string; label: string }) => (
+                        <option key={level.value} value={level.value}>
+                          {level.label}
                         </option>
                       ))}
                     </select>
@@ -1703,7 +2418,7 @@ export default function SharedPlayerForm({
                   {/* مستوى اللغة الإسبانية */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      مستوى اللغة الإسبانية
+                      {copy.ui.spanishLevel}
                     </label>
                     <select
                       name="spanish_level"
@@ -1711,10 +2426,10 @@ export default function SharedPlayerForm({
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">اختر المستوى</option>
-                      {LANGUAGE_LEVELS.map(level => (
-                        <option key={level} value={level}>
-                          {level}
+                      <option value="">{copy.ui.selectLevel}</option>
+                      {languageLevels.map((level: { value: string; label: string }) => (
+                        <option key={level.value} value={level.value}>
+                          {level.label}
                         </option>
                       ))}
                     </select>
@@ -1723,7 +2438,7 @@ export default function SharedPlayerForm({
 
                 {/* الدورات التدريبية */}
                 <div className="bg-gray-50 p-6 rounded-lg">
-                  <h4 className="text-md font-semibold text-gray-800 mb-4">الدورات التدريبية</h4>
+                  <h4 className="text-md font-semibold text-gray-800 mb-4">{copy.ui.trainingCourses}</h4>
 
                   {formData.training_courses?.map((course, index) => (
                     <div key={index} className="flex items-center gap-4 mb-3">
@@ -1735,7 +2450,7 @@ export default function SharedPlayerForm({
                           newCourses[index] = e.target.value;
                           setFormData(prev => ({ ...prev, training_courses: newCourses }));
                         }}
-                        placeholder="اسم الدورة التدريبية"
+                        placeholder={copy.ui.courseName}
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
                       />
                       <button
@@ -1758,7 +2473,7 @@ export default function SharedPlayerForm({
                     className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
                   >
                     <Plus className="w-4 h-4" />
-                    إضافة دورة تدريبية
+                    {copy.ui.addCourse}
                   </button>
                 </div>
               </div>
@@ -1767,13 +2482,13 @@ export default function SharedPlayerForm({
             {/* السجل الطبي */}
             {currentStep === STEPS.MEDICAL && (
               <div className="space-y-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">السجل الطبي</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">{copy.stepTitles[STEPS.MEDICAL]}</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* فصيلة الدم */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      فصيلة الدم
+                      {copy.ui.bloodType}
                     </label>
                     <select
                       name="blood_type"
@@ -1781,7 +2496,7 @@ export default function SharedPlayerForm({
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="">اختر فصيلة الدم</option>
+                      <option value="">{copy.ui.selectBloodType}</option>
                       {BLOOD_TYPES.map(type => (
                         <option key={type} value={type}>
                           {type}
@@ -1793,7 +2508,7 @@ export default function SharedPlayerForm({
                   {/* الطول */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      الطول (سم)
+                      {copy.ui.height}
                     </label>
                     <input
                       type="number"
@@ -1803,14 +2518,14 @@ export default function SharedPlayerForm({
                       min="150"
                       max="220"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="الطول بالسنتيمتر"
+                      placeholder={copy.ui.heightPlaceholder}
                     />
                   </div>
 
                   {/* الوزن */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      الوزن (كغ)
+                      {copy.ui.weight}
                     </label>
                     <input
                       type="number"
@@ -1820,7 +2535,7 @@ export default function SharedPlayerForm({
                       min="40"
                       max="120"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="الوزن بالكيلوغرام"
+                      placeholder={copy.ui.weightPlaceholder}
                     />
                   </div>
 
@@ -1834,7 +2549,7 @@ export default function SharedPlayerForm({
                         onChange={handleInputChange}
                         className="mr-2"
                       />
-                      <span className="text-sm font-medium text-gray-700">يوجد أمراض مزمنة</span>
+                      <span className="text-sm font-medium text-gray-700">{copy.ui.hasChronic}</span>
                     </label>
                   </div>
 
@@ -1842,7 +2557,7 @@ export default function SharedPlayerForm({
                   {formData.chronic_conditions && (
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        تفاصيل الأمراض المزمنة
+                        {copy.ui.chronicDetails}
                       </label>
                       <textarea
                         name="chronic_details"
@@ -1850,7 +2565,7 @@ export default function SharedPlayerForm({
                         onChange={handleInputChange}
                         rows={3}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="اذكر تفاصيل الأمراض المزمنة..."
+                        placeholder={copy.ui.chronicPlaceholder}
                       />
                     </div>
                   )}
@@ -1858,7 +2573,7 @@ export default function SharedPlayerForm({
                   {/* الحساسية */}
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      الحساسية (إن وجدت)
+                      {copy.ui.allergies}
                     </label>
                     <textarea
                       name="allergies"
@@ -1866,14 +2581,14 @@ export default function SharedPlayerForm({
                       onChange={handleInputChange}
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="اذكر أي حساسية معروفة..."
+                      placeholder={copy.ui.allergiesPlaceholder}
                     />
                   </div>
 
                   {/* ملاحظات طبية */}
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      ملاحظات طبية إضافية
+                      {copy.ui.medicalNotes}
                     </label>
                     <textarea
                       name="medical_notes"
@@ -1881,14 +2596,14 @@ export default function SharedPlayerForm({
                       onChange={handleInputChange}
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="أي ملاحظات طبية أخرى..."
+                      placeholder={copy.ui.medicalNotesPlaceholder}
                     />
                   </div>
                 </div>
 
                 {/* العمليات الجراحية */}
                 <div className="bg-red-50 p-6 rounded-lg">
-                  <h4 className="text-md font-semibold text-red-800 mb-4">العمليات الجراحية</h4>
+                  <h4 className="text-md font-semibold text-red-800 mb-4">{copy.ui.surgeries}</h4>
 
                   {formData.surgeries?.map((surgery, index) => (
                     <div key={index} className="flex items-center gap-4 mb-4 p-3 bg-white rounded-lg">
@@ -1901,7 +2616,7 @@ export default function SharedPlayerForm({
                             newSurgeries[index] = { ...newSurgeries[index], type: e.target.value };
                             setFormData(prev => ({ ...prev, surgeries: newSurgeries }));
                           }}
-                          placeholder="نوع العملية الجراحية"
+                          placeholder={copy.ui.surgeryType}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md"
                         />
                       </div>
@@ -1937,7 +2652,7 @@ export default function SharedPlayerForm({
                     className="flex items-center gap-2 text-red-600 hover:text-red-800"
                   >
                     <Plus className="w-4 h-4" />
-                    إضافة عملية جراحية
+                    {copy.ui.addSurgery}
                   </button>
                 </div>
               </div>
@@ -1946,11 +2661,11 @@ export default function SharedPlayerForm({
             {/* الصور والفيديوهات */}
             {currentStep === STEPS.MEDIA && (
               <div className="space-y-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">الصور والفيديوهات</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">{copy.stepTitles[STEPS.MEDIA]}</h3>
 
                 {/* الصورة الشخصية */}
                 <div className="bg-gray-50 p-6 rounded-lg">
-                  <h4 className="text-md font-semibold text-gray-800 mb-4">الصورة الشخصية</h4>
+                  <h4 className="text-md font-semibold text-gray-800 mb-4">{copy.ui.profileImage}</h4>
 
                   <div className="flex items-center space-x-6 space-x-reverse">
                     {/* عرض الصورة الحالية */}
@@ -1959,7 +2674,7 @@ export default function SharedPlayerForm({
                         <div className="relative">
                           <img
                             src={formData.profile_image.url}
-                            alt="الصورة الشخصية"
+                            alt={copy.ui.profileImage}
                             className="w-30 h-30 rounded-full object-cover border-4 border-white shadow-lg"
                             style={{ width: '120px', height: '120px' }}
                             onError={(e) => {
@@ -1978,7 +2693,7 @@ export default function SharedPlayerForm({
                         <div className="w-30 h-30 rounded-full bg-gray-200 flex items-center justify-center">
                           <div className="text-gray-400 text-center">
                             <Plus className="w-8 h-8 mx-auto mb-2" />
-                            <span className="text-sm">إضافة صورة</span>
+                            <span className="text-sm">{copy.ui.addImage}</span>
                           </div>
                         </div>
                       )}
@@ -2014,10 +2729,10 @@ export default function SharedPlayerForm({
                         disabled={uploadingProfileImage}
                       />
                       {uploadingProfileImage && (
-                        <p className="text-sm text-blue-600 mt-2">جاري رفع الصورة...</p>
+                        <p className="text-sm text-blue-600 mt-2">{copy.status.uploadingImage}</p>
                       )}
                       <p className="text-xs text-gray-500 mt-2">
-                        الحد الأقصى: 5MB. الصيغ المدعومة: JPG, PNG, GIF
+                        {copy.ui.mediaLimitImage}
                       </p>
                     </div>
                   </div>
@@ -2025,14 +2740,14 @@ export default function SharedPlayerForm({
 
                 {/* صور إضافية */}
                 <div className="bg-gray-50 p-6 rounded-lg">
-                  <h4 className="text-md font-semibold text-gray-800 mb-4">صور إضافية</h4>
+                  <h4 className="text-md font-semibold text-gray-800 mb-4">{copy.ui.additionalImages}</h4>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     {formData.additional_images.map((image, index) => (
                       <div key={index} className="relative">
                         <img
                           src={image.url}
-                          alt={`صورة ${index + 1}`}
+                          alt={interpolate(copy.ui.imageAlt, { number: index + 1 })}
                           className="w-full h-24 object-cover rounded-lg"
                           onError={(e) => {
                             console.log('❌ خطأ في تحميل الصورة الإضافية:', image.url);
@@ -2081,19 +2796,19 @@ export default function SharedPlayerForm({
                       />
                       <label htmlFor="additional-images" className="cursor-pointer text-center">
                         <Plus className="w-6 h-6 mx-auto text-gray-400" />
-                        <span className="text-xs text-gray-500">إضافة صور</span>
+                        <span className="text-xs text-gray-500">{copy.ui.addImages}</span>
                       </label>
                     </div>
                   </div>
 
                   {uploadingImages && (
-                    <p className="text-sm text-blue-600">جاري رفع الصور...</p>
+                    <p className="text-sm text-blue-600">{copy.status.uploadingImages}</p>
                   )}
                 </div>
 
                 {/* فيديوهات المهارات - روابط */}
                 <div className="bg-blue-50 p-6 rounded-lg">
-                  <h4 className="text-md font-semibold text-blue-800 mb-4">روابط فيديوهات المهارات</h4>
+                  <h4 className="text-md font-semibold text-blue-800 mb-4">{copy.ui.skillVideos}</h4>
 
                   {formData.videos.map((video, index) => (
                     <div key={index} className="flex items-center gap-4 mb-4 p-3 bg-white rounded-lg">
@@ -2106,7 +2821,7 @@ export default function SharedPlayerForm({
                             newVideos[index] = { ...newVideos[index], url: e.target.value };
                             setFormData(prev => ({ ...prev, videos: newVideos }));
                           }}
-                          placeholder="رابط الفيديو (YouTube, Vimeo, etc.)"
+                          placeholder={copy.ui.videoUrl}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md"
                         />
                       </div>
@@ -2119,7 +2834,7 @@ export default function SharedPlayerForm({
                             newVideos[index] = { ...newVideos[index], desc: e.target.value };
                             setFormData(prev => ({ ...prev, videos: newVideos }));
                           }}
-                          placeholder="وصف الفيديو"
+                          placeholder={copy.ui.videoDescription}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md"
                         />
                       </div>
@@ -2147,13 +2862,13 @@ export default function SharedPlayerForm({
                     className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
                   >
                     <Plus className="w-4 h-4" />
-                    إضافة رابط فيديو
+                    {copy.ui.addVideoLink}
                   </button>
                 </div>
 
                 {/* رفع ملفات الفيديو */}
                 <div className="bg-purple-50 p-6 rounded-lg">
-                  <h4 className="text-md font-semibold text-purple-800 mb-4">رفع ملفات الفيديو</h4>
+                  <h4 className="text-md font-semibold text-purple-800 mb-4">{copy.ui.uploadVideos}</h4>
 
                   <div className="space-y-4">
                     {/* عرض الفيديوهات المرفوعة */}
@@ -2209,15 +2924,15 @@ export default function SharedPlayerForm({
                       />
                       <label htmlFor="video-upload" className="cursor-pointer">
                         <Plus className="w-8 h-8 mx-auto text-purple-400 mb-2" />
-                        <p className="text-purple-700 font-medium">رفع فيديو</p>
+                        <p className="text-purple-700 font-medium">{copy.ui.uploadVideo}</p>
                         <p className="text-xs text-gray-500 mt-1">
-                          الحد الأقصى: 50MB. الصيغ المدعومة: MP4, MOV, AVI
+                          {copy.ui.mediaLimitVideo}
                         </p>
                       </label>
                     </div>
 
                     {uploadingImages && (
-                      <p className="text-sm text-purple-600">جاري رفع الفيديو...</p>
+                      <p className="text-sm text-purple-600">{copy.status.uploadingVideo}</p>
                     )}
                   </div>
                 </div>
@@ -2227,33 +2942,33 @@ export default function SharedPlayerForm({
             {/* المهارات والقدرات */}
             {currentStep === STEPS.SKILLS && (
               <div className="space-y-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">المهارات والقدرات</h3>
-                <p className="text-sm text-gray-600 mb-6">قيم المهارات من 1 (ضعيف) إلى 10 (ممتاز)</p>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">{copy.stepTitles[STEPS.SKILLS]}</h3>
+                <p className="text-sm text-gray-600 mb-6">{copy.ui.skillsHint}</p>
 
                 {/* المهارات التقنية */}
                 <div className="bg-blue-50 p-6 rounded-lg">
-                  <h4 className="text-md font-semibold text-blue-800 mb-4">المهارات التقنية</h4>
+                  <h4 className="text-md font-semibold text-blue-800 mb-4">{copy.ui.technicalSkills}</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {['السيطرة على الكرة', 'التمرير', 'التهديف', 'المراوغة', 'التحكم بالكرة', 'اللعب الهوائي'].map(skill => (
-                      <div key={skill} className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{skill}</span>
+                    {copy.skills.technical.map((skill: { value: string; label: string }) => (
+                      <div key={skill.value} className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{skill.label}</span>
                         <input
                           type="range"
                           min="1"
                           max="10"
-                          value={formData.technical_skills[skill] || 5}
+                          value={formData.technical_skills[skill.value] || 5}
                           onChange={(e) => {
                             setFormData(prev => ({
                               ...prev,
                               technical_skills: {
                                 ...prev.technical_skills,
-                                [skill]: parseInt(e.target.value)
+                                [skill.value]: parseInt(e.target.value)
                               }
                             }));
                           }}
                           className="w-32"
                         />
-                        <span className="text-sm font-bold w-6">{formData.technical_skills[skill] || 5}</span>
+                        <span className="text-sm font-bold w-6">{formData.technical_skills[skill.value] || 5}</span>
                       </div>
                     ))}
                   </div>
@@ -2261,28 +2976,28 @@ export default function SharedPlayerForm({
 
                 {/* المهارات البدنية */}
                 <div className="bg-green-50 p-6 rounded-lg">
-                  <h4 className="text-md font-semibold text-green-800 mb-4">المهارات البدنية</h4>
+                  <h4 className="text-md font-semibold text-green-800 mb-4">{copy.ui.physicalSkills}</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {['السرعة', 'القوة', 'التحمل', 'المرونة', 'التوازن', 'رد الفعل'].map(skill => (
-                      <div key={skill} className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{skill}</span>
+                    {copy.skills.physical.map((skill: { value: string; label: string }) => (
+                      <div key={skill.value} className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{skill.label}</span>
                         <input
                           type="range"
                           min="1"
                           max="10"
-                          value={formData.physical_skills[skill] || 5}
+                          value={formData.physical_skills[skill.value] || 5}
                           onChange={(e) => {
                             setFormData(prev => ({
                               ...prev,
                               physical_skills: {
                                 ...prev.physical_skills,
-                                [skill]: parseInt(e.target.value)
+                                [skill.value]: parseInt(e.target.value)
                               }
                             }));
                           }}
                           className="w-32"
                         />
-                        <span className="text-sm font-bold w-6">{formData.physical_skills[skill] || 5}</span>
+                        <span className="text-sm font-bold w-6">{formData.physical_skills[skill.value] || 5}</span>
                       </div>
                     ))}
                   </div>
@@ -2290,28 +3005,28 @@ export default function SharedPlayerForm({
 
                 {/* المهارات الاجتماعية */}
                 <div className="bg-purple-50 p-6 rounded-lg">
-                  <h4 className="text-md font-semibold text-purple-800 mb-4">المهارات الاجتماعية</h4>
+                  <h4 className="text-md font-semibold text-purple-800 mb-4">{copy.ui.socialSkills}</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {['القيادة', 'العمل الجماعي', 'التواصل', 'الانضباط', 'الثقة بالنفس', 'تحمل الضغط'].map(skill => (
-                      <div key={skill} className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{skill}</span>
+                    {copy.skills.social.map((skill: { value: string; label: string }) => (
+                      <div key={skill.value} className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{skill.label}</span>
                         <input
                           type="range"
                           min="1"
                           max="10"
-                          value={formData.social_skills[skill] || 5}
+                          value={formData.social_skills[skill.value] || 5}
                           onChange={(e) => {
                             setFormData(prev => ({
                               ...prev,
                               social_skills: {
                                 ...prev.social_skills,
-                                [skill]: parseInt(e.target.value)
+                                [skill.value]: parseInt(e.target.value)
                               }
                             }));
                           }}
                           className="w-32"
                         />
-                        <span className="text-sm font-bold w-6">{formData.social_skills[skill] || 5}</span>
+                        <span className="text-sm font-bold w-6">{formData.social_skills[skill.value] || 5}</span>
                       </div>
                     ))}
                   </div>
@@ -2322,40 +3037,26 @@ export default function SharedPlayerForm({
             {/* الأهداف والطموحات */}
             {currentStep === STEPS.OBJECTIVES && (
               <div className="space-y-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">الأهداف والطموحات</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">{copy.stepTitles[STEPS.OBJECTIVES]}</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    'اللعب في الدوري المحلي',
-                    'اللعب في الدوري الأوروبي',
-                    'اللعب في المنتخب الوطني',
-                    'المعايشات الدولية',
-                    'المعايشات المحلية',
-                    'الاحتراف',
-                    'الاشتراك في أندية استثمارية',
-                    'تعليم اللغة الإنجليزية',
-                    'الحصول على منحة دراسية',
-                    'أن أصبح مدرب كرة قدم',
-                    'فتح أكاديمية كرة قدم',
-                    'اللعب في الأولمبياد',
-                    'الحصول على جوائز فردية'
-                  ].map(objective => (
-                    <label key={objective} className="flex items-center">
+                  {copy.objectives.map((objective: { value: string; label: string }) => (
+                    <label key={objective.value} className="flex items-center">
                       <input
                         type="checkbox"
-                        checked={!!formData.objectives[objective]}
+                        checked={!!formData.objectives[objective.value]}
                         onChange={(e) => {
                           setFormData(prev => ({
                             ...prev,
                             objectives: {
                               ...prev.objectives,
-                              [objective]: e.target.checked
+                              [objective.value]: e.target.checked
                             }
                           }));
                         }}
                         className="mr-2"
                       />
-                      <span className="text-sm">{objective}</span>
+                      <span className="text-sm">{objective.label}</span>
                     </label>
                   ))}
                 </div>
@@ -2363,7 +3064,7 @@ export default function SharedPlayerForm({
                 {/* هدف آخر */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    أهداف أخرى
+                    {copy.ui.otherGoals}
                   </label>
                   <textarea
                     value={(formData.objectives.other as string) || ''}
@@ -2378,7 +3079,7 @@ export default function SharedPlayerForm({
                     }}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="اذكر أهدافك الأخرى..."
+                    placeholder={copy.ui.otherGoalsPlaceholder}
                   />
                 </div>
               </div>
@@ -2387,16 +3088,16 @@ export default function SharedPlayerForm({
             {/* العقود والاتصالات */}
             {currentStep === STEPS.CONTRACTS && (
               <div className="space-y-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">العقود والاتصالات</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-4">{copy.stepTitles[STEPS.CONTRACTS]}</h3>
 
                 {/* الوضع التعاقدي الحالي */}
                 <div className="bg-gray-50 p-6 rounded-lg">
-                  <h4 className="text-md font-semibold text-gray-800 mb-4">الوضع التعاقدي الحالي</h4>
+                  <h4 className="text-md font-semibold text-gray-800 mb-4">{copy.ui.contractStatus}</h4>
 
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        هل لديك عقد حالياً؟
+                        {copy.ui.hasContract}
                       </label>
                       <div className="flex gap-4">
                         <label className="flex items-center">
@@ -2408,7 +3109,7 @@ export default function SharedPlayerForm({
                             onChange={handleInputChange}
                             className="mr-2"
                           />
-                          <span>نعم</span>
+                          <span>{copy.ui.yes}</span>
                         </label>
                         <label className="flex items-center">
                           <input
@@ -2419,7 +3120,7 @@ export default function SharedPlayerForm({
                             onChange={handleInputChange}
                             className="mr-2"
                           />
-                          <span>لا</span>
+                          <span>{copy.ui.no}</span>
                         </label>
                       </div>
                     </div>
@@ -2427,7 +3128,7 @@ export default function SharedPlayerForm({
                     {/* النادي الحالي */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        النادي الحالي
+                        {copy.ui.currentClub}
                       </label>
                       <input
                         type="text"
@@ -2435,7 +3136,7 @@ export default function SharedPlayerForm({
                         value={formData.current_club}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="اسم النادي الحالي (إن وجد)"
+                        placeholder={copy.ui.currentClubPlaceholder}
                       />
                     </div>
 
@@ -2445,12 +3146,12 @@ export default function SharedPlayerForm({
 
                 {/* معلومات الاتصال الرسمية */}
                 <div className="bg-gray-50 p-6 rounded-lg">
-                  <h4 className="text-md font-semibold text-gray-800 mb-4">معلومات الاتصال الرسمية</h4>
+                  <h4 className="text-md font-semibold text-gray-800 mb-4">{copy.ui.officialContact}</h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        اسم جهة الاتصال
+                        {copy.ui.contactName}
                       </label>
                       <input
                         type="text"
@@ -2465,13 +3166,13 @@ export default function SharedPlayerForm({
                           }));
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="اسم المسؤول/الوكيل/ولي الأمر"
+                        placeholder={copy.ui.contactNamePlaceholder}
                       />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        المنصب/الصفة
+                        {copy.ui.contactTitle}
                       </label>
                       <input
                         type="text"
@@ -2486,13 +3187,13 @@ export default function SharedPlayerForm({
                           }));
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="مثال: والد، وكيل، مدير..."
+                        placeholder={copy.ui.contactTitlePlaceholder}
                       />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        رقم الهاتف
+                        {copy.ui.contactPhone}
                       </label>
                       <input
                         type="tel"
@@ -2507,13 +3208,13 @@ export default function SharedPlayerForm({
                           }));
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="رقم هاتف جهة الاتصال"
+                        placeholder={copy.ui.contactPhonePlaceholder}
                       />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        البريد الإلكتروني
+                        {copy.ui.contactEmail}
                       </label>
                       <input
                         type="email"
@@ -2528,7 +3229,7 @@ export default function SharedPlayerForm({
                           }));
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="البريد الإلكتروني لجهة الاتصال"
+                        placeholder={copy.ui.contactEmailPlaceholder}
                       />
                     </div>
                   </div>
@@ -2536,13 +3237,13 @@ export default function SharedPlayerForm({
 
                 {/* معلومات إضافية */}
                 <div className="bg-gray-50 p-6 rounded-lg">
-                  <h4 className="text-md font-semibold text-gray-800 mb-4">معلومات إضافية</h4>
+                  <h4 className="text-md font-semibold text-gray-800 mb-4">{copy.ui.additionalInfo}</h4>
 
                   <div className="space-y-4">
                     {/* الحصول على جواز سفر */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        هل تملك جواز سفر؟
+                        {copy.ui.hasPassport}
                       </label>
                       <div className="flex gap-4">
                         <label className="flex items-center">
@@ -2554,7 +3255,7 @@ export default function SharedPlayerForm({
                             onChange={handleInputChange}
                             className="mr-2"
                           />
-                          <span>نعم</span>
+                          <span>{copy.ui.yes}</span>
                         </label>
                         <label className="flex items-center">
                           <input
@@ -2565,7 +3266,7 @@ export default function SharedPlayerForm({
                             onChange={handleInputChange}
                             className="mr-2"
                           />
-                          <span>لا</span>
+                          <span>{copy.ui.no}</span>
                         </label>
                       </div>
                     </div>
@@ -2573,7 +3274,7 @@ export default function SharedPlayerForm({
                     {/* مصدر التعرف */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        كيف تعرفت على منصتنا؟
+                        {copy.ui.referralQuestion}
                       </label>
                       <select
                         name="ref_source"
@@ -2581,14 +3282,10 @@ export default function SharedPlayerForm({
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="">اختر المصدر</option>
-                        <option value="social_media">وسائل التواصل الاجتماعي</option>
-                        <option value="friend">صديق أو معارف</option>
-                        <option value="coach">مدرب</option>
-                        <option value="club">نادي</option>
-                        <option value="internet">البحث على الإنترنت</option>
-                        <option value="advertisement">إعلان</option>
-                        <option value="other">أخرى</option>
+                        <option value="">{copy.ui.selectReferral}</option>
+                        {referralSourceEntries.map(([value, label]) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))}
                       </select>
                     </div>
 
@@ -2609,10 +3306,10 @@ export default function SharedPlayerForm({
               currentStep !== STEPS.CONTRACTS && (
                 <div className="text-center py-8">
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    المرحلة {currentStep + 1}: {STEP_TITLES[currentStep]}
+                    {interpolate(copy.ui.stageFallback, { number: currentStep + 1, title: stepTitles[currentStep] })}
                   </h3>
                   <p className="text-gray-600">
-                    جميع المراحل مكتملة! يمكنك حفظ البيانات الآن.
+                    {copy.ui.allStagesComplete}
                   </p>
                 </div>
               )}
@@ -2629,30 +3326,30 @@ export default function SharedPlayerForm({
                     className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
                   />
                   <label htmlFor="createLoginAccount" className="text-sm font-medium text-gray-900 cursor-pointer">
-                    إنشاء حساب تسجيل دخول للاعب (مع خيارات مشاركة سهلة)
+                    {copy.ui.createLoginAccount}
                   </label>
                 </div>
                 <p className="mt-2 text-xs text-gray-600">
-                  ✨ كلمة المرور الموحدة: <span className="font-mono bg-gray-200 px-1 rounded">{UNIFIED_PASSWORD}</span>
+                  {copy.ui.unifiedPassword} <span className="font-mono bg-gray-200 px-1 rounded">{UNIFIED_PASSWORD}</span>
                   <br />
-                  📱 سيتم عرض بيانات الدخول مع خيارات إرسال عبر الواتساب، SMS، أو طباعة
+                  {copy.ui.loginShareHint}
                   <br />
-                  🔒 يمكن للاعب تغيير كلمة المرور بعد الدخول الأول
+                  {copy.ui.loginChangeHint}
                 </p>
                 {loginAccountPassword && (
                   <div className="mt-3 p-3 bg-green-100 border border-green-300 rounded">
                     <p className="text-sm font-medium text-green-800">
-                      ✅ تم إنشاء حساب تسجيل الدخول بنجاح!
+                      ✅ {copy.status.loginCreated}
                     </p>
                     <p className="text-sm text-green-700">
-                      انقر على زر "عرض بيانات الدخول" لمشاهدة التفاصيل وخيارات المشاركة
+                      {copy.ui.viewCredentialsHint}
                     </p>
                     <button
                       type="button"
                       onClick={() => setShowLoginCredentials(true)}
                       className="mt-2 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
                     >
-                      عرض بيانات الدخول
+                      {copy.ui.viewCredentials}
                     </button>
                   </div>
                 )}
@@ -2669,7 +3366,7 @@ export default function SharedPlayerForm({
                     className="flex items-center gap-2"
                   >
                     <ArrowRight className="w-4 h-4" />
-                    السابق
+                    {copy.ui.previous}
                   </Button>
                 )}
               </div>
@@ -2680,15 +3377,15 @@ export default function SharedPlayerForm({
                   variant="outline"
                   className="text-gray-600 border-gray-300"
                 >
-                  إلغاء
+                  {copy.ui.cancel}
                 </Button>
 
-                {currentStep < Object.keys(STEP_TITLES).length - 1 ? (
+                {currentStep < Object.keys(stepTitles).length - 1 ? (
                   <Button
                     onClick={handleNext}
                     className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
                   >
-                    التالي
+                    {copy.ui.next}
                     <ArrowLeft className="w-4 h-4" />
                   </Button>
                 ) : (
@@ -2696,7 +3393,7 @@ export default function SharedPlayerForm({
                     onClick={handleSave}
                     className="bg-green-600 hover:bg-green-700 text-white"
                   >
-                    {mode === 'add' ? 'إضافة اللاعب' : 'حفظ التعديلات'}
+                    {mode === 'add' ? copy.ui.addPlayer : copy.ui.saveChanges}
                   </Button>
                 )}
               </div>

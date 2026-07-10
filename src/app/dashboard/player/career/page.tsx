@@ -2,17 +2,19 @@
 
 import { ArrowRight, BarChart3, Calendar, Clock, FileText, Star, Target, Trophy, Zap } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslation } from '@/lib/i18n';
 
 const UPCOMING_FEATURES = [
-  { icon: Trophy,    label: 'سجل البطولات والمسابقات' },
-  { icon: BarChart3, label: 'إحصائيات الأداء الموسمية' },
-  { icon: Calendar,  label: 'الجدول الزمني للمسيرة' },
-  { icon: Star,      label: 'الإنجازات والجوائز' },
-  { icon: Target,    label: 'الأهداف المهنية' },
-  { icon: FileText,  label: 'تقارير الأداء التاريخية' },
+  { icon: Trophy,    labelKey: 'career.features.tournaments' },
+  { icon: BarChart3, labelKey: 'career.features.stats' },
+  { icon: Calendar,  labelKey: 'career.features.timeline' },
+  { icon: Star,      labelKey: 'career.features.achievements' },
+  { icon: Target,    labelKey: 'career.features.objectives' },
+  { icon: FileText,  labelKey: 'career.features.reports' },
 ];
 
 export default function CareerPage() {
+  const { t } = useTranslation();
   return (
     <div
       className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-12 text-center"
@@ -40,26 +42,26 @@ export default function CareerPage() {
         style={{ background: 'color-mix(in srgb, var(--accent-current) 12%, transparent)', color: 'var(--accent-current)' }}
       >
         <Zap size={14} />
-        قيد التطوير
+        {t('career.underDevelopment')}
       </div>
 
       {/* Title */}
       <h1 className="text-3xl md:text-4xl font-black mb-3" style={{ color: 'var(--header-text)' }}>
-        مسيرتي الرياضية
+        {t('career.title')}
       </h1>
       <p className="text-base md:text-lg max-w-md mb-2" style={{ color: 'var(--header-text-muted)' }}>
-        نبني لك صفحة احترافية تجمع كل إنجازاتك وتاريخك الرياضي في مكان واحد.
+        {t('career.description')}
       </p>
       <p className="text-sm mb-10 flex items-center gap-2 justify-center" style={{ color: 'var(--header-text-muted)' }}>
         <Clock size={14} />
-        متوقع الإطلاق قريباً
+        {t('career.comingSoon')}
       </p>
 
       {/* Features grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full max-w-lg mb-10">
-        {UPCOMING_FEATURES.map(({ icon: Icon, label }) => (
+        {UPCOMING_FEATURES.map(({ icon: Icon, labelKey }) => (
           <div
-            key={label}
+            key={labelKey}
             className="flex flex-col items-center gap-2 p-4 rounded-2xl text-sm font-medium"
             style={{
               background: 'var(--main-bg)',
@@ -68,7 +70,7 @@ export default function CareerPage() {
             }}
           >
             <Icon size={20} style={{ color: 'var(--accent-current)' }} />
-            {label}
+            {t(labelKey)}
           </div>
         ))}
       </div>
@@ -80,7 +82,7 @@ export default function CareerPage() {
         style={{ background: 'var(--accent-current)' }}
       >
         <ArrowRight size={18} />
-        العودة للرئيسية
+        {t('career.backToHome')}
       </Link>
     </div>
   );

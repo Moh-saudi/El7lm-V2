@@ -10,8 +10,10 @@ import { Image as ImageIcon, Video, Link as LinkIcon, Plus, Trash2, Instagram, G
 import FileUploader from "@/components/shared/FileUploader";
 import { DocumentsSection } from "./DocumentsSection";
 import { ProfileFormValues } from "../schemas/profile";
+import { useTranslation } from "@/lib/i18n";
 
 export function MediaTab() {
+    const { t } = useTranslation();
     const { control, watch, setValue, getValues } = useFormContext<ProfileFormValues>();
     const watchedVideos = watch("videos");
 
@@ -62,8 +64,8 @@ export function MediaTab() {
                         <ImageIcon className="w-6 h-6" />
                     </div>
                     <div>
-                        <CardTitle>الصورة الشخصية</CardTitle>
-                        <CardDescription>صورة الملف الشخصي التي ستظهر للأندية والمدربين</CardDescription>
+                        <CardTitle>{t('profile.mediaTab.profilePicture')}</CardTitle>
+                        <CardDescription>{t('profile.mediaTab.profilePictureDesc')}</CardDescription>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -85,9 +87,9 @@ export function MediaTab() {
 
                         {/* Upload Control */}
                         <div className="flex-1 space-y-2 text-center md:text-right">
-                            <h4 className="font-medium text-gray-900">تغيير الصورة الشخصية</h4>
+                            <h4 className="font-medium text-gray-900">{t('profile.mediaTab.changePhoto')}</h4>
                             <p className="text-sm text-red-500 font-bold mb-4 bg-red-50 p-2 rounded-lg border border-red-100">
-                                تنبيه: يجب أن تكون الصورة بزي رياضي أو داخل الملعب لزيادة فرصة قبول ملفك.
+                                {t('profile.mediaTab.photoNotice')}
                             </p>
                             <div className="max-w-xs mx-auto md:mx-0">
                                 <FileUploader onUploadComplete={handleProfileImageUpload} type="image" />
@@ -105,8 +107,8 @@ export function MediaTab() {
                             <ImageIcon className="w-6 h-6" />
                         </div>
                         <div>
-                            <CardTitle>معرض الصور</CardTitle>
-                            <CardDescription>صور من المباريات والتدريبات ({currentImages.length})</CardDescription>
+                            <CardTitle>{t('profile.mediaTab.photoGallery')}</CardTitle>
+                            <CardDescription>{t('profile.mediaTab.galleryDesc').replace('{{count}}', String(currentImages.length))}</CardDescription>
                         </div>
                     </div>
                     <div className="w-fit">
@@ -132,11 +134,10 @@ export function MediaTab() {
                     ) : (
                         <div className="text-center py-12 border-2 border-dashed rounded-xl bg-gray-50/50">
                             <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                                <ImageIcon className="w-6 h-6 text-gray-400"
-                                />
+                                <ImageIcon className="w-6 h-6 text-gray-400" />
                             </div>
-                            <h3 className="text-sm font-medium text-gray-900">لا توجد صور</h3>
-                            <p className="text-sm text-gray-500 mt-1">قم برفع صور لإظهار مهاراتك</p>
+                            <h3 className="text-sm font-medium text-gray-900">{t('profile.mediaTab.noPhotos')}</h3>
+                            <p className="text-sm text-gray-500 mt-1">{t('profile.mediaTab.noPhotosDesc')}</p>
                         </div>
                     )}
                 </CardContent>
@@ -150,16 +151,16 @@ export function MediaTab() {
                             <Video className="w-6 h-6" />
                         </div>
                         <div>
-                            <CardTitle>الفيديوهات</CardTitle>
-                            <CardDescription>ارفع فيديوهات مباشرة أو أضف روابط يوتيوب</CardDescription>
+                            <CardTitle>{t('profile.mediaTab.videos')}</CardTitle>
+                            <CardDescription>{t('profile.mediaTab.videosDesc')}</CardDescription>
                         </div>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                         <Button variant="outline" size="sm" onClick={() => appendVideo({ title: '', url: '', type: 'youtube' })} className="gap-2">
-                            <LinkIcon className="w-4 h-4" /> إضافة رابط
+                            <LinkIcon className="w-4 h-4" /> {t('profile.mediaTab.addLink')}
                         </Button>
                         <Button variant="default" size="sm" onClick={() => appendVideo({ title: '', url: '', type: 'uploaded' })} className="gap-2 bg-black text-white hover:bg-black/90">
-                            <Plus className="w-4 h-4" /> رفع من الجهاز
+                            <Plus className="w-4 h-4" /> {t('profile.mediaTab.uploadFromDevice')}
                         </Button>
                     </div>
                 </CardHeader>
@@ -181,8 +182,8 @@ export function MediaTab() {
                                     name={`videos.${index}.title`}
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>عنوان الفيديو</FormLabel>
-                                            <FormControl><Input placeholder="مثال: أهداف موسم 2024" className="bg-white" {...field} value={field.value || ''} /></FormControl>
+                                            <FormLabel>{t('profile.mediaTab.videoTitle')}</FormLabel>
+                                            <FormControl><Input placeholder={t('profile.mediaTab.videoTitlePlaceholder')} className="bg-white" {...field} value={field.value || ''} /></FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -192,18 +193,18 @@ export function MediaTab() {
                                     name={`videos.${index}.type`}
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>المنصة / طريقة الرفع</FormLabel>
+                                            <FormLabel>{t('profile.mediaTab.uploadMethod')}</FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value || 'youtube'}>
                                                 <FormControl>
                                                     <SelectTrigger className="bg-white">
-                                                        <SelectValue placeholder="اختر الطريقة" />
+                                                        <SelectValue placeholder={t('profile.mediaTab.selectMethod')} />
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
                                                     <SelectItem value="youtube">YouTube</SelectItem>
                                                     <SelectItem value="vimeo">Vimeo</SelectItem>
-                                                    <SelectItem value="other">رابط آخر</SelectItem>
-                                                    <SelectItem value="uploaded">رفع فيديو مباشر</SelectItem>
+                                                    <SelectItem value="other">{t('profile.mediaTab.otherLink')}</SelectItem>
+                                                    <SelectItem value="uploaded">{t('profile.mediaTab.directVideo')}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />
@@ -214,7 +215,7 @@ export function MediaTab() {
                                 <div className="col-span-1 md:col-span-2">
                                     {watchedVideos?.[index]?.type === 'uploaded' ? (
                                         <FormItem>
-                                            <FormLabel>ملف الفيديو</FormLabel>
+                                            <FormLabel>{t('profile.mediaTab.videoFile')}</FormLabel>
                                             {watchedVideos[index]?.url ? (
                                                 <div className="relative rounded-lg overflow-hidden border bg-black group-video">
                                                     <video
@@ -230,7 +231,7 @@ export function MediaTab() {
                                                         onClick={() => setValue(`videos.${index}.url`, '', { shouldDirty: true })}
                                                     >
                                                         <Trash2 className="w-4 h-4 mr-2" />
-                                                        تغيير الفيديو
+                                                        {t('profile.mediaTab.changeVideo')}
                                                     </Button>
                                                 </div>
                                             ) : (
@@ -247,7 +248,7 @@ export function MediaTab() {
                                             name={`videos.${index}.url`}
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>رابط الفيديو</FormLabel>
+                                                    <FormLabel>{t('profile.mediaTab.videoLink')}</FormLabel>
                                                     <FormControl>
                                                         <div className="relative">
                                                             <Input placeholder="https://youtube.com/watch?v=..." className="bg-white pl-10 text-left ltr" {...field} value={field.value || ''} />
@@ -268,7 +269,7 @@ export function MediaTab() {
                             <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                                 <Video className="w-6 h-6 text-gray-400" />
                             </div>
-                            <p className="text-gray-400">لا توجد فيديوهات مضافة</p>
+                            <p className="text-gray-400">{t('profile.mediaTab.noVideos')}</p>
                         </div>
                     )}
                 </CardContent>
@@ -282,12 +283,12 @@ export function MediaTab() {
                             <Globe className="w-6 h-6" />
                         </div>
                         <div>
-                            <CardTitle>الروابط الاجتماعية</CardTitle>
-                            <CardDescription>أضف حساباتك على منصات التواصل الاجتماعي المختلفة</CardDescription>
+                            <CardTitle>{t('profile.mediaTab.socialLinks')}</CardTitle>
+                            <CardDescription>{t('profile.mediaTab.socialLinksDesc')}</CardDescription>
                         </div>
                     </div>
                     <Button type="button" variant="default" size="sm" onClick={() => appendSocial({ platform: 'instagram', url: '', handle: '' })} className="gap-2 bg-black text-white hover:bg-black/90">
-                        <Plus className="w-4 h-4" /> إضافة رابط
+                        <Plus className="w-4 h-4" /> {t('profile.mediaTab.addLink')}
                     </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -309,11 +310,11 @@ export function MediaTab() {
                                     name={`social_links.${index}.platform`}
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>المنصة</FormLabel>
+                                            <FormLabel>{t('profile.mediaTab.platform')}</FormLabel>
                                             <Select onValueChange={field.onChange} value={field.value || ''}>
                                                 <FormControl>
                                                     <SelectTrigger className="bg-white">
-                                                        <SelectValue placeholder="اختر المنصة" />
+                                                        <SelectValue placeholder={t('profile.mediaTab.selectPlatform')} />
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
@@ -323,7 +324,7 @@ export function MediaTab() {
                                                     <SelectItem value="linkedin"><div className="flex items-center gap-2"><Linkedin className="w-4 h-4 text-blue-700" /> LinkedIn</div></SelectItem>
                                                     <SelectItem value="youtube"><div className="flex items-center gap-2"><Youtube className="w-4 h-4 text-red-600" /> YouTube</div></SelectItem>
                                                     <SelectItem value="transfermarkt"><div className="flex items-center gap-2"><Globe className="w-4 h-4 text-blue-500" /> Transfermarkt</div></SelectItem>
-                                                    <SelectItem value="other"><div className="flex items-center gap-2"><LinkIcon className="w-4 h-4 text-gray-500" /> أخرى</div></SelectItem>
+                                                    <SelectItem value="other"><div className="flex items-center gap-2"><LinkIcon className="w-4 h-4 text-gray-500" /> {t('profile.mediaTab.other')}</div></SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </FormItem>
@@ -337,7 +338,7 @@ export function MediaTab() {
                                     name={`social_links.${index}.url`}
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>الرابط</FormLabel>
+                                            <FormLabel>{t('profile.mediaTab.link')}</FormLabel>
                                             <FormControl>
                                                 <Input placeholder="https://example.com/username" className="bg-white text-left ltr" {...field} value={field.value || ''} />
                                             </FormControl>
@@ -352,7 +353,7 @@ export function MediaTab() {
                             <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                                 <Globe className="w-6 h-6 text-gray-400" />
                             </div>
-                            <p className="text-gray-400">لا توجد روابط مضافة</p>
+                            <p className="text-gray-400">{t('profile.mediaTab.noLinks')}</p>
                         </div>
                     )}
                 </CardContent>

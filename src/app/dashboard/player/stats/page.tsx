@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n';
 
 // --- Components ---
 
@@ -110,6 +111,7 @@ const InsightBadge = ({ text, type = 'success' }: { text: string, type?: 'succes
 // --- Main Page ---
 
 export default function StatsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [playerData, setPlayerData] = useState<any>(null);
   const [playerStats, setPlayerStats] = useState<any[]>([]);
@@ -152,13 +154,14 @@ export default function StatsPage() {
     speed: 0, stamina: 0, shooting: 0, passing: 0, dribbling: 0, defending: 0
   };
 
+  // radarData داخل المكوّن حتى تستخدم t() وتُعاد عند تغيير اللغة
   const radarData = [
-    { subject: 'السرعة', A: latestStats.speed || 0, fullMark: 100 },
-    { subject: 'التسديد', A: latestStats.shooting || 0, fullMark: 100 },
-    { subject: 'التمرير', A: latestStats.passing || 0, fullMark: 100 },
-    { subject: 'المراوغة', A: latestStats.dribbling || 0, fullMark: 100 },
-    { subject: 'الدفاع', A: latestStats.defending || 0, fullMark: 100 },
-    { subject: 'التحمل', A: latestStats.stamina || 0, fullMark: 100 },
+    { subject: t('stats.speed'),     A: latestStats.speed     || 0, fullMark: 100 },
+    { subject: t('stats.shooting'),  A: latestStats.shooting  || 0, fullMark: 100 },
+    { subject: t('stats.passing'),   A: latestStats.passing   || 0, fullMark: 100 },
+    { subject: t('stats.dribbling'), A: latestStats.dribbling || 0, fullMark: 100 },
+    { subject: t('stats.defending'), A: latestStats.defending || 0, fullMark: 100 },
+    { subject: t('stats.stamina'),   A: latestStats.stamina   || 0, fullMark: 100 },
   ];
 
   const overallRating = useMemo(() => {
@@ -173,7 +176,7 @@ export default function StatsPage() {
         <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
           <Loader2 className="w-12 h-12 text-blue-600" />
         </motion.div>
-        <p className="mt-4 text-slate-500 font-bold">جاري تحليل بيانات الأداء عبر AI...</p>
+        <p className="mt-4 text-slate-500 font-bold">{t('stats.analyzing')}</p>
       </div>
     );
   }
@@ -189,16 +192,19 @@ export default function StatsPage() {
             <div>
               <div className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest mb-4 shadow-xl shadow-slate-200">
                 <BrainCircuit className="w-4 h-4 text-blue-400" />
-                تحليل الذكاء الاصطناعي نشط
+                {t('stats.aiActive')}
               </div>
-              <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-2">إحصائيات <span className="text-blue-600">الأداء</span></h1>
-              <p className="text-slate-500 font-medium max-w-lg">يتم استخراج هذه البيانات تلقائياً من خلال تحليل فيديوهاتك المرفوعة باستخدام تقنيات رؤية الحاسوب.</p>
+              <h1 className="text-4xl sm:text-5xl font-black tracking-tight mb-2">
+                {t('stats.title').split(' ')[0]}{' '}
+                <span className="text-blue-600">{t('stats.title').split(' ').slice(1).join(' ')}</span>
+              </h1>
+              <p className="text-slate-500 font-medium max-w-lg">{t('stats.subtitle')}</p>
             </div>
 
             <div className="hidden lg:block">
               <FIFAStyledCard
                 rating={overallRating}
-                playerName={playerData?.full_name || 'اللاعب'}
+                playerName={playerData?.full_name || t('common.player')}
                 position={playerData?.primary_position || 'ST'}
                 stats={latestStats}
               />
@@ -215,21 +221,21 @@ export default function StatsPage() {
 
             {/* Rapid Stats Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <QuickStat label="دقة التسديد" value={`${latestStats.shooting}%`} icon={Target} color="text-red-500" />
-              <QuickStat label="أقصى سرعة" value={`${latestStats.speed} km/h`} icon={Zap} color="text-yellow-500" />
-              <QuickStat label="التمرير" value={`${latestStats.passing}%`} icon={Award} color="text-blue-500" />
-              <QuickStat label="اللياقة" value={`${latestStats.stamina}%`} icon={Activity} color="text-emerald-500" />
+              <QuickStat label={t('stats.shootingAcc')} value={`${latestStats.shooting}%`}    icon={Target}   color="text-red-500" />
+              <QuickStat label={t('stats.maxSpeed')}    value={`${latestStats.speed} km/h`}   icon={Zap}      color="text-yellow-500" />
+              <QuickStat label={t('stats.passing')}     value={`${latestStats.passing}%`}     icon={Award}    color="text-blue-500" />
+              <QuickStat label={t('stats.fitness')}     value={`${latestStats.stamina}%`}     icon={Activity} color="text-emerald-500" />
             </div>
 
             {/* Radar Analysis Section */}
             <div className="bg-white rounded-[3rem] p-8 border border-slate-100 shadow-xl overflow-hidden relative group">
               <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4 text-center sm:text-right">
                 <div>
-                  <h3 className="text-2xl font-black text-slate-900 mb-1">الرادار الفني</h3>
-                  <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">توزيع القوى والمهارات الأساسية</p>
+                  <h3 className="text-2xl font-black text-slate-900 mb-1">{t('stats.radarTitle')}</h3>
+                  <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">{t('stats.radarSub')}</p>
                 </div>
                 <div className="flex items-center gap-2 px-6 py-2 bg-blue-50 text-blue-600 rounded-2xl font-black text-sm">
-                  مستوى المحترفين
+                  {t('stats.proLevel')}
                 </div>
               </div>
 
@@ -266,25 +272,25 @@ export default function StatsPage() {
                     <BrainCircuit className="w-7 h-7" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black">تقرير الذكاء الاصطناعي 🤖</h3>
-                    <p className="text-blue-200/60 font-medium text-sm">التوصيات التقنية بناءً على أداء الشهر الأخير</p>
+                    <h3 className="text-2xl font-black">{t('stats.aiReport')}</h3>
+                    <p className="text-blue-200/60 font-medium text-sm">{t('stats.aiReportSub')}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <h4 className="text-blue-400 font-black uppercase text-xs tracking-widest">نقاط القوة الرئيسية</h4>
+                    <h4 className="text-blue-400 font-black uppercase text-xs tracking-widest">{t('stats.strengths')}</h4>
                     <div className="space-y-3">
-                      <InsightBadge text="سرعة تفاعل ممتازة في منطقة الجزاء" />
-                      <InsightBadge text="دقة عالية في التمريرات البينية الطويلة" />
+                      <InsightBadge text={t('stats.strength1')} />
+                      <InsightBadge text={t('stats.strength2')} />
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <h4 className="text-amber-400 font-black uppercase text-xs tracking-widest">مجالات التحسين</h4>
+                    <h4 className="text-amber-400 font-black uppercase text-xs tracking-widest">{t('stats.improvements')}</h4>
                     <div className="space-y-3">
-                      <InsightBadge text="تحسين التغطية الدفاعية عند المرتدات" type="warning" />
-                      <InsightBadge text="زيادة معدل الركض عالي الكثافة (Sprint)" type="warning" />
+                      <InsightBadge text={t('stats.improvement1')} type="warning" />
+                      <InsightBadge text={t('stats.improvement2')} type="warning" />
                     </div>
                   </div>
                 </div>
@@ -299,7 +305,7 @@ export default function StatsPage() {
             <div className="lg:hidden">
               <FIFAStyledCard
                 rating={overallRating}
-                playerName={playerData?.full_name || 'اللاعب'}
+                playerName={playerData?.full_name || t('common.player')}
                 position={playerData?.primary_position || 'ST'}
                 stats={latestStats}
               />
@@ -309,7 +315,7 @@ export default function StatsPage() {
             <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl">
               <h3 className="text-xl font-black mb-6 flex items-center gap-3">
                 <TrendingUp className="w-5 h-5 text-blue-600" />
-                رحلة التطور
+                {t('stats.evolutionJourney')}
               </h3>
 
               <div className="h-[200px] w-full">
@@ -337,22 +343,22 @@ export default function StatsPage() {
                 </ResponsiveContainer>
               </div>
 
-              <p className="text-xs text-slate-400 text-center mt-4 font-bold uppercase tracking-widest">تطور مهارة السرعة خلال آخر 5 تحليلات</p>
+              <p className="text-xs text-slate-400 text-center mt-4 font-bold uppercase tracking-widest">{t('stats.speedEvolution')}</p>
             </div>
 
             {/* AI Status / Pending Analysis */}
             <div className="bg-blue-600 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-blue-500/30 overflow-hidden relative">
               <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-[40px]"></div>
               <div className="relative z-10">
-                <h4 className="text-xl font-black mb-4">حالة المحلل الآلي</h4>
+                <h4 className="text-xl font-black mb-4">{t('stats.analystStatus')}</h4>
                 <div className="space-y-4">
                   <div className="flex items-center gap-4 bg-white/10 p-4 rounded-2xl border border-white/10 backdrop-blur-md transition-all hover:bg-white/20">
                     <div className="w-10 h-10 rounded-xl bg-emerald-400 flex items-center justify-center">
                       <Award className="w-6 h-6 text-emerald-950" />
                     </div>
                     <div className="flex-1 truncate">
-                      <p className="text-sm font-black">تصنيف محترف</p>
-                      <p className="text-[10px] text-blue-100/70 font-bold uppercase">تم التحديث منذ يومين</p>
+                      <p className="text-sm font-black">{t('stats.proClassification')}</p>
+                      <p className="text-[10px] text-blue-100/70 font-bold uppercase">{t('stats.updatedAgo')}</p>
                     </div>
                   </div>
 
@@ -361,14 +367,14 @@ export default function StatsPage() {
                       <Video className="w-5 h-5" />
                     </div>
                     <div className="flex-1 truncate">
-                      <p className="text-sm font-black italic">فيديو مهارات جديد</p>
-                      <p className="text-[10px] text-blue-100/70 font-bold uppercase">بانتظار المعالجة</p>
+                      <p className="text-sm font-black italic">{t('stats.newSkillVideo')}</p>
+                      <p className="text-[10px] text-blue-100/70 font-bold uppercase">{t('stats.pendingProcessing')}</p>
                     </div>
                   </div>
                 </div>
 
                 <button className="w-full mt-8 bg-white text-blue-600 font-black py-4 rounded-2xl hover:bg-blue-50 transition-all flex items-center justify-center gap-2 group shadow-xl">
-                  رفع فيديو للتحليل
+                  {t('stats.uploadForAnalysis')}
                   <ArrowUpRight className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                 </button>
               </div>

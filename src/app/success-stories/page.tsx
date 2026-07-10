@@ -1,41 +1,46 @@
+'use client';
 import React from 'react';
 import Image from 'next/image';
-import { Star, TrendingUp, Trophy } from 'lucide-react';
+import { Trophy } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n';
 
-const STORIES = [
+const getStories = (t: any) => [
     {
-        name: "عمر خالد",
-        club: "انتقل إلى الدوري البرتغالي",
+        name: t('successStories.story1Name'),
+        club: t('successStories.story1Club'),
         image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=800&auto=format&fit=crop&q=60",
-        desc: "بدأ عمر مسيرته في أكاديمية محلية، ومن خلال منصة الحلم، تم اكتشاف موهبته وتحليل أدائه، مما أهله للاحتراف في أوروبا.",
+        desc: t('successStories.story1Desc'),
         stats: { goals: 24, matches: 30 }
     },
     {
-        name: "سارة أحمد",
-        club: "أفضل حارسة مرمى 2025",
+        name: t('successStories.story2Name'),
+        club: t('successStories.story2Club'),
         image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=800&auto=format&fit=crop&q=60",
-        desc: "حققت سارة أرقاماً قياسية في التصديات هذا الموسم، وتم تكريمها كأفضل حارسة في الدوري بفضل تطورها المستمر.",
+        desc: t('successStories.story2Desc'),
         stats: { cleanSheets: 15, matches: 28 }
     },
     {
-        name: "يوسف علي",
-        club: "هداف دوري المدارس",
+        name: t('successStories.story3Name'),
+        club: t('successStories.story3Club'),
         image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&auto=format&fit=crop&q=60",
-        desc: "موهبة شابة صاعدة بقوة، تصدر قائمة الهدافين وتم ضمه لمنتخب الشباب بعد متابعة دقيقة عبر المنصة.",
+        desc: t('successStories.story3Desc'),
         stats: { goals: 32, matches: 25 }
     }
 ];
 
 export default function SuccessStoriesPage() {
+    const { t, isRTL } = useTranslation();
+    const STORIES = getStories(t);
+
     return (
-        <div className="min-h-screen bg-background" dir="rtl">
+        <div className="min-h-screen bg-background" dir={isRTL ? 'rtl' : 'ltr'}>
             {/* Header */}
             <div className="bg-gradient-to-br from-slate-900 to-primary/80 text-white py-16 text-center px-4 relative overflow-hidden">
                 <div className="absolute inset-0 bg-[url('/images/pattern.png')] opacity-10"></div>
                 <div className="relative z-10">
-                    <h1 className="text-4xl font-bold mb-4">قصص نجاح ملهمة</h1>
+                    <h1 className="text-4xl font-bold mb-4">{t('successStories.title')}</h1>
                     <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-                        في "الحلم"، نحن لا نجمع البيانات فقط، بل نصنع النجوم. اكتشف كيف ساعدت منصتنا المواهب على الوصول للعالمية.
+                        {t('successStories.subtitle')}
                     </p>
                 </div>
             </div>
@@ -68,9 +73,9 @@ export default function SuccessStoriesPage() {
                                 <div className="flex items-center justify-between border-t border-border pt-4">
                                     <div className="flex items-center gap-2 text-primary font-bold">
                                         <Trophy size={18} className="text-yellow-500" />
-                                        <span>إنجاز متميز</span>
+                                        <span>{t('successStories.achievement')}</span>
                                     </div>
-                                    <button className="text-sm text-primary font-bold hover:underline">اقرأ المزيد</button>
+                                    <button className="text-sm text-primary font-bold hover:underline">{t('successStories.readMore')}</button>
                                 </div>
                             </div>
                         </div>
@@ -80,10 +85,10 @@ export default function SuccessStoriesPage() {
 
             {/* CTA */}
             <div className="bg-muted/30 py-12 text-center border-t border-border">
-                <h2 className="text-2xl font-bold text-foreground mb-4">هل أنت قصة النجاح القادمة؟</h2>
-                <p className="text-muted-foreground mb-6">انضم إلينا الآن وابدأ مسيرتك الاحترافية مع أفضل الأندية.</p>
+                <h2 className="text-2xl font-bold text-foreground mb-4">{t('successStories.ctaTitle')}</h2>
+                <p className="text-muted-foreground mb-6">{t('successStories.ctaSub')}</p>
                 <a href="/auth/register" className="inline-block bg-primary text-primary-foreground px-8 py-3 rounded-xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/25">
-                    سجل الآن مجاناً
+                    {t('successStories.registerFree')}
                 </a>
             </div>
         </div>

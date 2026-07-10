@@ -1,74 +1,133 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useTranslation } from '@/lib/i18n';
 
-const TR = {
-  ar: {
-    dir: 'rtl', lang: 'ar',
-    joinBtn: 'انضم الآن',
-    nav: ['الرئيسية', 'تطبيق حجز', 'الأكاديمية', 'الأندية', 'البطولات'],
-    footerDesc: 'منصة رائدة تهدف إلى تمكين المواهب الكروية العربية باستخدام التكنولوجيا الحديثة والذكاء الاصطناعي للوصول إلى العالمية.',
-    footerCols: [
-      { title: 'روابط سريعة', links: [{ l: 'البحث عن المواهب', h: '#' }, { l: 'تقارير الأداء', h: '#' }, { l: 'الأكاديمية الرقمية', h: '#' }, { l: 'جدول المباريات', h: '#' }, { l: 'أخبار النجوم', h: '#' }] },
-      { title: 'الشركة', links: [{ l: 'من نحن', h: '/about' }, { l: 'الوظائف', h: '/careers' }, { l: 'شركاء النجاح', h: '/success-stories' }, { l: 'اتصل بنا', h: '/contact' }] },
-      { title: 'الدعم القانوني', links: [{ l: 'سياسة الخصوصية', h: '/privacy' }, { l: 'الشروط والأحكام', h: '/terms' }, { l: 'معايير الكشافة', h: '#' }, { l: 'الدعم الفني', h: '/support' }] },
-    ],
-    copyright: '© 2024 EL7LM platform with V Lab Ai. جميع الحقوق محفوظة.',
-    designedFor: 'صُمِّم للأبطال',
-    pageTitle: 'انضم إلى فريق النخبة',
-    pageSub: 'كن جزءاً من منصة "الحلم"، حيث تلتقي الرياضة بالذكاء الاصطناعي لصناعة مستقبل كرة القدم العربية.',
-    benefitsTitle: 'لماذا تعمل في "الحلم"؟',
-    benefitsSub: 'نحن نوفر بيئة عمل تجمع بين الشغف الرياضي والابتكار التقني العالمي.',
-    jobsTitle: 'الفرص المتاحة',
-    jobsSub: 'اكتشف الفرص المهنية في مختلف تخصصاتنا الرياضية والتقنية.',
-    applyBtn: 'تقدم الآن',
-    noJobTitle: 'لم تجد وظيفتك؟',
-    noJobSub: 'أرسل لنا سيرتك الذاتية وسنتواصل معك فور توفر فرصة تناسب مهاراتك.',
-    sendCV: 'أرسل السيرة الذاتية',
-  }
-};
-
-const JOBS_DATA = [
+const getJobsData = (t: any) => [
   {
-    category: 'التطوير والتقنية',
+    category: t('careers.catTech'),
     icon: '💻',
     color: 'from-blue-500 to-blue-600',
     jobs: [
-      { title: 'مبرمجين Next.js', location: 'القاهرة / الدوحة', type: 'دوام كامل', exp: '2-4 سنوات', key: 'nextjsDevelopers' },
-      { title: 'محللي الأداء', location: 'الدوحة، قطر', type: 'دوام كامل', exp: '3-5 سنوات', key: 'performanceAnalysts' }
+      {
+        title: t('careers.jobNextjs'),
+        location: t('careers.locationCairoDoha'),
+        type: t('careers.fullTime'),
+        exp: t('careers.exp2to4'),
+        key: 'nextjsDevelopers'
+      },
+      {
+        title: t('careers.jobPerformanceAnalysts'),
+        location: t('careers.locationDohaQatar'),
+        type: t('careers.fullTime'),
+        exp: t('careers.exp3to5'),
+        key: 'performanceAnalysts'
+      }
     ]
   },
   {
-    category: 'الإدارة والتطوير المؤسسي',
+    category: t('careers.catManagement'),
     icon: '🏢',
     color: 'from-green-500 to-green-600',
     jobs: [
-      { title: 'إدارة الأندية', location: 'الخليج العربي', type: 'دوام كامل', exp: '5+ سنوات', key: 'clubManagement' },
-      { title: 'إدارة الأكاديمية', location: 'قطر / الإمارات', type: 'دوام كامل', exp: '4-7 سنوات', key: 'academyManagement' },
-      { title: 'المحاسبين', location: 'القاهرة / الدوحة', type: 'دوام كامل', exp: '3+ سنوات', key: 'accountants' }
+      {
+        title: t('careers.jobClubManagement'),
+        location: t('careers.locationArabianGulf'),
+        type: t('careers.fullTime'),
+        exp: t('careers.exp5plus'),
+        key: 'clubManagement'
+      },
+      {
+        title: t('careers.jobAcademyManagement'),
+        location: t('careers.locationQatarUae'),
+        type: t('careers.fullTime'),
+        exp: t('careers.exp4to7'),
+        key: 'academyManagement'
+      },
+      {
+        title: t('careers.jobAccountants'),
+        location: t('careers.locationCairoDoha'),
+        type: t('careers.fullTime'),
+        exp: t('careers.exp3plus'),
+        key: 'accountants'
+      }
     ]
   },
   {
-    category: 'الرياضة والتدريب',
+    category: t('careers.catSports'),
     icon: '⚽',
     color: 'from-purple-500 to-purple-600',
     jobs: [
-      { title: 'إدارة الكشافين', location: 'الخليج وأوروبا', type: 'دوام كامل', exp: '5+ سنوات', key: 'scoutsManagement' },
-      { title: 'إدارة البطولات', location: 'قطر / تركيا', type: 'دوام كامل', exp: '3-6 سنوات', key: 'tournamentsManagement' },
-      { title: 'إدارة الاختبارات', location: 'متعدد الدول', type: 'دوام كامل', exp: '4+ سنوات', key: 'trialsManagement' },
-      { title: 'مصور فيديو', location: 'القاهرة / الدوحة', type: 'دوام كامل', exp: '2+ سنوات', key: 'videoPhotographer' }
+      {
+        title: t('careers.jobScoutsManagement'),
+        location: t('careers.locationGulfEurope'),
+        type: t('careers.fullTime'),
+        exp: t('careers.exp5plus'),
+        key: 'scoutsManagement'
+      },
+      {
+        title: t('careers.jobTournamentsManagement'),
+        location: t('careers.locationQatarTurkey'),
+        type: t('careers.fullTime'),
+        exp: t('careers.exp3to6'),
+        key: 'tournamentsManagement'
+      },
+      {
+        title: t('careers.jobTrialsManagement'),
+        location: t('careers.locationMultiCountry'),
+        type: t('careers.fullTime'),
+        exp: t('careers.exp4plus'),
+        key: 'trialsManagement'
+      },
+      {
+        title: t('careers.jobVideoPhotographer'),
+        location: t('careers.locationCairoDoha'),
+        type: t('careers.fullTime'),
+        exp: t('careers.exp2plus'),
+        key: 'videoPhotographer'
+      }
     ]
   },
   {
-    category: 'خدمة العملاء والدعم',
+    category: t('careers.catSupport'),
     icon: '🤝',
     color: 'from-orange-500 to-orange-600',
     jobs: [
-      { title: 'وظائف المبيعات', location: 'القاهرة / الدوحة', type: 'دوام كامل', exp: '1-3 سنوات', key: 'sales' },
-      { title: 'علاقات العملاء', location: 'الدوحة، قطر', type: 'دوام كامل', exp: '2-4 سنوات', key: 'customerRelations' },
-      { title: 'كول سنتر', location: 'القاهرة، مصر', type: 'دوام كامل', exp: '1-2 سنوات', key: 'callCenter' },
-      { title: 'مبيعات مباشرة', location: 'ميداني', type: 'دوام كامل', exp: '1+ سنة', key: 'directSales' },
-      { title: 'رعاية عملاء مباشرة', location: 'عن بُعد', type: 'دوام جزئي', exp: '1+ سنة', key: 'directCustomerCare' }
+      {
+        title: t('careers.jobSales'),
+        location: t('careers.locationCairoDoha'),
+        type: t('careers.fullTime'),
+        exp: t('careers.exp1to3'),
+        key: 'sales'
+      },
+      {
+        title: t('careers.jobCustomerRelations'),
+        location: t('careers.locationDohaQatar'),
+        type: t('careers.fullTime'),
+        exp: t('careers.exp2to4'),
+        key: 'customerRelations'
+      },
+      {
+        title: t('careers.jobCallCenter'),
+        location: t('careers.locationCairoEgypt'),
+        type: t('careers.fullTime'),
+        exp: t('careers.exp1to2'),
+        key: 'callCenter'
+      },
+      {
+        title: t('careers.jobDirectSales'),
+        location: t('careers.locationField'),
+        type: t('careers.fullTime'),
+        exp: t('careers.exp1plus'),
+        key: 'directSales'
+      },
+      {
+        title: t('careers.jobDirectCustomerCare'),
+        location: t('careers.locationRemote'),
+        type: t('careers.partTime'),
+        exp: t('careers.exp1plus'),
+        key: 'directCustomerCare'
+      }
     ]
   }
 ];
@@ -76,11 +135,12 @@ const JOBS_DATA = [
 export default function CareersPage() {
   const [scrolled, setScrolled] = useState(false);
   const [dark, setDark] = useState(false);
+  const { t, isRTL } = useTranslation();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
-    
+
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) entry.target.classList.add('active');
@@ -88,7 +148,7 @@ export default function CareersPage() {
     }, { threshold: 0.1 });
 
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-    
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
       observer.disconnect();
@@ -106,10 +166,41 @@ export default function CareersPage() {
     headerBg: dark ? 'rgba(8,13,32,.8)' : 'rgba(255,255,255,.8)',
   };
 
-  const t = TR.ar;
+  const JOBS_DATA = getJobsData(t);
+
+  const footerCols = [
+    {
+      title: t('about.footerQuickLinks'),
+      links: [
+        { l: t('about.footerTalentSearch'), h: '#' },
+        { l: t('about.footerPerformanceReports'), h: '#' },
+        { l: t('about.footerDigitalAcademy'), h: '#' },
+        { l: t('about.footerMatchSchedule'), h: '#' },
+        { l: t('about.footerStarNews'), h: '#' }
+      ]
+    },
+    {
+      title: t('about.footerCompany'),
+      links: [
+        { l: t('about.badge'), h: '/about' },
+        { l: t('careers.pageTitle'), h: '/careers' },
+        { l: t('successStories.title'), h: '/success-stories' },
+        { l: t('contact.title'), h: '/contact' }
+      ]
+    },
+    {
+      title: t('about.footerLegal'),
+      links: [
+        { l: t('privacy.title'), h: '/privacy' },
+        { l: t('terms.title'), h: '/terms' },
+        { l: t('about.footerScoutingStandards'), h: '#' },
+        { l: t('support.title'), h: '/support' }
+      ]
+    }
+  ];
 
   return (
-    <div style={{ background: theme.bg, color: theme.text, minHeight: '100vh', direction: 'rtl' }}>
+    <div style={{ background: theme.bg, color: theme.text, minHeight: '100vh', direction: isRTL ? 'rtl' : 'ltr' }}>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;700&display=swap" />
 
       {/* HEADER */}
@@ -127,13 +218,19 @@ export default function CareersPage() {
              <span className="hl" style={{ fontSize: '1.5rem', fontWeight: 900, color: dark ? '#bdc4ef' : '#4f46e5', textTransform: 'uppercase', letterSpacing: '-0.05em' }}>EL7LM</span>
           </Link>
           <nav style={{ display: 'flex', gap: '2rem' }}>
-            {t.nav.map((item, i) => (
-              <Link key={i} href="/" style={{
+            {[
+              { label: t('nav.home'), href: '/' },
+              { label: t('nav.hagzz'), href: '/' },
+              { label: t('nav.academy'), href: '/' },
+              { label: t('nav.clubs'), href: '/' },
+              { label: t('nav.tournaments'), href: '/' }
+            ].map((item, i) => (
+              <Link key={i} href={item.href} style={{
                 fontFamily: "'Space Grotesk', 'IBM Plex Sans Arabic', sans-serif",
                 fontWeight: 700, textTransform: 'uppercase', letterSpacing: '-0.025em',
                 textDecoration: 'none', color: i === 0 ? (dark ? '#bdc4ef' : '#4f46e5') : theme.subText,
                 transition: 'color .2s'
-              }}>{item}</Link>
+              }}>{item.label}</Link>
             ))}
           </nav>
         </div>
@@ -145,7 +242,7 @@ export default function CareersPage() {
             padding: '.5rem 1.5rem', borderRadius: '2px',
             background: 'linear-gradient(135deg,#bdc4ef,#161e3f)', color: '#272e50',
             fontWeight: 900, fontSize: '.875rem', textDecoration: 'none'
-          }}>{t.joinBtn}</Link>
+          }}>{t('about.joinNow')}</Link>
         </div>
       </header>
 
@@ -154,9 +251,9 @@ export default function CareersPage() {
         <section style={{ padding: '6rem 0' }}>
           <div className="ct">
             <div className="reveal" style={{ textAlign: 'center', maxWidth: '1000px', margin: '0 auto' }}>
-              <span className="hl" style={{ color: theme.primary, fontWeight: 800, fontSize: '1.125rem', textTransform: 'uppercase', letterSpacing: '0.2em', display: 'block', marginBottom: '1.5rem' }}>فرص استثنائية للمبدعين</span>
-              <h1 className="st" style={{ fontSize: '4.5rem', lineHeight: 1.1, marginBottom: '2.5rem' }}>{t.pageTitle}</h1>
-              <p style={{ fontSize: '1.5rem', color: theme.subText, lineHeight: 1.7 }}>{t.pageSub}</p>
+              <span className="hl" style={{ color: theme.primary, fontWeight: 800, fontSize: '1.125rem', textTransform: 'uppercase', letterSpacing: '0.2em', display: 'block', marginBottom: '1.5rem' }}>{t('careers.badge')}</span>
+              <h1 className="st" style={{ fontSize: '4.5rem', lineHeight: 1.1, marginBottom: '2.5rem' }}>{t('careers.pageTitle')}</h1>
+              <p style={{ fontSize: '1.5rem', color: theme.subText, lineHeight: 1.7 }}>{t('careers.pageSub')}</p>
             </div>
           </div>
         </section>
@@ -166,10 +263,10 @@ export default function CareersPage() {
           <div className="ct">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '3rem', textAlign: 'center' }}>
               {[
-                { n: '25+', l: 'موظف', i: '👥' },
-                { n: '8', l: 'دول', i: '🌍' },
-                { n: '150+', l: 'لاعب', i: '⚽' },
-                { n: '25+', l: 'نادي شريك', i: '🏆' }
+                { n: '25+', l: t('careers.statsEmployees'), i: '👥' },
+                { n: '8', l: t('careers.statsCountries'), i: '🌍' },
+                { n: '150+', l: t('careers.statsPlayers'), i: '⚽' },
+                { n: '25+', l: t('careers.statsPartners'), i: '🏆' }
               ].map((s, i) => (
                 <div key={i} className="reveal">
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>{s.i}</div>
@@ -185,8 +282,8 @@ export default function CareersPage() {
         <section id="jobs" style={{ padding: '8rem 0' }}>
           <div className="ct">
             <div className="reveal" style={{ textAlign: 'center', marginBottom: '5rem' }}>
-              <h2 className="st" style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>{t.jobsTitle}</h2>
-              <p style={{ color: theme.subText, fontSize: '1.2rem' }}>{t.jobsSub}</p>
+              <h2 className="st" style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>{t('careers.jobsTitle')}</h2>
+              <p style={{ color: theme.subText, fontSize: '1.2rem' }}>{t('careers.jobsSub')}</p>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5rem' }}>
@@ -213,7 +310,7 @@ export default function CareersPage() {
                             display: 'block', textAlign: 'center', padding: '1.25rem',
                             background: theme.primary, color: dark ? '#080d20' : 'white', borderRadius: '16px',
                             fontWeight: 900, textDecoration: 'none'
-                          }}>{t.applyBtn}</Link>
+                          }}>{t('careers.applyBtn')}</Link>
                         </div>
                       </div>
                     ))}
@@ -227,11 +324,11 @@ export default function CareersPage() {
         {/* CTA */}
         <section style={{ padding: '8rem 0', background: 'linear-gradient(135deg, #4f46e5, #080d20)', color: 'white' }}>
           <div className="ct reveal" style={{ textAlign: 'center' }}>
-            <h2 className="st" style={{ fontSize: '3.5rem', marginBottom: '1.5rem' }}>{t.noJobTitle}</h2>
-            <p style={{ opacity: 0.8, fontSize: '1.3rem', marginBottom: '4rem', maxWidth: '800px', margin: '0 auto 4rem' }}>{t.noJobSub}</p>
+            <h2 className="st" style={{ fontSize: '3.5rem', marginBottom: '1.5rem' }}>{t('careers.noJobTitle')}</h2>
+            <p style={{ opacity: 0.8, fontSize: '1.3rem', marginBottom: '4rem', maxWidth: '800px', margin: '0 auto 4rem' }}>{t('careers.noJobSub')}</p>
             <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link href="/careers/apply" className="tc" style={{ background: 'white', color: '#4f46e5', padding: '1.25rem 3rem', borderRadius: '16px', fontWeight: 900, textDecoration: 'none', fontSize: '1.1rem' }}>{t.sendCV}</Link>
-              <Link href="/contact" className="tc" style={{ border: '2px solid white', color: 'white', padding: '1.125rem 3rem', borderRadius: '16px', fontWeight: 900, textDecoration: 'none', fontSize: '1.1rem' }}>تواصل معنا</Link>
+              <Link href="/careers/apply" className="tc" style={{ background: 'white', color: '#4f46e5', padding: '1.25rem 3rem', borderRadius: '16px', fontWeight: 900, textDecoration: 'none', fontSize: '1.1rem' }}>{t('careers.sendCV')}</Link>
+              <Link href="/contact" className="tc" style={{ border: '2px solid white', color: 'white', padding: '1.125rem 3rem', borderRadius: '16px', fontWeight: 900, textDecoration: 'none', fontSize: '1.1rem' }}>{t('careers.contactUs')}</Link>
             </div>
           </div>
         </section>
@@ -243,10 +340,10 @@ export default function CareersPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4rem' }}>
             <div style={{ flex: '1 1 300px' }}>
               <img src="/el7lm-logo.png" alt="Logo" style={{ height: '50px', marginBottom: '1.5rem' }} />
-              <p style={{ color: theme.subText, lineHeight: 1.8 }}>{t.footerDesc}</p>
+              <p style={{ color: theme.subText, lineHeight: 1.8 }}>{t('about.footerDescription')}</p>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4rem', flex: '2 1 600px' }}>
-              {t.footerCols.map((col: any, i: number) => (
+              {footerCols.map((col: any, i: number) => (
                 <div key={i}>
                   <h4 className="hl" style={{ fontWeight: 900, marginBottom: '1.5rem', fontSize: '0.85rem', letterSpacing: '0.1em' }}>{col.title}</h4>
                   <nav style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -259,7 +356,7 @@ export default function CareersPage() {
             </div>
           </div>
           <div style={{ borderTop: `1px solid ${theme.border}`, marginTop: '5rem', paddingTop: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            <p style={{ color: theme.subText, fontSize: '0.85rem' }}>{t.copyright}</p>
+            <p style={{ color: theme.subText, fontSize: '0.85rem' }}>{t('about.copyright')}</p>
             <div className="hl" style={{ fontWeight: 900, color: theme.primary }}>Mesk llc Qatar</div>
           </div>
         </div>

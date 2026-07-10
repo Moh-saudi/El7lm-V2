@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserPlus, CheckCircle, AlertTriangle, Mail, Phone, User, Building, Copy, Eye, EyeOff, Loader } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/lib/i18n';
 
 interface InviteCodeData {
   playerId: string;
@@ -38,6 +39,7 @@ interface PlayerData {
 
 export default function InviteCodePage({ params }: { params: { code: string } }) {
   const router = useRouter();
+  const { t, isRTL } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [inviteData, setInviteData] = useState<InviteCodeData | null>(null);
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
@@ -64,14 +66,14 @@ export default function InviteCodePage({ params }: { params: { code: string } })
         .eq('code', params.code);
 
       if (!inviteDocs || inviteDocs.length === 0) {
-        setError('كود الدعوة غير صحيح أو منتهي الصلاحية');
+        setError(t('invite.invalidCode'));
         return;
       }
 
       const invite = inviteDocs[0] as InviteCodeData;
 
       if (invite.isUsed) {
-        setError('تم استخدام كود الدعوة من قبل');
+        setError(t('invite.usedCode'));
         return;
       }
 
@@ -83,12 +85,12 @@ export default function InviteCodePage({ params }: { params: { code: string } })
         setPlayerData(playerDoc);
         setEmail(playerDoc.email || '');
       } else {
-        setError('لم يتم العثور على بيانات اللاعب');
+        setError(t('invite.playerNotFound'));
       }
 
     } catch (error) {
       console.error('خطأ في تحميل كود الدعوة:', error);
-      setError('حدث خطأ في تحميل كود الدعوة');
+      setError(t('invite.generalError'));
     } finally {
       setLoading(false);
     }
@@ -135,17 +137,17 @@ export default function InviteCodePage({ params }: { params: { code: string } })
 
   const handleCreateAccount = async () => {
     if (!email || !confirmEmail) {
-      toast.error('يرجى إدخال الإيميل وتأكيده');
+      toast.error(t('invite.errorInput'));
       return;
     }
 
     if (email !== confirmEmail) {
-      toast.error('الإيميل وتأكيد الإيميل غير متطابقين');
+      toast.error(t('invite.errorMismatch'));
       return;
     }
 
     if (!playerData || !inviteData) {
-      toast.error('بيانات غير مكتملة');
+      toast.error(t('invite.errorIncomplete'));
       return;
     }
 
@@ -172,13 +174,13 @@ export default function InviteCodePage({ params }: { params: { code: string } })
           usedEmail: email
         });
 
-        toast.success('تم إنشاء حساب تسجيل الدخول بنجاح!');
+        toast.success(t('invite.successToast'));
       } else {
-        toast.error(`فشل في إنشاء الحساب: ${result.message}`);
+        toast.error(t('invite.failedToast').replace('{{message}}', result.message || ''));
       }
     } catch (error) {
       console.error('خطأ في إنشاء الحساب:', error);
-      toast.error('حدث خطأ في إنشاء حساب تسجيل الدخول');
+      toast.error(t('invite.errorToast'));
     } finally {
       setIsCreating(false);
     }
@@ -186,7 +188,7 @@ export default function InviteCodePage({ params }: { params: { code: string } })
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success('تم النسخ للحافظة');
+    toast.success(t('invite.copied'));
   };
 
   const getOrganizationInfo = () => {
@@ -196,10 +198,10 @@ export default function InviteCodePage({ params }: { params: { code: string } })
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center" dir="rtl">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="text-center">
           <Loader className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">جاري تحميل كود الدعوة...</p>
+          <p className="text-gray-600">{t('invite.loading')}</p>
         </div>
       </div>
     );
@@ -207,12 +209,12 @@ export default function InviteCodePage({ params }: { params: { code: string } })
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 flex items-center justify-center" dir="rtl">
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 flex items-center justify-center" dir={isRTL ? 'rtl' : 'ltr'}>
         <Card className="max-w-md mx-auto">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="w-5 h-5" />
-              خطأ في كود الدعوة
+              {t('invite.errorTitle')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -222,7 +224,7 @@ export default function InviteCodePage({ params }: { params: { code: string } })
               onClick={() => router.push('/')}
               className="w-full"
             >
-              العودة للصفحة الرئيسية
+              {t('invite.backHome')}
             </Button>
           </CardContent>
         </Card>
@@ -231,7 +233,7 @@ export default function InviteCodePage({ params }: { params: { code: string } })
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 py-12 px-4" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 py-12 px-4" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="max-w-2xl mx-auto">
 
         {/* Header */}
@@ -242,10 +244,10 @@ export default function InviteCodePage({ params }: { params: { code: string } })
             </div>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            🎉 مرحباً بك!
+            {t('invite.welcome')}
           </h1>
           <p className="text-lg text-gray-600">
-            تم دعوتك لإنشاء حساب تسجيل دخول للوصول لملفك الشخصي
+            {t('invite.welcomeDesc')}
           </p>
         </div>
 
@@ -253,9 +255,9 @@ export default function InviteCodePage({ params }: { params: { code: string } })
           // نموذج إنشاء الحساب
           <Card>
             <CardHeader>
-              <CardTitle>إنشاء حساب تسجيل الدخول</CardTitle>
+              <CardTitle>{t('invite.createAccount')}</CardTitle>
               <CardDescription>
-                أكمل البيانات أدناه لإنشاء حساب تسجيل الدخول الخاص بك
+                {t('invite.createAccountDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -264,17 +266,17 @@ export default function InviteCodePage({ params }: { params: { code: string } })
               <div className="bg-blue-50 rounded-lg p-4">
                 <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
                   <User className="w-4 h-4" />
-                  معلوماتك الشخصية
+                  {t('invite.personalInfo')}
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <Label className="text-gray-600">الاسم</Label>
+                    <Label className="text-gray-600">{t('invite.name')}</Label>
                     <div className="font-medium">{playerData?.full_name || playerData?.name}</div>
                   </div>
 
                   <div>
-                    <Label className="text-gray-600">الانتماء</Label>
+                    <Label className="text-gray-600">{t('invite.affiliation')}</Label>
                     <div className="flex items-center gap-1">
                       <Building className="w-3 h-3 text-blue-600" />
                       <span className="font-medium">{getOrganizationInfo()}</span>
@@ -283,7 +285,7 @@ export default function InviteCodePage({ params }: { params: { code: string } })
 
                   {playerData?.phone && (
                     <div>
-                      <Label className="text-gray-600">رقم الهاتف</Label>
+                      <Label className="text-gray-600">{t('invite.phone')}</Label>
                       <div className="flex items-center gap-1">
                         <Phone className="w-3 h-3 text-gray-500" />
                         <span className="font-medium">{playerData.phone}</span>
@@ -298,29 +300,29 @@ export default function InviteCodePage({ params }: { params: { code: string } })
                 <div>
                   <Label htmlFor="email" className="flex items-center gap-2">
                     <Mail className="w-4 h-4" />
-                    الإيميل لتسجيل الدخول
+                    {t('invite.emailLabel')}
                   </Label>
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="أدخل إيميلك الصحيح"
+                    placeholder={t('invite.emailPlaceholder')}
                     className="mt-1"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    ستستخدم هذا الإيميل لتسجيل الدخول لحسابك
+                    {t('invite.emailDesc')}
                   </p>
                 </div>
 
                 <div>
-                  <Label htmlFor="confirmEmail">تأكيد الإيميل</Label>
+                  <Label htmlFor="confirmEmail">{t('invite.confirmEmailLabel')}</Label>
                   <Input
                     id="confirmEmail"
                     type="email"
                     value={confirmEmail}
                     onChange={(e) => setConfirmEmail(e.target.value)}
-                    placeholder="أعد إدخال الإيميل"
+                    placeholder={t('invite.confirmEmailPlaceholder')}
                     className="mt-1"
                   />
                 </div>
@@ -335,13 +337,13 @@ export default function InviteCodePage({ params }: { params: { code: string } })
               >
                 {isCreating ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    جاري إنشاء الحساب...
+                    <div className={`animate-spin rounded-full h-4 w-4 border-b-2 border-white ${isRTL ? 'ml-2' : 'mr-2'}`}></div>
+                    {t('invite.creatingAccount')}
                   </>
                 ) : (
                   <>
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    إنشاء حساب تسجيل الدخول
+                    <UserPlus className={`w-4 h-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                    {t('invite.createAccount')}
                   </>
                 )}
               </Button>
@@ -353,21 +355,21 @@ export default function InviteCodePage({ params }: { params: { code: string } })
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-green-600">
                 <CheckCircle className="w-5 h-5" />
-                تم إنشاء حسابك بنجاح!
+                {t('invite.successTitle')}
               </CardTitle>
               <CardDescription>
-                يمكنك الآن تسجيل الدخول باستخدام البيانات أدناه
+                {t('invite.successDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
 
               {/* بيانات تسجيل الدخول */}
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <h3 className="font-semibold text-green-800 mb-3">بيانات تسجيل الدخول:</h3>
+                <h3 className="font-semibold text-green-800 mb-3">{t('invite.loginCredentials')}</h3>
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">الإيميل:</span>
+                    <span className="text-sm text-gray-600">{t('invite.emailLabel')}:</span>
                     <div className="flex items-center gap-2">
                       <code className="bg-white px-3 py-2 rounded border">{email}</code>
                       <Button
@@ -382,7 +384,7 @@ export default function InviteCodePage({ params }: { params: { code: string } })
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">كلمة المرور:</span>
+                    <span className="text-sm text-gray-600">{t('invite.password')}</span>
                     <div className="flex items-center gap-2">
                       <code className="bg-white px-3 py-2 rounded border">
                         {showPassword ? createdPassword : '••••••••••'}
@@ -410,12 +412,12 @@ export default function InviteCodePage({ params }: { params: { code: string } })
 
               {/* تعليمات */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-medium text-blue-800 mb-2">الخطوات التالية:</h4>
+                <h4 className="font-medium text-blue-800 mb-2">{t('invite.nextSteps')}</h4>
                 <ol className="list-decimal list-inside text-sm text-blue-700 space-y-1">
-                  <li>اذهب إلى صفحة تسجيل الدخول</li>
-                  <li>أدخل إيميلك وكلمة المرور المؤقتة</li>
-                  <li>ستُطلب منك تغيير كلمة المرور عند الدخول الأول</li>
-                  <li>يمكنك الآن الوصول لملفك الشخصي وتلقي الإشعارات</li>
+                  <li>{t('invite.step1')}</li>
+                  <li>{t('invite.step2')}</li>
+                  <li>{t('invite.step3')}</li>
+                  <li>{t('invite.step4')}</li>
                 </ol>
               </div>
 
@@ -425,14 +427,14 @@ export default function InviteCodePage({ params }: { params: { code: string } })
                   onClick={() => router.push('/auth/login')}
                   className="flex-1"
                 >
-                  تسجيل الدخول الآن
+                  {t('invite.loginNow')}
                 </Button>
 
                 <Button
                   variant="outline"
                   onClick={() => router.push('/')}
                 >
-                  الصفحة الرئيسية
+                  {t('invite.home')}
                 </Button>
               </div>
             </CardContent>

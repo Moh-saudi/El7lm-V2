@@ -4,6 +4,7 @@ import { useFormContext, useFieldArray } from "react-hook-form";
 import { Trophy, Dumbbell, Plus, Trash2, Calendar, Shirt, Briefcase, Activity, MapPin, BarChart3 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
+import { useTranslation } from "@/lib/i18n";
 import {
     FormControl,
     FormField,
@@ -39,6 +40,20 @@ const POSITIONS = [
     { value: "ST", label: "مهاجم صريح" },
 ];
 
+const getTranslatedPositions = (t: any) => [
+    { value: "GK", label: t("profile.sportsTab.positions.GK") },
+    { value: "CB", label: t("profile.sportsTab.positions.CB") },
+    { value: "LB", label: t("profile.sportsTab.positions.LB") },
+    { value: "RB", label: t("profile.sportsTab.positions.RB") },
+    { value: "CDM", label: t("profile.sportsTab.positions.CDM") },
+    { value: "CM", label: t("profile.sportsTab.positions.CM") },
+    { value: "CAM", label: t("profile.sportsTab.positions.CAM") },
+    { value: "LW", label: t("profile.sportsTab.positions.LW") },
+    { value: "RW", label: t("profile.sportsTab.positions.RW") },
+    { value: "SS", label: t("profile.sportsTab.positions.SS") },
+    { value: "ST", label: t("profile.sportsTab.positions.ST") },
+];
+
 const POS_COORDS: Record<string, { x: number; y: number }> = {
     GK: { x: 50, y: 88 },
     CB: { x: 50, y: 75 },
@@ -54,7 +69,9 @@ const POS_COORDS: Record<string, { x: number; y: number }> = {
 };
 
 const FootballPitch = ({ position, number, name }: { position: string, number: string, name: string }) => {
+    const { t } = useTranslation();
     const coords = POS_COORDS[position] || { x: 50, y: 50 };
+    const positionsList = getTranslatedPositions(t);
     return (
         <div className="relative w-full aspect-[2/3] bg-emerald-600 rounded-xl border-4 border-emerald-800 shadow-inner overflow-hidden select-none">
             {/* Grass Pattern */}
@@ -91,11 +108,11 @@ const FootballPitch = ({ position, number, name }: { position: string, number: s
                     </div>
                     {/* Tooltip */}
                     <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                        {POSITIONS.find(p => p.value === position)?.label || position}
+                        {positionsList.find(p => p.value === position)?.label || position}
                     </div>
                 </div>
                 <div className="mt-2 px-3 py-1 bg-black/60 text-white text-xs font-bold rounded-full backdrop-blur-md shadow-sm border border-white/10">
-                    {name || 'اللاعب'}
+                    {name || t('common.player')}
                 </div>
             </div>
         </div>
@@ -103,6 +120,7 @@ const FootballPitch = ({ position, number, name }: { position: string, number: s
 }
 
 export function SportsTab() {
+    const { t } = useTranslation();
     const form = useFormContext();
     const { control, watch } = form;
 
@@ -126,13 +144,15 @@ export function SportsTab() {
     const ovr = Math.round((Number(pace) + Number(shooting) + Number(passing) + Number(dribbling) + Number(defending) + Number(physical)) / 6);
 
     const statsData = [
-        { subject: 'السرعة', A: Number(pace), fullMark: 99 },
-        { subject: 'التسديد', A: Number(shooting), fullMark: 99 },
-        { subject: 'التمرير', A: Number(passing), fullMark: 99 },
-        { subject: 'المراوغة', A: Number(dribbling), fullMark: 99 },
-        { subject: 'الدفاع', A: Number(defending), fullMark: 99 },
-        { subject: 'البدنية', A: Number(physical), fullMark: 99 },
+        { subject: t('profile.sportsTab.stats.pace'), A: Number(pace), fullMark: 99 },
+        { subject: t('profile.sportsTab.stats.shooting'), A: Number(shooting), fullMark: 99 },
+        { subject: t('profile.sportsTab.stats.passing'), A: Number(passing), fullMark: 99 },
+        { subject: t('profile.sportsTab.stats.dribbling'), A: Number(dribbling), fullMark: 99 },
+        { subject: t('profile.sportsTab.stats.defending'), A: Number(defending), fullMark: 99 },
+        { subject: t('profile.sportsTab.stats.physical'), A: Number(physical), fullMark: 99 },
     ];
+
+    const positionsList = getTranslatedPositions(t);
 
     // Club History Repeater
     const { fields: clubFields, append: appendClub, remove: removeClub } = useFieldArray({
@@ -180,7 +200,7 @@ export function SportsTab() {
                                 <Activity className="w-6 h-6" />
                             </div>
                             <div>
-                                <CardTitle>البيانات الفنية والبدنية</CardTitle>
+                                <CardTitle>{t('profile.sportsTab.technicalPhysical')}</CardTitle>
                             </div>
                         </CardHeader>
                         <CardContent className="grid grid-cols-1 gap-6 p-6">
@@ -190,15 +210,15 @@ export function SportsTab() {
                                 name="position"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>المركز الأساسي</FormLabel>
+                                        <FormLabel>{t('profile.sportsTab.primaryPosition')}</FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value || ''}>
                                             <FormControl>
                                                 <SelectTrigger className="bg-blue-50/30 border-blue-200">
-                                                    <SelectValue placeholder="اختر المركز" />
+                                                    <SelectValue placeholder={t('profile.sportsTab.selectPosition')} />
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                {POSITIONS.map((pos) => (
+                                                {positionsList.map((pos) => (
                                                     <SelectItem key={pos.value} value={pos.value}>{pos.label} ({pos.value})</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -214,15 +234,15 @@ export function SportsTab() {
                                 name="secondary_position"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>المركز الثانوي (اختياري)</FormLabel>
+                                        <FormLabel>{t('profile.sportsTab.secondaryPosition')}</FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value || ''}>
                                             <FormControl>
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="اختر المركز" />
+                                                    <SelectValue placeholder={t('profile.sportsTab.selectPosition')} />
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                {POSITIONS.map((pos) => (
+                                                {positionsList.map((pos) => (
                                                     <SelectItem key={pos.value} value={pos.value}>{pos.label} ({pos.value})</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -238,7 +258,7 @@ export function SportsTab() {
                                 name="jersey_number"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>رقم القميص المفضل</FormLabel>
+                                        <FormLabel>{t('profile.sportsTab.jerseyNumber')}</FormLabel>
                                         <FormControl>
                                             <div className="relative">
                                                 <Input type="number" className="pl-10" placeholder="10" {...field} value={field.value ?? ''} />
@@ -256,17 +276,17 @@ export function SportsTab() {
                                 name="foot"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>القدم المفضلة</FormLabel>
+                                        <FormLabel>{t('profile.sportsTab.preferredFoot')}</FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value || ''}>
                                             <FormControl>
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="اختر القدم" />
+                                                    <SelectValue placeholder={t('profile.sportsTab.selectFoot')} />
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                <SelectItem value="right">اليمنى</SelectItem>
-                                                <SelectItem value="left">اليسرى</SelectItem>
-                                                <SelectItem value="both">كلاهما</SelectItem>
+                                                <SelectItem value="right">{t('profile.sportsTab.right')}</SelectItem>
+                                                <SelectItem value="left">{t('profile.sportsTab.left')}</SelectItem>
+                                                <SelectItem value="both">{t('profile.sportsTab.both')}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />
@@ -281,7 +301,7 @@ export function SportsTab() {
                                     name="height"
                                     render={({ field }) => (
                                         <FormItem className="flex-1">
-                                            <FormLabel>الطول (سم)</FormLabel>
+                                            <FormLabel>{t('profile.sportsTab.height')}</FormLabel>
                                             <FormControl>
                                                 <Input type="number" {...field} />
                                             </FormControl>
@@ -294,7 +314,7 @@ export function SportsTab() {
                                     name="weight"
                                     render={({ field }) => (
                                         <FormItem className="flex-1">
-                                            <FormLabel>الوزن (كجم)</FormLabel>
+                                            <FormLabel>{t('profile.sportsTab.weight')}</FormLabel>
                                             <FormControl>
                                                 <Input type="number" {...field} />
                                             </FormControl>
@@ -313,7 +333,7 @@ export function SportsTab() {
                             <div className="p-2 bg-purple-100 rounded-lg text-purple-600">
                                 <Dumbbell className="w-6 h-6" />
                             </div>
-                            <CardTitle>التدريب والأكاديميات</CardTitle>
+                            <CardTitle>{t('profile.sportsTab.trainingAcademies')}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-8 p-6">
                             {/* Private Coach Section */}
@@ -324,8 +344,8 @@ export function SportsTab() {
                                     render={({ field }) => (
                                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm bg-white">
                                             <div className="space-y-0.5">
-                                                <FormLabel className="text-base">مدرب خاص</FormLabel>
-                                                <FormDescription>هل تتدرب مع مدرب خاص؟</FormDescription>
+                                                <FormLabel className="text-base">{t('profile.sportsTab.privateCoach')}</FormLabel>
+                                                <FormDescription>{t('profile.sportsTab.privateCoachDesc')}</FormDescription>
                                             </div>
                                             <FormControl>
                                                 <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -338,22 +358,22 @@ export function SportsTab() {
                                     <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
                                         <div className="bg-purple-50/50 rounded-xl p-4 border border-purple-100 space-y-4">
                                             <div className="flex justify-between items-center">
-                                                <FormLabel className="text-purple-800">سجل المدربين الخاصين</FormLabel>
+                                                <FormLabel className="text-purple-800">{t('profile.sportsTab.privateCoachHistory')}</FormLabel>
                                                 <Button type="button" size="sm" onClick={() => appendCoach({ name: '' })} variant="default" className="gap-2 h-8 bg-black text-white hover:bg-black/80">
-                                                    <Plus className="w-3.5 h-3.5" /> إضافة مدرب
+                                                    <Plus className="w-3.5 h-3.5" /> {t('profile.sportsTab.addCoach')}
                                                 </Button>
                                             </div>
                                             {coachFields.map((field, index) => (
                                                 <div key={field.id} className="flex flex-col md:flex-row gap-3 md:items-end p-3 md:p-0 rounded-lg md:rounded-none bg-white/50 md:bg-transparent border md:border-0 border-purple-100">
                                                     <div className="flex-1 w-full">
-                                                        <FormField control={control} name={`private_coaches.${index}.name`} render={({ field }) => (<FormItem><FormControl><Input placeholder="اسم المدرب" className="bg-white" {...field} /></FormControl></FormItem>)} />
+                                                        <FormField control={control} name={`private_coaches.${index}.name`} render={({ field }) => (<FormItem><FormControl><Input placeholder={t('profile.sportsTab.coachName')} className="bg-white" {...field} /></FormControl></FormItem>)} />
                                                     </div>
                                                     <div className="flex gap-2 w-full md:w-auto">
                                                         <div className="flex-1 md:w-32">
                                                             <FormField control={control} name={`private_coaches.${index}.start_date`} render={({ field }) => (
                                                                 <FormItem>
                                                                     <Select onValueChange={field.onChange} value={field.value || ''}>
-                                                                        <FormControl><SelectTrigger className="bg-white h-9"><SelectValue placeholder="من (سنة)" /></SelectTrigger></FormControl>
+                                                                        <FormControl><SelectTrigger className="bg-white h-9"><SelectValue placeholder={t('profile.sportsTab.fromYear')} /></SelectTrigger></FormControl>
                                                                         <SelectContent position="popper" className="h-60">
                                                                             {years.map((year) => <SelectItem key={year} value={year}>{year}</SelectItem>)}
                                                                         </SelectContent>
@@ -365,7 +385,7 @@ export function SportsTab() {
                                                             <FormField control={control} name={`private_coaches.${index}.end_date`} render={({ field }) => (
                                                                 <FormItem>
                                                                     <Select onValueChange={field.onChange} value={field.value || ''}>
-                                                                        <FormControl><SelectTrigger className="bg-white h-9"><SelectValue placeholder="إلى (سنة)" /></SelectTrigger></FormControl>
+                                                                        <FormControl><SelectTrigger className="bg-white h-9"><SelectValue placeholder={t('profile.sportsTab.toYear')} /></SelectTrigger></FormControl>
                                                                         <SelectContent position="popper" className="h-60">
                                                                             {years.map((year) => <SelectItem key={year} value={year}>{year}</SelectItem>)}
                                                                         </SelectContent>
@@ -377,7 +397,7 @@ export function SportsTab() {
                                                     <Button type="button" variant="ghost" size="icon" onClick={() => removeCoach(index)} className="text-red-500 hover:bg-red-50 hover:text-red-600 mb-0.5 self-end md:self-auto"><Trash2 className="w-4 h-4" /></Button>
                                                 </div>
                                             ))}
-                                            {coachFields.length === 0 && <p className="text-sm text-gray-400 text-center py-2">اضغط إضافة لتسجيل مدرب</p>}
+                                            {coachFields.length === 0 && <p className="text-sm text-gray-400 text-center py-2">{t('profile.sportsTab.addCoachClick')}</p>}
                                         </div>
                                     </div>
                                 )}
@@ -391,8 +411,8 @@ export function SportsTab() {
                                     render={({ field }) => (
                                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm bg-white">
                                             <div className="space-y-0.5">
-                                                <FormLabel className="text-base">أكاديميات رياضية</FormLabel>
-                                                <FormDescription>هل تدربت في أكاديميات رياضية من قبل؟</FormDescription>
+                                                <FormLabel className="text-base">{t('profile.sportsTab.academies')}</FormLabel>
+                                                <FormDescription>{t('profile.sportsTab.academiesDesc')}</FormDescription>
                                             </div>
                                             <FormControl>
                                                 <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -405,22 +425,22 @@ export function SportsTab() {
                                     <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
                                         <div className="bg-purple-50/50 rounded-xl p-4 border border-purple-100 space-y-4">
                                             <div className="flex justify-between items-center">
-                                                <FormLabel className="text-purple-800">سجل الأكاديميات</FormLabel>
+                                                <FormLabel className="text-purple-800">{t('profile.sportsTab.academiesHistory')}</FormLabel>
                                                 <Button type="button" size="sm" onClick={() => appendAcademy({ name: '' })} variant="default" className="gap-2 h-8 bg-black text-white hover:bg-black/80">
-                                                    <Plus className="w-3.5 h-3.5" /> إضافة أكاديمية
+                                                    <Plus className="w-3.5 h-3.5" /> {t('profile.sportsTab.addAcademy')}
                                                 </Button>
                                             </div>
                                             {academyFields.map((field, index) => (
                                                 <div key={field.id} className="flex flex-col md:flex-row gap-3 md:items-end p-3 md:p-0 rounded-lg md:rounded-none bg-white/50 md:bg-transparent border md:border-0 border-purple-100">
                                                     <div className="flex-1 w-full">
-                                                        <FormField control={control} name={`academies.${index}.name`} render={({ field }) => (<FormItem><FormControl><Input placeholder="اسم الأكاديمية" className="bg-white" {...field} value={field.value || ''} /></FormControl></FormItem>)} />
+                                                        <FormField control={control} name={`academies.${index}.name`} render={({ field }) => (<FormItem><FormControl><Input placeholder={t('profile.sportsTab.academyName')} className="bg-white" {...field} value={field.value || ''} /></FormControl></FormItem>)} />
                                                     </div>
                                                     <div className="flex gap-2 w-full md:w-auto">
                                                         <div className="flex-1 md:w-32">
                                                             <FormField control={control} name={`academies.${index}.start_date`} render={({ field }) => (
                                                                 <FormItem>
                                                                     <Select onValueChange={field.onChange} value={field.value || ''}>
-                                                                        <FormControl><SelectTrigger className="bg-white h-9"><SelectValue placeholder="من (سنة)" /></SelectTrigger></FormControl>
+                                                                        <FormControl><SelectTrigger className="bg-white h-9"><SelectValue placeholder={t('profile.sportsTab.fromYear')} /></SelectTrigger></FormControl>
                                                                         <SelectContent position="popper" className="h-60">
                                                                             {years.map((year) => <SelectItem key={year} value={year}>{year}</SelectItem>)}
                                                                         </SelectContent>
@@ -432,7 +452,7 @@ export function SportsTab() {
                                                             <FormField control={control} name={`academies.${index}.end_date`} render={({ field }) => (
                                                                 <FormItem>
                                                                     <Select onValueChange={field.onChange} value={field.value || ''}>
-                                                                        <FormControl><SelectTrigger className="bg-white h-9"><SelectValue placeholder="إلى (سنة)" /></SelectTrigger></FormControl>
+                                                                        <FormControl><SelectTrigger className="bg-white h-9"><SelectValue placeholder={t('profile.sportsTab.toYear')} /></SelectTrigger></FormControl>
                                                                         <SelectContent position="popper" className="h-60">
                                                                             {years.map((year) => <SelectItem key={year} value={year}>{year}</SelectItem>)}
                                                                         </SelectContent>
@@ -444,7 +464,7 @@ export function SportsTab() {
                                                     <Button type="button" variant="ghost" size="icon" onClick={() => removeAcademy(index)} className="text-red-500 hover:bg-red-50 hover:text-red-600 mb-0.5 self-end md:self-auto"><Trash2 className="w-4 h-4" /></Button>
                                                 </div>
                                             ))}
-                                            {academyFields.length === 0 && <p className="text-sm text-gray-400 text-center py-2">اضغط إضافة لتسجيل أكاديمية</p>}
+                                            {academyFields.length === 0 && <p className="text-sm text-gray-400 text-center py-2">{t('profile.sportsTab.addAcademyClick')}</p>}
                                         </div>
                                     </div>
                                 )}
@@ -459,10 +479,10 @@ export function SportsTab() {
                                 <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
                                     <Calendar className="w-6 h-6" />
                                 </div>
-                                <CardTitle>تاريخ الأندية</CardTitle>
+                                <CardTitle>{t('profile.sportsTab.clubHistory')}</CardTitle>
                             </div>
                             <Button variant="default" size="sm" onClick={() => appendClub({ club_name: '', season: '' })} className="gap-2 bg-black text-white hover:bg-black/90">
-                                <Plus className="w-4 h-4" /> إضافة نادي
+                                <Plus className="w-4 h-4" /> {t('profile.sportsTab.addClub')}
                             </Button>
                         </CardHeader>
                         <CardContent className="space-y-6">
@@ -483,8 +503,8 @@ export function SportsTab() {
                                             name={`club_history.${index}.club_name`}
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>اسم النادي</FormLabel>
-                                                    <FormControl><Input placeholder="اسم النادي" {...field} value={field.value || ''} /></FormControl>
+                                                    <FormLabel>{t('profile.sportsTab.clubName')}</FormLabel>
+                                                    <FormControl><Input placeholder={t('profile.sportsTab.clubName')} {...field} value={field.value || ''} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -494,11 +514,11 @@ export function SportsTab() {
                                             name={`club_history.${index}.season`}
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>الموسم</FormLabel>
+                                                    <FormLabel>{t('profile.sportsTab.season')}</FormLabel>
                                                     <Select onValueChange={field.onChange} value={field.value || ''}>
                                                         <FormControl>
                                                             <SelectTrigger className="bg-white">
-                                                                <SelectValue placeholder="اختر الموسم" />
+                                                                <SelectValue placeholder={t('profile.sportsTab.selectSeason')} />
                                                             </SelectTrigger>
                                                         </FormControl>
                                                         <SelectContent>
@@ -514,15 +534,15 @@ export function SportsTab() {
                                     </div>
 
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-100">
-                                        <FormField control={control} name={`club_history.${index}.position_played`} render={({ field }) => (<FormItem className="col-span-2"><FormLabel className="text-xs text-gray-500">المركز الذي لعبت فيه</FormLabel><FormControl><Input className="h-9" placeholder="مثال: مهاجم صريح" {...field} /></FormControl></FormItem>)} />
-                                        <FormField control={control} name={`club_history.${index}.goals`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-gray-500">أهداف</FormLabel><FormControl><Input type="number" className="h-9" {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
-                                        <FormField control={control} name={`club_history.${index}.assists`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-gray-500">صناعة</FormLabel><FormControl><Input type="number" className="h-9" {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
+                                        <FormField control={control} name={`club_history.${index}.position_played`} render={({ field }) => (<FormItem className="col-span-2"><FormLabel className="text-xs text-gray-500">{t('profile.sportsTab.positionPlayed')}</FormLabel><FormControl><Input className="h-9" placeholder={t('profile.sportsTab.positionPlayedPlaceholder')} {...field} /></FormControl></FormItem>)} />
+                                        <FormField control={control} name={`club_history.${index}.goals`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-gray-500">{t('profile.sportsTab.goals')}</FormLabel><FormControl><Input type="number" className="h-9" {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
+                                        <FormField control={control} name={`club_history.${index}.assists`} render={({ field }) => (<FormItem><FormLabel className="text-xs text-gray-500">{t('profile.sportsTab.assists')}</FormLabel><FormControl><Input type="number" className="h-9" {...field} value={field.value ?? ''} /></FormControl></FormItem>)} />
                                     </div>
                                 </div>
                             ))}
                             {clubFields.length === 0 && (
                                 <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                                    <p className="text-gray-400">لا يوجد سجل أندية بعد</p>
+                                    <p className="text-gray-400">{t('profile.sportsTab.noClubs')}</p>
                                 </div>
                             )}
                         </CardContent>
@@ -534,10 +554,10 @@ export function SportsTab() {
                                 <div className="p-2 bg-yellow-100 rounded-lg text-yellow-600">
                                     <Trophy className="w-6 h-6" />
                                 </div>
-                                <CardTitle>الإنجازات والجوائز</CardTitle>
+                                <CardTitle>{t('profile.sportsTab.achievements')}</CardTitle>
                             </div>
                             <Button variant="default" size="sm" onClick={() => appendAch({ title: '' })} className="gap-2 bg-black text-white hover:bg-black/90">
-                                <Plus className="w-4 h-4" /> إضافة
+                                <Plus className="w-4 h-4" /> {t('profile.sportsTab.addAchievement')}
                             </Button>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -550,7 +570,7 @@ export function SportsTab() {
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormControl>
-                                                        <Input placeholder="عنوان الإنجاز" {...field} />
+                                                        <Input placeholder={t('profile.sportsTab.achievementTitle')} {...field} />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -563,7 +583,7 @@ export function SportsTab() {
                                 </div>
                             ))}
                             {achFields.length === 0 && (
-                                <p className="text-center text-sm text-gray-400 py-4">لا يوجد إنجازات</p>
+                                <p className="text-center text-sm text-gray-400 py-4">{t('profile.sportsTab.noAchievements')}</p>
                             )}
                         </CardContent>
                     </Card>
@@ -574,13 +594,13 @@ export function SportsTab() {
                     <div className="sticky top-28 space-y-6">
                         <Tabs defaultValue="pitch" className="w-full">
                             <TabsList className="w-full grid grid-cols-2 h-12 bg-white/50 backdrop-blur border shadow-sm rounded-lg p-1">
-                                <TabsTrigger value="pitch" className="gap-2 h-full rounded-md data-[state=active]:bg-white data-[state=active]:text-green-700 data-[state=active]:shadow-sm"><MapPin className="w-4 h-4" /> الملعب</TabsTrigger>
-                                <TabsTrigger value="radar" className="gap-2 h-full rounded-md data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-sm"><BarChart3 className="w-4 h-4" /> الرادار</TabsTrigger>
+                                <TabsTrigger value="pitch" className="gap-2 h-full rounded-md data-[state=active]:bg-white data-[state=active]:text-green-700 data-[state=active]:shadow-sm"><MapPin className="w-4 h-4" /> {t('profile.sportsTab.pitchTab')}</TabsTrigger>
+                                <TabsTrigger value="radar" className="gap-2 h-full rounded-md data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-sm"><BarChart3 className="w-4 h-4" /> {t('profile.sportsTab.radarTab')}</TabsTrigger>
                             </TabsList>
                             <TabsContent value="pitch" className="mt-4">
                                 <Card className="overflow-hidden border-2 border-green-100 shadow-md">
                                     <CardHeader className="bg-green-50/50 pb-4">
-                                        <CardTitle className="text-center text-green-800">بطاقة الملعب</CardTitle>
+                                        <CardTitle className="text-center text-green-800">{t('profile.sportsTab.pitchCardTitle')}</CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-0">
                                         <div className="bg-green-600 p-4 min-h-[400px] flex items-center justify-center relative">
@@ -593,7 +613,7 @@ export function SportsTab() {
                                 <Card className="overflow-hidden border-2 border-slate-900 shadow-md bg-slate-900 text-white">
                                     <CardHeader className="bg-slate-800/50 pb-4 border-b border-slate-700">
                                         <div className="flex justify-between items-center">
-                                            <CardTitle className="text-center text-white">تحليل القدرات</CardTitle>
+                                            <CardTitle className="text-center text-white">{t('profile.sportsTab.radarCardTitle')}</CardTitle>
                                             <div className="flex flex-col items-center bg-yellow-500 text-black font-black px-2 py-1 rounded shadow-lg leading-tight">
                                                 <span className="text-xl">{ovr || 50}</span>
                                                 <span className="text-[8px]">OVR</span>
@@ -616,20 +636,22 @@ export function SportsTab() {
 
                         {/* Summary Card */}
                         <Card>
-                            <CardHeader><CardTitle className="text-sm text-gray-500">ملخص</CardTitle></CardHeader>
+                            <CardHeader><CardTitle className="text-sm text-gray-500">{t('profile.sportsTab.summary')}</CardTitle></CardHeader>
                             <CardContent className="space-y-2">
                                 <div className="flex justify-between text-sm border-b pb-2">
-                                    <span className="text-gray-500">المركز:</span>
-                                    <span className="font-bold">{POSITIONS.find(p => p.value === position)?.label || '-'}</span>
+                                    <span className="text-gray-500">{t('profile.sportsTab.positionLabel')}</span>
+                                    <span className="font-bold">{positionsList.find(p => p.value === position)?.label || '-'}</span>
                                 </div>
                                 <div className="flex justify-between text-sm border-b pb-2">
-                                    <span className="text-gray-500">القدم:</span>
-                                    <span className="font-bold">{form.getValues('foot') === 'right' ? 'اليمنى' : 'اليسرى'}</span>
+                                    <span className="text-gray-500">{t('profile.sportsTab.footLabel')}</span>
+                                    <span className="font-bold">
+                                        {form.getValues('foot') === 'right' ? t('profile.sportsTab.right') : form.getValues('foot') === 'left' ? t('profile.sportsTab.left') : form.getValues('foot') === 'both' ? t('profile.sportsTab.both') : '-'}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between text-sm border-b pb-2">
-                                    <span className="text-gray-500">الحالة:</span>
+                                    <span className="text-gray-500">{t('profile.sportsTab.statusLabel')}</span>
                                     <span className={contractStatus === 'contracted' ? "text-green-600 font-bold" : "text-gray-600"}>
-                                        {contractStatus === 'contracted' ? 'مرتبط بعقد' : 'حر'}
+                                        {contractStatus === 'contracted' ? t('profile.sportsTab.contracted') : t('profile.sportsTab.free')}
                                     </span>
                                 </div>
                             </CardContent>

@@ -3,59 +3,21 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-
-const TR = {
-  ar: {
-    dir: 'rtl', lang: 'ar',
-    joinBtn: 'انضم الآن',
-    nav: ['الرئيسية', 'تطبيق حجز', 'الأكاديمية', 'الأندية', 'البطولات'],
-    footerDesc: 'منصة رائدة تهدف إلى تمكين المواهب الكروية العربية باستخدام التكنولوجيا الحديثة والذكاء الاصطناعي للوصول إلى العالمية.',
-    footerCols: [
-      { title: 'روابط سريعة', links: [{ l: 'البحث عن المواهب', h: '#' }, { l: 'تقارير الأداء', h: '#' }, { l: 'الأكاديمية الرقمية', h: '#' }, { l: 'جدول المباريات', h: '#' }, { l: 'أخبار النجوم', h: '#' }] },
-      { title: 'الشركة', links: [{ l: 'من نحن', h: '/about' }, { l: 'الوظائف', h: '/careers' }, { l: 'شركاء النجاح', h: '/success-stories' }, { l: 'اتصل بنا', h: '/contact' }] },
-      { title: 'الدعم القانوني', links: [{ l: 'سياسة الخصوصية', h: '/privacy' }, { l: 'الشروط والأحكام', h: '/terms' }, { l: 'معايير الكشافة', h: '#' }, { l: 'الدعم الفني', h: '/support' }] },
-    ],
-    copyright: '© 2024 EL7LM platform with V Lab Ai. جميع الحقوق محفوظة.',
-    designedFor: 'صُمِّم للأبطال',
-    formTitle: 'نموذج التقديم للوظيفة',
-    backBtn: 'العودة للوظائف',
-    submitBtn: 'إرسال الطلب',
-    loadingBtn: 'جاري الإرسال...',
-    successTitle: 'تم إرسال طلبك بنجاح',
-    successMsg: 'سنتواصل معك قريباً عبر البريد الإلكتروني أو الهاتف.',
-    labels: {
-      roles: 'اختر الوظيفة/الوظائف',
-      name: 'الاسم الكامل',
-      email: 'البريد الإلكتروني',
-      phone: 'رقم الهاتف',
-      country: 'الدولة',
-      city: 'المحافظة / المدينة',
-      exp: 'الخبرات السابقة',
-      linkedin: 'رابط لينكدإن (اختياري)',
-      facebook: 'رابط فيسبوك/إنستغرام',
-      notes: 'ملاحظات إضافية'
-    }
-  }
-};
+import { useTranslation } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 const AVAILABLE_ROLES = [
-  { key: 'nextjsDevelopers', label: 'مبرمجين Next.js' },
-  { key: 'performanceAnalysts', label: 'محللي الأداء' },
-  { key: 'clubManagement', label: 'إدارة الأندية' },
-  { key: 'academyManagement', label: 'إدارة الأكاديمية' },
-  { key: 'accountants', label: 'المحاسبين' },
-  { key: 'scoutsManagement', label: 'إدارة الكشافين' },
-  { key: 'tournamentsManagement', label: 'إدارة البطولات' },
-  { key: 'trialsManagement', label: 'إدارة الاختبارات' },
-  { key: 'videoPhotographer', label: 'مصور فيديو' },
-  { key: 'sales', label: 'وظائف المبيعات' },
-  { key: 'customerRelations', label: 'علاقات العملاء' },
-  { key: 'callCenter', label: 'كول سنتر' },
-  { key: 'directSales', label: 'مبيعات مباشرة' },
-  { key: 'directCustomerCare', label: 'رعاية عملاء مباشرة' }
+  ['nextjsDevelopers', 'jobNextjs'], ['performanceAnalysts', 'jobPerformanceAnalysts'],
+  ['clubManagement', 'jobClubManagement'], ['academyManagement', 'jobAcademyManagement'],
+  ['accountants', 'jobAccountants'], ['scoutsManagement', 'jobScoutsManagement'],
+  ['tournamentsManagement', 'jobTournamentsManagement'], ['trialsManagement', 'jobTrialsManagement'],
+  ['videoPhotographer', 'jobVideoPhotographer'], ['sales', 'jobSales'],
+  ['customerRelations', 'jobCustomerRelations'], ['callCenter', 'jobCallCenter'],
+  ['directSales', 'jobDirectSales'], ['directCustomerCare', 'jobDirectCustomerCare'],
 ];
 
 function ApplyForm() {
+  const { t, isRTL } = useTranslation();
   const searchParams = useSearchParams();
   const router = useRouter();
   const roleFromQuery = searchParams.get('role') || '';
@@ -107,10 +69,8 @@ function ApplyForm() {
     headerBg: dark ? 'rgba(8,13,32,.8)' : 'rgba(255,255,255,.8)',
   };
 
-  const t = TR.ar;
-
   return (
-    <div style={{ background: theme.bg, color: theme.text, minHeight: '100vh', direction: 'rtl' }}>
+    <div style={{ background: theme.bg, color: theme.text, minHeight: '100vh', direction: isRTL ? 'rtl' : 'ltr' }}>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;700&display=swap" />
       
       {/* HEADER */}
@@ -127,12 +87,13 @@ function ApplyForm() {
              <span className="hl" style={{ fontSize: '1.5rem', fontWeight: 900, color: theme.primary }}>EL7LM</span>
           </Link>
           <nav style={{ display: 'flex', gap: '2rem' }}>
-            <Link href="/" style={{ fontWeight: 700, textDecoration: 'none', color: theme.primary }}>🏠 الرئيسية</Link>
+            <Link href="/" style={{ fontWeight: 700, textDecoration: 'none', color: theme.primary }}>🏠 {t('nav.home')}</Link>
           </nav>
         </div>
         <button onClick={() => setDark(!dark)} style={{ background: 'none', border: 'none', color: theme.text, cursor: 'pointer', padding: '0.5rem' }}>
           {dark ? '🌞' : '🌙'}
         </button>
+        <LanguageSwitcher compact />
       </header>
 
       <main style={{ paddingTop: '8rem', paddingBottom: '5rem' }}>
@@ -140,40 +101,40 @@ function ApplyForm() {
           <div style={{ maxWidth: '850px', margin: '0 auto', background: theme.panelBg, borderRadius: '32px', padding: '3rem', border: `1px solid ${theme.border}`, boxShadow: '0 20px 40px rgba(0,0,0,0.05)' }} className="apply-card">
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', flexWrap: 'wrap', gap: '1rem' }}>
-              <h1 className="st" style={{ fontSize: '2rem', margin: 0 }}>{t.formTitle}</h1>
+              <h1 className="st" style={{ fontSize: '2rem', margin: 0 }}>{t('careerApply.formTitle')}</h1>
               <Link href="/careers" style={{ 
                 color: theme.primary, textDecoration: 'none', fontWeight: 700, 
                 display: 'flex', alignItems: 'center', gap: '0.5rem', border: `1px solid ${theme.border}`,
                 padding: '0.5rem 1rem', borderRadius: '12px'
               }}>
-                ⬅️ {t.backBtn}
+                {isRTL ? '➡️' : '⬅️'} {t('careerApply.backToCareers')}
               </Link>
             </div>
 
             {success ? (
               <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
                 <div style={{ fontSize: '5rem', marginBottom: '2rem' }}>✅</div>
-                <h2 className="st" style={{ marginBottom: '1rem' }}>{t.successTitle}</h2>
-                <p style={{ color: theme.subText, fontSize: '1.2rem', marginBottom: '3rem' }}>{t.successMsg}</p>
-                <button onClick={() => router.push('/')} className="tc" style={{ background: theme.primary, color: 'white', padding: '1rem 3rem', borderRadius: '12px', border: 'none', fontWeight: 800 }}>العودة للرئيسية</button>
+                <h2 className="st" style={{ marginBottom: '1rem' }}>{t('careerApply.successTitle')}</h2>
+                <p style={{ color: theme.subText, fontSize: '1.2rem', marginBottom: '3rem' }}>{t('careerApply.successMessage')}</p>
+                <button onClick={() => router.push('/')} className="tc" style={{ background: theme.primary, color: 'white', padding: '1rem 3rem', borderRadius: '12px', border: 'none', fontWeight: 800 }}>{t('careerApply.backHome')}</button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '2.5rem' }}>
                 {/* Roles multi-select */}
                 <div>
-                  <label style={{ display: 'block', fontWeight: 800, marginBottom: '1.5rem', fontSize: '1.1rem' }}>{t.labels.roles}</label>
+                  <label style={{ display: 'block', fontWeight: 800, marginBottom: '1.5rem', fontSize: '1.1rem' }}>{t('careerApply.roles')}</label>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
-                    {AVAILABLE_ROLES.map(r => (
-                      <label key={r.key} style={{ 
+                    {AVAILABLE_ROLES.map(([key, labelKey]) => (
+                      <label key={key} style={{
                         display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', 
-                        background: selectedRoles.includes(r.key) ? `${theme.primary}15` : theme.inputBg, 
+                        background: selectedRoles.includes(key) ? `${theme.primary}15` : theme.inputBg,
                         borderRadius: '16px', cursor: 'pointer', transition: 'all 0.2s',
-                        border: selectedRoles.includes(r.key) ? `1px solid ${theme.primary}` : `1px solid transparent`
+                        border: selectedRoles.includes(key) ? `1px solid ${theme.primary}` : `1px solid transparent`
                       }}>
-                        <input type="checkbox" checked={selectedRoles.includes(r.key)} onChange={e => {
-                          setSelectedRoles(prev => e.target.checked ? [...prev, r.key] : prev.filter(k => k !== r.key));
+                        <input type="checkbox" checked={selectedRoles.includes(key)} onChange={e => {
+                          setSelectedRoles(prev => e.target.checked ? [...prev, key] : prev.filter(k => k !== key));
                         }} style={{ width: '1.25rem', height: '1.25rem' }} />
-                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{r.label}</span>
+                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{t(`careers.${labelKey}`)}</span>
                       </label>
                     ))}
                   </div>
@@ -182,36 +143,36 @@ function ApplyForm() {
                 {/* Grid Inputs */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
                   <div className="fi">
-                    <label>{t.labels.name}</label>
-                    <input name="fullName" required value={form.fullName} onChange={handleChange} style={{ background: theme.inputBg, color: theme.text }} placeholder="أدخل اسمك بالكامل" />
+                    <label>{t('careerApply.fullName')}</label>
+                    <input name="fullName" required value={form.fullName} onChange={handleChange} style={{ background: theme.inputBg, color: theme.text }} placeholder={t('careerApply.fullNamePlaceholder')} />
                   </div>
                   <div className="fi">
-                    <label>{t.labels.email}</label>
+                    <label>{t('careerApply.email')}</label>
                     <input type="email" name="email" required value={form.email} onChange={handleChange} style={{ background: theme.inputBg, color: theme.text }} placeholder="example@mail.com" />
                   </div>
                   <div className="fi">
-                    <label>{t.labels.phone}</label>
+                    <label>{t('careerApply.phone')}</label>
                     <input name="phone" required value={form.phone} onChange={handleChange} style={{ background: theme.inputBg, color: theme.text }} placeholder="+2010xxxxxxx" />
                   </div>
                   <div className="fi">
-                    <label>{t.labels.country}</label>
-                    <input name="country" required value={form.country} onChange={handleChange} style={{ background: theme.inputBg, color: theme.text }} placeholder="الدولة الحالية" />
+                    <label>{t('careerApply.country')}</label>
+                    <input name="country" required value={form.country} onChange={handleChange} style={{ background: theme.inputBg, color: theme.text }} placeholder={t('careerApply.countryPlaceholder')} />
                   </div>
                 </div>
 
                 <div className="fi">
-                  <label>{t.labels.exp}</label>
-                  <textarea name="experience" required value={form.experience} onChange={handleChange} rows={5} style={{ background: theme.inputBg, color: theme.text }} placeholder="صف خبراتك السابقة بإيجاز..." />
+                  <label>{t('careerApply.experience')}</label>
+                  <textarea name="experience" required value={form.experience} onChange={handleChange} rows={5} style={{ background: theme.inputBg, color: theme.text }} placeholder={t('careerApply.experiencePlaceholder')} />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
                   <div className="fi">
-                    <label>{t.labels.linkedin}</label>
+                    <label>{t('careerApply.linkedin')}</label>
                     <input name="linkedin" value={form.linkedin} onChange={handleChange} style={{ background: theme.inputBg, color: theme.text }} placeholder="https://linkedin.com/in/..." />
                   </div>
                   <div className="fi">
-                    <label>{t.labels.facebook}</label>
-                    <input name="facebook" value={form.facebook} onChange={handleChange} style={{ background: theme.inputBg, color: theme.text }} placeholder="رابط الملف الشخصي" />
+                    <label>{t('careerApply.socialProfile')}</label>
+                    <input name="facebook" value={form.facebook} onChange={handleChange} style={{ background: theme.inputBg, color: theme.text }} placeholder={t('careerApply.profileUrl')} />
                   </div>
                 </div>
 
@@ -221,7 +182,7 @@ function ApplyForm() {
                   cursor: 'pointer', fontSize: '1.2rem', marginTop: '1rem',
                   boxShadow: '0 10px 30px rgba(79,70,229,0.3)'
                 }}>
-                  {loading ? t.loadingBtn : t.submitBtn}
+                  {loading ? t('careerApply.sending') : t('careerApply.submit')}
                 </button>
               </form>
             )}
@@ -234,8 +195,8 @@ function ApplyForm() {
         <div className="ct">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '2rem' }}>
             <div>
-               <p style={{ color: theme.subText, marginBottom: '0.5rem' }}>{t.copyright}</p>
-               <Link href="/" style={{ color: theme.primary, textDecoration: 'none', fontWeight: 700 }}>🏠 العودة للصفحة الرئيسية</Link>
+               <p style={{ color: theme.subText, marginBottom: '0.5rem' }}>{t('about.copyright')}</p>
+               <Link href="/" style={{ color: theme.primary, textDecoration: 'none', fontWeight: 700 }}>🏠 {t('careerApply.backHome')}</Link>
             </div>
             <div className="hl" style={{ color: theme.primary, fontWeight: 900, fontSize: '1.1rem' }}>Mesk llc Qatar</div>
           </div>
@@ -263,7 +224,7 @@ function ApplyForm() {
 
 export default function ApplyPage() {
   return (
-    <Suspense fallback={<div style={{ padding: '10rem', textAlign: 'center', background: '#080d20', color: 'white' }}>جاري التحميل...</div>}>
+    <Suspense fallback={<div style={{ padding: '10rem', textAlign: 'center', background: '#080d20', color: 'white' }}>…</div>}>
       <ApplyForm />
     </Suspense>
   );

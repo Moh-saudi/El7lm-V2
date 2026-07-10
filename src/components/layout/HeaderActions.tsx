@@ -20,6 +20,9 @@ import { Globe, LogOut, Moon, Settings, Sun, User } from 'lucide-react';
 import Link from 'next/link';
 import React, { useEffect, useState } from 'react';
 
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
+import { useTranslation } from '@/lib/i18n';
+
 // ─── Dark mode toggle ─────────────────────────────────────────────────────────
 
 function useDarkMode() {
@@ -66,6 +69,7 @@ export default function HeaderActions({
   settingsHref,
   onLogout,
 }: HeaderActionsProps) {
+  const { t } = useTranslation();
   const { dark, toggle } = useDarkMode();
 
   const initials = displayName
@@ -74,24 +78,15 @@ export default function HeaderActions({
 
   return (
     <div className="flex items-center gap-1" style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif" }}>
-      {/* Language switcher — قيد التطوير */}
-      <button
-        className="header-action-btn gap-1 px-2 text-xs font-semibold"
-        title="تغيير اللغة (قريباً)"
-        aria-label="تغيير اللغة"
-        disabled
-        style={{ opacity: 0.5, cursor: 'not-allowed', width: 'auto' }}
-      >
-        <Globe size={15} />
-        <span className="hidden sm:inline">AR</span>
-      </button>
+      {/* Language switcher */}
+      <LanguageSwitcher />
 
       {/* Dark mode toggle */}
       <button
         onClick={toggle}
         className="header-action-btn"
-        title={dark ? 'الوضع النهاري' : 'الوضع الداكن'}
-        aria-label="تبديل المظهر"
+        title={dark ? t('common.lightMode') : t('common.darkMode')}
+        aria-label={t('common.toggleTheme')}
       >
         {dark ? <Sun size={18} /> : <Moon size={18} />}
       </button>
@@ -148,7 +143,7 @@ export default function HeaderActions({
           <DropdownMenuItem asChild>
             <Link href={profileHref} className="cursor-pointer">
               <User className="me-2 h-4 w-4" />
-              الملف الشخصي
+              {t('common.profile')}
             </Link>
           </DropdownMenuItem>
 
@@ -156,7 +151,7 @@ export default function HeaderActions({
             <DropdownMenuItem asChild>
               <Link href={settingsHref} className="cursor-pointer">
                 <Settings className="me-2 h-4 w-4" />
-                الإعدادات
+                {t('common.settings')}
               </Link>
             </DropdownMenuItem>
           )}
@@ -168,7 +163,7 @@ export default function HeaderActions({
             className="text-red-500 focus:text-red-500 cursor-pointer"
           >
             <LogOut className="me-2 h-4 w-4" />
-            تسجيل الخروج
+            {t('common.logout')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

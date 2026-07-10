@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from '@/lib/i18n';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { referralService } from '@/lib/referral/referral-service';
 import { organizationReferralService } from '@/lib/organization/organization-referral-service';
@@ -58,6 +59,7 @@ interface ReferralStats {
 }
 
 export default function PlayerReferralsPage() {
+  const { t } = useTranslation();
   const { user, userData } = useAuth();
   const [loading, setLoading] = useState(true);
   const [playerRewards, setPlayerRewards] = useState<PlayerRewards | null>(null);
@@ -104,7 +106,7 @@ export default function PlayerReferralsPage() {
 
     } catch (error) {
       console.error('خطأ في تحميل بيانات اللاعب:', error);
-      toast.error('حدث خطأ في تحميل البيانات');
+      toast.error(t('referrals.loadError'));
     } finally {
       setLoading(false);
     }
@@ -112,27 +114,27 @@ export default function PlayerReferralsPage() {
 
   const copyReferralCode = () => {
     navigator.clipboard.writeText(referralCode);
-    toast.success('تم نسخ كود الإحالة');
+    toast.success(t('referrals.codeCopied'));
   };
 
   const copyReferralLink = () => {
     const link = referralService.createReferralLink(referralCode);
     navigator.clipboard.writeText(link);
-    toast.success('تم نسخ رابط الإحالة');
+    toast.success(t('referrals.linkCopied'));
   };
 
   const shareViaWhatsApp = () => {
-    const messages = referralService.createShareMessages(referralCode, user?.user_metadata?.full_name || 'لاعب');
+    const messages = referralService.createShareMessages(referralCode, user?.user_metadata?.full_name || t('referrals.playerLabel'));
     window.open(messages.whatsapp, '_blank');
   };
 
   const shareViaSMS = () => {
-    const messages = referralService.createShareMessages(referralCode, user?.user_metadata?.full_name || 'لاعب');
+    const messages = referralService.createShareMessages(referralCode, user?.user_metadata?.full_name || t('referrals.playerLabel'));
     window.open(messages.sms, '_blank');
   };
 
   const shareViaEmail = () => {
-    const messages = referralService.createShareMessages(referralCode, user?.user_metadata?.full_name || 'لاعب');
+    const messages = referralService.createShareMessages(referralCode, user?.user_metadata?.full_name || t('referrals.playerLabel'));
     window.open(messages.email, '_blank');
   };
 
@@ -157,7 +159,7 @@ export default function PlayerReferralsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-xl">جاري التحميل...</div>
+        <div className="text-xl">{t('common.loading')}</div>
       </div>
     );
   }
@@ -167,10 +169,10 @@ export default function PlayerReferralsPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">نظام الإحالات والمكافآت</h1>
+        <h1 className="text-3xl font-bold text-gray-900">{t('referrals.title')}</h1>
         <div className="flex items-center gap-2">
           <Trophy className="w-6 h-6 text-yellow-500" />
-          <span className="text-lg font-semibold">نظام المكافآت</span>
+          <span className="text-lg font-semibold">{t('referrals.rewardsSystem')}</span>
         </div>
       </div>
 
@@ -184,7 +186,7 @@ export default function PlayerReferralsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100">النقاط المتوفرة</p>
+                <p className="text-blue-100">{t('referrals.availablePoints')}</p>
                 <p className="text-3xl font-bold">{playerRewards?.availablePoints.toLocaleString()}</p>
               </div>
               <DollarSign className="w-8 h-8" />
@@ -196,9 +198,9 @@ export default function PlayerReferralsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100">إجمالي الأرباح</p>
+                <p className="text-green-100">{t('referrals.totalEarnings')}</p>
                 <p className="text-3xl font-bold">${playerRewards?.totalEarnings.toFixed(2)}</p>
-                <p className="text-sm text-green-100">≈ {getEarningsInEGP(playerRewards?.totalEarnings || 0)} ج.م</p>
+                <p className="text-sm text-green-100">≈ {getEarningsInEGP(playerRewards?.totalEarnings || 0)} {t('referrals.egpUnit')}</p>
               </div>
               <TrendingUp className="w-8 h-8" />
             </div>
@@ -209,7 +211,7 @@ export default function PlayerReferralsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100">اللاعبين المحالين</p>
+                <p className="text-purple-100">{t('referrals.referredPlayers')}</p>
                 <p className="text-3xl font-bold">{playerRewards?.referralCount}</p>
               </div>
               <Users className="w-8 h-8" />
@@ -221,7 +223,7 @@ export default function PlayerReferralsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-orange-100">الشارات المكتسبة</p>
+                <p className="text-orange-100">{t('referrals.earnedBadges')}</p>
                 <p className="text-3xl font-bold">{playerRewards?.badges.length}</p>
               </div>
               <Award className="w-8 h-8" />
@@ -241,7 +243,7 @@ export default function PlayerReferralsPage() {
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <Building2 className="w-5 w-5 text-emerald-600" />
-                الانضمام لمنظمة
+                {t('referrals.joinOrg')}
               </span>
               <Button
                 onClick={() => setShowJoinModal(true)}
@@ -249,18 +251,18 @@ export default function PlayerReferralsPage() {
                 size="sm"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                انضم الآن
+                {t('referrals.joinNow')}
               </Button>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-gray-600 mb-4">
-              انضم إلى أكاديمية أو نادي للحصول على تدريب احترافي ومتابعة مستمرة وفرص أفضل.
+              {t('referrals.joinOrgDesc')}
             </p>
 
             {joinRequests.length > 0 && (
               <div className="space-y-2">
-                <h4 className="font-semibold text-sm mb-2">طلباتك:</h4>
+                <h4 className="font-semibold text-sm mb-2">{t('referrals.yourRequests')}</h4>
                 {joinRequests.slice(0, 3).map((request) => (
                   <div
                     key={request.id}
@@ -282,10 +284,10 @@ export default function PlayerReferralsPage() {
                       }
                     >
                       {request.status === 'approved'
-                        ? 'مقبول'
+                        ? t('referrals.statusApproved')
                         : request.status === 'pending'
-                          ? 'قيد المراجعة'
-                          : 'مرفوض'}
+                          ? t('referrals.statusPending')
+                          : t('referrals.statusRejected')}
                     </Badge>
                   </div>
                 ))}
@@ -299,7 +301,7 @@ export default function PlayerReferralsPage() {
       {user && userData && (
         <JoinOrganizationModal
           playerId={user.id}
-          playerName={userData.full_name || user.user_metadata?.full_name || 'اللاعب'}
+          playerName={userData.full_name || user.user_metadata?.full_name || t('referrals.playerLabel')}
           isOpen={showJoinModal}
           onClose={() => setShowJoinModal(false)}
           onSuccess={loadJoinRequests}
@@ -316,7 +318,7 @@ export default function PlayerReferralsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <UserPlus className="w-5 h-5" />
-              كود الإحالة الشخصي
+              {t('referrals.personalCode')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -336,33 +338,33 @@ export default function PlayerReferralsPage() {
             <div className="flex flex-wrap gap-2">
               <Button onClick={copyReferralLink} className="bg-transparent border-2 border-white/30 text-white hover:bg-white/20 transition-all duration-300">
                 <Copy className="w-4 h-4 mr-2" />
-                نسخ الرابط
+                {t('referrals.copyLink')}
               </Button>
               <Button onClick={shareViaWhatsApp} className="bg-transparent border-2 border-white/30 text-white hover:bg-white/20 transition-all duration-300">
                 <MessageCircle className="w-4 h-4 mr-2" />
-                واتساب
+                {t('referrals.whatsapp')}
               </Button>
               <Button onClick={shareViaSMS} className="bg-transparent border-2 border-white/30 text-white hover:bg-white/20 transition-all duration-300">
                 <Phone className="w-4 h-4 mr-2" />
-                SMS
+                {t('referrals.sms')}
               </Button>
               <Button onClick={shareViaEmail} className="bg-transparent border-2 border-white/30 text-white hover:bg-white/20 transition-all duration-300">
                 <Mail className="w-4 h-4 mr-2" />
-                إيميل
+                {t('referrals.email')}
               </Button>
               <Button onClick={() => setShowQR(!showQR)} className="bg-transparent border-2 border-white/30 text-white hover:bg-white/20 transition-all duration-300">
                 <QrCode className="w-4 h-4 mr-2" />
-                QR Code
+                {t('referrals.qrCode')}
               </Button>
             </div>
 
             {showQR && (
               <div className="mt-4 p-4 bg-white/10 rounded-lg">
-                <p className="text-center text-sm mb-2">QR Code للكود الشخصي</p>
+                <p className="text-center text-sm mb-2">{t('referrals.qrCodePersonal')}</p>
                 <div className="flex justify-center">
                   {/* هنا يمكن إضافة مكتبة QR Code */}
                   <div className="w-32 h-32 bg-white rounded-lg flex items-center justify-center">
-                    <span className="text-xs text-gray-600">QR Code</span>
+                    <span className="text-xs text-gray-600">{t('referrals.qrCode')}</span>
                   </div>
                 </div>
               </div>
@@ -381,7 +383,7 @@ export default function PlayerReferralsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Award className="w-5 h-5 text-yellow-500" />
-              الشارات المكتسبة
+              {t('referrals.earnedBadges')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -406,7 +408,7 @@ export default function PlayerReferralsPage() {
                   <div>
                     <h4 className="font-semibold text-gray-600">{nextBadge.name}</h4>
                     <p className="text-sm text-gray-500">
-                      تحتاج {nextBadge.requirement - (playerRewards?.referralCount || 0)} إحالة أخرى
+                      {t('referrals.needsMoreReferrals').replace('{{count}}', String(nextBadge.requirement - (playerRewards?.referralCount || 0)))}
                     </p>
                   </div>
                 </div>
@@ -426,63 +428,63 @@ export default function PlayerReferralsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="w-5 h-5 text-green-500" />
-              كيف تكسب النقاط؟
+              {t('referrals.howToEarnPoints')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-green-600">🎯 الإحالات</h3>
+                <h3 className="text-lg font-semibold text-green-600">{t('referrals.referralsSection')}</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span>إحالة لاعب جديد</span>
-                    <Badge variant="secondary">10,000 نقطة</Badge>
+                    <span>{t('referrals.referPlayer')}</span>
+                    <Badge variant="secondary">10,000 {t('common.points')}</Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span>مكافأة اللاعب الجديد</span>
-                    <Badge variant="secondary">5,000 نقطة</Badge>
+                    <span>{t('referrals.newPlayerBonus')}</span>
+                    <Badge variant="secondary">5,000 {t('common.points')}</Badge>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-blue-600">📹 الفيديوهات</h3>
+                <h3 className="text-lg font-semibold text-blue-600">{t('referrals.videosSection')}</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span>رفع فيديو جديد</span>
-                    <Badge variant="secondary">1,000 نقطة</Badge>
+                    <span>{t('referrals.uploadVideo')}</span>
+                    <Badge variant="secondary">1,000 {t('common.points')}</Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span>إكمال الملف الشخصي</span>
-                    <Badge variant="secondary">2,000 نقطة</Badge>
+                    <span>{t('referrals.completeProfile')}</span>
+                    <Badge variant="secondary">2,000 {t('common.points')}</Badge>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-purple-600">📚 أكاديمية الحلم</h3>
+                <h3 className="text-lg font-semibold text-purple-600">{t('referrals.academySection')}</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span>شراء درس جديد</span>
-                    <Badge variant="secondary">2,000 نقطة</Badge>
+                    <span>{t('referrals.buyLesson')}</span>
+                    <Badge variant="secondary">2,000 {t('common.points')}</Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span>أول اشتراك</span>
-                    <Badge variant="secondary">5,000 نقطة</Badge>
+                    <span>{t('referrals.firstSubscription')}</span>
+                    <Badge variant="secondary">5,000 {t('common.points')}</Badge>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-orange-600">💰 التحويل</h3>
+                <h3 className="text-lg font-semibold text-orange-600">{t('referrals.conversionSection')}</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span>10,000 نقطة =</span>
+                    <span>{t('referrals.pointsEquivalent')}</span>
                     <Badge variant="secondary">$1.00</Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span>1 دولار =</span>
-                    <Badge variant="secondary">49 ج.م</Badge>
+                    <span>{t('referrals.dollarEquivalent')}</span>
+                    <Badge variant="secondary">49 {t('referrals.egpUnit')}</Badge>
                   </div>
                 </div>
               </div>

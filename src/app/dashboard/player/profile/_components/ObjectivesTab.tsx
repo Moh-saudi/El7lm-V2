@@ -7,26 +7,28 @@ import { Input } from "@/components/ui/input";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Target, Plus, Trash2, Trophy } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "@/lib/i18n";
 
 export function ObjectivesTab() {
+    const { t } = useTranslation();
     const { control, watch, setValue } = useFormContext();
     const objectives = watch("objectives") || [];
     const [newObjective, setNewObjective] = useState("");
 
-    const SUGGESTED_OBJECTIVES = [
-        "الاشتراك في بطولات دولية",
-        "الاشتراك في بطولات محلية",
-        "القيام بمعايشات دولية",
-        "القيام بمعايشات محلية",
-        "الانضمام لمعسكرات تدريبية",
-        "تعلم اللغة الإنجليزية واللغات",
-        "تعلم تحليل الأداء",
-        "تعلم التحكيم وتقنية الـ VAR",
-        "تحسين اللياقة البدنية",
-        "الانضمام لنادي محترف",
-        "الحصول على منحة رياضية",
-        "تطوير الثقافة التكتيكية",
-        "الالتزام بنظام غذائي رياضي"
+    const SUGGESTED_OBJECTIVE_KEYS = [
+        "intlTournaments",
+        "localTournaments",
+        "intlTrials",
+        "localTrials",
+        "camp",
+        "english",
+        "performanceAnalysis",
+        "var",
+        "fitness",
+        "proClub",
+        "scholarship",
+        "tactical",
+        "diet"
     ];
 
     const addObjective = (val: string) => {
@@ -57,20 +59,21 @@ export function ObjectivesTab() {
                         <Target className="w-6 h-6" />
                     </div>
                     <div>
-                        <CardTitle>أهداف اللاعب</CardTitle>
-                        <CardDescription>اختر من الأهداف المقترحة أو أضف أهدافك الخاصة</CardDescription>
+                        <CardTitle>{t('profile.objectivesTab.title')}</CardTitle>
+                        <CardDescription>{t('profile.objectivesTab.desc')}</CardDescription>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
                     {/* Suggested Objectives */}
                     <div className="space-y-3">
-                        <h4 className="text-sm font-medium text-gray-700">أهداف مقترحة (اضغط للإضافة):</h4>
+                        <h4 className="text-sm font-medium text-gray-700">{t('profile.objectivesTab.suggestedTitle')}</h4>
                         <div className="flex flex-wrap gap-2">
-                            {SUGGESTED_OBJECTIVES.map((goal) => {
+                            {SUGGESTED_OBJECTIVE_KEYS.map((key) => {
+                                const goal = t('profile.objectivesTab.suggested.' + key);
                                 const isSelected = objectives.includes(goal);
                                 return (
                                     <button
-                                        key={goal}
+                                        key={key}
                                         type="button"
                                         onClick={() => !isSelected && addObjective(goal)}
                                         disabled={isSelected}
@@ -91,11 +94,11 @@ export function ObjectivesTab() {
 
                     {/* Add Custom Objective */}
                     <div className="space-y-2">
-                        <h4 className="text-sm font-medium text-gray-700">أهداف خاصة:</h4>
+                        <h4 className="text-sm font-medium text-gray-700">{t('profile.objectivesTab.customTitle')}</h4>
                         <div className="flex gap-4">
                             <div className="flex-1">
                                 <Input
-                                    placeholder="اكتب هدفاً خاصاً..."
+                                    placeholder={t('profile.objectivesTab.customPlaceholder')}
                                     value={newObjective}
                                     onChange={(e) => setNewObjective(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCustom())}
@@ -104,7 +107,7 @@ export function ObjectivesTab() {
                             </div>
                             <Button type="button" onClick={handleAddCustom} className="bg-black text-white hover:bg-black/90">
                                 <Plus className="w-4 h-4 ml-2" />
-                                إضافة
+                                {t('profile.objectivesTab.addButton')}
                             </Button>
                         </div>
                     </div>
@@ -134,8 +137,8 @@ export function ObjectivesTab() {
                         ) : (
                             <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl">
                                 <Trophy className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                <h3 className="text-gray-500 font-medium">لم يتم تحديد أهداف بعد</h3>
-                                <p className="text-gray-400 text-sm">اختر من القائمة أعلاه أو أضف هدفاً خاصاً</p>
+                                <h3 className="text-gray-500 font-medium">{t('profile.objectivesTab.noObjectives')}</h3>
+                                <p className="text-gray-400 text-sm">{t('profile.objectivesTab.noObjectivesDesc')}</p>
                             </div>
                         )}
                     </div>

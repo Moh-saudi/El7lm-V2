@@ -123,7 +123,7 @@ export async function createGeideaSession(
     
     // returnUrl يجب أن يكون أيضاً URL الإنتاج (Geidea لا يقبل localhost)
     // إذا كان returnUrl المطلوب يحتوي على localhost، نستخدم URL الإنتاج بدلاً منه مع نفس المسار
-    let returnUrl = request.returnUrl || `${productionBaseUrl}/dashboard/shared/bulk-payment`;
+    let returnUrl = request.returnUrl || `${productionBaseUrl}/dashboard/shared/payment`;
     
     console.log('🔄 [Geidea Client] Original returnUrl from request:', request.returnUrl);
     

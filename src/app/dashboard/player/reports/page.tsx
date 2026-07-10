@@ -2,17 +2,19 @@
 
 import { ArrowRight, Clock, Eye, FileText, Search, Star, TrendingUp, Zap } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslation } from '@/lib/i18n';
 
 const UPCOMING_FEATURES = [
-  { icon: Eye,        label: 'تقارير الكشافين الذين شاهدوك' },
-  { icon: Star,       label: 'تقييمات الأداء التفصيلية' },
-  { icon: Search,     label: 'بيانات من شاهد ملفك الشخصي' },
-  { icon: TrendingUp, label: 'مقارنة تقدمك مع معايير النخبة' },
-  { icon: FileText,   label: 'ملاحظات الكشافين المفصّلة' },
-  { icon: Star,       label: 'اهتمام الأندية والأكاديميات' },
+  { icon: Eye,        labelKey: 'reports.features.whoViewed' },
+  { icon: Star,       labelKey: 'reports.features.evaluations' },
+  { icon: Search,     labelKey: 'reports.features.viewedProfile' },
+  { icon: TrendingUp, labelKey: 'reports.features.eliteComparison' },
+  { icon: FileText,   labelKey: 'reports.features.detailedNotes' },
+  { icon: Star,       labelKey: 'reports.features.clubInterest' },
 ];
 
 export default function PlayerReportsPage() {
+  const { t } = useTranslation();
   return (
     <div
       className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-12 text-center"
@@ -39,26 +41,26 @@ export default function PlayerReportsPage() {
         style={{ background: 'color-mix(in srgb, var(--accent-current) 12%, transparent)', color: 'var(--accent-current)' }}
       >
         <Zap size={14} />
-        قريباً
+        {t('reports.upcoming')}
       </div>
 
       {/* Title */}
       <h1 className="text-3xl md:text-4xl font-black mb-3" style={{ color: 'var(--header-text)' }}>
-        تقارير الكشافين
+        {t('reports.title')}
       </h1>
       <p className="text-base md:text-lg max-w-md mb-2" style={{ color: 'var(--header-text-muted)' }}>
-        ستتمكن قريباً من رؤية تقارير الكشافين والمدربين الذين قيّموا أداءك.
+        {t('reports.subtitle')}
       </p>
       <p className="text-sm mb-10 flex items-center gap-2 justify-center" style={{ color: 'var(--header-text-muted)' }}>
         <Clock size={14} />
-        الميزة قيد التطوير
+        {t('reports.underDevelopment')}
       </p>
 
       {/* Features */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full max-w-lg mb-10">
-        {UPCOMING_FEATURES.map(({ icon: Icon, label }) => (
+        {UPCOMING_FEATURES.map(({ icon: Icon, labelKey }) => (
           <div
-            key={label}
+            key={labelKey}
             className="flex flex-col items-center gap-2 p-4 rounded-2xl text-sm font-medium"
             style={{
               background: 'var(--main-bg)',
@@ -67,7 +69,7 @@ export default function PlayerReportsPage() {
             }}
           >
             <Icon size={20} style={{ color: 'var(--accent-current)' }} />
-            {label}
+            {t(labelKey)}
           </div>
         ))}
       </div>
@@ -80,7 +82,7 @@ export default function PlayerReportsPage() {
           style={{ background: 'var(--accent-current)' }}
         >
           <ArrowRight size={18} />
-          العودة للرئيسية
+          {t('reports.backToHome')}
         </Link>
         <Link
           href="/dashboard/player/profile"
@@ -92,7 +94,7 @@ export default function PlayerReportsPage() {
           }}
         >
           <Eye size={18} />
-          شاهد ملفك الشخصي
+          {t('reports.viewProfile')}
         </Link>
       </div>
     </div>

@@ -87,7 +87,7 @@ export default function PaymentCancelledPage() {
 
         <div className="space-y-3">
           <Button
-            onClick={() => router.push('/dashboard/shared/bulk-payment')}
+            onClick={() => router.push('/dashboard/shared/payment')}
             className="w-full bg-blue-600 hover:bg-blue-700"
           >
             <RefreshCw className="h-4 w-4 mr-2" />

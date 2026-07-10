@@ -1,24 +1,27 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CreditCard, Download, Eye } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n';
 
 export default function TrainerBilling() {
+  const { t } = useTranslation();
+
   return (
     <div className="p-6">
-      <h1 className="mb-6 text-2xl font-bold text-blue-700">الاشتراكات والفواتير</h1>
+      <h1 className="mb-6 text-2xl font-bold text-blue-700">{t('billing.subscriptionsAndBills')}</h1>
       
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="w-5 h-5" />
-            تفاصيل الاشتراك
+            {t('billing.subscriptionDetails')}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-600">صفحة إدارة الاشتراكات والفواتير للمدربين</p>
+          <p className="text-gray-600">{t('billing.trainerBillingDesc')}</p>
         </CardContent>
       </Card>
     </div>
   );
-} 
+}

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { useTranslation } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase/config';
 import { getPlayerAvatarUrl } from '@/lib/supabase/image-utils';
 import {
@@ -31,6 +32,274 @@ import {
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+type PlayersSearchCopy = {
+  show: string;
+  playersPerPage: string;
+  range: string;
+  previous: string;
+  next: string;
+  loading: string;
+  title: string;
+  subtitle: string;
+  searchPlaceholder: string;
+  filters: string;
+  reset: string;
+  refresh: string;
+  basicInfo: string;
+  position: string;
+  choosePosition: string;
+  allPositions: string;
+  country: string;
+  chooseCountry: string;
+  allCountries: string;
+  nationality: string;
+  chooseNationality: string;
+  allNationalities: string;
+  ageAndBirth: string;
+  minAge: string;
+  maxAge: string;
+  example18: string;
+  example30: string;
+  birthYear: string;
+  chooseBirthYear: string;
+  allYears: string;
+  additionalInfo: string;
+  skillLevel: string;
+  chooseSkillLevel: string;
+  allLevels: string;
+  phone: string;
+  phonePlaceholder: string;
+  importantNote: string;
+  filtersNoteStart: string;
+  filtersNoteStrong: string;
+  filtersNoteEnd: string;
+  resultsSummary: string;
+  pageSummary: string;
+  noResults: string;
+  noResultsDesc: string;
+  defaultPlayer: string;
+  unknownPlayer: string;
+  defaultUser: string;
+  viewProfile: string;
+  message: string;
+  orgLabels: Record<string, string>;
+};
+
+const PLAYERS_SEARCH_COPY: Record<string, PlayersSearchCopy> = {
+  ar: {
+    show: 'عرض',
+    playersPerPage: 'لاعب في الصفحة',
+    range: 'عرض {{from}} إلى {{to}} من {{total}} لاعب',
+    previous: 'السابق',
+    next: 'التالي',
+    loading: 'جاري تحميل اللاعبين...',
+    title: 'البحث عن اللاعبين',
+    subtitle: 'اكتشف اللاعبين الموهوبين من جميع أنحاء العالم',
+    searchPlaceholder: 'ابحث عن اللاعبين بالاسم، المركز، الجنسية، أو النادي...',
+    filters: 'الفلاتر',
+    reset: 'إعادة تعيين',
+    refresh: 'تحديث',
+    basicInfo: 'معلومات أساسية',
+    position: 'المركز',
+    choosePosition: 'اختر المركز',
+    allPositions: '🌍 جميع المراكز',
+    country: 'البلد',
+    chooseCountry: 'اختر البلد',
+    allCountries: '🌍 جميع البلدان',
+    nationality: 'الجنسية',
+    chooseNationality: 'اختر الجنسية',
+    allNationalities: '🌍 جميع الجنسيات',
+    ageAndBirth: 'العمر وتاريخ الميلاد',
+    minAge: 'الحد الأدنى للعمر',
+    maxAge: 'الحد الأقصى للعمر',
+    example18: 'مثال: 18',
+    example30: 'مثال: 30',
+    birthYear: 'عام الميلاد',
+    chooseBirthYear: 'اختر عام الميلاد',
+    allYears: '📅 جميع الأعوام',
+    additionalInfo: 'معلومات إضافية',
+    skillLevel: 'مستوى المهارة',
+    chooseSkillLevel: 'اختر مستوى المهارة',
+    allLevels: '⭐ جميع المستويات',
+    phone: 'رقم الهاتف',
+    phonePlaceholder: 'ابحث برقم الهاتف...',
+    importantNote: 'ملاحظة مهمة',
+    filtersNoteStart: 'جميع الفلاتر تعمل معاً - يمكنك اختيار لاعب من دولة معينة مع عمر محدد في نفس الوقت. النتائج ستظهر فقط اللاعبين الذين يطابقون ',
+    filtersNoteStrong: 'جميع',
+    filtersNoteEnd: ' الفلاتر المختارة.',
+    resultsSummary: 'عرض {{filtered}} لاعب من أصل {{total}} لاعب',
+    pageSummary: 'الصفحة {{current}} من {{total}}',
+    noResults: 'لا توجد نتائج',
+    noResultsDesc: 'جرب تغيير معايير البحث أو الفلاتر',
+    defaultPlayer: 'لاعب',
+    unknownPlayer: 'لاعب غير محدد',
+    defaultUser: 'مستخدم',
+    viewProfile: 'عرض الملف',
+    message: 'رسالة',
+    orgLabels: { independent: 'مستقل', trainer: 'مدرب', club: 'نادي', agent: 'وكيل', academy: 'أكاديمية', unknown: 'غير محدد' },
+  },
+  en: {
+    show: 'Show',
+    playersPerPage: 'players per page',
+    range: 'Showing {{from}} to {{to}} of {{total}} players',
+    previous: 'Previous',
+    next: 'Next',
+    loading: 'Loading players...',
+    title: 'Search players',
+    subtitle: 'Discover talented players from around the world',
+    searchPlaceholder: 'Search by name, position, nationality, or club...',
+    filters: 'Filters',
+    reset: 'Reset',
+    refresh: 'Refresh',
+    basicInfo: 'Basic information',
+    position: 'Position',
+    choosePosition: 'Choose position',
+    allPositions: '🌍 All positions',
+    country: 'Country',
+    chooseCountry: 'Choose country',
+    allCountries: '🌍 All countries',
+    nationality: 'Nationality',
+    chooseNationality: 'Choose nationality',
+    allNationalities: '🌍 All nationalities',
+    ageAndBirth: 'Age and birth date',
+    minAge: 'Minimum age',
+    maxAge: 'Maximum age',
+    example18: 'Example: 18',
+    example30: 'Example: 30',
+    birthYear: 'Birth year',
+    chooseBirthYear: 'Choose birth year',
+    allYears: '📅 All years',
+    additionalInfo: 'Additional information',
+    skillLevel: 'Skill level',
+    chooseSkillLevel: 'Choose skill level',
+    allLevels: '⭐ All levels',
+    phone: 'Phone number',
+    phonePlaceholder: 'Search by phone number...',
+    importantNote: 'Important note',
+    filtersNoteStart: 'All filters work together — you can choose a player from a specific country with a specific age at the same time. Results will only show players matching ',
+    filtersNoteStrong: 'all',
+    filtersNoteEnd: ' selected filters.',
+    resultsSummary: 'Showing {{filtered}} of {{total}} players',
+    pageSummary: 'Page {{current}} of {{total}}',
+    noResults: 'No results',
+    noResultsDesc: 'Try changing the search criteria or filters',
+    defaultPlayer: 'Player',
+    unknownPlayer: 'Unknown player',
+    defaultUser: 'User',
+    viewProfile: 'View profile',
+    message: 'Message',
+    orgLabels: { independent: 'Independent', trainer: 'Trainer', club: 'Club', agent: 'Agent', academy: 'Academy', unknown: 'Unknown' },
+  },
+  es: {
+    show: 'Mostrar',
+    playersPerPage: 'jugadores por página',
+    range: 'Mostrando {{from}} a {{to}} de {{total}} jugadores',
+    previous: 'Anterior',
+    next: 'Siguiente',
+    loading: 'Cargando jugadores...',
+    title: 'Buscar jugadores',
+    subtitle: 'Descubre jugadores talentosos de todo el mundo',
+    searchPlaceholder: 'Buscar por nombre, posición, nacionalidad o club...',
+    filters: 'Filtros',
+    reset: 'Restablecer',
+    refresh: 'Actualizar',
+    basicInfo: 'Información básica',
+    position: 'Posición',
+    choosePosition: 'Elige posición',
+    allPositions: '🌍 Todas las posiciones',
+    country: 'País',
+    chooseCountry: 'Elige país',
+    allCountries: '🌍 Todos los países',
+    nationality: 'Nacionalidad',
+    chooseNationality: 'Elige nacionalidad',
+    allNationalities: '🌍 Todas las nacionalidades',
+    ageAndBirth: 'Edad y fecha de nacimiento',
+    minAge: 'Edad mínima',
+    maxAge: 'Edad máxima',
+    example18: 'Ejemplo: 18',
+    example30: 'Ejemplo: 30',
+    birthYear: 'Año de nacimiento',
+    chooseBirthYear: 'Elige año de nacimiento',
+    allYears: '📅 Todos los años',
+    additionalInfo: 'Información adicional',
+    skillLevel: 'Nivel de habilidad',
+    chooseSkillLevel: 'Elige nivel de habilidad',
+    allLevels: '⭐ Todos los niveles',
+    phone: 'Teléfono',
+    phonePlaceholder: 'Buscar por teléfono...',
+    importantNote: 'Nota importante',
+    filtersNoteStart: 'Todos los filtros funcionan juntos: puedes elegir un jugador de un país específico con una edad concreta al mismo tiempo. Los resultados solo mostrarán jugadores que coincidan con ',
+    filtersNoteStrong: 'todos',
+    filtersNoteEnd: ' los filtros seleccionados.',
+    resultsSummary: 'Mostrando {{filtered}} de {{total}} jugadores',
+    pageSummary: 'Página {{current}} de {{total}}',
+    noResults: 'Sin resultados',
+    noResultsDesc: 'Prueba a cambiar los criterios de búsqueda o filtros',
+    defaultPlayer: 'Jugador',
+    unknownPlayer: 'Jugador no definido',
+    defaultUser: 'Usuario',
+    viewProfile: 'Ver perfil',
+    message: 'Mensaje',
+    orgLabels: { independent: 'Independiente', trainer: 'Entrenador', club: 'Club', agent: 'Agente', academy: 'Academia', unknown: 'No definido' },
+  },
+  pt: {
+    show: 'Mostrar',
+    playersPerPage: 'jogadores por página',
+    range: 'Mostrando {{from}} a {{to}} de {{total}} jogadores',
+    previous: 'Anterior',
+    next: 'Próximo',
+    loading: 'Carregando jogadores...',
+    title: 'Pesquisar jogadores',
+    subtitle: 'Descubra jogadores talentosos de todo o mundo',
+    searchPlaceholder: 'Pesquisar por nome, posição, nacionalidade ou clube...',
+    filters: 'Filtros',
+    reset: 'Redefinir',
+    refresh: 'Atualizar',
+    basicInfo: 'Informações básicas',
+    position: 'Posição',
+    choosePosition: 'Escolha a posição',
+    allPositions: '🌍 Todas as posições',
+    country: 'País',
+    chooseCountry: 'Escolha o país',
+    allCountries: '🌍 Todos os países',
+    nationality: 'Nacionalidade',
+    chooseNationality: 'Escolha a nacionalidade',
+    allNationalities: '🌍 Todas as nacionalidades',
+    ageAndBirth: 'Idade e data de nascimento',
+    minAge: 'Idade mínima',
+    maxAge: 'Idade máxima',
+    example18: 'Exemplo: 18',
+    example30: 'Exemplo: 30',
+    birthYear: 'Ano de nascimento',
+    chooseBirthYear: 'Escolha o ano de nascimento',
+    allYears: '📅 Todos os anos',
+    additionalInfo: 'Informações adicionais',
+    skillLevel: 'Nível de habilidade',
+    chooseSkillLevel: 'Escolha o nível de habilidade',
+    allLevels: '⭐ Todos os níveis',
+    phone: 'Telefone',
+    phonePlaceholder: 'Pesquisar por telefone...',
+    importantNote: 'Nota importante',
+    filtersNoteStart: 'Todos os filtros funcionam juntos — você pode escolher um jogador de um país específico com uma idade específica ao mesmo tempo. Os resultados mostrarão apenas jogadores que correspondem a ',
+    filtersNoteStrong: 'todos',
+    filtersNoteEnd: ' os filtros selecionados.',
+    resultsSummary: 'Mostrando {{filtered}} de {{total}} jogadores',
+    pageSummary: 'Página {{current}} de {{total}}',
+    noResults: 'Sem resultados',
+    noResultsDesc: 'Tente alterar os critérios de busca ou filtros',
+    defaultPlayer: 'Jogador',
+    unknownPlayer: 'Jogador não definido',
+    defaultUser: 'Usuário',
+    viewProfile: 'Ver perfil',
+    message: 'Mensagem',
+    orgLabels: { independent: 'Independente', trainer: 'Treinador', club: 'Clube', agent: 'Agente', academy: 'Academia', unknown: 'Não definido' },
+  },
+};
+
+function getPlayersSearchCopy(locale: string): PlayersSearchCopy {
+  return PLAYERS_SEARCH_COPY[locale] || PLAYERS_SEARCH_COPY.en;
+}
 
 // Simple debounce hook
 const useDebounce = (value: string, delay: number) => {
@@ -135,6 +404,7 @@ interface PaginationProps {
   playersPerPage: number;
   totalPlayers: number;
   onPlayersPerPageChange: (playersPerPage: number) => void;
+  copy: PlayersSearchCopy;
 }
 
 const Pagination: React.FC<PaginationProps> = ({
@@ -143,7 +413,8 @@ const Pagination: React.FC<PaginationProps> = ({
   onPageChange,
   playersPerPage,
   totalPlayers,
-  onPlayersPerPageChange
+  onPlayersPerPageChange,
+  copy
 }) => {
   const getPageNumbers = () => {
     const pages = [];
@@ -182,7 +453,7 @@ const Pagination: React.FC<PaginationProps> = ({
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
       <div className="flex items-center gap-2 text-sm text-gray-600">
-        <span>عرض</span>
+        <span>{copy.show}</span>
         <Select value={playersPerPage.toString()} onValueChange={(value) => onPlayersPerPageChange(parseInt(value))}>
           <SelectTrigger className="w-20 bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100">
             <SelectValue />
@@ -197,12 +468,15 @@ const Pagination: React.FC<PaginationProps> = ({
             <SelectItem value="500">500</SelectItem>
           </SelectContent>
         </Select>
-        <span>لاعب في الصفحة</span>
+        <span>{copy.playersPerPage}</span>
       </div>
 
       <div className="flex items-center gap-2 text-sm text-gray-600">
         <span>
-          عرض {((currentPage - 1) * playersPerPage) + 1} إلى {Math.min(currentPage * playersPerPage, totalPlayers)} من {totalPlayers} لاعب
+          {copy.range
+            .replace('{{from}}', String(((currentPage - 1) * playersPerPage) + 1))
+            .replace('{{to}}', String(Math.min(currentPage * playersPerPage, totalPlayers)))
+            .replace('{{total}}', String(totalPlayers))}
         </span>
       </div>
 
@@ -214,7 +488,7 @@ const Pagination: React.FC<PaginationProps> = ({
           disabled={currentPage === 1}
           className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 disabled:bg-gray-50 disabled:text-gray-400"
         >
-          السابق
+          {copy.previous}
         </Button>
 
         {getPageNumbers().map((page, index) => (
@@ -244,7 +518,7 @@ const Pagination: React.FC<PaginationProps> = ({
           disabled={currentPage === totalPages}
           className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 disabled:bg-gray-50 disabled:text-gray-400"
         >
-          التالي
+          {copy.next}
         </Button>
       </div>
     </div>
@@ -257,6 +531,8 @@ interface PlayersSearchPageProps {
 
 export default function PlayersSearchPage({ accountType }: PlayersSearchPageProps) {
   const { user, userData } = useAuth();
+  const { locale, isRTL } = useTranslation();
+  const copy = useMemo(() => getPlayersSearchCopy(locale), [locale]);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -705,8 +981,8 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
       'agent': 'وكيل',
       'academy': 'أكاديمية'
     };
-    return labels[accountType] || 'غير محدد';
-  }, []);
+    return copy.orgLabels[accountType] || copy.orgLabels.unknown;
+  }, [copy.orgLabels]);
 
   const getValidImageUrl = useCallback((url: any) => {
     if (!url) return null;
@@ -835,7 +1111,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-              <p className="text-gray-600">جاري تحميل اللاعبين...</p>
+              <p className="text-gray-600">{copy.loading}</p>
             </div>
           </div>
         </div>
@@ -844,15 +1120,15 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 p-4" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            البحث عن اللاعبين
+            {copy.title}
           </h1>
           <p className="text-gray-600">
-            اكتشف اللاعبين الموهوبين من جميع أنحاء العالم
+            {copy.subtitle}
           </p>
         </div>
 
@@ -865,7 +1141,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-500 h-4 w-4 z-10 pointer-events-none" />
               <Input
                 type="text"
-                placeholder="ابحث عن اللاعبين بالاسم، المركز، الجنسية، أو النادي..."
+                placeholder={copy.searchPlaceholder}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 pr-3 py-2 w-full border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-200 rounded-md transition-all duration-200 bg-white text-sm relative z-20"
@@ -881,7 +1157,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
               className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-pink-500 text-white border-0 shadow-md hover:shadow-lg hover:from-orange-600 hover:to-pink-600 transition-all duration-300 rounded-md px-4 py-2 text-sm"
             >
               <Filter className="h-3.5 w-3.5" />
-              <span className="font-medium">الفلاتر</span>
+              <span className="font-medium">{copy.filters}</span>
               {isFiltersExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
             </Button>
 
@@ -892,7 +1168,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                 size="sm"
                 className="bg-gradient-to-r from-red-500 to-rose-500 text-white border-0 shadow-md hover:shadow-lg hover:from-red-600 hover:to-rose-600 transition-all duration-300 rounded-md px-3 py-1.5 text-xs"
               >
-                إعادة تعيين
+                {copy.reset}
               </Button>
               <Button
                 variant="outline"
@@ -901,7 +1177,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                 className="bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0 shadow-md hover:shadow-lg hover:from-green-600 hover:to-emerald-600 transition-all duration-300 rounded-md px-3 py-1.5 text-xs"
               >
                 <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                تحديث
+                {copy.refresh}
               </Button>
             </div>
           </div>
@@ -919,7 +1195,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                     <div className="p-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-md shadow-sm">
                       <User className="h-4 w-4 text-white" />
                     </div>
-                    <h3 className="text-sm font-semibold text-gray-800">معلومات أساسية</h3>
+                    <h3 className="text-sm font-semibold text-gray-800">{copy.basicInfo}</h3>
                   </div>
                   {expandedSections.basic ? <Minimize2 className="h-4 w-4 text-gray-600" /> : <Maximize2 className="h-4 w-4 text-gray-600" />}
                 </button>
@@ -931,14 +1207,14 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                         <div className="p-1 bg-gradient-to-br from-purple-400 to-pink-400 rounded shadow-sm">
                           <Sword className="h-3 w-3 text-white" />
                         </div>
-                        المركز
+                        {copy.position}
                       </Label>
                       <Select value={filterPosition} onValueChange={setFilterPosition}>
                         <SelectTrigger className="bg-white border border-gray-200 hover:border-purple-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
-                          <SelectValue placeholder="اختر المركز" />
+                          <SelectValue placeholder={copy.choosePosition} />
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px]">
-                          <SelectItem value="all" className="pl-2">🌍 جميع المراكز</SelectItem>
+                          <SelectItem value="all" className="pl-2">{copy.allPositions}</SelectItem>
                           {uniquePositions.map(position => (
                             <SelectItem key={position} value={position} className="flex items-center gap-2 pl-2">
                               <span className="text-base flex-shrink-0">{getPositionEmoji(position)}</span>
@@ -955,11 +1231,11 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                         <div className="p-1 bg-gradient-to-br from-green-400 to-emerald-400 rounded shadow-sm">
                           <MapPin className="h-3 w-3 text-white" />
                         </div>
-                        البلد
+                        {copy.country}
                       </Label>
                       <Select value={filterCountry} onValueChange={setFilterCountry}>
                         <SelectTrigger className="bg-white border border-gray-200 hover:border-green-400 focus:border-green-500 focus:ring-1 focus:ring-green-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
-                          <SelectValue placeholder="اختر البلد">
+                          <SelectValue placeholder={copy.chooseCountry}>
                             {filterCountry !== 'all' && (
                               <span className="flex items-center gap-2">
                                 <span className="text-lg">{getCountryFlag(filterCountry)}</span>
@@ -969,7 +1245,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px]">
-                          <SelectItem value="all" className="pl-2">🌍 جميع البلدان</SelectItem>
+                          <SelectItem value="all" className="pl-2">{copy.allCountries}</SelectItem>
                           {uniqueCountries.map(country => (
                             <SelectItem key={country} value={country} className="flex items-center gap-2 py-2 pl-2">
                               <span className="text-xl flex-shrink-0">{getCountryFlag(country)}</span>
@@ -986,11 +1262,11 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                         <div className="p-1 bg-gradient-to-br from-orange-400 to-red-400 rounded shadow-sm">
                           <Flag className="h-3 w-3 text-white" />
                         </div>
-                        الجنسية
+                        {copy.nationality}
                       </Label>
                       <Select value={filterNationality} onValueChange={setFilterNationality}>
                         <SelectTrigger className="bg-white border border-gray-200 hover:border-orange-400 focus:border-orange-500 focus:ring-1 focus:ring-orange-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
-                          <SelectValue placeholder="اختر الجنسية">
+                          <SelectValue placeholder={copy.chooseNationality}>
                             {filterNationality !== 'all' && (
                               <span className="flex items-center gap-2">
                                 <span className="text-lg">{getCountryFlag(filterNationality)}</span>
@@ -1000,7 +1276,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px]">
-                          <SelectItem value="all" className="pl-2">🌍 جميع الجنسيات</SelectItem>
+                          <SelectItem value="all" className="pl-2">{copy.allNationalities}</SelectItem>
                           {uniqueNationalities.map(nationality => (
                             <SelectItem key={nationality} value={nationality} className="flex items-center gap-2 py-2 pl-2">
                               <span className="text-xl flex-shrink-0">{getCountryFlag(nationality)}</span>
@@ -1024,7 +1300,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                     <div className="p-1.5 bg-gradient-to-br from-amber-500 to-orange-600 rounded-md shadow-sm">
                       <Calendar className="h-4 w-4 text-white" />
                     </div>
-                    <h3 className="text-sm font-semibold text-gray-800">العمر وتاريخ الميلاد</h3>
+                    <h3 className="text-sm font-semibold text-gray-800">{copy.ageAndBirth}</h3>
                   </div>
                   {expandedSections.age ? <Minimize2 className="h-4 w-4 text-gray-600" /> : <Maximize2 className="h-4 w-4 text-gray-600" />}
                 </button>
@@ -1036,12 +1312,12 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                         <div className="p-1 bg-gradient-to-br from-blue-400 to-cyan-400 rounded shadow-sm">
                           <User className="h-3 w-3 text-white" />
                         </div>
-                        الحد الأدنى للعمر
+                        {copy.minAge}
                       </Label>
                       <Input
                         id="age-min-filter"
                         type="number"
-                        placeholder="مثال: 18"
+                        placeholder={copy.example18}
                         min="0"
                         max="100"
                         value={filterAgeMin}
@@ -1055,12 +1331,12 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                         <div className="p-1 bg-gradient-to-br from-purple-400 to-pink-400 rounded shadow-sm">
                           <User className="h-3 w-3 text-white" />
                         </div>
-                        الحد الأقصى للعمر
+                        {copy.maxAge}
                       </Label>
                       <Input
                         id="age-max-filter"
                         type="number"
-                        placeholder="مثال: 30"
+                        placeholder={copy.example30}
                         min="0"
                         max="100"
                         value={filterAgeMax}
@@ -1075,14 +1351,14 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                         <div className="p-1 bg-gradient-to-br from-indigo-400 to-purple-400 rounded shadow-sm">
                           <Calendar className="h-3 w-3 text-white" />
                         </div>
-                        عام الميلاد
+                        {copy.birthYear}
                       </Label>
                       <Select value={filterBirthYear} onValueChange={setFilterBirthYear}>
                         <SelectTrigger className="bg-white border border-gray-200 hover:border-indigo-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
-                          <SelectValue placeholder="اختر عام الميلاد" />
+                          <SelectValue placeholder={copy.chooseBirthYear} />
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px]">
-                          <SelectItem value="all" className="pl-2">📅 جميع الأعوام</SelectItem>
+                          <SelectItem value="all" className="pl-2">{copy.allYears}</SelectItem>
                           {uniqueBirthYears.map(year => (
                             <SelectItem key={year} value={year.toString()} className="flex items-center gap-2 pl-2">
                               <span className="text-base flex-shrink-0">📆</span>
@@ -1106,7 +1382,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                     <div className="p-1.5 bg-gradient-to-br from-pink-500 to-rose-600 rounded-md shadow-sm">
                       <Star className="h-4 w-4 text-white" />
                     </div>
-                    <h3 className="text-sm font-semibold text-gray-800">معلومات إضافية</h3>
+                    <h3 className="text-sm font-semibold text-gray-800">{copy.additionalInfo}</h3>
                   </div>
                   {expandedSections.additional ? <Minimize2 className="h-4 w-4 text-gray-600" /> : <Maximize2 className="h-4 w-4 text-gray-600" />}
                 </button>
@@ -1119,14 +1395,14 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                           <div className="p-1 bg-gradient-to-br from-yellow-400 to-orange-400 rounded shadow-sm">
                             <Star className="h-3 w-3 text-white" />
                           </div>
-                          مستوى المهارة
+                          {copy.skillLevel}
                         </Label>
                         <Select value={filterSkillLevel} onValueChange={setFilterSkillLevel}>
                           <SelectTrigger className="bg-white border border-gray-200 hover:border-yellow-400 focus:border-yellow-500 focus:ring-1 focus:ring-yellow-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9">
-                            <SelectValue placeholder="اختر مستوى المهارة" />
+                            <SelectValue placeholder={copy.chooseSkillLevel} />
                           </SelectTrigger>
                           <SelectContent className="max-h-[300px]">
-                            <SelectItem value="all" className="pl-2">⭐ جميع المستويات</SelectItem>
+                            <SelectItem value="all" className="pl-2">{copy.allLevels}</SelectItem>
                             {uniqueSkillLevels.map(level => (
                               <SelectItem key={level} value={level} className="flex items-center gap-2 pl-2">
                                 <span className="text-base flex-shrink-0">⭐</span>
@@ -1144,14 +1420,14 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                         <div className="p-1 bg-gradient-to-br from-teal-400 to-cyan-400 rounded shadow-sm">
                           <Smartphone className="h-3 w-3 text-white" />
                         </div>
-                        رقم الهاتف
+                        {copy.phone}
                       </Label>
                       <div className="relative">
                         <Smartphone className="absolute right-3 top-1/2 transform -translate-y-1/2 text-teal-500 h-3.5 w-3.5 z-10" />
                         <Input
                           id="phone-filter"
                           type="text"
-                          placeholder="ابحث برقم الهاتف..."
+                          placeholder={copy.phonePlaceholder}
                           value={filterPhone}
                           onChange={(e) => setFilterPhone(e.target.value)}
                           className="pr-10 bg-white border border-gray-200 hover:border-teal-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-200 rounded-md transition-all duration-200 shadow-sm hover:shadow text-sm h-9"
@@ -1173,11 +1449,10 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                   <div className="flex-1">
                     <h4 className="text-xs font-semibold text-white mb-1 flex items-center gap-1.5">
                       <span className="text-base">💡</span>
-                      ملاحظة مهمة
+                      {copy.importantNote}
                     </h4>
                     <p className="text-xs text-blue-50 leading-relaxed">
-                      جميع الفلاتر تعمل معاً - يمكنك اختيار لاعب من دولة معينة مع عمر محدد في نفس الوقت.
-                      النتائج ستظهر فقط اللاعبين الذين يطابقون <strong className="text-white font-semibold">جميع</strong> الفلاتر المختارة.
+                      {copy.filtersNoteStart}<strong className="text-white font-semibold">{copy.filtersNoteStrong}</strong>{copy.filtersNoteEnd}
                     </p>
                   </div>
                 </div>
@@ -1190,10 +1465,10 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-600">
-              عرض {filteredPlayers.length} لاعب من أصل {players.length} لاعب
+              {copy.resultsSummary.replace('{{filtered}}', String(filteredPlayers.length)).replace('{{total}}', String(players.length))}
             </div>
             <div className="text-sm text-gray-600">
-              الصفحة {currentPage} من {totalPages}
+              {copy.pageSummary.replace('{{current}}', String(currentPage)).replace('{{total}}', String(totalPages))}
             </div>
           </div>
         </div>
@@ -1202,8 +1477,8 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
         {pagedPlayers.length === 0 ? (
           <div className="text-center py-12">
             <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد نتائج</h3>
-            <p className="text-gray-600">جرب تغيير معايير البحث أو الفلاتر</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">{copy.noResults}</h3>
+            <p className="text-gray-600">{copy.noResultsDesc}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
@@ -1218,7 +1493,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                       <div className="w-full h-64 sm:h-72 md:h-80 lg:h-96 bg-gray-100 overflow-hidden">
                         <img
                           src={imageUrl}
-                          alt={player.full_name || player.name || 'لاعب'}
+                          alt={player.full_name || player.name || copy.defaultPlayer}
                           className="w-full h-full object-contain"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
@@ -1246,7 +1521,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
 
                   <div className="p-4 flex-1 flex flex-col">
                     <h3 className="font-semibold text-lg mb-2 line-clamp-1">
-                      {player.full_name || player.name || 'لاعب غير محدد'}
+                      {player.full_name || player.name || copy.unknownPlayer}
                     </h3>
 
                     <div className="space-y-2 text-sm text-gray-600">
@@ -1289,7 +1564,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                         onClick={async () => {
                           // Dispatch in-app + ChatAman notification for profile view
                           if (user && user.id !== player.id) {
-                            const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || 'مستخدم';
+                            const viewerName = userData?.full_name || userData?.name || user.user_metadata?.full_name || copy.defaultUser;
                             const viewerType = userData?.accountType || userData?.type || 'user';
                             dispatchNotification({
                               eventType: 'profile_view',
@@ -1314,19 +1589,19 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
                         }}
                       >
                         <Eye className="h-4 w-4 mr-2" />
-                        عرض الملف
+                        {copy.viewProfile}
                       </Button>
 
                       <SendMessageButton
                         user={user}
                         userData={user}
-                        getUserDisplayName={() => user?.user_metadata?.full_name || user?.email || 'مستخدم'}
+                        getUserDisplayName={() => user?.user_metadata?.full_name || user?.email || copy.defaultUser}
                         targetUserId={player.id}
-                        targetUserName={player.full_name || player.name || 'لاعب'}
+                        targetUserName={player.full_name || player.name || copy.defaultPlayer}
                         targetUserType="player"
                         buttonSize="sm"
                         className="flex-1 bg-pink-50 border-pink-200 text-pink-700 hover:bg-pink-100"
-                        buttonText="رسالة"
+                        buttonText={copy.message}
                         redirectToMessages={true}
                       />
                     </div>
@@ -1350,6 +1625,7 @@ export default function PlayersSearchPage({ accountType }: PlayersSearchPageProp
             playersPerPage={playersPerPage}
             totalPlayers={filteredPlayers.length}
             onPlayersPerPageChange={handlePlayersPerPageChange}
+            copy={copy}
           />
         )}
       </div>

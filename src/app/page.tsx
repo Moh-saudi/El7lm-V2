@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useState, useEffect } from 'react';
 import { getAds, AdItem } from '@/lib/content/ads-service';
 import { getHomeImages, HomeImagesData } from '@/lib/content/home-images-service';
@@ -15,6 +15,8 @@ import { useRouter } from 'next/navigation';
 import { Target, Calendar, Eye, Home as HomeIcon, LayoutGrid, Cpu, MessageCircle, Info, Globe, ShoppingBag, CreditCard, WalletCards } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FloatingDock } from "@/components/ui/floating-dock";
+import { useTranslation } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 type LandingStoreCategory =
   | 'equipment'
@@ -284,6 +286,247 @@ const TR = {
   },
 };
 
+// Spanish and Portuguese are being completed section-by-section. Keeping the
+// English object as a structural base prevents missing properties while each
+// visible section receives reviewed copy in both languages.
+const LOCALIZED_TR = {
+  ...TR,
+  es: {
+    ...TR.en,
+    lang: 'es',
+    joinBtn: 'Únete ahora',
+    nav: ['Inicio', 'Aplicación Hagzz', 'Academia', 'Clubes', 'Torneos'],
+    badge: 'Plataforma EL7LM con V Lab AI.',
+    motivation: [
+      { a: 'Reserva tu plaza en torneos internacionales,', b: 'y demuestra tu talento ante el mundo.' },
+      { a: 'Participa en pruebas profesionales,', b: 'y vive la experiencia de los clubes europeos.' },
+      { a: 'Tu oportunidad de llegar al profesionalismo,', b: 'comienza en los estadios internacionales.' },
+      { a: 'Los mejores ojeadores y clubes,', b: 'están esperando tu talento.' },
+      { a: 'Diseña tu carrera futbolística,', b: 'con campamentos de entrenamiento de élite.' },
+      { a: 'No retrases tu sueño,', b: 'empieza hoy.' },
+      { a: 'El futuro comienza,', b: 'con una decisión que tomas ahora.' },
+      { a: 'Un viaje de mil kilómetros,', b: 'comienza con un paso valiente.' },
+      { a: 'Sé el héroe,', b: 'de tu propia historia de éxito.' },
+      { a: 'La perseverancia convierte,', b: 'lo imposible en realidad.' },
+      { a: 'Cada minuto de entrenamiento,', b: 'te acerca más a tu sueño.' },
+      { a: 'Confía siempre en tus capacidades,', b: 'tienes lo necesario.' },
+      { a: 'Los campeones no nacen,', b: 'se forman con trabajo duro.' },
+      { a: 'La determinación convierte el sueño,', b: 'en una realidad tangible.' },
+      { a: 'El éxito pertenece,', b: 'a quienes se atreven a intentarlo.' },
+    ],
+    heroSub: 'La mayor plataforma de descubrimiento de talento futbolístico de Oriente Medio. Usamos inteligencia artificial para analizar tu rendimiento y conectarte con los mejores ojeadores y clubes internacionales.',
+    startFree: 'Empieza gratis',
+    login: 'Iniciar sesión',
+    partnerLabel: 'Con la confianza de socios profesionales',
+    featuresTitle: 'Herramientas digitales para el éxito',
+    features: [
+      { icon: 'analytics', title: 'Análisis de habilidades con IA', desc: 'Analizamos tus vídeos con visión artificial para obtener estadísticas precisas de velocidad, pases y disparos.' },
+      { icon: 'visibility', title: 'Visibilidad ante ojeadores', desc: 'Tu perfil aparece ante ojeadores certificados a nivel local e internacional para aumentar tus oportunidades.' },
+      { icon: 'hub', title: 'Contacto directo con clubes', desc: 'Un sistema seguro te conecta con directores de academias y entrenadores interesados en tus habilidades.' },
+    ],
+    aiVideoTitle: 'Análisis de vídeo con IA',
+    aiVideoBadge: 'Tecnología de nueva generación',
+    aiVideoDesc: 'Convierte tus jugadas en datos profesionales. Analizamos cada movimiento, pase y disparo según estándares internacionales.',
+    aiVideoFeatures: [
+      { ...TR.en.aiVideoFeatures[0], title: 'Etiquetado automático de goles y regates', desc: 'La IA identifica tus mejores momentos y crea clips listos para compartir con ojeadores.' },
+      { ...TR.en.aiVideoFeatures[1], title: 'Mapas de calor de tus movimientos', desc: 'Seguimiento preciso de tu posición para comprender tu esfuerzo físico e inteligencia táctica.' },
+      { ...TR.en.aiVideoFeatures[2], title: 'Métricas avanzadas de rendimiento', desc: 'Estadísticas inmediatas de velocidad, precisión de pase y potencia de disparo sobre el vídeo.' },
+    ],
+    tourTitle: 'Torneos y competiciones',
+    tourSub: 'Participa en los mejores eventos para mejorar tu clasificación digital',
+    tournaments: [
+      { title: 'Torneo Élite - El Cairo', desc: 'Partidos internacionales y torneos oficiales con los mejores ojeadores de Egipto.', btn: 'Ver en Instagram' },
+      { title: 'Internacional de Al Alamein', desc: 'Torneos oficiales en la nueva ciudad de Al Alamein con ojeadores de élite.', btn: 'Ver en Instagram' },
+      { title: 'Copa Sueño Árabe - Doha', desc: 'Pruebas técnicas bajo la supervisión de entrenadores de la liga catarí.', btn: 'Ver en Instagram' },
+    ],
+    talentsTitle: 'Talentos emergentes', talentsSub: 'Los más buscados por los clubes esta semana', viewAll: 'Ver todos los jugadores',
+    oppsTitle: 'Oportunidades disponibles', oppsSub: 'Últimas oportunidades de los mejores clubes y agentes', viewOpps: 'Ver todas las oportunidades',
+    contactTitle: 'Contáctanos', contactSub: 'Nuestro equipo de soporte está disponible para responder tus consultas sobre la plataforma y las suscripciones.',
+    emailLbl: 'Correo electrónico', nameLbl: 'Nombre completo', subjectLbl: 'Asunto', msgLbl: 'Mensaje',
+    namePh: 'Escribe tu nombre', subjectPh: '¿Cómo podemos ayudarte?', msgPh: 'Escribe los detalles de tu consulta...', sendBtn: 'Enviar mensaje',
+    ctaTitle: '¿Listo para ser la próxima estrella?', ctaSub: 'Únete a miles de jugadores que iniciaron su carrera profesional mediante EL7LM con V Lab AI.', ctaBtn: 'Crea ahora tu perfil gratuito',
+    stats: [
+      { label: 'Rendimiento actual', value: 'ÉLITE 98.4' }, { label: 'Análisis de velocidad', value: '34.5 KM/H' },
+      { label: 'Precisión de pase', value: 'ÉLITE 94%' }, { label: 'Valoración técnica', value: 'PRO 9.2/10' },
+      { label: 'Interés de ojeadores', value: '8 CLUBES AHORA' }, { label: 'Potencia de disparo', value: 'ALTA 89%' },
+    ],
+    players: [
+      { name: 'Ahmed Kareem', pos: 'Centrocampista • 19 años', badge: 'Élite' }, { name: 'Yassine Omar', pos: 'Delantero • 17 años', badge: null },
+      { name: 'Mariam Hassan', pos: 'Delantera • 18 años', badge: 'Elección del ojeador' }, { name: 'Ziad Ali', pos: 'Defensa • 20 años', badge: null },
+    ],
+    contacts: [
+      { ...TR.en.contacts[0], title: 'WhatsApp' }, { ...TR.en.contacts[1], title: 'Llámanos' }, { ...TR.en.contacts[2], title: 'Correo electrónico' },
+    ],
+    footerDesc: 'Una plataforma líder que impulsa el talento futbolístico árabe mediante tecnología moderna e inteligencia artificial.',
+    footerCols: [
+      { title: 'Enlaces rápidos', links: [{ l: 'Búsqueda de talentos', h: '#' }, { l: 'Informes de rendimiento', h: '#' }, { l: 'Academia digital', h: '#' }, { l: 'Calendario de partidos', h: '#' }, { l: 'Noticias de las estrellas', h: '#' }] },
+      { title: 'Empresa', links: [{ l: 'Quiénes somos', h: '/about' }, { l: 'Empleo', h: '/careers' }, { l: 'Casos de éxito', h: '/success-stories' }, { l: 'Contacto', h: '/contact' }] },
+      { title: 'Legal', links: [{ l: 'Privacidad', h: '/privacy' }, { l: 'Términos', h: '/terms' }, { l: 'Criterios de ojeadores', h: '#' }, { l: 'Soporte técnico', h: '/support' }] },
+    ],
+    copyright: '© 2026 EL7LM con V Lab AI. Todos los derechos reservados.', designedFor: 'Diseñado para campeones',
+    all: 'Todo', trials: 'Pruebas', pro: 'Profesional', camps: 'Campamentos', training: 'Entrenamiento',
+    howTitle: '¿Cómo usar la plataforma?', howSub: 'Cuatro sencillos pasos te separan del fútbol profesional',
+    howSteps: [
+      { ...TR.en.howSteps[0], title: 'Crea tu cuenta gratuita', desc: 'Registra tus datos básicos y elige el tipo de cuenta en menos de dos minutos.' },
+      { ...TR.en.howSteps[1], title: 'Completa tu perfil profesional', desc: 'Añade fotos, vídeos, estadísticas y trayectoria para destacar ante los ojeadores.' },
+      { ...TR.en.howSteps[2], title: 'Descubre oportunidades', desc: 'Explora oportunidades de clubes, academias y torneos y solicita con un clic.' },
+      { ...TR.en.howSteps[3], title: 'Conecta con clubes', desc: 'Recibe ofertas, habla con ojeadores e inicia tu carrera profesional.' },
+    ],
+    forWhomTitle: 'Soluciones para cada categoría', forWhomSub: 'Una experiencia específica para cada parte del sector deportivo.',
+    forWhom: [
+      { ...TR.en.forWhom[0], title: 'Para deportistas', desc: 'Presenta tus habilidades y registros de forma profesional.', btn: 'Empezar como deportista' },
+      { ...TR.en.forWhom[1], title: 'Para academias', desc: 'Gestiona talentos, servicios y reservas con mayor eficiencia.', btn: 'Solicitar versión para academias' },
+      { ...TR.en.forWhom[2], title: 'Para clubes y ojeadores', desc: 'Accede rápidamente a jugadores, vídeos y análisis.', btn: 'Empezar como club u ojeador' },
+      { ...TR.en.forWhom[3], title: 'Para socios y organizaciones', desc: 'Una interfaz moderna para alianzas y oportunidades comerciales.', btn: 'Hablar sobre una alianza' },
+    ],
+    storeTitle: 'Tienda deportiva', storeSub: 'Productos y servicios deportivos para todas las cuentas con pagos flexibles y opciones de financiación.',
+    storeBadge: 'Tienda compartida + financiación flexible', storeCta: 'Entrar en la tienda', storeSecondary: 'Explorar opciones de pago',
+    storeHighlights: [
+      { title: 'Una tienda para todos', desc: 'Jugadores, clubes y academias compran en una tienda compartida.' },
+      { title: 'Métodos de pago profesionales', desc: 'Tarjetas y monederos digitales mediante proveedores regionales.' },
+      { title: 'Financiación que facilita la compra', desc: 'Opciones como Tamara y Tabby reducen las barreras de compra.' },
+    ],
+  },
+  pt: {
+    ...TR.en,
+    lang: 'pt',
+    joinBtn: 'Junte-se agora',
+    nav: ['Início', 'Aplicação Hagzz', 'Academia', 'Clubes', 'Torneios'],
+    badge: 'Plataforma EL7LM com V Lab AI.',
+    motivation: [
+      { a: 'Reserve o seu lugar em torneios internacionais,', b: 'e prove o seu talento perante o mundo.' },
+      { a: 'Participe em testes profissionais,', b: 'e viva a experiência dos clubes europeus.' },
+      { a: 'A sua oportunidade de chegar ao profissionalismo,', b: 'começa nos estádios internacionais.' },
+      { a: 'Os melhores olheiros e clubes,', b: 'esperam pelo seu talento.' },
+      { a: 'Construa a sua carreira no futebol,', b: 'com campos de treino de elite.' },
+      { a: 'Não adie o seu sonho,', b: 'comece hoje.' },
+      { a: 'O futuro começa,', b: 'com uma decisão tomada agora.' },
+      { a: 'Uma viagem de mil quilómetros,', b: 'começa com um passo corajoso.' },
+      { a: 'Seja o herói,', b: 'da sua própria história de sucesso.' },
+      { a: 'A persistência transforma,', b: 'o impossível em realidade.' },
+      { a: 'Cada minuto de treino,', b: 'aproxima-o do seu sonho.' },
+      { a: 'Confie sempre nas suas capacidades,', b: 'tem tudo o que é necessário.' },
+      { a: 'Os campeões não nascem,', b: 'constroem-se com trabalho árduo.' },
+      { a: 'A determinação transforma o sonho,', b: 'numa realidade concreta.' },
+      { a: 'O sucesso pertence,', b: 'a quem se atreve a tentar.' },
+    ],
+    heroSub: 'A maior plataforma de descoberta de talentos de futebol do Médio Oriente. Usamos inteligência artificial para analisar o seu desempenho e ligá-lo aos melhores olheiros e clubes internacionais.',
+    startFree: 'Comece gratuitamente',
+    login: 'Iniciar sessão',
+    partnerLabel: 'Com a confiança de parceiros profissionais',
+    featuresTitle: 'Ferramentas digitais para o sucesso',
+    features: [
+      { icon: 'analytics', title: 'Análise de competências com IA', desc: 'Analisamos os seus vídeos com visão computacional para obter estatísticas rigorosas de velocidade, passes e remates.' },
+      { icon: 'visibility', title: 'Visibilidade perante olheiros', desc: 'O seu perfil chega a olheiros certificados a nível local e internacional, aumentando as suas oportunidades.' },
+      { icon: 'hub', title: 'Contacto direto com clubes', desc: 'Um sistema seguro liga-o a diretores de academias e treinadores interessados nas suas competências.' },
+    ],
+    aiVideoTitle: 'Análise de vídeo com IA',
+    aiVideoBadge: 'Tecnologia de nova geração',
+    aiVideoDesc: 'Transforme as suas jogadas em dados profissionais. Analisamos cada movimento, passe e remate segundo padrões internacionais.',
+    aiVideoFeatures: [
+      { ...TR.en.aiVideoFeatures[0], title: 'Marcação automática de golos e dribles', desc: 'A IA identifica os melhores momentos e cria clipes prontos para partilhar com olheiros.' },
+      { ...TR.en.aiVideoFeatures[1], title: 'Mapas de calor dos seus movimentos', desc: 'Acompanhamento rigoroso da sua posição para compreender o esforço físico e a inteligência tática.' },
+      { ...TR.en.aiVideoFeatures[2], title: 'Métricas avançadas de desempenho', desc: 'Estatísticas imediatas de velocidade, precisão de passe e potência de remate sobre o vídeo.' },
+    ],
+    tourTitle: 'Torneios e competições',
+    tourSub: 'Participe nos melhores eventos para melhorar a sua classificação digital',
+    tournaments: [
+      { title: 'Torneio Elite - Cairo', desc: 'Jogos internacionais e torneios oficiais com os melhores olheiros do Egito.', btn: 'Ver no Instagram' },
+      { title: 'Internacional de Al Alamein', desc: 'Torneios oficiais na nova cidade de Al Alamein com olheiros de elite.', btn: 'Ver no Instagram' },
+      { title: 'Taça Sonho Árabe - Doha', desc: 'Testes técnicos sob supervisão de treinadores da liga do Catar.', btn: 'Ver no Instagram' },
+    ],
+    talentsTitle: 'Talentos emergentes', talentsSub: 'Os mais procurados pelos clubes esta semana', viewAll: 'Ver todos os jogadores',
+    oppsTitle: 'Oportunidades disponíveis', oppsSub: 'Oportunidades recentes dos melhores clubes e agentes', viewOpps: 'Ver todas as oportunidades',
+    contactTitle: 'Contacte-nos', contactSub: 'A nossa equipa de apoio está disponível para responder às suas questões sobre a plataforma e as subscrições.',
+    emailLbl: 'Correio eletrónico', nameLbl: 'Nome completo', subjectLbl: 'Assunto', msgLbl: 'Mensagem',
+    namePh: 'Introduza o seu nome', subjectPh: 'Como podemos ajudar?', msgPh: 'Escreva os detalhes da sua questão...', sendBtn: 'Enviar mensagem',
+    ctaTitle: 'Pronto para ser a próxima estrela?', ctaSub: 'Junte-se a milhares de jogadores que iniciaram a carreira profissional através da EL7LM com V Lab AI.', ctaBtn: 'Crie agora o seu perfil gratuito',
+    stats: [
+      { label: 'Desempenho atual', value: 'ELITE 98.4' }, { label: 'Análise de velocidade', value: '34.5 KM/H' },
+      { label: 'Precisão de passe', value: 'ELITE 94%' }, { label: 'Avaliação técnica', value: 'PRO 9.2/10' },
+      { label: 'Interesse de olheiros', value: '8 CLUBES AGORA' }, { label: 'Potência de remate', value: 'ALTA 89%' },
+    ],
+    players: [
+      { name: 'Ahmed Kareem', pos: 'Médio • 19 anos', badge: 'Elite' }, { name: 'Yassine Omar', pos: 'Avançado • 17 anos', badge: null },
+      { name: 'Mariam Hassan', pos: 'Avançada • 18 anos', badge: 'Escolha do olheiro' }, { name: 'Ziad Ali', pos: 'Defesa • 20 anos', badge: null },
+    ],
+    contacts: [
+      { ...TR.en.contacts[0], title: 'WhatsApp' }, { ...TR.en.contacts[1], title: 'Ligue-nos' }, { ...TR.en.contacts[2], title: 'Correio eletrónico' },
+    ],
+    footerDesc: 'Uma plataforma líder que capacita o talento futebolístico árabe através de tecnologia moderna e inteligência artificial.',
+    footerCols: [
+      { title: 'Ligações rápidas', links: [{ l: 'Pesquisa de talentos', h: '#' }, { l: 'Relatórios de desempenho', h: '#' }, { l: 'Academia digital', h: '#' }, { l: 'Calendário de jogos', h: '#' }, { l: 'Notícias das estrelas', h: '#' }] },
+      { title: 'Empresa', links: [{ l: 'Sobre nós', h: '/about' }, { l: 'Carreiras', h: '/careers' }, { l: 'Casos de sucesso', h: '/success-stories' }, { l: 'Contacto', h: '/contact' }] },
+      { title: 'Legal', links: [{ l: 'Privacidade', h: '/privacy' }, { l: 'Termos', h: '/terms' }, { l: 'Critérios de observação', h: '#' }, { l: 'Apoio técnico', h: '/support' }] },
+    ],
+    copyright: '© 2026 EL7LM com V Lab AI. Todos os direitos reservados.', designedFor: 'Concebido para campeões',
+    all: 'Tudo', trials: 'Testes', pro: 'Profissional', camps: 'Estágios', training: 'Treino',
+    howTitle: 'Como utilizar a plataforma?', howSub: 'Quatro passos simples separam-no do futebol profissional',
+    howSteps: [
+      { ...TR.en.howSteps[0], title: 'Crie a sua conta gratuita', desc: 'Registe os dados básicos e escolha o tipo de conta em menos de dois minutos.' },
+      { ...TR.en.howSteps[1], title: 'Complete o perfil profissional', desc: 'Adicione fotos, vídeos, estatísticas e percurso para se destacar perante olheiros.' },
+      { ...TR.en.howSteps[2], title: 'Descubra oportunidades', desc: 'Explore oportunidades de clubes, academias e torneios e candidate-se com um clique.' },
+      { ...TR.en.howSteps[3], title: 'Ligue-se aos clubes', desc: 'Receba propostas, comunique com olheiros e inicie a carreira profissional.' },
+    ],
+    forWhomTitle: 'Soluções para cada categoria', forWhomSub: 'Uma experiência própria para cada interveniente do setor desportivo.',
+    forWhom: [
+      { ...TR.en.forWhom[0], title: 'Para atletas', desc: 'Apresente competências e registos de forma profissional.', btn: 'Começar como atleta' },
+      { ...TR.en.forWhom[1], title: 'Para academias', desc: 'Faça uma gestão mais eficiente de talentos, serviços e reservas.', btn: 'Pedir versão para academias' },
+      { ...TR.en.forWhom[2], title: 'Para clubes e olheiros', desc: 'Aceda rapidamente a jogadores, vídeos e análises.', btn: 'Começar como clube ou olheiro' },
+      { ...TR.en.forWhom[3], title: 'Para parceiros e organizações', desc: 'Uma interface moderna para parcerias e oportunidades comerciais.', btn: 'Falar sobre parceria' },
+    ],
+    storeTitle: 'Loja desportiva', storeSub: 'Produtos e serviços desportivos para todas as contas, com pagamentos flexíveis e prestações.',
+    storeBadge: 'Loja partilhada + prestações flexíveis', storeCta: 'Entrar na loja', storeSecondary: 'Explorar opções de pagamento',
+    storeHighlights: [
+      { title: 'Uma loja para todos', desc: 'Jogadores, clubes e academias compram na mesma loja.' },
+      { title: 'Métodos de pagamento profissionais', desc: 'Cartões e carteiras digitais através de fornecedores regionais.' },
+      { title: 'Prestações que facilitam a compra', desc: 'Opções como Tamara e Tabby reduzem as barreiras à compra.' },
+    ],
+  },
+};
+
+const HOME_UI = {
+  ar: { partners: 'الشركاء', partnersLead: 'شركاؤنا يقودونك إلى الفرص', featured: 'عروض مميزة', learnMore: 'لمعرفة المزيد', smartGuide: 'دليل البداية الذكي', discover: 'اكتشف الفرص المتاحة', discoverDesc: 'تصفح آلاف الفرص من الأندية والأكاديميات والبطولات وتقدم بضغطة واحدة.', startAthlete: 'ابدأ كلاعب الآن', audience: 'لمن هذه المنصة؟', selectedProducts: 'منتجات مختارة', managedProducts: 'منتجات المتجر من إدارة المحتوى', openStore: 'عرض المتجر الكامل', noProducts: 'لا توجد منتجات متاحة ضمن الاختيار الحالي.', installment: 'يدعم التقسيط', founder: 'بيان المؤسس', founderName: 'محمد سعودي', founderRole: 'المؤسس والمدير التنفيذي', tournaments: 'بطولات المنصة', upcoming: 'البطولات الجارية والقادمة', viewAll: 'عرض الكل', tournamentDesc: 'تصفح البطولات وسجّل فريقك أو تابع النتائج مباشرة', statuses: ['مفتوح للتسجيل','جارٍ الآن','مغلق','منتهي','ملغى'], dock: ['الرئيسية','آلية العمل','المميزات','تحليل AI','تواصل معنا'], productDesc: 'منتج معروض من المتجر الرياضي الموحد.', selectedNote: 'تُعرض المنتجات حسب الاختيار والترتيب في إدارة المحتوى.', autoNote: 'تُعرض المنتجات المميزة أو الأحدث تلقائياً عند عدم الاختيار اليدوي.' },
+  en: { partners: 'Partners', partnersLead: 'Partners Lead You To Opportunities', featured: 'Featured Offers', learnMore: 'Learn More', smartGuide: 'Smart Start Guide', discover: 'Discover Available Opportunities', discoverDesc: 'Browse thousands of opportunities from clubs, academies, and tournaments and apply with one click.', startAthlete: 'Start As Athlete Now', audience: 'Who Is It For?', selectedProducts: 'Selected Products', managedProducts: 'Store Products From Content Management', openStore: 'Open Full Store', noProducts: 'No products are available for the current selection.', installment: 'Installments Available', founder: "Founder’s Statement", founderName: 'Mohamed Saudi', founderRole: 'Founder & CEO', tournaments: 'Platform Tournaments', upcoming: 'Live & Upcoming Tournaments', viewAll: 'View All', tournamentDesc: 'Browse tournaments, register your team, or follow results live', statuses: ['Open','Ongoing','Closed','Completed','Cancelled'], dock: ['Home','Process','Features','AI Analysis','Contact'], productDesc: 'Featured product from the shared sports store.', selectedNote: 'Products follow the selection and order configured in content management.', autoNote: 'Featured or latest products are shown automatically when no manual selection is set.' },
+  es: { partners: 'Socios', partnersLead: 'Nuestros socios te acercan a las oportunidades', featured: 'Ofertas destacadas', learnMore: 'Más información', smartGuide: 'Guía de inicio inteligente', discover: 'Descubre oportunidades disponibles', discoverDesc: 'Explora oportunidades de clubes, academias y torneos y solicita con un clic.', startAthlete: 'Empezar como deportista', audience: '¿Para quién es?', selectedProducts: 'Productos seleccionados', managedProducts: 'Productos gestionados desde el contenido', openStore: 'Abrir tienda completa', noProducts: 'No hay productos disponibles en la selección actual.', installment: 'Financiación disponible', founder: 'Mensaje del fundador', founderName: 'Mohamed Saudi', founderRole: 'Fundador y director ejecutivo', tournaments: 'Torneos de la plataforma', upcoming: 'Torneos en curso y próximos', viewAll: 'Ver todo', tournamentDesc: 'Explora torneos, registra tu equipo o sigue los resultados en directo', statuses: ['Abierto','En curso','Cerrado','Finalizado','Cancelado'], dock: ['Inicio','Proceso','Funciones','Análisis IA','Contacto'], productDesc: 'Producto destacado de la tienda deportiva compartida.', selectedNote: 'Los productos siguen la selección y el orden configurados en la gestión de contenido.', autoNote: 'Si no hay selección manual, se muestran automáticamente productos destacados o recientes.' },
+  pt: { partners: 'Parceiros', partnersLead: 'Os nossos parceiros aproximam-no das oportunidades', featured: 'Ofertas em destaque', learnMore: 'Saber mais', smartGuide: 'Guia de início inteligente', discover: 'Descubra oportunidades disponíveis', discoverDesc: 'Explore oportunidades de clubes, academias e torneios e candidate-se com um clique.', startAthlete: 'Começar como atleta', audience: 'Para quem se destina?', selectedProducts: 'Produtos selecionados', managedProducts: 'Produtos geridos pelo conteúdo', openStore: 'Abrir loja completa', noProducts: 'Não existem produtos disponíveis na seleção atual.', installment: 'Prestações disponíveis', founder: 'Mensagem do fundador', founderName: 'Mohamed Saudi', founderRole: 'Fundador e diretor executivo', tournaments: 'Torneios da plataforma', upcoming: 'Torneios em curso e futuros', viewAll: 'Ver tudo', tournamentDesc: 'Explore torneios, registe a sua equipa ou acompanhe resultados em direto', statuses: ['Aberto','Em curso','Fechado','Concluído','Cancelado'], dock: ['Início','Processo','Funcionalidades','Análise IA','Contacto'], productDesc: 'Produto em destaque da loja desportiva partilhada.', selectedNote: 'Os produtos seguem a seleção e a ordem configuradas na gestão de conteúdos.', autoNote: 'Sem seleção manual, são mostrados automaticamente produtos em destaque ou recentes.' },
+};
+
+const HOME_EXTRA = {
+  ar: {
+    defaultProduct: 'منتج متاح حالياً من متجر الحلم.', categories: ['الكل','معدات','ملابس','إكسسوارات','تغذية','إلكترونيات','أخرى'],
+    nav: ['الرئيسية','المميزات','الشركاء','الفرص','المتجر','البطولات','تواصل معنا'],
+    founderQuote: 'بدأنا «الحلم» لأننا نؤمن بأن في كل شارع وكل أكاديمية موهبة تنتظر من يراها. هدفنا تزويد هذه المواهب بالعين الرقمية والفرصة التي تستحقها للوصول إلى العالم.',
+    tournamentTypes: ['كأس إقصائي','دوري','مجموعات'], register: 'سجّل الآن →', details: 'عرض التفاصيل →',
+    tracking: 'التتبع نشط', currentSpeed: 'السرعة الحالية', verified: 'موهبة موثقة', metrics: ['السرعة','التسديد','التمرير','المراوغة'],
+    ad: 'إعلان', team: 'فريق', inquiry: 'استفسار عن المنصة', emailOpening: 'سيتم فتح تطبيق البريد الافتراضي. تأكد من ضبط تطبيق بريد إذا لم يحدث شيء.',
+  },
+  en: {
+    defaultProduct: 'A currently available product from the El7lm store.', categories: ['All','Equipment','Clothing','Accessories','Nutrition','Electronics','Other'],
+    nav: ['Home','Features','Partners','Opportunities','Store','Tournaments','Contact'],
+    founderQuote: 'We started El7lm because we believe every street and academy holds undiscovered talent. Our goal is to give that talent the digital eye and opportunity it deserves to reach the world.',
+    tournamentTypes: ['Knockout','League','Groups'], register: 'Register →', details: 'View details →',
+    tracking: 'Tracking active', currentSpeed: 'Current speed', verified: 'Verified talent', metrics: ['Pace','Shooting','Passing','Dribbling'],
+    ad: 'Ad', team: 'teams', inquiry: 'Platform inquiry', emailOpening: 'Your default email app will open. If nothing happens, make sure a default email app is configured.',
+  },
+  es: {
+    defaultProduct: 'Producto disponible actualmente en la tienda El7lm.', categories: ['Todo','Equipamiento','Ropa','Accesorios','Nutrición','Electrónica','Otros'],
+    nav: ['Inicio','Funciones','Socios','Oportunidades','Tienda','Torneos','Contacto'],
+    founderQuote: 'Creamos El7lm porque creemos que en cada calle y academia hay un talento por descubrir. Nuestro objetivo es darle la mirada digital y la oportunidad que merece para llegar al mundo.',
+    tournamentTypes: ['Eliminatorias','Liga','Grupos'], register: 'Inscribirse →', details: 'Ver detalles →',
+    tracking: 'Seguimiento activo', currentSpeed: 'Velocidad actual', verified: 'Talento verificado', metrics: ['Ritmo','Disparo','Pase','Regate'],
+    ad: 'Anuncio', team: 'equipos', inquiry: 'Consulta sobre la plataforma', emailOpening: 'Se abrirá tu aplicación de correo predeterminada. Si no ocurre nada, comprueba su configuración.',
+  },
+  pt: {
+    defaultProduct: 'Produto atualmente disponível na loja El7lm.', categories: ['Tudo','Equipamento','Roupa','Acessórios','Nutrição','Eletrónica','Outros'],
+    nav: ['Início','Funcionalidades','Parceiros','Oportunidades','Loja','Torneios','Contacto'],
+    founderQuote: 'Criámos a El7lm porque acreditamos que cada rua e academia guarda um talento por descobrir. Queremos dar-lhe o olhar digital e a oportunidade que merece para chegar ao mundo.',
+    tournamentTypes: ['Eliminatórias','Liga','Grupos'], register: 'Inscrever →', details: 'Ver detalhes →',
+    tracking: 'Rastreio ativo', currentSpeed: 'Velocidade atual', verified: 'Talento verificado', metrics: ['Ritmo','Remate','Passe','Drible'],
+    ad: 'Anúncio', team: 'equipas', inquiry: 'Questão sobre a plataforma', emailOpening: 'A aplicação de correio predefinida será aberta. Se nada acontecer, verifique a configuração.',
+  },
+};
+
 const PLAYER_IMGS = [
   'https://lh3.googleusercontent.com/aida-public/AB6AXuBpCANwPXzcB4XNxsd5g0IzBXx85qulaAgiHB3VEV4mJ-HnKFpKiTNkRg_i5FhhltP7wmmW-xKSRcRyDAZ89f-Vla0pCdcidR6K-b8Py_4SOooyZsNK61gNzel3gnQVSJsn0hxHNjO8l8mozJm4KW-BIkOoJ5Jptaux-VEA85fEqu6AY50y215pz9GeY--ENImRv8l1pQJ_JR2ppU9lwdQpqvXyLqnQG4iF7ei90E-QbPczGapaiGskvBSJZmqG_QdAwnOn5iovOew',
   'https://lh3.googleusercontent.com/aida-public/AB6AXuAkI3L0Mpa8_973I0Ox0HL-j62lTN_3ov_unRBls1Z1jaol8ZvAWESi9wE6sDsKK2wFg7mTnrLeyXGrnLsXPh0YBDuxjsIFSB9PSbv9sdSB4hSwtWkF6Ajv2wIjX4ST4dhI8oP0Ox03xJIMnAvhb8lsGtRMukryUyWDsVhxAlyFhR-PfoM9b2L48_6DCy5hvI7tE_InVXgrKUQO5BQ7I89AHeDG_i5WpV--EEDYYfxBfBnvVUJQWTYZc6TgI-7eTUDV3zEWT_D2dds',
@@ -337,9 +580,10 @@ function AutoAdvance({ intervalMs, onTick }: { intervalMs: number; onTick: () =>
 }
 
 export default function Home() {
-  const [langAr, setLangAr] = useState(true);
-  const t = TR[langAr ? 'ar' : 'en'];
-  const isRTL = langAr;
+  const { locale, isRTL } = useTranslation();
+  const t = LOCALIZED_TR[locale];
+  const ui = HOME_UI[locale];
+  const extra = HOME_EXTRA[locale];
   const [dark, setDark] = useState(false); 
   const [ads, setAds] = useState<AdItem[]>([]);
   const [homeImages, setHomeImages] = useState<HomeImagesData | null>(null);
@@ -371,7 +615,7 @@ export default function Home() {
       setMotivationIndex((prev) => (prev + 1) % t.motivation.length);
     }, 3000);
     return () => clearInterval(timer);
-  }, [langAr]);
+  }, [locale]);
 
   // Removed reveal observer logic for stability and immediate visibility
   useEffect(() => {
@@ -410,9 +654,7 @@ export default function Home() {
               name: item.name,
               description:
                 item.description ||
-                (isRTL
-                  ? 'منتج متاح حالياً من متجر الحلم.'
-                  : 'A currently available product from the El7lm store.'),
+                extra.defaultProduct,
               category,
               price: Number(item.price || 0),
               currency: item.currency || 'SAR',
@@ -514,35 +756,21 @@ export default function Home() {
   };
 
   const storeEnabled = storeSection?.isEnabled ?? true;
-  const storeBadge = storeSection ? (isRTL ? storeSection.badgeAr : storeSection.badgeEn) : t.storeBadge;
-  const storeTitle = storeSection ? (isRTL ? storeSection.titleAr : storeSection.titleEn) : t.storeTitle;
-  const storeSub = storeSection ? (isRTL ? storeSection.subAr : storeSection.subEn) : t.storeSub;
-  const storeCta = storeSection ? (isRTL ? storeSection.ctaAr : storeSection.ctaEn) : t.storeCta;
-  const storeSecondary = storeSection ? (isRTL ? storeSection.secondaryAr : storeSection.secondaryEn) : t.storeSecondary;
-  const storeHighlights = storeSection
+  const contentLocaleSupported = locale === 'ar' || locale === 'en';
+  const storeBadge = storeSection && contentLocaleSupported ? (isRTL ? storeSection.badgeAr : storeSection.badgeEn) : t.storeBadge;
+  const storeTitle = storeSection && contentLocaleSupported ? (isRTL ? storeSection.titleAr : storeSection.titleEn) : t.storeTitle;
+  const storeSub = storeSection && contentLocaleSupported ? (isRTL ? storeSection.subAr : storeSection.subEn) : t.storeSub;
+  const storeCta = storeSection && contentLocaleSupported ? (isRTL ? storeSection.ctaAr : storeSection.ctaEn) : t.storeCta;
+  const storeSecondary = storeSection && contentLocaleSupported ? (isRTL ? storeSection.secondaryAr : storeSection.secondaryEn) : t.storeSecondary;
+  const storeHighlights = storeSection && contentLocaleSupported
     ? (isRTL ? storeSection.highlightsAr : storeSection.highlightsEn)
     : (t.storeHighlights as { title: string; desc: string }[]);
   const configuredStoreProductIds = storeSection?.selectedProductIds || [];
   const storeItemsLimit = Math.max(1, Math.min(8, storeSection?.maxItems || 6));
-  const storeCategoryLabels: Record<'all' | LandingStoreCategory, string> = isRTL
-    ? {
-        all: 'الكل',
-        equipment: 'معدات',
-        clothing: 'ملابس',
-        accessories: 'إكسسوارات',
-        nutrition: 'تغذية',
-        electronics: 'إلكترونيات',
-        other: 'أخرى',
-      }
-    : {
-        all: 'All',
-        equipment: 'Equipment',
-        clothing: 'Clothing',
-        accessories: 'Accessories',
-        nutrition: 'Nutrition',
-        electronics: 'Electronics',
-        other: 'Other',
-      };
+  const storeCategoryLabels: Record<'all' | LandingStoreCategory, string> = {
+    all: extra.categories[0], equipment: extra.categories[1], clothing: extra.categories[2],
+    accessories: extra.categories[3], nutrition: extra.categories[4], electronics: extra.categories[5], other: extra.categories[6],
+  };
   const availableStoreProducts = storeProducts.filter((product) => product.isAvailable);
   const featuredStoreProducts = availableStoreProducts.filter((product) => product.featured);
   const storeCategories = [
@@ -563,30 +791,13 @@ export default function Home() {
       : preferredStoreProducts.filter((product) => product.category === storeCategoryFilter)
   ).slice(0, storeItemsLimit);
   const formatLandingStorePrice = (amount: number, currency: string) =>
-    new Intl.NumberFormat(isRTL ? 'ar-SA' : 'en-US', {
+    new Intl.NumberFormat({ ar: 'ar-QA', en: 'en-GB', es: 'es-ES', pt: 'pt-PT' }[locale], {
       style: 'currency',
       currency: currency || 'SAR',
       maximumFractionDigits: 2,
     }).format(amount || 0);
-  const landingNavItems = langAr
-    ? [
-        { label: 'الرئيسية', href: '#top' },
-        { label: 'المميزات', href: '#features' },
-        { label: 'الشركاء', href: '#partners' },
-        { label: 'الفرص', href: '#opportunities' },
-        { label: 'المتجر', href: '#store' },
-        { label: 'البطولات', href: '#tournaments' },
-        { label: 'تواصل معنا', href: '#contact' },
-      ]
-    : [
-        { label: 'Home', href: '#top' },
-        { label: 'Features', href: '#features' },
-        { label: 'Partners', href: '#partners' },
-        { label: 'Opportunities', href: '#opportunities' },
-        { label: 'Store', href: '#store' },
-        { label: 'Tournaments', href: '#tournaments' },
-        { label: 'Contact', href: '#contact' },
-      ];
+  const landingNavItems = ['#top','#features','#partners','#opportunities','#store','#tournaments','#contact']
+    .map((href, index) => ({ label: extra.nav[index], href }));
 
   return (
     <div id="top" dir={t.dir} lang={t.lang}>
@@ -746,19 +957,14 @@ export default function Home() {
           </div>
           <nav className="hm" style={{display:'flex',gap:'2rem'}}>
             {landingNavItems.map((item,i)=>(
-              <a key={item.href} href={item.href} className="hl" style={{fontWeight:700,textTransform:langAr?'none':'uppercase',letterSpacing:langAr?'0':'-0.025em',textDecoration:'none',color:i===0?(dark?'#bdc4ef':'#4f46e5'):theme.subText,borderBottom:i===0?`2px solid ${dark?'#bdc4ef':'#4f46e5'}`:'none',paddingBottom:i===0?'2px':'0',transition:'color .2s'}}
+              <a key={item.href} href={item.href} className="hl" style={{fontWeight:700,textTransform:isRTL?'none':'uppercase',letterSpacing:isRTL?'0':'-0.025em',textDecoration:'none',color:i===0?(dark?'#bdc4ef':'#4f46e5'):theme.subText,borderBottom:i===0?`2px solid ${dark?'#bdc4ef':'#4f46e5'}`:'none',paddingBottom:i===0?'2px':'0',transition:'color .2s'}}
                 onMouseEnter={e=>{if(i!==0)(e.currentTarget as HTMLAnchorElement).style.color=(dark?'#bdc4ef':'#4f46e5')}}
                 onMouseLeave={e=>{if(i!==0)(e.currentTarget as HTMLAnchorElement).style.color=theme.subText}}>{item.label}</a>
             ))}
           </nav>
         </div>
         <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
-          <div style={{display:'flex',alignItems:'center',background: theme.cardBg,borderRadius:'12px',padding:'4px',border:`1px solid ${theme.border}`}}>
-            {['AR','EN'].map((l,i)=>{
-              const active=(i===0&&langAr)||(i===1&&!langAr);
-              return <button key={l} onClick={()=>setLangAr(i===0)} className="hl" style={{padding:'4px 12px',borderRadius:'8px',fontSize:'.75rem',fontWeight:700,background:active?(dark?'#bdc4ef':'#4f46e5'):'transparent',color:active?(dark?'#272e50':'#ffffff'):theme.subText,border:'none',cursor:'pointer',transition:'all .2s'}}>{l}</button>;
-            })}
-          </div>
+          <LanguageSwitcher />
           <div style={{display:'flex',alignItems:'center',gap:'.5rem',color:theme.text,borderRight:`1px solid ${theme.border}`,paddingRight:'1rem',marginRight:'.5rem',direction:'ltr'}}>
             {/* Theme Toggle */}
             <span onClick={()=>setDark(!dark)} className="tc" style={{cursor:'pointer',padding:'.5rem',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center'}}
@@ -908,7 +1114,7 @@ export default function Home() {
               textTransform: 'uppercase',
               letterSpacing: '0.12em',
               marginBottom: '0.75rem'
-            }}> {isRTL ? '' : 'Partners'}</span>
+            }}> {ui.partners}</span>
             <h2 className="hl" style={{fontSize:'clamp(1.4rem, 3vw, 2.2rem)', fontWeight:900, color: theme.text, margin:0}}>
               {t.partnerLabel}
             </h2>
@@ -997,7 +1203,7 @@ export default function Home() {
                   lineHeight: 1.2,
                 }}
               >
-                {isRTL ? 'شركاؤنا يقودونك إلى الفرص' : 'Partners Lead You To Opportunities'}
+                {ui.partnersLead}
               </div>
               <div
                 style={{
@@ -1023,8 +1229,8 @@ export default function Home() {
             return true;
           }) || [];
 
-          const sectionTitle = oppsSection ? (isRTL ? oppsSection.titleAr : oppsSection.titleEn) : t.oppsTitle;
-          const sectionSub = oppsSection ? (isRTL ? oppsSection.subAr : oppsSection.subEn) : t.oppsSub;
+          const sectionTitle = oppsSection && contentLocaleSupported ? (isRTL ? oppsSection.titleAr : oppsSection.titleEn) : t.oppsTitle;
+          const sectionSub = oppsSection && contentLocaleSupported ? (isRTL ? oppsSection.subAr : oppsSection.subEn) : t.oppsSub;
 
           if (opportunities.length === 0 && oppsSection !== null) {
               return null; // hide completely if no opps selected and data has loaded
@@ -1085,7 +1291,7 @@ export default function Home() {
                         {opp.applicationDeadline && (
                           <span style={{fontSize:'0.75rem', color:'#909099', display:'flex', alignItems:'center', gap:'0.25rem', marginRight:'auto'}}>
                             <Calendar size={12} />
-                            {new Date(opp.applicationDeadline).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US')}
+                            {new Date(opp.applicationDeadline).toLocaleDateString({ ar: 'ar-QA', en: 'en-GB', es: 'es-ES', pt: 'pt-PT' }[locale])}
                           </span>
                         )}
                       </div>
@@ -1134,7 +1340,7 @@ export default function Home() {
                     fontWeight: 700,
                     textTransform: 'uppercase',
                     letterSpacing: '0.1em'
-                  }}>ðŸ”¥ {isRTL ? 'عروض مميزة' : 'Featured Offers'}</span>
+                  }}>🔥 {ui.featured}</span>
                 </div>
 
                 {/* Slider Container */}
@@ -1191,7 +1397,7 @@ export default function Home() {
                             fontWeight: 700,
                             textTransform: 'uppercase',
                             border: '1px solid rgba(255,255,255,0.15)'
-                          }}>{isRTL ? '' : 'Ad'}</span>
+                          }}>{extra.ad}</span>
                           {ad.category && (
                             <span style={{
                               background: theme.primary,
@@ -1245,7 +1451,7 @@ export default function Home() {
                             fontSize: '0.85rem',
                             fontWeight: 700
                           }}>
-                            {isRTL ? 'لمعرفة المزيد' : ' Learn More'}
+                            {ui.learnMore}
                           </span>
                         </div>
                       </a>
@@ -1415,7 +1621,7 @@ export default function Home() {
             <div style={{textAlign:'center',marginBottom:'6rem'}}>
                <span style={{display:'inline-flex',alignItems:'center',gap:'.75rem',background:`${theme.primary}10`,color:theme.primary,padding:'.5rem 1.5rem',borderRadius:'9999px',fontSize:'.85rem',fontWeight:800,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:'1.5rem', border: `1px solid ${theme.primary}20`}}>
                 <Globe size={18} />
-                {isRTL ? 'دليل البداية الذكي' : 'Smart Start Guide'}
+                {ui.smartGuide}
               </span>
               <h2 className="st" style={{fontSize:'3.5rem',marginBottom:'1.5rem',color:theme.text, fontWeight: 900, letterSpacing: '-0.02em'}}>{t.howTitle}</h2>
               <p style={{color:theme.subText,fontSize:'1.2rem',maxWidth:'45rem',margin:'0 auto',lineHeight:1.8}}>{t.howSub}</p>
@@ -1539,10 +1745,10 @@ export default function Home() {
               >
                 <div style={{position:'absolute', top:0, left:0, bottom:0, width:'6px', background: 'linear-gradient(to bottom, #fdba45, #10b981)'}}></div>
                 <h3 className="hl" style={{fontSize: '2.2rem', fontWeight: 900, marginBottom: '1.25rem', color: theme.text}}>
-                  {isRTL ? 'اكتشف الفرص المتاحة' : 'Discover Available Opportunities'}
+                  {ui.discover}
                 </h3>
                 <p style={{color: theme.subText, fontSize: '1.25rem', lineHeight: 1.6, marginBottom: '2.5rem', maxWidth: '550px', margin: '0 auto 2.5rem'}}>
-                  {isRTL ? 'تصفح آلاف الفرص من الأندية والأكاديميات والبطولات وتقدم بضغطة واحدة.' : 'Browse thousands of opportunities from clubs, academies, and tournaments and apply with one click.'}
+                  {ui.discoverDesc}
                 </p>
                 <a 
                   href="/auth/register" 
@@ -1555,7 +1761,7 @@ export default function Home() {
                   onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
                   onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                 >
-                  {isRTL ? 'ابدأ كلاعب الآن' : 'Start As Athlete Now'}
+                  {ui.startAthlete}
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{transform: isRTL ? 'rotate(180deg)' : 'none'}}>
                     <path d="M5 12h14M12 5l7 7-7 7"/>
                   </svg>
@@ -1601,7 +1807,7 @@ export default function Home() {
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#84d993" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{animation:'fw-spin 4s linear infinite'}}>
                   <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
                 </svg>
-                {isRTL ? 'لمن هذه المنصة؟' : 'Who Is It For?'}
+                {ui.audience}
               </span>
               <h2 className="st" style={{fontSize:'2.6rem',marginBottom:'1rem',color:theme.text}}>{t.forWhomTitle}</h2>
               <p style={{color:theme.subText,fontSize:'1.05rem',maxWidth:'44rem',margin:'0 auto',lineHeight:1.75}}>{t.forWhomSub}</p>
@@ -1921,17 +2127,17 @@ export default function Home() {
                       }}
                     >
                       <WalletCards size={15} />
-                      {isRTL ? 'منتجات مختارة' : 'Selected Products'}
+                      {ui.selectedProducts}
                     </div>
 
                     <h3 className="hl" style={{ color: theme.text, fontSize: '1.8rem', fontWeight: 900, lineHeight: 1.2, marginBottom: '.5rem' }}>
-                      {isRTL ? 'منتجات المتجر من إدارة المحتوى' : 'Store Products From Content Management'}
+                      {ui.managedProducts}
                     </h3>
 
                     <p style={{ color: theme.subText, lineHeight: 1.8, fontSize: '.95rem' }}>
                       {configuredStoreProductIds.length > 0
-                        ? (isRTL ? 'يتم عرض المنتجات هنا بنفس الاختيار والترتيب المحددين من لوحة إدارة المحتوى.' : 'Products here follow the exact selection and order configured in content management.')
-                        : (isRTL ? 'في حال عدم اختيار منتجات يدويًا، يتم عرض المنتجات المميزة أو الأحدث المتاحة تلقائيًا.' : 'If no products are selected manually, featured or latest available products are shown automatically.')}
+                        ? ui.selectedNote
+                        : ui.autoNote}
                     </p>
                   </div>
 
@@ -1950,7 +2156,7 @@ export default function Home() {
                       border: `1px solid ${theme.border}`,
                     }}
                   >
-                    {isRTL ? 'عرض المتجر الكامل' : 'Open Full Store'}
+                    {ui.openStore}
                   </a>
                 </div>
 
@@ -1987,7 +2193,7 @@ export default function Home() {
                       background: dark ? 'rgba(255,255,255,.02)' : 'rgba(255,255,255,.75)',
                     }}
                   >
-                    {isRTL ? 'لا توجد منتجات متاحة ضمن الاختيار الحالي.' : 'No products are available for the current selection.'}
+                    {ui.noProducts}
                   </div>
                 ) : (
                   <div style={{ display: 'grid', gap: '1rem' }}>
@@ -2054,7 +2260,7 @@ export default function Home() {
                             ) : null}
 
                             <div style={{ color: theme.subText, fontSize: '.84rem', lineHeight: 1.7, marginBottom: '.6rem' }}>
-                              {product.description || (isRTL ? 'منتج معروض من المتجر الرياضي الموحد.' : 'Featured product from the shared sports store.')}
+                              {product.description || ui.productDesc}
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem', flexWrap: 'wrap' }}>
@@ -2062,7 +2268,7 @@ export default function Home() {
                                 {storeCategoryLabels[product.category]}
                               </span>
                               <span style={{ borderRadius: '9999px', background: dark ? 'rgba(124,58,237,.14)' : 'rgba(124,58,237,.10)', color: '#7c3aed', padding: '.28rem .65rem', fontSize: '.75rem', fontWeight: 800 }}>
-                                {isRTL ? 'يدعم التقسيط' : 'Installments Available'}
+                                {ui.installment}
                               </span>
                             </div>
                           </div>
@@ -2131,10 +2337,10 @@ export default function Home() {
                   <div className="ap gp" style={{position:'absolute',top:'2.5rem',left:'2.5rem',padding:'1rem',border:`1px solid ${theme.primary}`,borderRadius:'8px', background: theme.panelBg, backdropFilter: 'blur(10px)'}}>
                     <div style={{display:'flex',alignItems:'center',gap:'.75rem'}}>
                       <div className="ap" style={{width:'12px',height:'12px',background: theme.primary,borderRadius:'50%'}}></div>
-                      <span className="hl" style={{fontSize:'10px',fontWeight:700,letterSpacing:'.1em',color: theme.primary,textTransform:'uppercase'}}>Tracking Active</span>
+                      <span className="hl" style={{fontSize:'10px',fontWeight:700,letterSpacing:'.1em',color: theme.primary,textTransform:'uppercase'}}>{extra.tracking}</span>
                     </div>
                     <p className="hl" style={{fontSize:'1.5rem',fontWeight:900,marginTop:'.5rem', color: theme.text}}>32.4 km/h</p>
-                    <p style={{fontSize:'8px',color: theme.subText,textTransform:'uppercase'}}>Current Speed</p>
+                    <p style={{fontSize:'8px',color: theme.subText,textTransform:'uppercase'}}>{extra.currentSpeed}</p>
                   </div>
                   {/* Stats Panel */}
                   <div style={{position:'absolute',bottom:'2.5rem',right:'2.5rem',padding:'1.5rem',background: theme.headerBg,backdropFilter:'blur(12px)',border:`1px solid ${theme.border}`,borderRadius:'12px'}}>
@@ -2215,7 +2421,7 @@ export default function Home() {
                         <img src="/el7lm-logo.png" alt="Logo" className="logo-16" style={{ width:'16px', height:'16px', objectFit: 'contain', filter: dark ? 'brightness(1.1)' : 'none' }} />
                       </div>
                       <span className="hl" style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.15em', color: theme.primary, textTransform: 'uppercase' }}>
-                         {isRTL ? 'بيان المؤسس' : "FOUNDER'S STATEMENT"}
+                         {ui.founder}
                       </span>
                    </div>
                    
@@ -2231,21 +2437,18 @@ export default function Home() {
                      marginLeft: isRTL ? 'auto' : '0'
                    }}>
                      <span style={{ fontSize: '5rem', position: 'absolute', top: '-1.5rem', [isRTL ? 'right' : 'left']: '-2.5rem', opacity: 0.07, color: theme.primary }}>"</span>
-                     {isRTL 
-                      ? 'بدأنا "الحلم" لأننا نؤمن بأن في كل شارع وكل أكاديمية، هناك موهبة دفينة تنتظر من يراها. هدفنا هو تزويد هذه المواهب بـ "العين الرقمية" التي لا تنام، والفرصة التي يستحقونها للوصول إلى الساحة العالمية.'
-                       : 'We started "El7lm" because we believe that in every street and every academy, there is a buried talent waiting to be seen. Our goal is to provide these talents with the "Digital Eye" that never sleeps, and the opportunity they deserve to reach the world stage.'
-                     }
+                     {extra.founderQuote}
                    </p>
 
                    <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem', justifyContent: isRTL ? 'flex-start' : 'flex-start' }}>
                        <img src="/el7lm-logo.png" alt="Logo" className="logo-16" style={{ width:'16px', height:'16px', objectFit: 'contain', filter: dark ? 'brightness(1.1)' : 'none' }} />
                        <h3 className="hl" style={{ fontSize: '1.5rem', fontWeight: 800, color: theme.text, marginBottom: 0 }}>
-                          {isRTL ? 'محمد سعودي' : 'Mohamed Saudi'}
+                          {ui.founderName}
                        </h3>
                     </div>
                     <p style={{ color: theme.subText, fontSize: '1.125rem', fontWeight: 500, paddingRight: isRTL ? '2.25rem' : '0', paddingLeft: isRTL ? '0' : '2.25rem' }}>
-                       {isRTL ? 'المؤسس والمدير التنفيذي' : 'Founder & CEO'}
+                       {ui.founderRole}
                     </p>
                       <div style={{ marginTop: '2rem' }}>
                          
@@ -2265,19 +2468,19 @@ export default function Home() {
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:'2.5rem', flexWrap:'wrap', gap:'1rem' }}>
                 <div style={{ textAlign: isRTL ? 'right' : 'left' }}>
                   <div style={{ fontSize:12, fontWeight:700, color:'#d97706', letterSpacing:2, textTransform:'uppercase', marginBottom:8 }}>
-                    {isRTL ? '🏆 بطولات المنصة' : '🏆 PLATFORM TOURNAMENTS'}
+                    🏆 {ui.tournaments}
                   </div>
                   <h2 className="st" style={{ fontSize:'2rem', color: theme.text, margin:0 }}>
-                    {isRTL ? 'البطولات الجارية والقادمة' : 'Live & Upcoming Tournaments'}
+                    {ui.upcoming}
                   </h2>
                   <p style={{ color: theme.subText, marginTop:'.5rem', fontSize:15 }}>
-                    {isRTL ? 'تصفح البطولات وسجّل فريقك أو تابع النتائج مباشرة' : 'Browse tournaments, register your team, or follow results live'}
+                    {ui.tournamentDesc}
                   </p>
                 </div>
                 <a href="/tournaments" style={{ display:'inline-flex', alignItems:'center', gap:6, color:'#d97706', fontWeight:700, fontSize:14, textDecoration:'none', flexShrink:0, border:'1.5px solid #d97706', borderRadius:10, padding:'9px 18px', transition:'background 0.2s' }}
                   onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(217,119,6,0.08)'}
                   onMouseLeave={e => (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'}>
-                  {isRTL ? 'عرض الكل' : 'View All'}
+                  {ui.viewAll}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isRTL ? 'rotate(180deg)' : 'none' }}><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </a>
               </div>
@@ -2286,14 +2489,14 @@ export default function Home() {
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px, 1fr))', gap:16 }}>
                 {liveTournaments.map((t: any) => {
                   const statusCfg: Record<string,{lbl:string;color:string}> = {
-                    open:      { lbl: isRTL ? 'مفتوح للتسجيل' : 'Open',      color:'#16a34a' },
-                    ongoing:   { lbl: isRTL ? 'جارٍ الآن'     : 'Ongoing',   color:'#2563eb' },
-                    closed:    { lbl: isRTL ? 'مغلق'           : 'Closed',    color:'#64748b' },
-                    completed: { lbl: isRTL ? 'منتهي'          : 'Completed', color:'#8b5cf6' },
-                    cancelled: { lbl: isRTL ? 'ملغى'           : 'Cancelled', color:'#ef4444' },
+                    open:      { lbl: ui.statuses[0], color:'#16a34a' },
+                    ongoing:   { lbl: ui.statuses[1], color:'#2563eb' },
+                    closed:    { lbl: ui.statuses[2], color:'#64748b' },
+                    completed: { lbl: ui.statuses[3], color:'#8b5cf6' },
+                    cancelled: { lbl: ui.statuses[4], color:'#ef4444' },
                   };
                   const cfg = statusCfg[t.status] || statusCfg.closed;
-                  const typeLbl: Record<string,string> = { knockout: isRTL?'كأس إقصائي':'Knockout', league: isRTL?'دوري':'League', groups_knockout: isRTL?'مجموعات':'Groups' };
+                  const typeLbl: Record<string,string> = { knockout: extra.tournamentTypes[0], league: extra.tournamentTypes[1], groups_knockout: extra.tournamentTypes[2] };
 
                   return (
                     <a key={t.id} href={`/tournaments/${t.slug}`} style={{ textDecoration:'none', display:'block', background: dark ? '#131929' : '#f8fafc', border: `1px solid ${dark?'rgba(255,255,255,0.07)':'#e2e8f0'}`, borderRadius:16, overflow:'hidden', transition:'transform 0.2s, box-shadow 0.2s', cursor:'pointer' }}
@@ -2321,7 +2524,7 @@ export default function Home() {
                         <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:12 }}>
                           <span style={{ fontSize:11, fontWeight:700, color:cfg.color, background:`${cfg.color}18`, border:`1px solid ${cfg.color}30`, borderRadius:6, padding:'2px 8px' }}>{cfg.lbl}</span>
                           {t.type && <span style={{ fontSize:11, fontWeight:600, color: dark?'#94a3b8':'#64748b', background: dark?'rgba(255,255,255,0.06)':'#e2e8f0', borderRadius:6, padding:'2px 8px' }}>{typeLbl[t.type] || t.type}</span>}
-                          {t.max_teams && <span style={{ fontSize:11, color:'#64748b', borderRadius:6, padding:'2px 8px', background: dark?'rgba(255,255,255,0.04)':'#f1f5f9' }}>👥 {t.max_teams} {isRTL?'فريق':'teams'}</span>}
+                          {t.max_teams && <span style={{ fontSize:11, color:'#64748b', borderRadius:6, padding:'2px 8px', background: dark?'rgba(255,255,255,0.04)':'#f1f5f9' }}>👥 {t.max_teams} {extra.team}</span>}
                         </div>
 
                         {/* Dates */}
@@ -2336,7 +2539,7 @@ export default function Home() {
                         {/* CTA */}
                         <div style={{ marginTop:12, paddingTop:12, borderTop:`1px solid ${dark?'rgba(255,255,255,0.05)':'#f1f5f9'}`, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                           <span style={{ fontSize:12, color:'#d97706', fontWeight:700 }}>
-                            {t.status === 'open' ? (isRTL?'سجّل الآن →':'Register →') : (isRTL?'عرض التفاصيل →':'View Details →')}
+                            {t.status === 'open' ? extra.register : extra.details}
                           </span>
                         </div>
                       </div>
@@ -2392,8 +2595,8 @@ export default function Home() {
         {/* TALENTS */}
         {(playersSection === null || playersSection.isEnabled) && (() => {
           const displayedPlayers = featuredPlayers.length > 0 ? featuredPlayers : null;
-          const sectionTitle = playersSection ? (isRTL ? playersSection.titleAr : playersSection.titleEn) : t.talentsTitle;
-          const sectionSub = playersSection ? (isRTL ? playersSection.subAr : playersSection.subEn) : t.talentsSub;
+          const sectionTitle = playersSection && contentLocaleSupported ? (isRTL ? playersSection.titleAr : playersSection.titleEn) : t.talentsTitle;
+          const sectionSub = playersSection && contentLocaleSupported ? (isRTL ? playersSection.subAr : playersSection.subEn) : t.talentsSub;
 
           if (!displayedPlayers && playersSection !== null) return null;
 
@@ -2691,15 +2894,15 @@ export default function Home() {
             <div style={{padding:'2.5rem', display:'flex', flexDirection:'column', justifyContent:'center'}}>
               <div style={{display:'flex',gap:'1rem',marginBottom:'2rem'}}>
                 {selectedPlayer.badge && <span style={{background: theme.glow, color: theme.primary, padding:'.5rem 1rem', borderRadius:'8px', fontSize:'.875rem', fontWeight:700}}>{selectedPlayer.badge}</span>}
-                <span style={{background: 'rgba(132,217,147,.1)', color: '#84d993', padding:'.5rem 1rem', borderRadius:'8px', fontSize:'.875rem', fontWeight:700}}>Verified Talent</span>
+                <span style={{background: 'rgba(132,217,147,.1)', color: '#84d993', padding:'.5rem 1rem', borderRadius:'8px', fontSize:'.875rem', fontWeight:700}}>{extra.verified}</span>
               </div>
 
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'2rem', marginBottom:'2.5rem'}}>
                 {[
-                  {label: isRTL?'السرعة':'Pace', value: selectedPlayer.pace || 85},
-                  {label: isRTL?'التسديد':'Shot', value: selectedPlayer.shooting || 82},
-                  {label: isRTL?'التمرير':'Pass', value: selectedPlayer.passing || 78},
-                  {label: isRTL?'المراوغة':'Dribbling', value: selectedPlayer.dribbling || 88}
+                  {label: extra.metrics[0], value: selectedPlayer.pace || 85},
+                  {label: extra.metrics[1], value: selectedPlayer.shooting || 82},
+                  {label: extra.metrics[2], value: selectedPlayer.passing || 78},
+                  {label: extra.metrics[3], value: selectedPlayer.dribbling || 88}
                 ].map((s,i)=>(
                   <div key={i}>
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:'.5rem'}}>
@@ -2727,11 +2930,11 @@ export default function Home() {
         <div className="pointer-events-auto">
           <FloatingDock
             items={[
-              { title: langAr ? 'الرئيسية' : 'Home', icon: <HomeIcon className="h-full w-full" />, href: '#hero' },
-              { title: langAr ? 'آلية العمل' : 'Process', icon: <Info className="h-full w-full" />, href: '#how-to-use' },
-              { title: langAr ? 'المميزات' : 'Features', icon: <LayoutGrid className="h-full w-full" />, href: '#features' },
-              { title: langAr ? 'تحليل AI' : 'AI Analysis', icon: <Cpu className="h-full w-full" />, href: '#ai-analysis' },
-              { title: langAr ? 'تواصل معنا' : 'Contact', icon: <MessageCircle className="h-full w-full" />, href: 'https://wa.me/966500000000' },
+              { title: ui.dock[0], icon: <HomeIcon className="h-full w-full" />, href: '#hero' },
+              { title: ui.dock[1], icon: <Info className="h-full w-full" />, href: '#how-to-use' },
+              { title: ui.dock[2], icon: <LayoutGrid className="h-full w-full" />, href: '#features' },
+              { title: ui.dock[3], icon: <Cpu className="h-full w-full" />, href: '#ai-analysis' },
+              { title: ui.dock[4], icon: <MessageCircle className="h-full w-full" />, href: 'https://wa.me/966500000000' },
             ]}
           />
         </div>

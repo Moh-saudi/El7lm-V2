@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, CheckCircle, Users, Calendar } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useTranslation } from '@/lib/i18n';
 
 interface JoinOrgPageProps {
   params: { code: string };
@@ -19,6 +20,7 @@ export default function JoinOrgPage({ params }: JoinOrgPageProps) {
   const { code } = params;
   const router = useRouter();
   const { user, userData } = useAuth();
+  const { t, locale, isRTL } = useTranslation();
   
   const [referral, setReferral] = useState<OrganizationReferral | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,13 +38,13 @@ export default function JoinOrgPage({ params }: JoinOrgPageProps) {
       const referralData = await organizationReferralService.findReferralByCode(code);
       
       if (!referralData) {
-        setError('كود الانضمام غير صحيح أو منتهي الصلاحية');
+        setError(t('joinOrg.codeExpired'));
       } else {
         setReferral(referralData);
       }
     } catch (err) {
       console.error('خطأ في تحميل بيانات الإحالة:', err);
-      setError('حدث خطأ في تحميل البيانات');
+      setError(t('joinOrg.loadError'));
     } finally {
       setLoading(false);
     }
@@ -50,13 +52,13 @@ export default function JoinOrgPage({ params }: JoinOrgPageProps) {
 
   const handleJoinRequest = async () => {
     if (!user || !userData || !referral) {
-      toast.error('يجب تسجيل الدخول أولاً');
+      toast.error(t('joinOrg.loginRequired'));
       router.push('/auth/login');
       return;
     }
 
     if ((userData as any).accountType !== 'player') {
-      toast.error('هذه الخدمة متاحة للاعبين فقط');
+      toast.error(t('joinOrg.playersOnly'));
       return;
     }
 
@@ -69,12 +71,12 @@ export default function JoinOrgPage({ params }: JoinOrgPageProps) {
         code
       );
 
-      toast.success('تم إرسال طلب الانضمام بنجاح! سيتم إشعارك عند الموافقة عليه.');
+      toast.success(t('joinOrg.joinSuccess'));
       router.push('/dashboard/player');
       
     } catch (err: any) {
       console.error('خطأ في إرسال طلب الانضمام:', err);
-      toast.error(err?.message || 'فشل في إرسال طلب الانضمام');
+      toast.error(err?.message || t('joinOrg.joinFailed'));
     } finally {
       setJoining(false);
     }
@@ -85,7 +87,7 @@ export default function JoinOrgPage({ params }: JoinOrgPageProps) {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">جاري التحميل...</p>
+          <p className="mt-4 text-gray-600">{t('joinOrg.loading')}</p>
         </div>
       </div>
     );
@@ -96,9 +98,9 @@ export default function JoinOrgPage({ params }: JoinOrgPageProps) {
       <div className="min-h-screen flex items-center justify-center">
         <Card className="p-8 max-w-md w-full text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-gray-900 mb-2">خطأ في كود الانضمام</h1>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">{t('joinOrg.codeError')}</h1>
           <p className="text-gray-600 mb-4">{error}</p>
-          <Button onClick={() => router.push('/')}>العودة للرئيسية</Button>
+          <Button onClick={() => router.push('/')}>{t('joinOrg.backToHome')}</Button>
         </Card>
       </div>
     );
@@ -106,22 +108,22 @@ export default function JoinOrgPage({ params }: JoinOrgPageProps) {
 
   const getOrgTypeLabel = (type: string) => {
     switch (type) {
-      case 'club': return 'نادي';
-      case 'academy': return 'أكاديمية';
-      case 'trainer': return 'مدرب';
-      case 'agent': return 'وكيل';
-      default: return 'منظمة';
+      case 'club': return t('auth.roleClub');
+      case 'academy': return t('auth.roleAcademy');
+      case 'trainer': return t('auth.roleTrainer');
+      case 'agent': return t('auth.roleAgent');
+      default: return t('joinOrg.organization');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-gray-50 py-12" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="max-w-2xl mx-auto px-4">
         <Card className="p-8">
           <div className="text-center mb-8">
             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">دعوة للانضمام</h1>
-            <p className="text-gray-600">تم العثور على دعوة صحيحة للانضمام</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('joinOrg.invitationTitle')}</h1>
+            <p className="text-gray-600">{t('joinOrg.validInvitation')}</p>
           </div>
 
           <div className="space-y-6">
@@ -136,44 +138,44 @@ export default function JoinOrgPage({ params }: JoinOrgPageProps) {
               <div className="flex items-center gap-4 text-sm text-blue-700">
                 <div className="flex items-center gap-1">
                   <Users className="w-4 h-4" />
-                  <span>{referral.currentUsage} لاعب انضم</span>
+                  <span>{referral.currentUsage} {t('joinOrg.playersJoined')}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
-                  <span>تم الإنشاء: {new Date(referral.createdAt as any).toLocaleDateString('ar')}</span>
+                  <span>{t('joinOrg.createdAt')} {new Date(referral.createdAt as any).toLocaleDateString({ ar: 'ar-QA', en: 'en-GB', es: 'es-ES', pt: 'pt-PT' }[locale])}</span>
                 </div>
               </div>
             </div>
 
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <h3 className="font-semibold text-yellow-800 mb-2">ملاحظة مهمة:</h3>
+              <h3 className="font-semibold text-yellow-800 mb-2">{t('joinOrg.importantNote')}</h3>
               <p className="text-yellow-700 text-sm">
-                عند الضغط على "طلب الانضمام"، سيتم إرسال طلبك إلى {referral.organizationName}. سيتم إشعارك عندما يتم قبول أو رفض طلبك.
+                {t('joinOrg.importantNoteDesc').replace('{{name}}', referral.organizationName)}
               </p>
             </div>
 
             {!user ? (
               <div className="space-y-4">
-                <p className="text-center text-gray-600">يجب تسجيل الدخول أولاً للانضمام</p>
+                <p className="text-center text-gray-600">{t('joinOrg.loginRequiredDesc')}</p>
                 <div className="flex gap-4">
                   <Button className="flex-1" onClick={() => router.push('/auth/login')}>
-                    تسجيل الدخول
+                    {t('common.login')}
                   </Button>
                   <Button variant="outline" className="flex-1" onClick={() => router.push('/auth/register')}>
-                    إنشاء حساب جديد
+                    {t('auth.createAccount')}
                   </Button>
                 </div>
               </div>
             ) : (userData as any)?.accountType !== 'player' ? (
               <div className="text-center">
-                <p className="text-red-600 mb-4">هذه الدعوة متاحة للاعبين فقط</p>
+                <p className="text-red-600 mb-4">{t('joinOrg.invitationForPlayersOnly')}</p>
                 <Button variant="outline" onClick={() => router.push('/dashboard')}>
-                  العودة للوحة التحكم
+                  {t('joinOrg.backToDashboard')}
                 </Button>
               </div>
             ) : (
               <Button className="w-full" size="lg" onClick={handleJoinRequest} disabled={joining}>
-                {joining ? 'جاري الإرسال...' : 'طلب الانضمام'}
+                {joining ? t('joinOrg.sending') : t('joinOrg.requestJoin')}
               </Button>
             )}
           </div>

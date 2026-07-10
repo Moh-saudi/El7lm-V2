@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { useTranslation } from '@/lib/i18n';
 import { getExploreOpportunities } from '@/lib/firebase/opportunities';
 import { OPPORTUNITY_TYPES } from '@/lib/opportunities/config';
 import { Opportunity } from '@/types/opportunities';
@@ -32,6 +33,7 @@ import PlayerOrganizationCard from '@/components/referrals/PlayerOrganizationCar
 import PhoneCollectionModal from '@/components/player/PhoneCollectionModal';
 
 export default function PlayerDashboard() {
+  const { t } = useTranslation();
   // التحقق من نوع الحساب - السماح فقط للاعبين وأولياء الأمور
   const { isAuthorized, isCheckingAuth } = useAccountTypeAuth({
     allowedTypes: ['player', 'parent'],
@@ -105,7 +107,7 @@ export default function PlayerDashboard() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin"></div>
-          <p className="text-gray-600 text-sm md:text-base">جاري التحقق من صلاحيات الوصول...</p>
+          <p className="text-gray-600 text-sm md:text-base">{t('dashboard.checkingAuth')}</p>
         </div>
       </div>
     );
@@ -118,29 +120,29 @@ export default function PlayerDashboard() {
 
   const quickActions = [
     {
-      title: 'الملف الشخصي',
-      description: 'إدارة معلوماتك الشخصية',
+      title: t('dashboard.profile'),
+      description: t('dashboard.manageProfileDesc'),
       icon: User,
       href: '/dashboard/player/profile',
       color: 'bg-blue-500'
     },
     {
-      title: 'التقارير',
-      description: 'عرض تقارير الأداء والتقدم',
+      title: t('dashboard.reports'),
+      description: t('dashboard.viewReportsDesc'),
       icon: FileText,
       href: '/dashboard/player/reports',
       color: 'bg-green-500'
     },
     {
-      title: 'البحث عن الفرص',
-      description: 'البحث عن فرص جديدة',
+      title: t('dashboard.searchOpportunities'),
+      description: t('dashboard.searchOpportunitiesDesc'),
       icon: Search,
       href: '/dashboard/player/search',
       color: 'bg-purple-500'
     },
     {
-      title: 'الرسائل',
-      description: 'إدارة المحادثات والرسائل',
+      title: t('dashboard.messages'),
+      description: t('dashboard.manageMessagesDesc'),
       icon: MessageSquare,
       href: '/dashboard/player/messages',
       color: 'bg-orange-500'
@@ -149,28 +151,28 @@ export default function PlayerDashboard() {
 
   const stats = [
     {
-      title: 'المباريات',
+      title: t('dashboard.matches'),
       value: '12',
       change: '+3',
       changeType: 'positive',
       icon: BarChart3
     },
     {
-      title: 'الأهداف',
+      title: t('dashboard.goals'),
       value: '8',
       change: '+2',
       changeType: 'positive',
       icon: CheckCircle
     },
     {
-      title: 'المساعدات',
+      title: t('dashboard.assists'),
       value: '5',
       change: '+1',
       changeType: 'positive',
       icon: CheckCircle
     },
     {
-      title: 'التقييم',
+      title: t('dashboard.rating'),
       value: '8.5',
       change: '+0.3',
       changeType: 'positive',
@@ -184,7 +186,7 @@ export default function PlayerDashboard() {
       {showWelcomeModal && !showPhoneModal && user && (
         <ReferralWelcomeModal
           playerId={user.id}
-          playerName={userData?.full_name || user.user_metadata?.full_name || 'اللاعب'}
+          playerName={userData?.full_name || user.user_metadata?.full_name || t('dashboard.player')}
           onClose={() => setShowWelcomeModal(false)}
         />
       )}
@@ -204,10 +206,10 @@ export default function PlayerDashboard() {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <h1 className="text-xl md:text-3xl font-bold text-gray-900">
-                مرحباً بك في لوحة تحكم اللاعب
+                {t('dashboard.welcomePlayer')}
               </h1>
               <p className="mt-1 md:mt-2 text-gray-600 text-sm md:text-base">
-                إدارة ملفك الشخصي وتتبع تقدمك الرياضي
+                {t('dashboard.manageProfileSub')}
               </p>
             </div>
 
@@ -270,10 +272,10 @@ export default function PlayerDashboard() {
                   </div>
                   <div>
                     <h2 className="text-xl md:text-3xl font-black text-white mb-1">
-                      أكمل ملفك الشخصي! 🚀
+                      {t('dashboard.completeProfileTitle')}
                     </h2>
                     <p className="text-white/90 text-sm md:text-base font-medium">
-                      اجعل ملفك احترافياً وزد فرصك في الظهور
+                      {t('dashboard.completeProfileDesc')}
                     </p>
                   </div>
                 </div>
@@ -282,7 +284,7 @@ export default function PlayerDashboard() {
               {/* Progress Bar */}
               <div className="mb-4 md:mb-6">
                 <div className="flex items-center justify-between text-white/90 text-xs md:text-sm font-semibold mb-2">
-                  <span>اكتمال الملف الشخصي</span>
+                  <span>{t('dashboard.profileCompletion')}</span>
                   <span className="text-yellow-300">45%</span>
                 </div>
                 <div className="h-3 md:h-4 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
@@ -300,22 +302,22 @@ export default function PlayerDashboard() {
                 <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-xl p-3 md:p-4 border border-white/20">
                   <CheckCircle className="w-5 h-5 md:w-6 md:h-6 text-green-300 flex-shrink-0" />
                   <div>
-                    <p className="text-white font-bold text-sm md:text-base">ظهور أفضل</p>
-                    <p className="text-white/70 text-xs">في نتائج البحث</p>
+                    <p className="text-white font-bold text-sm md:text-base">{t('dashboard.betterVisibility')}</p>
+                    <p className="text-white/70 text-xs">{t('dashboard.inSearchResults')}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-xl p-3 md:p-4 border border-white/20">
                   <TrendingUp className="w-5 h-5 md:w-6 md:w-6 text-blue-300 flex-shrink-0" />
                   <div>
-                    <p className="text-white font-bold text-sm md:text-base">فرص أكثر</p>
-                    <p className="text-white/70 text-xs">للتواصل معك</p>
+                    <p className="text-white font-bold text-sm md:text-base">{t('dashboard.moreOpportunities')}</p>
+                    <p className="text-white/70 text-xs">{t('dashboard.toContactYou')}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md rounded-xl p-3 md:p-4 border border-white/20">
                   <Trophy className="w-5 h-5 md:w-6 md:h-6 text-yellow-300 flex-shrink-0" />
                   <div>
-                    <p className="text-white font-bold text-sm md:text-base">مظهر احترافي</p>
-                    <p className="text-white/70 text-xs">يلفت الانتباه</p>
+                    <p className="text-white font-bold text-sm md:text-base">{t('dashboard.professionalLook')}</p>
+                    <p className="text-white/70 text-xs">{t('dashboard.catchesAttention')}</p>
                   </div>
                 </div>
               </div>
@@ -329,7 +331,7 @@ export default function PlayerDashboard() {
                 <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-300 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
                 <User className="w-5 h-5 md:w-6 md:h-6 relative z-10 group-hover:rotate-12 transition-transform" />
-                <span className="relative z-10">أكمل ملفك الآن</span>
+                <span className="relative z-10">{t('dashboard.completeProfileBtn')}</span>
                 <ArrowRight className="w-5 h-5 md:w-6 md:h-6 relative z-10 group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
@@ -346,7 +348,7 @@ export default function PlayerDashboard() {
         {/* Stats Overview */}
         <div className="mb-6 md:mb-8">
           <h2 className="text-lg md:text-2xl font-semibold text-gray-900 mb-4 md:mb-6">
-            نظرة عامة على الأداء
+            {t('dashboard.performanceOverview')}
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
             {stats.map((stat) => (
@@ -378,8 +380,8 @@ export default function PlayerDashboard() {
                   <Trophy className="h-6 w-6 md:h-8 md:w-8 text-yellow-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-1">التسجيل في البطولات</h3>
-                  <p className="text-sm md:text-base text-gray-600">سجل في البطولات المتاحة وشارك في المنافسات</p>
+                  <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-1">{t('dashboard.tournamentRegistration')}</h3>
+                  <p className="text-sm md:text-base text-gray-600">{t('dashboard.tournamentRegistrationDesc')}</p>
                 </div>
               </div>
               <Link
@@ -387,7 +389,7 @@ export default function PlayerDashboard() {
                 className="inline-flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-yellow-500 to-orange-600 text-white rounded-lg hover:from-yellow-600 hover:to-orange-700 transition-all duration-300 hover:scale-105 shadow-lg text-sm md:text-base"
               >
                 <Trophy className="h-4 w-4 md:h-5 md:w-5" />
-                تسجيل في البطولات
+                {t('dashboard.registerInTournamentsBtn')}
                 <ArrowRight className="h-3 w-3 md:h-4 md:w-4" />
               </Link>
             </div>
@@ -396,22 +398,22 @@ export default function PlayerDashboard() {
               <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg">
                 <Users className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
                 <div>
-                  <p className="font-semibold text-gray-900 text-sm md:text-base">تسجيل فردي</p>
-                  <p className="text-xs md:text-sm text-gray-600">سجل نفسك في البطولات</p>
+                  <p className="font-semibold text-gray-900 text-sm md:text-base">{t('dashboard.individualRegistration')}</p>
+                  <p className="text-xs md:text-sm text-gray-600">{t('dashboard.registerYourselfDesc')}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg">
                 <Calendar className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
                 <div>
-                  <p className="font-semibold text-gray-900 text-sm md:text-base">البطولات المتاحة</p>
-                  <p className="text-xs md:text-sm text-gray-600">جميع البطولات النشطة</p>
+                  <p className="font-semibold text-gray-900 text-sm md:text-base">{t('dashboard.availableTournaments')}</p>
+                  <p className="text-xs md:text-sm text-gray-600">{t('dashboard.activeTournamentsDesc')}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg">
                 <Trophy className="h-4 w-4 md:h-5 md:w-5 text-purple-600" />
                 <div>
-                  <p className="font-semibold text-gray-900 text-sm md:text-base">دفع آمن</p>
-                  <p className="text-xs md:text-sm text-gray-600">طرق دفع متعددة</p>
+                  <p className="font-semibold text-gray-900 text-sm md:text-base">{t('dashboard.securePayment')}</p>
+                  <p className="text-xs md:text-sm text-gray-600">{t('dashboard.multiplePaymentMethods')}</p>
                 </div>
               </div>
             </div>
@@ -422,9 +424,9 @@ export default function PlayerDashboard() {
         {opportunities.length > 0 && (
           <div className="mb-6 md:mb-8">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg md:text-2xl font-semibold text-gray-900">آخر الفرص المتاحة</h2>
+              <h2 className="text-lg md:text-2xl font-semibold text-gray-900">{t('dashboard.latestOpportunities')}</h2>
               <Link href="/dashboard/player/search" className="text-sm text-green-600 font-semibold hover:text-green-700">
-                عرض الكل ←
+                {t('dashboard.viewAll')}
               </Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -479,9 +481,9 @@ export default function PlayerDashboard() {
           return (
             <div className="mb-6 md:mb-8">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg md:text-2xl font-semibold text-gray-900">موصى بها لك</h2>
+                <h2 className="text-lg md:text-2xl font-semibold text-gray-900">{t('dashboard.recommendedForYou')}</h2>
                 <Link href="/dashboard/player/search" className="text-sm text-green-600 font-semibold hover:text-green-700">
-                  عرض الكل ←
+                  {t('dashboard.viewAll')}
                 </Link>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -504,7 +506,7 @@ export default function PlayerDashboard() {
                       ) : null}
                       <div className="p-4">
                       <span className="absolute top-2 left-2 text-xs font-bold bg-green-500 text-white px-2 py-0.5 rounded-full">
-                        مناسب لك
+                        {t('dashboard.suitableForYou')}
                       </span>
                       <div className="flex items-center gap-2 mb-2 mt-4">
                         <span
@@ -530,7 +532,7 @@ export default function PlayerDashboard() {
         {/* Quick Actions */}
         <div className="mb-6 md:mb-8">
           <h2 className="text-lg md:text-2xl font-semibold text-gray-900 mb-4 md:mb-6">
-            الوصول السريع
+            {t('dashboard.quickAccess')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {quickActions.map((action) => (
@@ -560,30 +562,30 @@ export default function PlayerDashboard() {
         {/* Recent Activity */}
         <div className="mb-6 md:mb-8">
           <h2 className="text-lg md:text-2xl font-semibold text-gray-900 mb-4 md:mb-6">
-            النشاط الأخير
+            {t('dashboard.recentActivity')}
           </h2>
           <div className="bg-white rounded-xl md:rounded-2xl shadow-sm overflow-hidden">
             <div className="p-4 md:p-6">
               <div className="space-y-4">
                 {[
                   {
-                    title: 'تم تحديث ملفك الشخصي',
-                    description: 'تم إضافة معلومات جديدة إلى ملفك الشخصي',
-                    time: 'منذ ساعتين',
+                    title: t('dashboard.profileUpdated'),
+                    description: t('dashboard.profileUpdatedDesc'),
+                    time: t('dashboard.twoHoursAgo'),
                     icon: User,
                     color: 'text-blue-500'
                   },
                   {
-                    title: 'تم إرسال تقرير جديد',
-                    description: 'تم إرسال تقرير الأداء الأسبوعي',
-                    time: 'منذ يوم واحد',
+                    title: t('dashboard.newReportSent'),
+                    description: t('dashboard.weeklyReportDesc'),
+                    time: t('dashboard.oneDayAgo'),
                     icon: FileText,
                     color: 'text-green-500'
                   },
                   {
-                    title: 'رسالة جديدة',
-                    description: 'لديك رسالة جديدة من المدرب',
-                    time: 'منذ يومين',
+                    title: t('dashboard.newMessage'),
+                    description: t('dashboard.coachMessageDesc'),
+                    time: t('dashboard.twoDaysAgo'),
                     icon: MessageSquare,
                     color: 'text-orange-500'
                   }
@@ -611,28 +613,28 @@ export default function PlayerDashboard() {
         {/* Upcoming Events */}
         <div className="mb-6 md:mb-8">
           <h2 className="text-lg md:text-2xl font-semibold text-gray-900 mb-4 md:mb-6">
-            الأحداث القادمة
+            {t('dashboard.upcomingEvents')}
           </h2>
           <div className="bg-white rounded-xl md:rounded-2xl shadow-sm overflow-hidden">
             <div className="p-4 md:p-6">
               <div className="space-y-4">
                 {[
                   {
-                    title: 'مباراة تدريبية',
-                    date: 'غداً - 4:00 مساءً',
-                    location: 'ملعب النادي',
+                    title: t('dashboard.trainingMatch'),
+                    date: t('dashboard.tomorrow4pm'),
+                    location: t('dashboard.clubField'),
                     type: 'training'
                   },
                   {
-                    title: 'جلسة تحليل الأداء',
-                    date: 'الخميس - 6:00 مساءً',
-                    location: 'قاعة الاجتماعات',
+                    title: t('dashboard.performanceAnalysisSession'),
+                    date: t('dashboard.thursday6pm'),
+                    location: t('dashboard.meetingRoom'),
                     type: 'analysis'
                   },
                   {
-                    title: 'مباراة رسمية',
-                    date: 'السبت - 8:00 مساءً',
-                    location: 'الملعب الرئيسي',
+                    title: t('dashboard.officialMatch'),
+                    date: t('dashboard.saturday8pm'),
+                    location: t('dashboard.mainField'),
                     type: 'match'
                   }
                 ].map((event, index) => (
@@ -652,8 +654,8 @@ export default function PlayerDashboard() {
                       event.type === 'training' ? 'bg-blue-100 text-blue-800' :
                         'bg-green-100 text-green-800'
                       }`}>
-                      {event.type === 'match' ? 'مباراة' :
-                        event.type === 'training' ? 'تدريب' : 'تحليل'}
+                      {event.type === 'match' ? t('dashboard.match') :
+                        event.type === 'training' ? t('dashboard.training') : t('dashboard.analysis')}
                     </div>
                   </div>
                 ))}
@@ -667,14 +669,14 @@ export default function PlayerDashboard() {
           {/* Performance Chart */}
           <div className="bg-white p-4 md:p-6 rounded-xl md:rounded-2xl shadow-sm">
             <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
-              تقدم الأداء
+              {t('dashboard.performanceProgress')}
             </h3>
             <div className="space-y-3">
               {[
-                { label: 'السرعة', value: 85, color: 'bg-blue-500' },
-                { label: 'القوة', value: 72, color: 'bg-green-500' },
-                { label: 'الدقة', value: 90, color: 'bg-purple-500' },
-                { label: 'التحمل', value: 78, color: 'bg-orange-500' }
+                { label: t('dashboard.speed'), value: 85, color: 'bg-blue-500' },
+                { label: t('dashboard.strength'), value: 72, color: 'bg-green-500' },
+                { label: t('dashboard.accuracy'), value: 90, color: 'bg-purple-500' },
+                { label: t('dashboard.endurance'), value: 78, color: 'bg-orange-500' }
               ].map((skill) => (
                 <div key={skill.label} className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">{skill.label}</span>
@@ -697,13 +699,13 @@ export default function PlayerDashboard() {
           {/* Recent Achievements */}
           <div className="bg-white p-4 md:p-6 rounded-xl md:rounded-2xl shadow-sm">
             <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
-              الإنجازات الأخيرة
+              {t('dashboard.recentAchievements')}
             </h3>
             <div className="space-y-3">
               {[
-                { title: 'أفضل لاعب في المباراة', date: 'الأسبوع الماضي', icon: Trophy },
-                { title: 'تحسن في السرعة', date: 'قبل أسبوعين', icon: TrendingUp },
-                { title: 'أول هدف رسمي', date: 'قبل شهر', icon: Target }
+                { title: t('dashboard.manOfTheMatch'), date: t('dashboard.lastWeek'), icon: Trophy },
+                { title: t('dashboard.speedImprovement'), date: t('dashboard.twoWeeksAgo'), icon: TrendingUp },
+                { title: t('dashboard.firstOfficialGoal'), date: t('dashboard.oneMonthAgo'), icon: Target }
               ].map((achievement, index) => (
                 <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                   <achievement.icon className="w-5 h-5 text-yellow-500" />

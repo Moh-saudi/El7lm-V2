@@ -1,39 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-
-const TR = {
-  ar: {
-    dir: 'rtl', lang: 'ar',
-    joinBtn: 'انضم الآن',
-    nav: ['الرئيسية', 'تطبيق حجز', 'الأكاديمية', 'الأندية', 'البطولات'],
-    footerDesc: 'منصة رائدة تهدف إلى تمكين المواهب الكروية العربية باستخدام التكنولوجيا الحديثة والذكاء الاصطناعي للوصول إلى العالمية.',
-    footerCols: [
-      { title: 'روابط سريعة', links: [{ l: 'البحث عن المواهب', h: '#' }, { l: 'تقارير الأداء', h: '#' }, { l: 'الأكاديمية الرقمية', h: '#' }, { l: 'جدول المباريات', h: '#' }, { l: 'أخبار النجوم', h: '#' }] },
-      { title: 'الشركة', links: [{ l: 'من نحن', h: '/about' }, { l: 'الوظائف', h: '/careers' }, { l: 'شركاء النجاح', h: '/success-stories' }, { l: 'اتصل بنا', h: '/contact' }] },
-      { title: 'الدعم القانوني', links: [{ l: 'سياسة الخصوصية', h: '/privacy' }, { l: 'الشروط والأحكام', h: '/terms' }, { l: 'معايير الكشافة', h: '#' }, { l: 'الدعم الفني', h: '/support' }] },
-    ],
-    copyright: '© 2024 EL7LM platform with V Lab Ai. جميع الحقوق محفوظة.',
-    designedFor: 'صُمِّم للأبطال',
-  },
-  en: {
-    dir: 'ltr', lang: 'en',
-    joinBtn: 'Join Now',
-    nav: ['Home', 'Hagzz App', 'Academy', 'Clubs', 'Tournaments'],
-    footerDesc: 'A leading platform aiming to empower Arab football talents using modern technology and artificial intelligence to reach global recognition.',
-    footerCols: [
-      { title: 'Quick Links', links: [{ l: 'Talent Search', h: '#' }, { l: 'Performance Reports', h: '#' }, { l: 'Digital Academy', h: '#' }, { l: 'Match Schedule', h: '#' }, { l: 'Star News', h: '#' }] },
-      { title: 'Company', links: [{ l: 'About Us', h: '/about' }, { l: 'Careers', h: '/careers' }, { l: 'Success Stories', h: '/success-stories' }, { l: 'Contact', h: '/contact' }] },
-      { title: 'Legal', links: [{ l: 'Privacy Policy', h: '/privacy' }, { l: 'Terms & Conditions', h: '/terms' }, { l: 'Scouting Standards', h: '#' }, { l: 'Technical Support', h: '/support' }] },
-    ],
-    copyright: '© 2024 EL7LM platform with V Lab Ai. ALL RIGHTS RESERVED.',
-    designedFor: 'Designed for Champions',
-  }
-};
+import { useTranslation } from '@/lib/i18n';
 
 export default function AboutPage() {
   const [scrolled, setScrolled] = useState(false);
   const [dark, setDark] = useState(false);
+  const { t, isRTL } = useTranslation();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -67,8 +40,36 @@ export default function AboutPage() {
     btnText: '#ffffff'
   };
 
-  const isRTL = true;
-  const t = TR[isRTL ? 'ar' : 'en'];
+  const footerCols = [
+    {
+      title: t('about.footerQuickLinks'),
+      links: [
+        { l: t('about.footerTalentSearch'), h: '#' },
+        { l: t('about.footerPerformanceReports'), h: '#' },
+        { l: t('about.footerDigitalAcademy'), h: '#' },
+        { l: t('about.footerMatchSchedule'), h: '#' },
+        { l: t('about.footerStarNews'), h: '#' }
+      ]
+    },
+    {
+      title: t('about.footerCompany'),
+      links: [
+        { l: t('about.badge'), h: '/about' },
+        { l: t('careers.pageTitle'), h: '/careers' },
+        { l: t('successStories.title'), h: '/success-stories' },
+        { l: t('contact.title'), h: '/contact' }
+      ]
+    },
+    {
+      title: t('about.footerLegal'),
+      links: [
+        { l: t('privacy.title'), h: '/privacy' },
+        { l: t('terms.title'), h: '/terms' },
+        { l: t('about.footerScoutingStandards'), h: '#' },
+        { l: t('support.title'), h: '/support' }
+      ]
+    }
+  ];
 
   return (
     <div style={{ background: theme.bg, color: theme.text, minHeight: '100vh', direction: isRTL ? 'rtl' : 'ltr' }}>
@@ -89,13 +90,19 @@ export default function AboutPage() {
              <span className="hl" style={{ fontSize: '1.5rem', fontWeight: 900, color: theme.primary, textTransform: 'uppercase', letterSpacing: '-0.05em' }}>EL7LM</span>
           </Link>
           <nav style={{ display: 'flex', gap: '2rem' }}>
-            {t.nav.map((item, i) => (
-              <Link key={i} href="/" style={{
+            {[
+              { label: t('nav.home'), href: '/' },
+              { label: t('nav.hagzz'), href: '/' },
+              { label: t('nav.academy'), href: '/' },
+              { label: t('nav.clubs'), href: '/' },
+              { label: t('nav.tournaments'), href: '/' }
+            ].map((item, i) => (
+              <Link key={i} href={item.href} style={{
                 fontFamily: "'Space Grotesk', 'IBM Plex Sans Arabic', sans-serif",
                 fontWeight: 700, textTransform: 'uppercase', letterSpacing: '-0.025em',
                 textDecoration: 'none', color: i === 0 ? theme.primary : theme.subText,
                 transition: 'color .2s'
-              }}>{item}</Link>
+              }}>{item.label}</Link>
             ))}
           </nav>
         </div>
@@ -111,7 +118,7 @@ export default function AboutPage() {
             padding: '.5rem 1.5rem', borderRadius: '2px',
             background: theme.btnGradient, color: theme.btnText,
             fontWeight: 900, fontSize: '.875rem', textDecoration: 'none'
-          }}>{t.joinBtn}</Link>
+          }}>{t('about.joinNow')}</Link>
         </div>
       </header>
 
@@ -120,12 +127,12 @@ export default function AboutPage() {
         <section style={{ padding: '6rem 0' }}>
           <div className="ct">
             <div className="reveal" style={{ textAlign: 'center', maxWidth: '1000px', margin: '0 auto' }}>
-              <span className="hl" style={{ color: theme.primary, fontWeight: 800, fontSize: '1.125rem', textTransform: 'uppercase', letterSpacing: '0.2em', display: 'block', marginBottom: '1.5rem' }}>من نحن</span>
+              <span className="hl" style={{ color: theme.primary, fontWeight: 800, fontSize: '1.125rem', textTransform: 'uppercase', letterSpacing: '0.2em', display: 'block', marginBottom: '1.5rem' }}>{t('about.badge')}</span>
               <h1 className="st" style={{ fontSize: '4.5rem', lineHeight: 1.1, marginBottom: '2.5rem' }}>
-                نحن لا نصنع مجرد منصة.. نحن نبني مستقبل كرة القدم العربية
+                {t('about.heroTitle')}
               </h1>
               <p style={{ fontSize: '1.5rem', color: theme.subText, lineHeight: 1.7, marginBottom: '4rem' }}>
-                المستشار الرقمي لكل موهبة شابة تحلم بالاحتراف، والجسر الذكي الذي يربط بين الملاعب والاحتراف العالمي.
+                {t('about.heroSub')}
               </p>
             </div>
           </div>
@@ -136,9 +143,9 @@ export default function AboutPage() {
           <div className="ct">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '3rem' }}>
               {[
-                { title: 'الرؤية', sub: 'أن تصبح منصة "الحلم" المرجع الأول لاكتشاف المواهب الكروية عالمياً باستخدام الذكاء الاصطناعي.' },
-                { title: 'المهمة', sub: 'نقل التكنولوجيا المتقدمة من المختبرات إلى الملاعب، لتمكين كل لاعب مجتهد من الحصول على فرصته العادلة.' },
-                { title: 'القيم', sub: 'العدالة، الابتكار، والاحترافية. نحن نؤمن أن الموهبة يمكن أن تولد في أي مكان.' }
+                { title: t('about.visionTitle'), sub: t('about.visionDesc') },
+                { title: t('about.missionTitle'), sub: t('about.missionDesc') },
+                { title: t('about.valuesTitle'), sub: t('about.valuesDesc') }
               ].map((v, i) => (
                 <div key={i} className="reveal reveal-card" style={{ padding: '3.5rem 2.5rem', background: theme.panelBg, borderRadius: '32px', border: `1px solid ${theme.border}` }}>
                   <h4 className="hl" style={{ fontSize: '1.5rem', marginBottom: '1rem', fontWeight: 900 }}>{v.title}</h4>
@@ -154,24 +161,24 @@ export default function AboutPage() {
           <div className="ct">
             <div className="reveal reveal-card founder-card" style={{ maxWidth: '900px', margin: '0 auto', background: theme.bg, padding: '4rem', borderRadius: '32px', border: `1px solid ${theme.border}`, position: 'relative' }}>
                <span style={{ position: 'absolute', top: '2rem', right: '2rem', fontSize: '6rem', color: theme.primary, opacity: 0.1, fontFamily: 'serif' }}>"</span>
-               <h2 className="hl" style={{ fontSize: '1.25rem', color: theme.primary, marginBottom: '2rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>رسالة من المؤسس</h2>
+               <h2 className="hl" style={{ fontSize: '1.25rem', color: theme.primary, marginBottom: '2rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('about.founderMessageTitle')}</h2>
                
                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '3rem', alignItems: 'center' }} className="founder-grid">
                  <div>
                    <p style={{ fontSize: '1.5rem', lineHeight: 1.7, fontWeight: 500, marginBottom: '2.5rem', position: 'relative', zIndex: 1 }}>
-                     "بدأنا 'الحلم' لأننا نؤمن أن في كل شارع وكل أكاديمية موهبة مدفونة تنتظر من يراها. هدفنا في Mesk و V Lab هو أن نوفر لهذه المواهب 'العين الرقمية' التي لا تنام، والفرصة التي تستحقها للوصول للعالمية."
+                     {t('about.founderMessage')}
                    </p>
                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                       <div>
-                         <div style={{ fontWeight: 800, fontSize: '1.4rem' }}>محمد سعودي</div>
-                         <div style={{ color: theme.subText, fontSize: '1rem' }}>المؤسس والرئيس التنفيذي</div>
+                         <div style={{ fontWeight: 800, fontSize: '1.4rem' }}>{t('about.founderName')}</div>
+                         <div style={{ color: theme.subText, fontSize: '1rem' }}>{t('about.founderRole')}</div>
                       </div>
                    </div>
                  </div>
                  
                  <div className="founder-img-container" style={{ position: 'relative' }}>
                     <div style={{ borderRadius: '24px', overflow: 'hidden', border: `4px solid ${theme.primary}`, boxShadow: `0 20px 40px ${theme.glow}` }}>
-                       <img src="/images/team/founder.jpg" alt="محمد سعودي" className="founder-img" style={{ width: '100%', height: 'auto', display: 'block' }} />
+                       <img src="/images/team/founder.jpg" alt="Founder" className="founder-img" style={{ width: '100%', height: 'auto', display: 'block' }} />
                     </div>
                  </div>
                </div>
@@ -182,14 +189,14 @@ export default function AboutPage() {
         {/* FINAL CTA */}
         <section style={{ padding: '8rem 0', textAlign: 'center' }}>
           <div className="ct reveal">
-             <h2 className="st" style={{ fontSize: '3.5rem', marginBottom: '1.5rem' }}>انضم إلينا اليوم..</h2>
-             <p style={{ color: theme.subText, fontSize: '1.25rem', marginBottom: '3rem' }}>وابدأ رحلتك من "الملعب" إلى "العالمية"!</p>
+             <h2 className="st" style={{ fontSize: '3.5rem', marginBottom: '1.5rem' }}>{t('about.ctaTitle')}</h2>
+             <p style={{ color: theme.subText, fontSize: '1.25rem', marginBottom: '3rem' }}>{t('about.ctaSub')}</p>
              <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Link href="/auth/register?role=player" className="tc" style={{ background: theme.primary, color: 'white', padding: '1.25rem 2.5rem', borderRadius: '16px', fontWeight: 800, textDecoration: 'none', fontSize: '1.1rem', boxShadow: `0 10px 40px ${theme.glow}` }}>
-                  سجل الآن كلاعب
+                  {t('about.registerAsPlayer')}
                 </Link>
                 <Link href="/auth/register?role=club" className="tc" style={{ border: `2px solid ${theme.primary}`, color: theme.text, padding: '1.125rem 2.5rem', borderRadius: '16px', fontWeight: 800, textDecoration: 'none', fontSize: '1.1rem' }}>
-                  سجل كنادٍ/كشاف
+                  {t('about.registerAsClub')}
                 </Link>
              </div>
           </div>
@@ -204,11 +211,11 @@ export default function AboutPage() {
               <div style={{ marginBottom: '1.5rem' }}>
                 <img src="/el7lm-logo.png" alt="EL7LM Logo" style={{ height: '50px', width: 'auto' }} />
               </div>
-              <p style={{ color: theme.subText, maxWidth: '400px', lineHeight: 1.8, fontSize: '0.95rem' }}>{t.footerDesc}</p>
+              <p style={{ color: theme.subText, maxWidth: '400px', lineHeight: 1.8, fontSize: '0.95rem' }}>{t('about.footerDescription')}</p>
             </div>
             
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4rem', flex: '2 1 600px' }}>
-              {t.footerCols.map((col: any, i: number) => (
+              {footerCols.map((col: any, i: number) => (
                 <div key={i} style={{ minWidth: '150px' }}>
                   <h4 className="hl" style={{ color: theme.text, fontWeight: 900, marginBottom: '1.5rem', textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '0.1em' }}>{col.title}</h4>
                   <nav style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -226,10 +233,10 @@ export default function AboutPage() {
           </div>
           
           <div style={{ borderTop: `1px solid ${theme.border}`, marginTop: '5rem', paddingTop: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
-            <p style={{ color: theme.subText, fontSize: '0.85rem', fontWeight: 500 }}>{t.copyright}</p>
+            <p style={{ color: theme.subText, fontSize: '0.85rem', fontWeight: 500 }}>{t('about.copyright')}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
               <div style={{ textAlign: isRTL ? 'right' : 'left' }}>
-                <span style={{ fontSize: '0.75rem', color: theme.subText, display: 'block' }}>{t.designedFor}</span>
+                <span style={{ fontSize: '0.75rem', color: theme.subText, display: 'block' }}>{t('about.designedForChampions')}</span>
                 <span className="hl" style={{ fontSize: '0.875rem', color: theme.primary, fontWeight: 900, letterSpacing: '.05em' }}>Mesk llc Qatar</span>
               </div>
               <div style={{ 

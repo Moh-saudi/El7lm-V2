@@ -9,22 +9,23 @@ import {
     Home,
     Loader2,
     ShieldCheck,
-    Star,
     User,
     UserCheck,
     Users,
-    Phone
+    Phone,
+    Star
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast, Toaster } from 'sonner';
 import WhatsAppOTPVerification from '@/components/shared/WhatsAppOTPVerification';
+import { useTranslation } from '@/lib/i18n';
 
-const roles = [
+const getRoles = (t: any) => [
     {
         id: 'player',
-        title: 'لاعب',
-        description: 'أبحث عن فرصة لاحتراف كرة القدم والانضمام للأندية.',
+        title: t('auth.rolePlayer'),
+        description: t('auth.rolePlayerSelectDesc'),
         icon: Star,
         color: 'text-yellow-500',
         bg: 'bg-yellow-50',
@@ -34,8 +35,8 @@ const roles = [
     },
     {
         id: 'club',
-        title: 'نادي',
-        description: 'أبحث عن مواهب جديدة لضمها إلى صفوف النادي.',
+        title: t('auth.roleClub'),
+        description: t('auth.roleClubSelectDesc'),
         icon: Home,
         color: 'text-blue-600',
         bg: 'bg-blue-50',
@@ -45,8 +46,8 @@ const roles = [
     },
     {
         id: 'academy',
-        title: 'أكاديمية',
-        description: 'نبحث عن لاعبين جدد وتطوير المواهب الشابة.',
+        title: t('auth.roleAcademy'),
+        description: t('auth.roleAcademySelectDesc'),
         icon: Users,
         color: 'text-purple-600',
         bg: 'bg-purple-50',
@@ -56,8 +57,8 @@ const roles = [
     },
     {
         id: 'agent',
-        title: 'وكيل لاعبين',
-        description: 'أبحث عن تمثيل اللاعبين وتسويقهم للأندية.',
+        title: t('auth.roleAgent'),
+        description: t('auth.roleAgentSelectDesc'),
         icon: UserCheck,
         color: 'text-emerald-600',
         bg: 'bg-emerald-50',
@@ -67,8 +68,8 @@ const roles = [
     },
     {
         id: 'trainer',
-        title: 'مدرب',
-        description: 'مدرب محترف أبحث عن فرص تدريبية.',
+        title: t('auth.roleTrainer'),
+        description: t('auth.roleTrainerSelectDesc'),
         icon: User,
         color: 'text-orange-600',
         bg: 'bg-orange-50',
@@ -78,8 +79,8 @@ const roles = [
     },
     {
         id: 'marketer',
-        title: 'مسوق',
-        description: 'أعمل في مجال التسويق الرياضي.',
+        title: t('auth.roleMarketer'),
+        description: t('auth.roleMarketerSelectDesc'),
         icon: Briefcase,
         color: 'text-pink-600',
         bg: 'bg-pink-50',
@@ -94,6 +95,7 @@ export default function SelectRolePage() {
     const { user, userData, loading: authLoading, refreshUserData } = useAuth();
     const [selectedRole, setSelectedRole] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const { t, isRTL } = useTranslation();
 
     // Linking State
     const [showLinkInput, setShowLinkInput] = useState(false);
@@ -102,6 +104,7 @@ export default function SelectRolePage() {
     const [isLinking, setIsLinking] = useState(false);
 
     const { sendPhoneOTP } = useAuth();
+    const roles = getRoles(t);
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -141,7 +144,7 @@ export default function SelectRolePage() {
             // 3. Refresh local user data
             await refreshUserData();
 
-            toast.success('تم تحديث نوع الحساب بنجاح!');
+            toast.success(t('auth.selectRoleSuccessToast'));
 
             // 4. Redirect
             const routes: Record<string, string> = {
@@ -160,16 +163,16 @@ export default function SelectRolePage() {
 
         } catch (error) {
             console.error('Error updating role:', error);
-            toast.error('حدث خطأ أثناء تحديث نوع الحساب');
+            toast.error(t('auth.selectRoleErrorToast'));
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    /* --- Account Linking / Recovery Logic --- */
+    /* --- Account Recovery Logic --- */
     const handleStartLink = async () => {
         if (!phoneNumber) {
-            toast.error('يرجى إدخال رقم الهاتف');
+            toast.error(t('auth.selectRoleEnterPhoneToast'));
             return;
         }
 
@@ -178,29 +181,24 @@ export default function SelectRolePage() {
             : `+966${phoneNumber.replace(/^0+/, '')}`;
 
         setIsLinking(true);
-        toast.loading('جاري إرسال رمز التحقق...', { id: 'link-otp' });
+        toast.loading(t('auth.selectRoleSendingOtpToast'), { id: 'link-otp' });
 
         try {
             await sendPhoneOTP(fullPhone, null);
             setShowOTPModal(true);
-            toast.success('تم إرسال الرمز بنجاح', { id: 'link-otp' });
+            toast.success(t('auth.selectRoleOtpSentToast'), { id: 'link-otp' });
             setShowLinkInput(false);
         } catch (error: any) {
             console.error('Error sending OTP:', error);
-            toast.error(error.message || 'فشل إرسال الرمز', { id: 'link-otp' });
+            toast.error(error.message || t('auth.selectRoleOtpFailedToast'), { id: 'link-otp' });
         } finally {
             setIsLinking(false);
         }
     };
 
     const handleVerifyAndLink = async (otp: string) => {
-        // Flow:
-        // 1. Verify OTP via API to get session for the existing phone account
-        // 2. Switch to that session (replaces the current Google session)
-        // 3. Update the user record with Google email
-
         try {
-            toast.loading('جاري استعادة الحساب وربط البيانات...', { id: 'verify-link' });
+            toast.loading(t('auth.loggingIn'), { id: 'verify-link' });
 
             const fullPhone = phoneNumber.startsWith('+')
                 ? phoneNumber.replace(/\s+/g, '')
@@ -216,7 +214,7 @@ export default function SelectRolePage() {
             const data = await response.json();
 
             if (!data.success) {
-                throw new Error(data.error || 'فشل التحقق من الرمز');
+                throw new Error(data.error || t('auth.otpVerificationFailed'));
             }
 
             // 2. Switch to the old phone account session
@@ -235,7 +233,7 @@ export default function SelectRolePage() {
                 }).eq('id', data.userId);
             }
 
-            toast.success('🎉 تم استعادة حسابك القديم وربطه بنجاح!', { id: 'verify-link' });
+            toast.success(t('auth.selectRoleRestoreSuccessToast'), { id: 'verify-link' });
 
             await refreshUserData();
             window.location.href = '/dashboard';
@@ -243,9 +241,9 @@ export default function SelectRolePage() {
         } catch (error: any) {
             console.error('Link/Recover error:', error);
 
-            let msg = 'حدث خطأ أثناء العملية.';
+            let msg = t('auth.errorDefault');
             if (error.message?.includes('invalid') || error.message?.includes('expired')) {
-                msg = 'الرمز غير صحيح أو منتهي الصلاحية.';
+                msg = t('auth.errorWrongPassword');
             } else if (error.message) {
                 msg = error.message;
             }
@@ -264,8 +262,8 @@ export default function SelectRolePage() {
 
     return (
         <>
-            <Toaster position="top-center" dir="rtl" richColors />
-            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4" dir="rtl">
+            <Toaster position="top-center" dir={isRTL ? 'rtl' : 'ltr'} richColors />
+            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4" dir={isRTL ? 'rtl' : 'ltr'}>
                 <div className="w-full max-w-4xl">
 
                     <div className="text-center mb-10 space-y-3 animate-in slide-in-from-top-10 fade-in duration-700">
@@ -273,10 +271,10 @@ export default function SelectRolePage() {
                             <ShieldCheck className="w-8 h-8 text-purple-600" />
                         </div>
                         <h1 className="text-3xl md:text-4xl font-black text-slate-800 font-cairo">
-                            كيف تود استخدام المنصة؟
+                            {t('auth.selectRoleTitleQuestion')}
                         </h1>
                         <p className="text-slate-500 text-lg max-w-lg mx-auto">
-                            اختر نوع الحساب الذي يناسبك للبدء في رحلتك مع الحلم
+                            {t('auth.selectRoleSubtitle')}
                         </p>
                     </div>
 
@@ -343,8 +341,12 @@ export default function SelectRolePage() {
                                     <Loader2 className="w-6 h-6 animate-spin" />
                                 ) : (
                                     <>
-                                        <span>متابعة</span>
-                                        <ChevronRight className="w-5 h-5 rtl:rotate-180 group-hover:translate-x-1 transition-transform" />
+                                        <span>{t('auth.selectRoleContinue')}</span>
+                                        {isRTL ? (
+                                            <ChevronRight className="w-5 h-5 rotate-180 group-hover:translate-x-1 transition-transform" />
+                                        ) : (
+                                            <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                        )}
                                     </>
                                 )}
                             </button>
@@ -353,18 +355,18 @@ export default function SelectRolePage() {
                             <div className="mt-8 text-center pt-8 border-t border-slate-200 w-full max-w-md">
                                 {!showLinkInput ? (
                                     <div className="space-y-2">
-                                        <p className="text-slate-500 font-medium">سجلت سابقاً برقم الهاتف؟</p>
+                                        <p className="text-slate-500 font-medium">{t('auth.selectRoleRegisteredPhone')}</p>
                                         <button
                                             onClick={() => setShowLinkInput(true)}
                                             className="text-purple-600 font-bold hover:text-purple-700 hover:underline flex items-center justify-center gap-2 mx-auto"
                                         >
                                             <Phone className="w-4 h-4" />
-                                            استعادة حسابي القديم وربطه
+                                            {t('auth.selectRoleRestoreBtn')}
                                         </button>
                                     </div>
                                 ) : (
                                     <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
-                                        <label className="text-sm font-bold text-slate-700">أدخل رقم هاتفك المسجل</label>
+                                        <label className="text-sm font-bold text-slate-700">{t('auth.selectRoleRestorePlaceholder')}</label>
                                         <div className="flex gap-2" dir="ltr">
                                             <input
                                                 type="tel"
@@ -379,14 +381,14 @@ export default function SelectRolePage() {
                                                 onClick={() => setShowLinkInput(false)}
                                                 className="px-4 py-2 text-slate-500 hover:text-slate-700 font-medium text-sm"
                                             >
-                                                إلغاء
+                                                {t('common.cancel')}
                                             </button>
                                             <button
                                                 onClick={handleStartLink}
                                                 disabled={isLinking}
                                                 className="px-6 py-2 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50"
                                             >
-                                                {isLinking ? <Loader2 className="w-4 h-4 animate-spin" /> : 'استعادة'}
+                                                {isLinking ? <Loader2 className="w-4 h-4 animate-spin" /> : t('auth.selectRoleRestoreBtn').split(' ')[0]}
                                             </button>
                                         </div>
                                     </div>
@@ -402,8 +404,8 @@ export default function SelectRolePage() {
                         onVerificationSuccess={() => { }}
                         onVerificationFailed={(err) => toast.error(err)}
                         onOTPVerify={handleVerifyAndLink}
-                        title="تأكيد ملكية الحساب"
-                        subtitle="أدخل الرمز المرسل لهاتفك لإثبات الملكية ودمج الحسابين"
+                        title={t('auth.selectRoleConfirmOwnership')}
+                        subtitle={t('auth.selectRoleConfirmOwnershipSub')}
                     />
 
                 </div>

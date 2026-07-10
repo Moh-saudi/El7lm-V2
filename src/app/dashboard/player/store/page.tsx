@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { useTranslation } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -270,7 +271,68 @@ function formatStorePrice(amount: number, currency: string) {
 }
 
 export default function PlayerStorePage() {
+  const { t, locale, isRTL } = useTranslation();
   const { user, userData } = useAuth();
+
+  const addressLabelOptions = useMemo(() => [
+    { value: 'home', label: t('store.checkout.addressLabels.home') || 'المنزل' },
+    { value: 'work', label: t('store.checkout.addressLabels.work') || 'العمل' },
+    { value: 'academy', label: t('store.checkout.addressLabels.academy') || 'الأكاديمية' },
+    { value: 'club', label: t('store.checkout.addressLabels.club') || 'النادي' },
+  ], [t]);
+
+  const deliveryMethodOptions = useMemo(() => [
+    { value: 'courier', label: t('store.checkout.deliveryMethods.courier') || 'توصيل للعنوان' },
+    { value: 'branch_pickup', label: t('store.checkout.deliveryMethods.branch_pickup') || 'استلام من الفرع' },
+    { value: 'coordinator', label: t('store.checkout.deliveryMethods.coordinator') || 'تنسيق مباشر مع الإدارة' },
+  ], [t]);
+
+  const contactMethodOptions = useMemo(() => [
+    { value: 'whatsapp', label: t('store.checkout.contactMethods.whatsapp') || 'واتساب' },
+    { value: 'phone', label: t('store.checkout.contactMethods.phone') || 'اتصال هاتفي' },
+    { value: 'email', label: t('store.checkout.contactMethods.email') || 'البريد الإلكتروني' },
+  ], [t]);
+
+  const contactWindowOptions = useMemo(() => [
+    { value: 'morning', label: t('store.checkout.contactWindows.morning') || 'صباحًا' },
+    { value: 'afternoon', label: t('store.checkout.contactWindows.afternoon') || 'بعد الظهر' },
+    { value: 'evening', label: t('store.checkout.contactWindows.evening') || 'مساءً' },
+    { value: 'anytime', label: t('store.checkout.contactWindows.anytime') || 'أي وقت' },
+  ], [t]);
+
+  const categoryLabels = useMemo<Record<'all' | StoreCategory, string>>(() => ({
+    all: t('store.categories.all') || 'جميع المنتجات',
+    equipment: t('store.categories.equipment') || 'معدات رياضية',
+    clothing: t('store.categories.clothing') || 'ملابس رياضية',
+    accessories: t('store.categories.accessories') || 'إكسسوارات',
+    nutrition: t('store.categories.nutrition') || 'تغذية رياضية',
+    electronics: t('store.categories.electronics') || 'أجهزة إلكترونية',
+    other: t('store.categories.other') || 'منتجات أخرى',
+  }), [t]);
+
+  const orderStatusLabels = useMemo<Record<OrderStatus, string>>(() => ({
+    pending: t('store.orders.statuses.pending') || 'قيد المراجعة',
+    confirmed: t('store.orders.statuses.confirmed') || 'تم التأكيد',
+    processing: t('store.orders.statuses.processing') || 'قيد التجهيز',
+    shipped: t('store.orders.statuses.shipped') || 'تم الشحن',
+    delivered: t('store.orders.statuses.delivered') || 'تم التسليم',
+    cancelled: t('store.orders.statuses.cancelled') || 'ملغي',
+  }), [t]);
+
+  const getPaymentOptionLabel = useCallback((id: string) => {
+    switch (id) {
+      case 'card_online': return t('store.checkout.paymentMethods.card') || 'بطاقة بنكية';
+      case 'mobile_wallet': return t('store.checkout.paymentMethods.wallet') || 'محفظة إلكترونية';
+      case 'bank_transfer': return t('store.checkout.paymentMethods.bank') || 'تحويل بنكي';
+      case 'tamara': return 'Tamara';
+      case 'tabby': return 'Tabby';
+      case 'valu': return 'valU';
+      case 'sympl': return 'Sympl';
+      case 'souhoola': return 'Souhoola';
+      case 'contact': return 'Contact';
+      default: return id;
+    }
+  }, [t]);
   const pathname = usePathname();
   const inferredAccountType = inferAccountTypeFromPath(pathname);
   const accountType = (userData?.accountType as DashboardAccountType | undefined) || inferredAccountType;
@@ -500,7 +562,7 @@ export default function PlayerStorePage() {
     } catch (error) {
       console.error('Store inventory load failed:', error);
       setProducts([]);
-      toast.error('تعذر تحميل المنتجات، يرجى المحاولة لاحقاً');
+      toast.error(t('store.errors.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -554,7 +616,7 @@ export default function PlayerStorePage() {
 
   function handlePurchase(product: StoreProduct) {
     if (!product.isAvailable) {
-      toast.error('هذا المنتج غير متاح حاليًا');
+      toast.error(t('store.errors.productUnavailable'));
       return;
     }
 
@@ -583,26 +645,30 @@ export default function PlayerStorePage() {
   }
 
   function addToCart(product: StoreProduct) {
-    if (!product.isAvailable) { toast.error('هذا المنتج غير متاح حاليًا'); return; }
+    if (!product.isAvailable) { toast.error(t('store.errors.productUnavailable')); return; }
     setCartItems((prev) => {
       const existing = prev.find((i) => i.product.id === product.id);
       if (existing) {
-        toast.success('تم زيادة الكمية في السلة');
+        toast.success(t('store.success.cartQtyIncreased'));
         return prev.map((i) => i.product.id === product.id ? { ...i, quantity: Math.min(i.quantity + 1, product.stock) } : i);
       }
-      toast.success(`تمت إضافة ${product.name} للسلة`);
+      toast.success(t('store.success.cartAdded').replace('{{name}}', product.name));
       return [...prev, { product, quantity: 1 }];
     });
     setShowCart(true);
   }
 
-  function removeFromCart(productId: string) {
-    setCartItems((prev) => prev.filter((i) => i.product.id !== productId));
+  function updateCartQty(productId: string, newQty: number) {
+    setCartItems((prev) => {
+      if (newQty <= 0) {
+        return prev.filter((i) => i.product.id !== productId);
+      }
+      return prev.map((i) => i.product.id === productId ? { ...i, quantity: newQty } : i);
+    });
   }
 
-  function updateCartQty(productId: string, qty: number) {
-    if (qty <= 0) { removeFromCart(productId); return; }
-    setCartItems((prev) => prev.map((i) => i.product.id === productId ? { ...i, quantity: qty } : i));
+  function removeFromCart(productId: string) {
+    setCartItems((prev) => prev.filter((i) => i.product.id !== productId));
   }
 
   const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
@@ -610,13 +676,13 @@ export default function PlayerStorePage() {
   const cartCurrency = cartItems[0]?.product.currency || 'SAR';
 
   async function confirmCartPurchase() {
-    if (!user) { toast.error('يجب تسجيل الدخول لإرسال الطلب'); return; }
-    if (cartItems.length === 0) { toast.error('السلة فارغة'); return; }
-    if (!orderForm.buyerName.trim()) { toast.error('يرجى إدخال اسم المستلم'); return; }
-    if (!orderForm.buyerPhone.trim()) { toast.error('يرجى إدخال رقم الجوال'); return; }
-    if (requiresShippingLocation && (!orderForm.shippingCity.trim() || !orderForm.shippingCountry.trim())) { toast.error('يرجى اختيار الدولة والمدينة'); return; }
-    if (requiresShippingAddress && !orderForm.shippingAddress.trim()) { toast.error('يرجى إدخال العنوان التفصيلي للتوصيل'); return; }
-    if (orderForm.paymentType === 'installment' && !orderForm.installmentMonths) { toast.error('يرجى اختيار مدة التقسيط'); return; }
+    if (!user) { toast.error(t('store.errors.loginRequired')); return; }
+    if (cartItems.length === 0) { toast.error(t('store.errors.cartEmpty')); return; }
+    if (!orderForm.buyerName.trim()) { toast.error(t('store.errors.nameRequired')); return; }
+    if (!orderForm.buyerPhone.trim()) { toast.error(t('store.errors.phoneRequired')); return; }
+    if (requiresShippingLocation && (!orderForm.shippingCity.trim() || !orderForm.shippingCountry.trim())) { toast.error(t('store.errors.locationRequired')); return; }
+    if (requiresShippingAddress && !orderForm.shippingAddress.trim()) { toast.error(t('store.errors.addressRequired')); return; }
+    if (orderForm.paymentType === 'installment' && !orderForm.installmentMonths) { toast.error(t('store.errors.installmentRequired')); return; }
 
     try {
       setSubmittingOrder(true);
@@ -669,7 +735,7 @@ export default function PlayerStorePage() {
       const cartOrderId = rows[0].id;
 
       if (orderForm.paymentMethod === 'geidea') {
-        toast.success('جاري تحويلك إلى بوابة الدفع...');
+        toast.success(t('store.success.redirecting'));
         const response = await fetch('/api/geidea/create-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -685,7 +751,7 @@ export default function PlayerStorePage() {
         });
         const result = await response.json();
         if (!response.ok || !result?.success || !result?.redirectUrl) {
-          throw new Error(result?.error || 'تعذر تجهيز رابط الدفع');
+        toast.error(result?.error || t('store.errors.paymentLinkFailed'));
         }
         window.location.href = result.redirectUrl;
         return;
@@ -708,7 +774,7 @@ export default function PlayerStorePage() {
         });
         const result = await response.json();
         if (!response.ok || !result?.success || !result?.payUrl) {
-          throw new Error(result?.error ? `SkipCash: ${result.error}` : 'تعذر تجهيز رابط الدفع');
+          throw new Error(result?.error ? `SkipCash: ${result.error}` : t('store.errors.paymentLinkFailed'));
         }
         window.location.href = result.payUrl;
         return;
@@ -721,17 +787,17 @@ export default function PlayerStorePage() {
       if (selectedPaymentOpt?.type === 'installment') {
         setInstallmentProviderName(selectedPaymentOpt.label);
         setShowInstallmentNotice(true);
-        toast.success('تم استلام طلبك بنجاح!');
+        toast.success(t('store.success.orderReceived'));
       } else if (orderForm.paymentMethod === 'mobile_wallet') {
         setTransferProviderName(selectedPaymentOpt?.label || 'محفظة إلكترونية / InstaPay');
         setShowTransferNotice(true);
-        toast.success('تم تسجيل طلبك بنجاح!');
+        toast.success(t('store.success.orderRegistered'));
       } else {
-        toast.success(`تم إرسال ${rows.length} طلب بنجاح!`);
+        toast.success(t('store.success.cartOrderSuccess').replace('{{count}}', String(rows.length)));
       }
       await loadOrders();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'تعذر إرسال الطلب');
+      toast.error(error instanceof Error ? error.message : t('store.errors.orderFailed'));
     } finally {
       setSubmittingOrder(false);
     }
@@ -739,32 +805,32 @@ export default function PlayerStorePage() {
 
   async function confirmPurchase() {
     if (!selectedProduct || !user) {
-      toast.error('يجب تسجيل الدخول لإرسال الطلب');
+      toast.error(t('store.errors.loginRequired'));
       return;
     }
 
     if (!orderForm.buyerName.trim()) {
-      toast.error('يرجى إدخال اسم المستلم');
+      toast.error(t('store.errors.nameRequired'));
       return;
     }
 
     if (!orderForm.buyerPhone.trim()) {
-      toast.error('يرجى إدخال رقم الجوال');
+      toast.error(t('store.errors.phoneRequired'));
       return;
     }
 
     if (requiresShippingLocation && (!orderForm.shippingCity.trim() || !orderForm.shippingCountry.trim())) {
-      toast.error('يرجى اختيار الدولة والمدينة');
+      toast.error(t('store.errors.locationRequired'));
       return;
     }
 
     if (requiresShippingAddress && !orderForm.shippingAddress.trim()) {
-      toast.error('يرجى إدخال العنوان التفصيلي للتوصيل');
+      toast.error(t('store.errors.addressRequired'));
       return;
     }
 
     if (orderForm.paymentType === 'installment' && !orderForm.installmentMonths) {
-      toast.error('يرجى اختيار مدة التقسيط');
+      toast.error(t('store.errors.installmentRequired'));
       return;
     }
 
@@ -841,18 +907,18 @@ export default function PlayerStorePage() {
       }
 
       if (selectedPaymentOption?.type === 'installment') {
-        setInstallmentProviderName(selectedPaymentOption.label);
+        setInstallmentProviderName(getPaymentOptionLabel(selectedPaymentOption.id));
         setShowInstallmentNotice(true);
-        toast.success(`تم استلام طلبك بنجاح!`);
+        toast.success(t('store.success.orderReceived'));
         resetPurchaseState();
         await loadOrders();
         return;
       }
 
       if (orderForm.paymentMethod === 'mobile_wallet') {
-        setTransferProviderName(selectedPaymentOption?.label || 'محفظة إلكترونية / InstaPay');
+        setTransferProviderName(getPaymentOptionLabel('mobile_wallet'));
         setShowTransferNotice(true);
-        toast.success(`تم تسجيل طلبك بنجاح!`);
+        toast.success(t('store.success.orderRegistered'));
         resetPurchaseState();
         await loadOrders();
         return;
@@ -878,9 +944,9 @@ export default function PlayerStorePage() {
         });
         const result = await response.json();
         if (!response.ok || !result?.success || !result?.redirectUrl) {
-          throw new Error(result?.error || 'تعذر تجهيز رابط الدفع');
+        toast.error(result?.error || t('store.errors.paymentLinkFailed'));
         }
-        toast.success('جاري تحويلك إلى بوابة الدفع...');
+        toast.success(t('store.success.redirecting'));
         window.location.href = result.redirectUrl;
         return;
       }
@@ -903,17 +969,17 @@ export default function PlayerStorePage() {
         if (!response.ok || !result?.success || !result?.payUrl) {
           throw new Error(result?.error ? `SkipCash: ${result.error}` : 'تعذر تجهيز رابط الدفع');
         }
-        toast.success('جاري تحويلك إلى بوابة الدفع...');
+        toast.success(t('store.success.redirecting'));
         window.location.href = result.payUrl;
         return;
       }
 
-      toast.success(`تم إرسال طلبك بنجاح!`);
+      toast.success(t('store.success.orderSuccess'));
       resetPurchaseState();
       await loadOrders();
     } catch (error) {
       console.error('Store order submit failed:', error);
-      toast.error(error instanceof Error ? error.message : 'تعذر إرسال الطلب، يرجى المحاولة مرة أخرى');
+      toast.error(error instanceof Error ? error.message : t('store.errors.orderFailed'));
     } finally {
       setSubmittingOrder(false);
     }
@@ -922,7 +988,7 @@ export default function PlayerStorePage() {
   // Loading skeleton
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50" dir="rtl">
+      <div className="min-h-screen bg-slate-50" dir={isRTL ? "rtl" : "ltr"}>
         <div className="mx-auto max-w-7xl px-4 py-8">
           <div className="mb-8 h-48 animate-pulse rounded-3xl bg-slate-200" />
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -936,7 +1002,7 @@ export default function PlayerStorePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50" dir="rtl">
+    <div className="min-h-screen bg-slate-50" dir={isRTL ? "rtl" : "ltr"}>
       {/* ── Hero Banner ── */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#101828] to-[#1e2d45]" />
@@ -951,35 +1017,35 @@ export default function PlayerStorePage() {
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 rounded-full border border-[#ffb703]/40 bg-[#ffb703]/15 px-4 py-1.5 text-sm font-bold text-[#ffb703]">
                 <Zap className="h-3.5 w-3.5" />
-                متجر الحلم الرياضي
+                {t('store.badge')}
               </div>
               <h1 className="text-3xl font-black text-white sm:text-4xl lg:text-5xl">
-                كل ما تحتاجه
+                {t('store.heroTitle')}
                 <span className="block bg-gradient-to-l from-[#ffb703] to-[#f59e0b] bg-clip-text text-transparent">
-                  لبطولتك القادمة
+                  {t('store.heroTitle2')}
                 </span>
               </h1>
               <p className="max-w-xl text-base leading-relaxed text-slate-300">
-                معدات رياضية، ملابس احترافية، وأكثر — بأفضل الأسعار مع خيارات دفع مرنة.
+                {t('store.heroDesc')}
               </p>
             </div>
 
             {/* Stats row */}
             <div className="flex flex-wrap gap-3">
               {[
-                { icon: Package, label: 'منتجاً', value: products.length, color: 'text-[#ffb703]' },
-                { icon: ShoppingBag, label: 'متاح الآن', value: availableProducts.length, color: 'text-emerald-400' },
-                { icon: Truck, label: 'طلباتي', value: orders.length, color: 'text-sky-400' },
-              ].map(({ icon: Icon, label, value, color }) => (
+                { icon: Package, labelKey: 'store.statProducts', value: products.length, color: 'text-[#ffb703]' },
+                { icon: ShoppingBag, labelKey: 'store.statAvailable', value: availableProducts.length, color: 'text-emerald-400' },
+                { icon: Truck, labelKey: 'store.statMyOrders', value: orders.length, color: 'text-sky-400' },
+              ].map(({ icon: Icon, labelKey, value, color }) => (
                 <button
-                  key={label}
+                  key={labelKey}
                   type="button"
-                  onClick={label === 'طلباتي' ? () => setShowOrders(!showOrders) : undefined}
-                  className={`flex min-w-[90px] flex-col items-center justify-center gap-1 rounded-2xl border border-white/20 bg-white/10 px-5 py-3 backdrop-blur-sm transition hover:bg-white/20 ${label === 'طلباتي' ? 'cursor-pointer' : 'cursor-default'}`}
+                  onClick={labelKey === 'store.statMyOrders' ? () => setShowOrders(!showOrders) : undefined}
+                  className={`flex min-w-[90px] flex-col items-center justify-center gap-1 rounded-2xl border border-white/20 bg-white/10 px-5 py-3 backdrop-blur-sm transition hover:bg-white/20 ${labelKey === 'store.statMyOrders' ? 'cursor-pointer' : 'cursor-default'}`}
                 >
                   <Icon className={`h-4 w-4 ${color}`} />
                   <span className="text-xl font-black text-white">{value}</span>
-                  <span className="text-[11px] text-slate-300">{label}</span>
+                  <span className="text-[11px] text-slate-300">{t(labelKey)}</span>
                 </button>
               ))}
             </div>
@@ -993,17 +1059,17 @@ export default function PlayerStorePage() {
             className="mt-6 flex flex-wrap gap-3"
           >
             {[
-              { icon: ShieldCheck, label: 'دفع آمن ومشفر' },
-              { icon: Truck, label: 'توصيل سريع' },
-              { icon: CreditCard, label: 'تقسيط بدون فوائد' },
-              { icon: Star, label: 'منتجات رياضية أصلية' },
-            ].map(({ icon: Icon, label }) => (
+              { icon: ShieldCheck, labelKey: 'store.trustSecure' },
+              { icon: Truck, labelKey: 'store.trustFast' },
+              { icon: CreditCard, labelKey: 'store.trustInstallment' },
+              { icon: Star, labelKey: 'store.trustOriginal' },
+            ].map(({ icon: Icon, labelKey }) => (
               <div
-                key={label}
+                key={labelKey}
                 className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-slate-200 backdrop-blur-sm"
               >
                 <Icon className="h-3.5 w-3.5 text-[#ffb703]" />
-                {label}
+                {t(labelKey)}
               </div>
             ))}
           </motion.div>
@@ -1028,8 +1094,8 @@ export default function PlayerStorePage() {
                       <Truck className="h-5 w-5 text-sky-600" />
                     </div>
                     <div>
-                      <h2 className="font-black text-slate-900">طلباتي</h2>
-                      <p className="text-xs text-slate-500">تتبع حالة طلباتك</p>
+                      <h2 className="font-black text-slate-900">{t('store.orders.tabTitle')}</h2>
+                      <p className="text-xs text-slate-500">{t('store.orders.tabSubtitle')}</p>
                     </div>
                   </div>
                   <button
@@ -1050,7 +1116,7 @@ export default function PlayerStorePage() {
                 ) : orders.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-slate-200 py-10 text-center">
                     <ShoppingBag className="mx-auto mb-3 h-10 w-10 text-slate-300" />
-                    <p className="text-sm text-slate-500">لم تقم بأي طلبات بعد</p>
+                    <p className="text-sm text-slate-500">{t('store.orders.noOrders')}</p>
                   </div>
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -1065,24 +1131,24 @@ export default function PlayerStorePage() {
                             <div className="min-w-0 flex-1">
                               <div className="truncate font-bold text-slate-900">{order.product_name}</div>
                               <div className="mt-0.5 text-xs text-slate-400">
-                                {new Date(order.created_at).toLocaleDateString('ar-EG')}
+                                {new Date(order.created_at).toLocaleDateString(locale === 'ar' ? 'ar-EG' : 'en-US')}
                               </div>
                             </div>
                             <span className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${style.bg} ${style.text}`}>
                               <span className={`inline-block h-1.5 w-1.5 rounded-full ${style.dot}`} />
-                              {ORDER_STATUS_LABELS[order.status]}
+                              {orderStatusLabels[order.status]}
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-slate-500">{order.quantity} قطعة</span>
+                            <span className="text-slate-500">{order.quantity} {t('store.orders.quantity')}</span>
                             <span className="font-black text-[#d97706]">
                               {Number(order.total_price || 0).toLocaleString()} {order.currency || 'SAR'}
                             </span>
                           </div>
                           <div className="mt-2 rounded-xl bg-white px-3 py-1.5 text-xs text-slate-500">
                             {order.payment_type === 'installment'
-                              ? `${order.payment_method || 'تقسيط'} • ${order.installment_months || '-'} أشهر`
-                              : order.payment_method || 'دفع كامل'}
+                              ? `${getPaymentOptionLabel(order.payment_method || '')} • ${order.installment_months || '-'} ${t('store.checkout.months') || 'أشهر'}`
+                              : getPaymentOptionLabel(order.payment_method || '')}
                           </div>
                         </div>
                       );
@@ -1108,17 +1174,17 @@ export default function PlayerStorePage() {
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 animate-bounce items-center justify-center rounded-2xl bg-white/20 text-xl">⚡</div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-white/80">العرض ينتهي قريباً</p>
-                    <p className="text-lg font-black text-white">تخفيضات فلاش سيل!</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-white/80">{t('store.flashSaleEnds')}</p>
+                    <p className="text-lg font-black text-white">{t('store.flashSale.title')}</p>
                   </div>
                 </div>
                 {/* Countdown */}
                 <div className="flex items-center gap-2">
                   {[
-                    { v: countdown.days,    l: 'يوم' },
-                    { v: countdown.hours,   l: 'ساعة' },
-                    { v: countdown.minutes, l: 'دقيقة' },
-                    { v: countdown.seconds, l: 'ثانية' },
+                    { v: countdown.days,    l: t('store.flashSale.countdown.days') },
+                    { v: countdown.hours,   l: t('store.flashSale.countdown.hours') },
+                    { v: countdown.minutes, l: t('store.flashSale.countdown.minutes') },
+                    { v: countdown.seconds, l: t('store.flashSale.countdown.seconds') },
                   ].map(({ v, l }, i) => (
                     <React.Fragment key={l}>
                       <div className="flex min-w-[52px] flex-col items-center rounded-2xl bg-white/20 px-3 py-2 backdrop-blur-sm">
@@ -1137,7 +1203,7 @@ export default function PlayerStorePage() {
                   onClick={() => setSelectedCategory('all')}
                   className="shrink-0 rounded-2xl bg-white px-5 py-2.5 text-sm font-black text-rose-600 shadow-md transition hover:bg-rose-50 active:scale-95"
                 >
-                  تسوق الآن →
+                  {t('store.product.buyNow')} →
                 </button>
               </div>
             </motion.div>
@@ -1151,7 +1217,7 @@ export default function PlayerStorePage() {
             <input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="ابحث عن منتج، ماركة، أو فئة..."
+              placeholder={t('store.searchPlaceholder')}
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white pr-10 pl-4 text-sm text-slate-800 placeholder:text-slate-400 outline-none shadow-sm focus:border-[#ffb703] focus:ring-2 focus:ring-[#ffb703]/20 transition"
             />
           </div>
@@ -1160,7 +1226,7 @@ export default function PlayerStorePage() {
             type="button"
             onClick={() => setShowCart(true)}
             className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-[#ffb703] hover:bg-amber-50"
-            aria-label="عربة التسوق"
+            aria-label={t('store.cart.title')}
           >
             <ShoppingCart className="h-5 w-5 text-slate-700" />
             {cartCount > 0 && (
@@ -1173,7 +1239,7 @@ export default function PlayerStorePage() {
 
         {/* ── Category Pills ── */}
         <div className="mb-8 flex flex-wrap gap-2">
-          {(Object.keys(CATEGORY_LABELS) as Array<'all' | StoreCategory>).map((cat) => (
+          {(Object.keys(categoryLabels) as Array<'all' | StoreCategory>).map((cat) => (
             <button
               key={cat}
               type="button"
@@ -1185,7 +1251,7 @@ export default function PlayerStorePage() {
               }`}
             >
               <span className="text-base">{CATEGORY_ICONS[cat]}</span>
-              {CATEGORY_LABELS[cat]}
+              {categoryLabels[cat]}
               {cat !== 'all' && (
                 <span className={`rounded-full px-2 py-0.5 text-xs ${selectedCategory === cat ? 'bg-white/20' : 'bg-slate-100'}`}>
                   {products.filter((p) => p.category === cat).length}
@@ -1199,11 +1265,11 @@ export default function PlayerStorePage() {
         {filteredProducts.length > 0 && (
           <div className="mb-5 flex items-center justify-between">
             <p className="text-sm text-slate-500">
-              عرض <span className="font-bold text-slate-800">{filteredProducts.length}</span> منتج
-              {selectedCategory !== 'all' ? ` في ${CATEGORY_LABELS[selectedCategory]}` : ''}
+              {t('store.product.showing')} <span className="font-bold text-slate-800">{filteredProducts.length}</span> {t('store.statProducts')}
+              {selectedCategory !== 'all' ? ` ${t('store.product.inCategory')} ${categoryLabels[selectedCategory]}` : ''}
             </p>
             <p className="text-sm text-slate-500">
-              <span className="font-bold text-emerald-600">{availableProducts.length}</span> متاح للطلب
+              <span className="font-bold text-emerald-600">{availableProducts.length}</span> {t('store.product.available')}
             </p>
           </div>
         )}
@@ -1218,16 +1284,16 @@ export default function PlayerStorePage() {
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-4xl">
               🔍
             </div>
-            <h3 className="text-xl font-black text-slate-900">لا توجد منتجات مطابقة</h3>
+            <h3 className="text-xl font-black text-slate-900">{t('store.errors.noProductsFound')}</h3>
             <p className="max-w-sm text-sm text-slate-500">
-              جرّب البحث بكلمات مختلفة أو اختر فئة أخرى من القائمة أعلاه.
+              {t('store.errors.tryDifferentSearch')}
             </p>
             <button
               type="button"
               onClick={() => { setSearchTerm(''); setSelectedCategory('all'); }}
               className="rounded-full bg-[#101828] px-6 py-2 text-sm font-bold text-white transition hover:bg-[#1e2d45]"
             >
-              عرض كل المنتجات
+              {categoryLabels['all']}
             </button>
           </motion.div>
         ) : (
@@ -1296,23 +1362,23 @@ export default function PlayerStorePage() {
                       {product.isAvailable ? (
                         <span className="flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-1 text-[11px] font-bold text-white shadow-sm">
                           <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                          متوفر
+                          {t('store.product.available')}
                         </span>
                       ) : (
                         <span className="rounded-full bg-slate-600 px-2.5 py-1 text-[11px] font-bold text-white">
-                          نفذ المخزون
+                          {t('store.product.outOfStock')}
                         </span>
                       )}
                       {/* Discount badge */}
                       {product.discountPercent && product.discountPercent > 0 && (
                         <span className="rounded-full bg-rose-500 px-2.5 py-1 text-[11px] font-black text-white shadow-sm">
-                          خصم {product.discountPercent}%
+                          {t('store.product.discount').replace('{{percent}}', String(product.discountPercent))}
                         </span>
                       )}
                       {/* Flash sale badge */}
                       {product.flashSaleEndAt && new Date(product.flashSaleEndAt) > new Date() && (
                         <span className="flex items-center gap-1 rounded-full bg-orange-500 px-2.5 py-1 text-[11px] font-black text-white shadow-sm">
-                          ⚡ فلاش سيل
+                          ⚡ {t('store.flashSale.title') || 'فلاش سيل'}
                         </span>
                       )}
                     </div>
@@ -1375,11 +1441,11 @@ export default function PlayerStorePage() {
                         {product.stock > 0 && product.stock <= 5 && (
                           <div className="mt-0.5 flex items-center gap-1 text-[11px] text-rose-500">
                             <Tag className="h-3 w-3" />
-                            آخر {product.stock} قطع فقط!
+                            {t('store.product.onlyStockLeft').replace('{{count}}', String(product.stock))}
                           </div>
                         )}
                         {product.isFeatured && !product.discountPercent && (
-                          <div className="mt-0.5 text-[11px] font-bold text-amber-600">⭐ منتج مميز</div>
+                          <div className="mt-0.5 text-[11px] font-bold text-amber-600">⭐ {t('store.product.featured')}</div>
                         )}
                       </div>
 
@@ -1394,7 +1460,7 @@ export default function PlayerStorePage() {
                         }`}
                       >
                         <ShoppingCart className="h-4 w-4" />
-                        أضف للسلة
+                        {t('store.product.addToCart')}
                       </button>
                     </div>
                   </div>
@@ -1414,10 +1480,10 @@ export default function PlayerStorePage() {
               onClick={() => setShowCart(false)}
             />
             <motion.div
-              initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+              initial={{ x: isRTL ? '-100%' : '100%' }} animate={{ x: 0 }} exit={{ x: isRTL ? '-100%' : '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-              className="fixed inset-y-0 left-0 z-50 flex w-full max-w-sm flex-col bg-white shadow-2xl"
-              dir="rtl"
+              className={`fixed inset-y-0 ${isRTL ? 'left-0' : 'right-0'} z-50 flex w-full max-w-sm flex-col bg-white shadow-2xl`}
+              dir={isRTL ? "rtl" : "ltr"}
             >
               {/* Header */}
               <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
@@ -1426,8 +1492,8 @@ export default function PlayerStorePage() {
                     <ShoppingCart className="h-4 w-4 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-black text-slate-900">سلة التسوق</h3>
-                    <p className="text-[11px] text-slate-400">{cartCount} منتج في السلة</p>
+                    <h3 className="font-black text-slate-900">{t('store.cart.title')}</h3>
+                    <p className="text-[11px] text-slate-400">{t('store.cart.itemsCount').replace('{{count}}', String(cartCount))}</p>
                   </div>
                 </div>
                 <button type="button" onClick={() => setShowCart(false)}
@@ -1441,11 +1507,11 @@ export default function PlayerStorePage() {
                 {cartItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
                     <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-4xl">🛒</div>
-                    <h4 className="font-black text-slate-700">السلة فارغة</h4>
-                    <p className="text-sm text-slate-400">أضف منتجات من المتجر للبدء</p>
+                    <h4 className="font-black text-slate-700">{t('store.cart.empty')}</h4>
+                    <p className="text-sm text-slate-400">{t('store.cart.emptyDesc')}</p>
                     <button type="button" onClick={() => setShowCart(false)}
                       className="rounded-2xl bg-[#101828] px-6 py-2.5 text-sm font-black text-white transition hover:bg-[#1e2d45]">
-                      تسوق الآن
+                      {t('store.product.buyNow')}
                     </button>
                   </div>
                 ) : (
@@ -1475,7 +1541,7 @@ export default function PlayerStorePage() {
                         <div className="flex flex-col items-end gap-2">
                           <p className="text-sm font-black text-slate-900">{formatStorePrice(product.price * quantity, product.currency)}</p>
                           <button type="button" onClick={() => removeFromCart(product.id)}
-                            className="text-[11px] font-bold text-rose-400 transition hover:text-rose-600">حذف</button>
+                            className="text-[11px] font-bold text-rose-400 transition hover:text-rose-600">{t('store.cart.delete')}</button>
                         </div>
                       </div>
                     ))}
@@ -1487,7 +1553,7 @@ export default function PlayerStorePage() {
               {cartItems.length > 0 && (
                 <div className="shrink-0 border-t border-slate-100 bg-white px-5 py-4">
                   <div className="mb-3 flex items-center justify-between">
-                    <span className="text-sm font-bold text-slate-500">الإجمالي ({cartCount} منتج)</span>
+                    <span className="text-sm font-bold text-slate-500">{t('store.cart.total')} ({cartCount} {t('store.statProducts')})</span>
                     <span className="text-xl font-black text-[#d97706]">{formatStorePrice(cartTotal, cartCurrency)}</span>
                   </div>
                   <button type="button"
@@ -1506,10 +1572,10 @@ export default function PlayerStorePage() {
                     }}
                     className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#101828] text-sm font-black text-white transition hover:bg-[#1e2d45] hover:shadow-lg active:scale-[0.98]">
                     <CheckCircle className="h-4 w-4" />
-                    إتمام الشراء
+                    {t('store.cart.checkout')}
                   </button>
                   <button type="button" onClick={() => { setCartItems([]); }} className="mt-2 w-full text-center text-xs font-bold text-rose-400 transition hover:text-rose-600 py-1">
-                    إفراغ السلة
+                    {t('store.cart.clear')}
                   </button>
                 </div>
               )}
@@ -1534,8 +1600,8 @@ export default function PlayerStorePage() {
                     <ShoppingCart className="h-4 w-4 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-slate-900">إتمام الطلب</h3>
-                    <p className="text-[11px] text-slate-400">{cartCount} منتج — الإجمالي {formatStorePrice(cartTotal, cartCurrency)}</p>
+                    <h3 className="text-base font-black text-slate-900">{t('store.checkout.title')}</h3>
+                    <p className="text-[11px] text-slate-400">{cartCount} {t('store.statProducts')} — {t('store.cart.total')} {formatStorePrice(cartTotal, cartCurrency)}</p>
                   </div>
                 </div>
                 <button type="button" onClick={() => setShowCartCheckout(false)}
@@ -1548,7 +1614,7 @@ export default function PlayerStorePage() {
               <div className="flex-1 overflow-y-auto">
                 {/* Items summary strip */}
                 <div className="border-b border-slate-100 bg-slate-50 px-5 py-3">
-                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">المنتجات</p>
+                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t('store.orders.quantity') || 'المنتجات'}</p>
                   <div className="space-y-2">
                     {cartItems.map(({ product, quantity }) => (
                       <div key={product.id} className="flex items-center justify-between gap-2">
@@ -1566,16 +1632,16 @@ export default function PlayerStorePage() {
                   <div className="px-5 py-4">
                     <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#101828] text-[10px] text-white">1</span>
-                      بيانات المستلم
+                      {t('store.checkout.buyerInfo')}
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-500">الاسم الكامل</label>
+                        <label className="text-xs font-semibold text-slate-500">{t('store.checkout.buyerName')}</label>
                         <Input value={orderForm.buyerName} onChange={(e) => setOrderForm((prev) => ({ ...prev, buyerName: e.target.value }))}
-                          placeholder="محمد عبدالله" className="h-10 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
+                          placeholder={t('store.checkout.buyerNamePlaceholder') || 'محمد عبدالله'} className="h-10 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-500">رقم الجوال</label>
+                        <label className="text-xs font-semibold text-slate-500">{t('store.checkout.buyerPhone')}</label>
                         <Input value={orderForm.buyerPhone} onChange={(e) => setOrderForm((prev) => ({ ...prev, buyerPhone: e.target.value }))}
                           placeholder="05xxxxxxxx" className="h-10 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
                       </div>
@@ -1586,9 +1652,9 @@ export default function PlayerStorePage() {
                   <div className="px-5 py-4">
                     <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#101828] text-[10px] text-white">2</span>
-                      طريقة الدفع
+                      {t('store.checkout.paymentMethod')}
                     </h4>
-                    <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">دفع كامل</p>
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t('store.checkout.paymentType')}</p>
                     <div className="mb-4 grid grid-cols-3 gap-2">
                       {FULL_PAYMENT_OPTIONS.map((option) => {
                         const isSelected = orderForm.paymentMethod === option.id;
@@ -1597,13 +1663,13 @@ export default function PlayerStorePage() {
                             onClick={() => setOrderForm((prev) => ({ ...prev, paymentMethod: option.id, paymentType: 'full', installmentMonths: '' }))}
                             className={`flex flex-col items-center gap-1.5 rounded-2xl border-2 px-2 py-3 text-center transition ${isSelected ? 'border-[#101828] bg-[#101828]/5' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}>
                             <span className="text-xl leading-none">{option.brandMark}</span>
-                            <span className={`text-[10px] font-bold leading-tight ${isSelected ? 'text-[#101828]' : 'text-slate-600'}`}>{option.label.split(' — ')[0].split(' / ')[0]}</span>
+                            <span className={`text-[10px] font-bold leading-tight ${isSelected ? 'text-[#101828]' : 'text-slate-600'}`}>{getPaymentOptionLabel(option.id)}</span>
                             {isSelected && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#101828]"><CheckCircle className="h-3 w-3 text-white" /></span>}
                           </button>
                         );
                       })}
                     </div>
-                    <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">تقسيط بدون فوائد</p>
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t('store.checkout.installmentPlans')}</p>
                     <div className="grid grid-cols-3 gap-2">
                       {INSTALLMENT_OPTIONS.map((option) => {
                         const isSelected = orderForm.paymentMethod === option.id;
@@ -1612,19 +1678,19 @@ export default function PlayerStorePage() {
                             onClick={() => setOrderForm((prev) => ({ ...prev, paymentMethod: option.id, paymentType: 'installment', installmentMonths: String(option.plans?.[0] || '') }))}
                             className={`flex flex-col items-center gap-1 rounded-2xl border-2 px-2 py-2.5 text-center transition ${isSelected ? 'border-[#101828] bg-[#101828]/5' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}>
                             <span className={`rounded-lg px-2 py-0.5 text-[10px] font-black ${option.brandClassName} border`}>{option.brandMark}</span>
-                            <span className={`text-[10px] leading-tight ${isSelected ? 'text-[#101828] font-black' : 'text-slate-500'}`}>{(option.plans || []).join('/')} شهر</span>
+                            <span className={`text-[10px] leading-tight ${isSelected ? 'text-[#101828] font-black' : 'text-slate-500'}`}>{(option.plans || []).join('/')} {t('store.checkout.months') || 'شهر'}</span>
                           </button>
                         );
                       })}
                     </div>
                     {selectedPaymentOption?.type === 'installment' && (
                       <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                        <p className="mb-2 text-xs font-bold text-slate-500">اختر عدد الأشهر:</p>
+                        <p className="mb-2 text-xs font-bold text-slate-500">{t('store.checkout.selectMonths') || 'اختر عدد الأشهر:'}</p>
                         <div className="flex flex-wrap gap-2">
                           {(selectedPaymentOption.plans || []).map((plan) => (
                             <button key={plan} type="button" onClick={() => setOrderForm((prev) => ({ ...prev, installmentMonths: String(plan) }))}
                               className={`rounded-xl px-5 py-2 text-sm font-black transition ${orderForm.installmentMonths === String(plan) ? 'bg-[#101828] text-white shadow-md' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}>
-                              {plan} شهر
+                              {plan} {t('store.checkout.months') || 'شهر'}
                             </button>
                           ))}
                         </div>
@@ -1632,7 +1698,7 @@ export default function PlayerStorePage() {
                     )}
                     {selectedPaymentOption?.id === 'mobile_wallet' && (
                       <div className="mt-3 rounded-2xl border border-fuchsia-200 bg-fuchsia-50 p-3">
-                        <p className="text-xs font-semibold text-fuchsia-700">رقم التحويل / InstaPay:</p>
+                        <p className="text-xs font-semibold text-fuchsia-700">{t('store.orders.vodafoneNoticeTitle')}:</p>
                         <p className="mt-1 text-lg font-black tracking-[0.1em] text-fuchsia-900">{MANUAL_TRANSFER_NUMBER}</p>
                       </div>
                     )}
@@ -1642,20 +1708,20 @@ export default function PlayerStorePage() {
                   <div className="px-5 py-4">
                     <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#101828] text-[10px] text-white">3</span>
-                      التوصيل
+                      {t('store.cart.shipping')}
                     </h4>
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-500">وسيلة التوصيل</label>
+                      <label className="text-xs font-semibold text-slate-500">{t('store.checkout.deliveryMethod')}</label>
                       <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
                         value={orderForm.deliveryMethod}
                         onChange={(e) => setOrderForm((prev) => ({ ...prev, deliveryMethod: e.target.value, shippingAddress: e.target.value === 'courier' ? prev.shippingAddress : '' }))}>
-                        {DELIVERY_METHOD_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                        {deliveryMethodOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                       </select>
                     </div>
                     {requiresShippingLocation && (
                       <div className="mt-3 grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <label className="text-xs font-semibold text-slate-500">الدولة</label>
+                          <label className="text-xs font-semibold text-slate-500">{t('store.checkout.country')}</label>
                           <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
                             value={orderForm.shippingCountry}
                             onChange={(e) => { const c = e.target.value; setOrderForm((prev) => ({ ...prev, shippingCountry: c, shippingCity: getCitiesByCountry(c)[0] || '' })); }}>
@@ -1663,7 +1729,7 @@ export default function PlayerStorePage() {
                           </select>
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs font-semibold text-slate-500">المدينة</label>
+                          <label className="text-xs font-semibold text-slate-500">{t('store.checkout.city')}</label>
                           <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
                             value={orderForm.shippingCity} onChange={(e) => setOrderForm((prev) => ({ ...prev, shippingCity: e.target.value }))}>
                             {cityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -1673,9 +1739,9 @@ export default function PlayerStorePage() {
                     )}
                     {requiresShippingAddress && (
                       <div className="mt-3 space-y-1">
-                        <label className="text-xs font-semibold text-slate-500">العنوان التفصيلي</label>
+                        <label className="text-xs font-semibold text-slate-500">{t('store.checkout.address')}</label>
                         <Input value={orderForm.shippingAddress} onChange={(e) => setOrderForm((prev) => ({ ...prev, shippingAddress: e.target.value }))}
-                          placeholder="الحي، الشارع، المبنى..." className="h-10 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
+                          placeholder={t('store.checkout.addressPlaceholder')} className="h-10 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
                       </div>
                     )}
                   </div>
@@ -1684,26 +1750,26 @@ export default function PlayerStorePage() {
                   <div className="px-5 py-4">
                     <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#101828] text-[10px] text-white">4</span>
-                      ملاحظات (اختياري)
+                      {t('store.checkout.notes')}
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-500">وسيلة التواصل</label>
+                        <label className="text-xs font-semibold text-slate-500">{t('store.checkout.contactMethod')}</label>
                         <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
                           value={orderForm.contactMethod} onChange={(e) => setOrderForm((prev) => ({ ...prev, contactMethod: e.target.value }))}>
-                          {CONTACT_METHOD_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                          {contactMethodOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-500">أفضل وقت</label>
+                        <label className="text-xs font-semibold text-slate-500">{t('store.checkout.contactWindow')}</label>
                         <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
                           value={orderForm.contactWindow} onChange={(e) => setOrderForm((prev) => ({ ...prev, contactWindow: e.target.value }))}>
-                          {CONTACT_WINDOW_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                          {contactWindowOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
                       </div>
                       <div className="col-span-2 space-y-1">
                         <Textarea value={orderForm.notes} onChange={(e) => setOrderForm((prev) => ({ ...prev, notes: e.target.value }))}
-                          placeholder="أي تفاصيل خاصة بالمقاس أو التوصيل..."
+                          placeholder={t('store.checkout.notesPlaceholder')}
                           className="min-h-[64px] rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
                       </div>
                     </div>
@@ -1714,19 +1780,19 @@ export default function PlayerStorePage() {
               {/* Sticky footer */}
               <div className="shrink-0 border-t border-slate-100 bg-white px-5 py-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="text-sm font-bold text-slate-500">الإجمالي ({cartCount} منتج)</span>
+                  <span className="text-sm font-bold text-slate-500">{t('store.cart.total')} ({cartCount} {t('store.statProducts')})</span>
                   <span className="text-2xl font-black text-[#d97706]">{formatStorePrice(cartTotal, cartCurrency)}</span>
                 </div>
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setShowCartCheckout(false)}
                     className="h-12 w-24 shrink-0 rounded-2xl border border-slate-200 text-sm font-bold text-slate-500 transition hover:bg-slate-50">
-                    رجوع
+                    {t('store.checkout.cancelBtn') || 'رجوع'}
                   </button>
                   <button type="button" onClick={() => void confirmCartPurchase()} disabled={submittingOrder}
                     className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-sm font-black transition-all ${submittingOrder ? 'cursor-wait bg-[#101828]/70 text-white' : 'bg-[#101828] text-white hover:bg-[#1e2d45] hover:shadow-lg active:scale-[0.98]'}`}>
                     {submittingOrder
-                      ? <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> جاري إرسال الطلب...</>
-                      : <><CheckCircle className="h-4 w-4" /> تأكيد الطلب</>}
+                      ? <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> {t('store.success.redirecting') || 'جاري إرسال الطلب...'}</>
+                      : <><CheckCircle className="h-4 w-4" /> {t('store.checkout.confirmBtn')}</>}
                   </button>
                 </div>
               </div>
@@ -1753,8 +1819,8 @@ export default function PlayerStorePage() {
                     <ShoppingCart className="h-4 w-4 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-slate-900">إتمام الطلب</h3>
-                    <p className="text-[11px] text-slate-400">أكمل البيانات لتأكيد طلبك</p>
+                    <h3 className="text-base font-black text-slate-900">{t('store.checkout.title')}</h3>
+                    <p className="text-[11px] text-slate-400">{t('store.checkout.subtitle') || 'أكمل البيانات لتأكيد طلبك'}</p>
                   </div>
                 </div>
                 <button type="button" onClick={resetPurchaseState}
@@ -1778,11 +1844,11 @@ export default function PlayerStorePage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-black text-slate-900">{selectedProduct.name}</p>
                     <p className="text-xs text-slate-400">
-                      {[selectedProduct.brand, selectedProduct.model].filter(Boolean).join(' • ') || CATEGORY_LABELS[selectedProduct.category]}
+                      {[selectedProduct.brand, selectedProduct.model].filter(Boolean).join(' • ') || categoryLabels[selectedProduct.category]}
                     </p>
                   </div>
                   <div className="shrink-0 text-left">
-                    <p className="text-[11px] text-slate-400">الإجمالي</p>
+                    <p className="text-[11px] text-slate-400">{t('store.cart.total')}</p>
                     <p className="text-lg font-black text-[#d97706]">
                       {formatStorePrice(selectedProduct.price * purchaseQuantity, selectedProduct.currency)}
                     </p>
@@ -1807,18 +1873,18 @@ export default function PlayerStorePage() {
                   <div className="px-5 py-4">
                     <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#101828] text-[10px] text-white">1</span>
-                      بيانات المستلم
+                      {t('store.checkout.buyerInfo')}
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-500">الاسم الكامل</label>
+                        <label className="text-xs font-semibold text-slate-500">{t('store.checkout.buyerName')}</label>
                         <Input value={orderForm.buyerName}
                           onChange={(e) => setOrderForm((prev) => ({ ...prev, buyerName: e.target.value }))}
-                          placeholder="محمد عبدالله"
+                          placeholder={t('store.checkout.buyerNamePlaceholder') || 'محمد عبدالله'}
                           className="h-10 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-500">رقم الجوال</label>
+                        <label className="text-xs font-semibold text-slate-500">{t('store.checkout.buyerPhone')}</label>
                         <Input value={orderForm.buyerPhone}
                           onChange={(e) => setOrderForm((prev) => ({ ...prev, buyerPhone: e.target.value }))}
                           placeholder="05xxxxxxxx"
@@ -1831,11 +1897,11 @@ export default function PlayerStorePage() {
                   <div className="px-5 py-4">
                     <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#101828] text-[10px] text-white">2</span>
-                      طريقة الدفع
+                      {t('store.checkout.paymentMethod')}
                     </h4>
 
                     {/* Full payment group */}
-                    <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">دفع كامل</p>
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t('store.checkout.paymentType')}</p>
                     <div className="mb-4 grid grid-cols-3 gap-2">
                       {FULL_PAYMENT_OPTIONS.map((option) => {
                         const isSelected = orderForm.paymentMethod === option.id;
@@ -1850,7 +1916,7 @@ export default function PlayerStorePage() {
                           >
                             <span className="text-xl leading-none">{option.brandMark}</span>
                             <span className={`text-[10px] font-bold leading-tight ${isSelected ? 'text-[#101828]' : 'text-slate-600'}`}>
-                              {option.label.split(' — ')[0].split(' / ')[0]}
+                              {getPaymentOptionLabel(option.id)}
                             </span>
                             {isSelected && (
                               <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#101828]">
@@ -1863,7 +1929,7 @@ export default function PlayerStorePage() {
                     </div>
 
                     {/* Installment group */}
-                    <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">تقسيط بدون فوائد</p>
+                    <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t('store.checkout.installmentPlans')}</p>
                     <div className="grid grid-cols-3 gap-2">
                       {INSTALLMENT_OPTIONS.map((option) => {
                         const isSelected = orderForm.paymentMethod === option.id;
@@ -1880,7 +1946,7 @@ export default function PlayerStorePage() {
                               {option.brandMark}
                             </span>
                             <span className={`text-[10px] leading-tight ${isSelected ? 'text-[#101828] font-black' : 'text-slate-500'}`}>
-                              {(option.plans || []).join('/')} شهر
+                              {(option.plans || []).join('/')} {t('store.checkout.months')}
                             </span>
                           </button>
                         );
@@ -1890,7 +1956,7 @@ export default function PlayerStorePage() {
                     {/* Installment plan picker */}
                     {selectedPaymentOption?.type === 'installment' && (
                       <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                        <p className="mb-2 text-xs font-bold text-slate-500">اختر عدد الأشهر:</p>
+                        <p className="mb-2 text-xs font-bold text-slate-500">{t('store.checkout.selectMonths')}</p>
                         <div className="flex flex-wrap gap-2">
                           {(selectedPaymentOption.plans || []).map((plan) => (
                             <button key={plan} type="button"
@@ -1900,7 +1966,7 @@ export default function PlayerStorePage() {
                                   ? 'bg-[#101828] text-white shadow-md'
                                   : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                               }`}>
-                              {plan} شهر
+                              {plan} {t('store.checkout.months')}
                             </button>
                           ))}
                         </div>
@@ -1910,9 +1976,9 @@ export default function PlayerStorePage() {
                     {/* Mobile wallet info */}
                     {selectedPaymentOption?.id === 'mobile_wallet' && (
                       <div className="mt-3 rounded-2xl border border-fuchsia-200 bg-fuchsia-50 p-3">
-                        <p className="text-xs font-semibold text-fuchsia-700">رقم التحويل / InstaPay:</p>
+                        <p className="text-xs font-semibold text-fuchsia-700">{t('store.orders.vodafoneNoticeTitle')}:</p>
                         <p className="mt-1 text-lg font-black tracking-[0.1em] text-fuchsia-900">{MANUAL_TRANSFER_NUMBER}</p>
-                        <p className="mt-1 text-[11px] text-fuchsia-600">أرسل إيصال التحويل وسيتم التواصل معك لتأكيد الطلب.</p>
+                        <p className="mt-1 text-[11px] text-fuchsia-600">{t('store.orders.vodafoneNoticeDesc')}</p>
                       </div>
                     )}
                   </div>
@@ -1921,20 +1987,20 @@ export default function PlayerStorePage() {
                   <div className="px-5 py-4">
                     <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#101828] text-[10px] text-white">3</span>
-                      التوصيل والكمية
+                      {t('store.cart.shipping')}
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-500">الكمية</label>
+                        <label className="text-xs font-semibold text-slate-500">{t('store.orders.quantity')}</label>
                         <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white"
                           value={purchaseQuantity} onChange={(e) => setPurchaseQuantity(Number(e.target.value || '1'))}>
                           {Array.from({ length: Math.max(Math.min(selectedProduct.stock, 10), 1) }, (_, i) => i + 1).map((qty) => (
-                            <option key={qty} value={qty}>{qty} قطعة</option>
+                            <option key={qty} value={qty}>{qty} {t('store.orders.quantity')}</option>
                           ))}
                         </select>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-500">وسيلة التوصيل</label>
+                        <label className="text-xs font-semibold text-slate-500">{t('store.checkout.deliveryMethod')}</label>
                         <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
                           value={orderForm.deliveryMethod}
                           onChange={(e) => setOrderForm((prev) => ({
@@ -1942,14 +2008,14 @@ export default function PlayerStorePage() {
                             shippingAddress: e.target.value === 'courier' ? prev.shippingAddress : '',
                             addressLabel: e.target.value === 'courier' ? prev.addressLabel : 'home',
                           }))}>
-                          {DELIVERY_METHOD_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                          {deliveryMethodOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
                       </div>
                     </div>
                     {requiresShippingLocation && (
                       <div className="mt-3 grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <label className="text-xs font-semibold text-slate-500">الدولة</label>
+                          <label className="text-xs font-semibold text-slate-500">{t('store.checkout.country')}</label>
                           <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
                             value={orderForm.shippingCountry}
                             onChange={(e) => { const c = e.target.value; setOrderForm((prev) => ({ ...prev, shippingCountry: c, shippingCity: getCitiesByCountry(c)[0] || '' })); }}>
@@ -1957,7 +2023,7 @@ export default function PlayerStorePage() {
                           </select>
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs font-semibold text-slate-500">المدينة</label>
+                          <label className="text-xs font-semibold text-slate-500">{t('store.checkout.city')}</label>
                           <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
                             value={orderForm.shippingCity} onChange={(e) => setOrderForm((prev) => ({ ...prev, shippingCity: e.target.value }))}>
                             {cityOptions.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -1968,17 +2034,17 @@ export default function PlayerStorePage() {
                     {requiresShippingAddress && (
                       <div className="mt-3 space-y-2">
                         <div className="space-y-1">
-                          <label className="text-xs font-semibold text-slate-500">نوع العنوان</label>
+                          <label className="text-xs font-semibold text-slate-500">{t('store.checkout.addressLabel')}</label>
                           <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
                             value={orderForm.addressLabel} onChange={(e) => setOrderForm((prev) => ({ ...prev, addressLabel: e.target.value }))}>
-                            {ADDRESS_LABEL_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                            {addressLabelOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                           </select>
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs font-semibold text-slate-500">العنوان التفصيلي</label>
+                          <label className="text-xs font-semibold text-slate-500">{t('store.checkout.address')}</label>
                           <Input value={orderForm.shippingAddress}
                             onChange={(e) => setOrderForm((prev) => ({ ...prev, shippingAddress: e.target.value }))}
-                            placeholder="الحي، الشارع، المبنى..."
+                            placeholder={t('store.checkout.addressPlaceholder')}
                             className="h-10 rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
                         </div>
                       </div>
@@ -1989,28 +2055,28 @@ export default function PlayerStorePage() {
                   <div className="px-5 py-4">
                     <h4 className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-500">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#101828] text-[10px] text-white">4</span>
-                      تفضيلات التواصل
+                      {t('store.checkout.contactMethod')}
                     </h4>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-500">وسيلة التواصل</label>
+                        <label className="text-xs font-semibold text-slate-500">{t('store.checkout.contactMethod')}</label>
                         <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
                           value={orderForm.contactMethod} onChange={(e) => setOrderForm((prev) => ({ ...prev, contactMethod: e.target.value }))}>
-                          {CONTACT_METHOD_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                          {contactMethodOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-500">أفضل وقت</label>
+                        <label className="text-xs font-semibold text-slate-500">{t('store.checkout.contactWindow')}</label>
                         <select className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-[#d97706] focus:bg-white transition"
                           value={orderForm.contactWindow} onChange={(e) => setOrderForm((prev) => ({ ...prev, contactWindow: e.target.value }))}>
-                          {CONTACT_WINDOW_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                          {contactWindowOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
                       </div>
                       <div className="col-span-2 space-y-1">
-                        <label className="text-xs font-semibold text-slate-500">ملاحظات (اختياري)</label>
+                        <label className="text-xs font-semibold text-slate-500">{t('store.checkout.notes')}</label>
                         <Textarea value={orderForm.notes}
                           onChange={(e) => setOrderForm((prev) => ({ ...prev, notes: e.target.value }))}
-                          placeholder="أي تفاصيل خاصة بالمقاس أو التوصيل..."
+                          placeholder={t('store.checkout.notesPlaceholder')}
                           className="min-h-[64px] rounded-xl border-slate-200 bg-slate-50 text-sm focus:border-[#d97706] focus:bg-white" />
                       </div>
                     </div>
@@ -2021,7 +2087,7 @@ export default function PlayerStorePage() {
               {/* Sticky footer */}
               <div className="shrink-0 border-t border-slate-100 bg-white px-5 py-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="text-sm font-bold text-slate-500">المبلغ الإجمالي</span>
+                  <span className="text-sm font-bold text-slate-500">{t('store.cart.total')}</span>
                   <span className="text-2xl font-black text-[#d97706]">
                     {formatStorePrice(selectedProduct.price * purchaseQuantity, selectedProduct.currency)}
                   </span>
@@ -2029,20 +2095,20 @@ export default function PlayerStorePage() {
                 <div className="flex gap-3">
                   <button type="button" onClick={resetPurchaseState}
                     className="h-12 w-24 shrink-0 rounded-2xl border border-slate-200 text-sm font-bold text-slate-500 transition hover:bg-slate-50">
-                    إلغاء
+                    {t('store.checkout.cancelBtn')}
                   </button>
                   <button type="button" onClick={() => void confirmPurchase()} disabled={submittingOrder}
                     className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-sm font-black transition-all ${
                       submittingOrder ? 'cursor-wait bg-[#101828]/70 text-white' : 'bg-[#101828] text-white hover:bg-[#1e2d45] hover:shadow-lg active:scale-[0.98]'
                     }`}>
                     {submittingOrder ? (
-                      <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> جاري إرسال الطلب...</>
+                      <><span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> {t('store.success.redirecting')}</>
                     ) : selectedPaymentOption?.type === 'installment' ? (
-                      <><CheckCircle className="h-4 w-4" /> إرسال طلب التقسيط</>
+                      <><CheckCircle className="h-4 w-4" /> {t('store.checkout.confirmBtn')}</>
                     ) : selectedPaymentOption?.id === 'mobile_wallet' ? (
-                      <><CheckCircle className="h-4 w-4" /> تأكيد الطلب</>
+                      <><CheckCircle className="h-4 w-4" /> {t('store.checkout.confirmBtn')}</>
                     ) : (
-                      <><ExternalLink className="h-4 w-4" /> الانتقال للدفع</>
+                      <><ExternalLink className="h-4 w-4" /> {t('store.product.buyNow')}</>
                     )}
                   </button>
                 </div>
@@ -2067,15 +2133,15 @@ export default function PlayerStorePage() {
                   <ShieldCheck className="h-8 w-8" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-white">تم استلام طلبك!</h3>
-                  <p className="mt-1 text-sm text-slate-400">سيتم التواصل معك خلال 24 ساعة</p>
+                  <h3 className="text-xl font-black text-white">{t('store.orders.installmentNoticeTitle')}</h3>
+                  <p className="mt-1 text-sm text-slate-400">{t('store.orders.installmentNoticeSubtitle')}</p>
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300 leading-relaxed">
                 <span className="font-bold text-white">{installmentProviderName}</span>
                 <br />
                 <span className="text-slate-400">
-                  سيقوم فريق خدمة العملاء بشرح خطوات التقسيط والتحقق من الأهلية معك قريباً.
+                  {t('store.orders.installmentNoticeDesc').replace('{{provider}}', installmentProviderName)}
                 </span>
               </div>
               <div className="mt-5 flex gap-3">
@@ -2084,14 +2150,14 @@ export default function PlayerStorePage() {
                   className="flex h-11 flex-1 items-center justify-center rounded-2xl bg-[#ffb703] font-black text-slate-900 transition hover:bg-[#f59e0b]"
                   onClick={() => setShowInstallmentNotice(false)}
                 >
-                  حسناً، شكراً!
+                  {t('common.ok')}
                 </button>
                 <button
                   type="button"
                   className="h-11 flex-1 rounded-2xl border border-white/10 font-bold text-slate-300 transition hover:bg-white/10"
                   onClick={() => { setShowInstallmentNotice(false); void loadOrders(); setShowOrders(true); }}
                 >
-                  عرض طلباتي
+                  {t('store.orders.tabTitle') || 'عرض طلباتي'}
                 </button>
               </div>
             </motion.div>
@@ -2114,17 +2180,17 @@ export default function PlayerStorePage() {
                   <Wallet className="h-8 w-8" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-white">تفاصيل الدفع</h3>
-                  <p className="mt-1 text-sm text-slate-400">تم تسجيل طلبك بنجاح</p>
+                  <h3 className="text-xl font-black text-white">{t('store.orders.vodafoneNoticeTitle')}</h3>
+                  <p className="mt-1 text-sm text-slate-400">{t('store.success.orderRegistered')}</p>
                 </div>
               </div>
               <div className="rounded-2xl border border-fuchsia-500/30 bg-fuchsia-500/10 p-4">
-                <p className="text-xs font-semibold text-fuchsia-300">رقم التحويل</p>
+                <p className="text-xs font-semibold text-fuchsia-300">{t('store.orders.vodafoneNoticeTitle')}</p>
                 <p className="mt-2 text-center text-3xl font-black tracking-[0.2em] text-fuchsia-200">
                   {MANUAL_TRANSFER_NUMBER}
                 </p>
                 <p className="mt-3 text-xs text-center text-fuchsia-400 leading-relaxed">
-                  بعد إتمام التحويل، أرسل الإيصال وسيقوم فريقنا بتأكيد طلبك والتواصل معك.
+                  {t('store.orders.vodafoneNoticeDesc')}
                 </p>
               </div>
               <div className="mt-5 flex gap-3">
@@ -2133,14 +2199,14 @@ export default function PlayerStorePage() {
                   className="flex h-11 flex-1 items-center justify-center rounded-2xl bg-[#ffb703] font-black text-slate-900 transition hover:bg-[#f59e0b]"
                   onClick={() => setShowTransferNotice(false)}
                 >
-                  حسناً، شكراً!
+                  {t('common.ok') || 'حسناً، شكراً!'}
                 </button>
                 <button
                   type="button"
                   className="h-11 flex-1 rounded-2xl border border-white/10 font-bold text-slate-300 transition hover:bg-white/10"
                   onClick={() => { setShowTransferNotice(false); void loadOrders(); setShowOrders(true); }}
                 >
-                  عرض طلباتي
+                  {t('store.orders.tabTitle') || 'عرض طلباتي'}
                 </button>
               </div>
             </motion.div>

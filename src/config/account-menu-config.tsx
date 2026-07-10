@@ -118,7 +118,7 @@ export function getAccountMenuGroups(
         items: [
           { id: 'subscription-status', label: 'حالة اشتراكي', icon: Clock,     href: '/dashboard/shared/subscription-status' },
           { id: 'billing',             label: 'فواتيري',        icon: FileText,  href: '/dashboard/player/billing' },
-          { id: 'payment-service',     label: 'خدمة الدفع',     icon: DollarSign, href: '/dashboard/player/bulk-payment' },
+          { id: 'payment-service',     label: 'الدفع والاشتراكات', icon: CreditCard, href: '/dashboard/shared/payment' },
         ],
       },
       {
@@ -188,7 +188,7 @@ export function getAccountMenuGroups(
         items: [
           { id: 'subscription-status', label: 'حالة اشتراكي', icon: Clock,      href: '/dashboard/shared/subscription-status' },
           { id: 'billing',             label: 'فواتيري',        icon: FileText,   href: '/dashboard/club/billing' },
-          { id: 'bulk-payment',        label: 'خدمة الدفع',     icon: DollarSign, href: '/dashboard/club/bulk-payment' },
+          { id: 'bulk-payment',        label: 'الدفع والاشتراكات', icon: CreditCard, href: '/dashboard/shared/payment' },
           { id: 'referrals',           label: 'سفراء الحلم',    icon: UserPlus,   href: '/dashboard/club/referrals' },
         ],
       },
@@ -245,7 +245,7 @@ export function getAccountMenuGroups(
         items: [
           { id: 'subscription-status', label: 'حالة اشتراكي', icon: Clock,      href: '/dashboard/shared/subscription-status' },
           { id: 'billing',             label: 'فواتيري',        icon: FileText,   href: '/dashboard/academy/billing' },
-          { id: 'bulk-payment',        label: 'خدمة الدفع',     icon: DollarSign, href: '/dashboard/academy/bulk-payment' },
+          { id: 'bulk-payment',        label: 'الدفع والاشتراكات', icon: CreditCard, href: '/dashboard/shared/payment' },
           { id: 'referrals',           label: 'سفراء الحلم',    icon: UserPlus,   href: '/dashboard/academy/referrals' },
         ],
       },
@@ -305,7 +305,7 @@ export function getAccountMenuGroups(
         items: [
           { id: 'subscription-status', label: 'حالة اشتراكي', icon: Clock,      href: '/dashboard/shared/subscription-status' },
           { id: 'billing',             label: 'فواتيري',        icon: FileText,   href: `/dashboard/${accountType}/billing` },
-          { id: 'bulk-payment',        label: 'خدمة الدفع',     icon: DollarSign, href: `/dashboard/${accountType}/bulk-payment` },
+          { id: 'bulk-payment',        label: 'الدفع والاشتراكات', icon: CreditCard, href: '/dashboard/shared/payment' },
           { id: 'referrals',           label: 'سفراء الحلم',    icon: UserPlus,   href: `/dashboard/${accountType}/referrals` },
         ],
       },
@@ -363,7 +363,7 @@ export function getAccountMenuGroups(
         items: [
           { id: 'subscription-status', label: 'حالة اشتراكي', icon: Clock,      href: '/dashboard/shared/subscription-status' },
           { id: 'billing',             label: 'فواتيري',        icon: FileText,   href: '/dashboard/marketer/billing' },
-          { id: 'payment',             label: 'خدمة الدفع',     icon: DollarSign, href: '/dashboard/marketer/payment' },
+          { id: 'payment',             label: 'الدفع والاشتراكات', icon: CreditCard, href: '/dashboard/shared/payment' },
           { id: 'referrals',           label: 'سفراء الحلم',    icon: UserPlus,   href: '/dashboard/marketer/referrals' },
         ],
       },

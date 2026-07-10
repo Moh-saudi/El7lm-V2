@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { useTranslation } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase/config';
 
 interface PaymentRecord {
@@ -17,6 +18,7 @@ interface PaymentRecord {
 }
 
 export default function PlayerBillingPage() {
+  const { t, locale, isRTL } = useTranslation();
   const { user } = useAuth();
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,22 +92,34 @@ export default function PlayerBillingPage() {
       case 'completed':
       case 'success':
       case 'paid':
-        return 'مكتمل';
+        return t('billing.statusCompleted');
       case 'pending':
-        return 'قيد المعالجة';
+        return t('billing.statusPending');
       case 'failed':
-        return 'فشل';
+        return t('billing.statusFailed');
       case 'cancelled':
-        return 'ملغي';
+        return t('billing.statusCancelled');
       default:
-        return 'غير محدد';
+        return t('billing.statusUnknown');
+    }
+  };
+
+  const getPaymentMethodText = (method: string) => {
+    switch (method) {
+      case 'geidea': return t('billing.methodCard');
+      case 'skipcash': return t('billing.methodSkipCash');
+      case 'vodafone_cash': return t('billing.methodVodafoneCash');
+      case 'etisalat_cash': return t('billing.methodEtisalatCash');
+      case 'instapay': return t('billing.methodInstapay');
+      case 'bank_transfer': return t('billing.methodBankTransfer');
+      default: return method;
     }
   };
 
   const formatDate = (date: any) => {
-    if (!date) return 'غير محدد';
+    if (!date) return t('billing.unknown');
     const dateObj = new Date(date);
-    return new Intl.DateTimeFormat('ar-EG', {
+    return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -115,7 +129,7 @@ export default function PlayerBillingPage() {
   };
 
   const formatAmount = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('ar-EG', {
+    return new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : locale, {
       style: 'currency',
       currency: currency || 'EGP'
     }).format(amount);
@@ -141,12 +155,12 @@ export default function PlayerBillingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-6" dir={isRTL ? "rtl" : "ltr"}>
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">الفواتير والمدفوعات</h1>
-          <p className="text-gray-600">عرض سجل جميع المدفوعات والفواتير</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{t('billing.title')}</h1>
+          <p className="text-gray-600">{t('billing.subtitle')}</p>
         </div>
 
         {/* Stats Cards */}
@@ -159,7 +173,7 @@ export default function PlayerBillingPage() {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">إجمالي المدفوعات</p>
+                <p className="text-sm font-medium text-gray-600">{t('billing.totalPayments')}</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {payments.filter(p => ['completed', 'success', 'paid'].includes(p.status)).length}
                 </p>
@@ -175,7 +189,7 @@ export default function PlayerBillingPage() {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">قيد المعالجة</p>
+                <p className="text-sm font-medium text-gray-600">{t('billing.statusPending')}</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {payments.filter(p => p.status === 'pending').length}
                 </p>
@@ -191,7 +205,7 @@ export default function PlayerBillingPage() {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">إجمالي المبلغ</p>
+                <p className="text-sm font-medium text-gray-600">{t('billing.totalAmount')}</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {formatAmount(
                     payments
@@ -208,7 +222,7 @@ export default function PlayerBillingPage() {
         {/* Payments List */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">سجل المدفوعات</h2>
+            <h2 className="text-xl font-semibold text-gray-900">{t('billing.history')}</h2>
           </div>
 
           {payments.length === 0 ? (
@@ -218,28 +232,28 @@ export default function PlayerBillingPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">لا توجد مدفوعات</h3>
-              <p className="text-gray-500">لم يتم العثور على أي مدفوعات في سجلك</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('billing.noPayments')}</h3>
+              <p className="text-gray-500">{t('billing.noPaymentsDesc')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      التاريخ
+                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t('billing.colDate')}
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      الوصف
+                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t('billing.colDescription')}
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      المبلغ
+                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t('billing.colAmount')}
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      طريقة الدفع
+                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t('billing.colPaymentMethod')}
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      الحالة
+                    <th className="px-6 py-3 text-start text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {t('billing.colStatus')}
                     </th>
                   </tr>
                 </thead>
@@ -261,13 +275,7 @@ export default function PlayerBillingPage() {
                         {formatAmount(payment.amount || 0, payment.currency || 'EGP')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {payment.paymentMethod === 'geidea' ? 'بطاقة بنكية' :
-                          payment.paymentMethod === 'skipcash' ? 'سكيب كاش' :
-                            payment.paymentMethod === 'vodafone_cash' ? 'فودافون كاش' :
-                              payment.paymentMethod === 'etisalat_cash' ? 'اتصالات كاش' :
-                                payment.paymentMethod === 'instapay' ? 'انستاباي' :
-                                  payment.paymentMethod === 'bank_transfer' ? 'تحويل بنكي' :
-                                    payment.paymentMethod}
+                        {getPaymentMethodText(payment.paymentMethod)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(payment.status)}`}>
@@ -292,8 +300,8 @@ export default function PlayerBillingPage() {
                 </svg>
               </div>
               <div className="mr-3">
-                <h3 className="text-lg font-medium text-green-800">تم الدفع بنجاح!</h3>
-                <p className="text-green-700">شكراً لك، تم استلام دفعتك وسيتم تفعيل اشتراكك قريباً.</p>
+                <h3 className="text-lg font-medium text-green-800">{t('billing.paymentSuccess')}</h3>
+                <p className="text-green-700">{t('billing.paymentSuccessDesc')}</p>
               </div>
             </div>
           </div>

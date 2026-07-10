@@ -10,10 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Stethoscope, Activity, Heart, Ruler, Weight, AlertTriangle, Plus, Trash2, FileText, Pill, Trash } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n";
 
 const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
 export function MedicalTab() {
+    const { t } = useTranslation();
     const { control, watch } = useFormContext();
 
     // Field Arrays for Lists
@@ -40,19 +42,19 @@ export function MedicalTab() {
     const height = watch("height");
     const weight = watch("weight");
 
-    const calculateBMI = (h: number, w: number) => {
+    const calculateBMI = (h: number, w: number, t: any) => {
         if (!h || !w) return { value: 0, status: "-", color: "gray" };
         const bmi = w / ((h / 100) * (h / 100));
         let status = "";
         let color = "";
-        if (bmi < 18.5) { status = "نحافة"; color = "text-blue-500"; }
-        else if (bmi < 25) { status = "وزن مثالي"; color = "text-green-500"; }
-        else if (bmi < 30) { status = "وزن زائد"; color = "text-orange-500"; }
-        else { status = "سمنة"; color = "text-red-500"; }
+        if (bmi < 18.5) { status = t("profile.medicalTab.bmiStatuses.underweight"); color = "text-blue-500"; }
+        else if (bmi < 25) { status = t("profile.medicalTab.bmiStatuses.normal"); color = "text-green-500"; }
+        else if (bmi < 30) { status = t("profile.medicalTab.bmiStatuses.overweight"); color = "text-orange-500"; }
+        else { status = t("profile.medicalTab.bmiStatuses.obese"); color = "text-red-500"; }
         return { value: bmi.toFixed(1), status, color };
     };
 
-    const bmi = calculateBMI(Number(height), Number(weight));
+    const bmi = calculateBMI(Number(height), Number(weight), t);
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -63,7 +65,7 @@ export function MedicalTab() {
                     <div className="p-2 bg-red-100 rounded-lg text-red-600">
                         <Activity className="w-5 h-5" />
                     </div>
-                    <CardTitle className="text-lg text-red-900">القياسات الحيوية</CardTitle>
+                    <CardTitle className="text-lg text-red-900">{t('profile.medicalTab.vitalMeasurements')}</CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6">
                     <FormField
@@ -71,7 +73,7 @@ export function MedicalTab() {
                         name="height"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>الطول (سم)</FormLabel>
+                                <FormLabel>{t('profile.medicalTab.height')}</FormLabel>
                                 <FormControl>
                                     <div className="relative">
                                         <Input type="number" className="bg-white pl-10" {...field} />
@@ -87,7 +89,7 @@ export function MedicalTab() {
                         name="weight"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>الوزن (كجم)</FormLabel>
+                                <FormLabel>{t('profile.medicalTab.weight')}</FormLabel>
                                 <FormControl>
                                     <div className="relative">
                                         <Input type="number" className="bg-white pl-10" {...field} />
@@ -103,11 +105,11 @@ export function MedicalTab() {
                         name="blood_type"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>فصيلة الدم</FormLabel>
+                                <FormLabel>{t('profile.medicalTab.bloodType')}</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value || ""}>
                                     <FormControl>
                                         <SelectTrigger className="bg-white">
-                                            <SelectValue placeholder="اختر" />
+                                            <SelectValue placeholder={t('profile.medicalTab.select')} />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
@@ -121,7 +123,7 @@ export function MedicalTab() {
 
                     {/* BMI Display */}
                     <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 flex flex-col items-center justify-center text-center">
-                        <span className="text-sm text-gray-500 mb-1">مؤشر كتلة الجسم (BMI)</span>
+                        <span className="text-sm text-gray-500 mb-1">{t('profile.medicalTab.bmiLabel')}</span>
                         <div className="flex items-end gap-2">
                             <span className="text-2xl font-bold text-gray-800">{bmi.value}</span>
                             <span className={cn("text-sm font-medium mb-1", bmi.color)}>{bmi.status}</span>
@@ -136,7 +138,7 @@ export function MedicalTab() {
                     <CardHeader className="flex flex-row items-center justify-between bg-orange-50/50 pb-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-orange-100 rounded-lg text-orange-600"><AlertTriangle className="w-5 h-5" /></div>
-                            <CardTitle className="text-lg text-orange-900">سجل الإصابات</CardTitle>
+                            <CardTitle className="text-lg text-orange-900">{t('profile.medicalTab.injuriesRecord')}</CardTitle>
                         </div>
                         <Button type="button" variant="ghost" size="sm" onClick={() => appendInjury({ type: '', date: '', status: 'Recovered' })}><Plus className="w-4 h-4" /></Button>
                     </CardHeader>
@@ -144,17 +146,17 @@ export function MedicalTab() {
                         {injuryFields.map((field, index) => (
                             <div key={field.id} className="p-3 bg-white border border-gray-100 rounded-lg shadow-sm space-y-3 relative group">
                                 <Button type="button" variant="ghost" size="icon" className="absolute top-2 left-2 text-red-500 h-6 w-6" onClick={() => removeInjury(index)}><Trash className="w-3 h-3" /></Button>
-                                <FormField control={control} name={`injuries.${index}.type`} render={({ field }) => <Input placeholder="نوع الإصابة" className="h-9" {...field} value={field.value || ""} />} />
+                                <FormField control={control} name={`injuries.${index}.type`} render={({ field }) => <Input placeholder={t('profile.medicalTab.injuryType')} className="h-9" {...field} value={field.value || ""} />} />
                                 <div className="grid grid-cols-2 gap-2">
                                     <FormField control={control} name={`injuries.${index}.date`} render={({ field }) => <Input type="date" className="h-9" {...field} value={field.value || ""} />} />
                                     <FormField control={control} name={`injuries.${index}.status`} render={({ field }) => (
                                         <Select onValueChange={field.onChange} value={field.value || "Recovered"}><FormControl><SelectTrigger className="h-9"><SelectValue /></SelectTrigger></FormControl>
-                                            <SelectContent><SelectItem value="Recovered">تعافى</SelectItem><SelectItem value="Injured">مصاب حالياً</SelectItem></SelectContent></Select>
+                                            <SelectContent><SelectItem value="Recovered">{t('profile.medicalTab.recovered')}</SelectItem><SelectItem value="Injured">{t('profile.medicalTab.currentlyInjured')}</SelectItem></SelectContent></Select>
                                     )} />
                                 </div>
                             </div>
                         ))}
-                        {injuryFields.length === 0 && <p className="text-center text-sm text-gray-400">لا يوجد إصابات مسجلة</p>}
+                        {injuryFields.length === 0 && <p className="text-center text-sm text-gray-400">{t('profile.medicalTab.noInjuries')}</p>}
                     </CardContent>
                 </Card>
 
@@ -162,7 +164,7 @@ export function MedicalTab() {
                 <Card className="border-purple-50 shadow-sm">
                     <CardHeader className="flex flex-row items-center gap-3 bg-purple-50/50 pb-4">
                         <div className="p-2 bg-purple-100 rounded-lg text-purple-600"><Stethoscope className="w-5 h-5" /></div>
-                        <CardTitle className="text-lg text-purple-900">معلومات طبية أخرى</CardTitle>
+                        <CardTitle className="text-lg text-purple-900">{t('profile.medicalTab.otherMedicalInfo')}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6 p-6">
                         <FormField
@@ -171,8 +173,8 @@ export function MedicalTab() {
                             render={({ field }) => (
                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm">
                                     <div className="space-y-0.5">
-                                        <FormLabel className="text-base">أمراض مزمنة</FormLabel>
-                                        <FormDescription>هل تعاني من أي أمراض مزمنة (سكري، ضغط، ربو...)؟</FormDescription>
+                                        <FormLabel className="text-base">{t('profile.medicalTab.chronicDiseases')}</FormLabel>
+                                        <FormDescription>{t('profile.medicalTab.chronicDiseasesDesc')}</FormDescription>
                                     </div>
                                     <FormControl>
                                         <Switch checked={field.value || false} onCheckedChange={field.onChange} />
@@ -183,12 +185,12 @@ export function MedicalTab() {
 
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <h4 className="font-medium text-sm flex items-center gap-2"><Pill className="w-4 h-4 text-purple-500" /> الأدوية الحالية</h4>
+                                <h4 className="font-medium text-sm flex items-center gap-2"><Pill className="w-4 h-4 text-purple-500" /> {t('profile.medicalTab.currentMedications')}</h4>
                                 <Button type="button" variant="ghost" size="sm" onClick={() => appendMed({ name: '' })}><Plus className="w-3 h-3" /></Button>
                             </div>
                             {medFields.map((field, index) => (
                                 <div key={field.id} className="flex gap-2">
-                                    <FormField control={control} name={`medications.${index}.name`} render={({ field }) => <Input placeholder="اسم الدواء" className="h-9 bg-white" {...field} value={field.value || ""} />} />
+                                    <FormField control={control} name={`medications.${index}.name`} render={({ field }) => <Input placeholder={t('profile.medicalTab.medicationName')} className="h-9 bg-white" {...field} value={field.value || ""} />} />
                                     <Button type="button" variant="ghost" size="icon" onClick={() => removeMed(index)} className="text-red-500"><Trash2 className="w-4 h-4" /></Button>
                                 </div>
                             ))}
@@ -196,14 +198,14 @@ export function MedicalTab() {
 
                         <div className="space-y-4 pt-4 border-t">
                             <div className="flex items-center justify-between">
-                                <h4 className="font-medium text-sm flex items-center gap-2"><FileText className="w-4 h-4 text-blue-500" /> العمليات الجراحية</h4>
+                                <h4 className="font-medium text-sm flex items-center gap-2"><FileText className="w-4 h-4 text-blue-500" /> {t('profile.medicalTab.surgeries')}</h4>
                                 <Button type="button" variant="ghost" size="sm" onClick={() => appendSurgery({ name: '', date: '' })}><Plus className="w-3 h-3" /></Button>
                             </div>
                             {surgeryFields.map((field, index) => (
                                 <div key={field.id} className="grid grid-cols-2 gap-2">
-                                    <FormField control={control} name={`surgeries_list.${index}.name`} render={({ field }) => <Input placeholder="العملية" className="h-9 bg-white" {...field} value={field.value || ""} />} />
+                                    <FormField control={control} name={`surgeries_list.${index}.name`} render={({ field }) => <Input placeholder={t('profile.medicalTab.surgeryName')} className="h-9 bg-white" {...field} value={field.value || ""} />} />
                                     <div className="flex gap-1">
-                                        <FormField control={control} name={`surgeries_list.${index}.date`} render={({ field }) => <Input placeholder="التاريخ/السنة" className="h-9 bg-white" {...field} value={field.value || ""} />} />
+                                        <FormField control={control} name={`surgeries_list.${index}.date`} render={({ field }) => <Input placeholder={t('profile.medicalTab.dateYear')} className="h-9 bg-white" {...field} value={field.value || ""} />} />
                                         <Button type="button" variant="ghost" size="icon" onClick={() => removeSurgery(index)} className="text-red-500"><Trash2 className="w-4 h-4" /></Button>
                                     </div>
                                 </div>
@@ -212,12 +214,12 @@ export function MedicalTab() {
 
                         <div className="space-y-4 pt-4 border-t">
                             <div className="flex items-center justify-between">
-                                <h4 className="font-medium text-sm flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-amber-500" /> الحساسية</h4>
+                                <h4 className="font-medium text-sm flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-amber-500" /> {t('profile.medicalTab.allergies')}</h4>
                                 <Button type="button" variant="ghost" size="sm" onClick={() => appendAllergy({ name: '' })}><Plus className="w-3 h-3" /></Button>
                             </div>
                             {allergyFields.map((field, index) => (
                                 <div key={field.id} className="flex gap-2">
-                                    <FormField control={control} name={`allergies_list.${index}.name`} render={({ field }) => <Input placeholder="مسبب الحساسية" className="h-9 bg-white" {...field} value={field.value || ""} />} />
+                                    <FormField control={control} name={`allergies_list.${index}.name`} render={({ field }) => <Input placeholder={t('profile.medicalTab.allergen')} className="h-9 bg-white" {...field} value={field.value || ""} />} />
                                     <Button type="button" variant="ghost" size="icon" onClick={() => removeAllergy(index)} className="text-red-500"><Trash2 className="w-4 h-4" /></Button>
                                 </div>
                             ))}
@@ -229,7 +231,7 @@ export function MedicalTab() {
 
             <Card className="border-gray-100 shadow-sm">
                 <CardHeader className="pb-3">
-                    <CardTitle className="text-base">التاريخ الطبي العائلي / ملاحظات إضافية</CardTitle>
+                    <CardTitle className="text-base">{t('profile.medicalTab.familyHistoryTitle')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <FormField
@@ -238,7 +240,7 @@ export function MedicalTab() {
                         render={({ field }) => (
                             <FormItem>
                                 <FormControl>
-                                    <Textarea placeholder="هل هناك أمراض وراثية في العائلة؟ أو أي ملاحظات طبية أخرى تود ذكرها..." className="min-h-[100px] resize-none" {...field} value={field.value || ""} />
+                                    <Textarea placeholder={t('profile.medicalTab.familyHistoryPlaceholder')} className="min-h-[100px] resize-none" {...field} value={field.value || ""} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
