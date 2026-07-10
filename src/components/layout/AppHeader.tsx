@@ -80,6 +80,7 @@ export default function AppHeader({
   onLogout,
 }: AppHeaderProps) {
   const { isCollapsed, isMobile, toggleMobile } = useAppShell();
+  const { t } = useTranslation();
 
   const collapsed = !isMobile && isCollapsed;
 
@@ -92,7 +93,7 @@ export default function AppHeader({
           <button
             onClick={toggleMobile}
             className="header-action-btn flex-shrink-0"
-            aria-label="فتح القائمة"
+            aria-label={t('sidebar.open')}
           >
             <Menu size={22} />
           </button>
@@ -114,8 +115,8 @@ export default function AppHeader({
             <button
               onClick={onLogout}
               className="header-action-btn flex-shrink-0 text-red-500"
-              aria-label="تسجيل الخروج"
-              title="تسجيل الخروج"
+              aria-label={t('common.logout')}
+              title={t('common.logout')}
             >
               <LogOut size={20} />
             </button>

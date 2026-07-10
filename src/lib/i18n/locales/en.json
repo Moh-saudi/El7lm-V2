@@ -339,7 +339,43 @@
     "search-players": "Search Players",
     "player-cinema": "Players Cinema",
     "tournaments": "Current Tournaments",
-    "lessons": "Lessons & Training"
+    "lessons": "Lessons & Training",
+    "group": {
+      "main": "Dashboard",
+      "finance": "Finance & Subscriptions",
+      "discovery": "Opportunities Discovery",
+      "academy": "Dream School",
+      "school": "Dream School",
+      "management": "Management",
+      "team-mgmt": "Team Management",
+      "analysis": "Analysis & Marketing",
+      "identity-mgmt": "Identity Management",
+      "comm-mgmt": "Support & Communication",
+      "subscriptions-mgmt": "Platform Subscriptions",
+      "store-mgmt": "Store",
+      "tournaments-mgmt": "Tournaments",
+      "academy-mgmt": "Dream Academy",
+      "ops-mgmt": "Operations & System",
+      "content-mgmt": "Marketing & Media",
+      "integrations-mgmt": "Integrations"
+    },
+    "players": "Players",
+    "player-evaluation": "Player Evaluation",
+    "contracts": "Contracts",
+    "negotiations": "Negotiations",
+    "player-videos": "Player Videos",
+    "opportunities": "Opportunities & Services",
+    "ai-analysis": "AI Analysis",
+    "market-values": "Market Values",
+    "marketing": "Marketing",
+    "search": "Search",
+    "ariaLabel": "Sidebar navigation",
+    "quickNavigation": "Quick navigation",
+    "fullMenu": "Full menu",
+    "more": "More",
+    "open": "Open menu",
+    "expand": "Expand sidebar",
+    "collapse": "Collapse sidebar"
   },
   "payment": {
     "title": "Payment & Subscriptions",
@@ -2399,5 +2435,37 @@
     "agentDesc": "Track all important notifications and alerts for the agent",
     "marketerTitle": "Marketer Notifications",
     "marketerDesc": "Track all important notifications and alerts for the marketer"
+  },
+  "accountTypes": {
+    "player": "Player",
+    "club": "Sports Club",
+    "academy": "Sports Academy",
+    "agent": "Sports Agent",
+    "trainer": "Coach",
+    "marketer": "Marketer",
+    "admin": "Admin",
+    "parent": "Parent",
+    "dream-academy": "Dream Academy",
+    "user": "User"
+  },
+  "employeeRoles": {
+    "support": "Support Agent",
+    "finance": "Finance Officer",
+    "content": "Content Editor",
+    "admin": "System Admin",
+    "supervisor": "Supervisor",
+    "sales": "Sales Representative"
+  },
+  "appShell": {
+    "employee": "Employee",
+    "logoutConfirm": {
+      "eyebrow": "Logout",
+      "title": "Are you sure you want to log out?",
+      "warningTitle": "Before you continue",
+      "warningBody": "Your current session will end and you will leave the dashboard. You can log in again at any time.",
+      "cancel": "Cancel",
+      "confirm": "Confirm logout",
+      "confirming": "Logging out..."
+    }
   }
 }

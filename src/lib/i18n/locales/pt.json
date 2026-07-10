@@ -339,7 +339,43 @@
     "search-players": "Buscar Jogadores",
     "player-cinema": "Cinema de Jogadores",
     "tournaments": "Torneios Atuais",
-    "lessons": "Aulas e Treinamentos"
+    "lessons": "Aulas e Treinamentos",
+    "group": {
+      "main": "Painel",
+      "finance": "Finan?as e assinaturas",
+      "discovery": "Descoberta de oportunidades",
+      "academy": "Escola do Sonho",
+      "school": "Escola do Sonho",
+      "management": "Gest?o",
+      "team-mgmt": "Gest?o da equipe",
+      "analysis": "An?lise e marketing",
+      "identity-mgmt": "Gest?o de identidades",
+      "comm-mgmt": "Suporte e comunica??o",
+      "subscriptions-mgmt": "Assinaturas da plataforma",
+      "store-mgmt": "Loja",
+      "tournaments-mgmt": "Torneios",
+      "academy-mgmt": "Academia do Sonho",
+      "ops-mgmt": "Opera??es e sistema",
+      "content-mgmt": "Marketing e m?dia",
+      "integrations-mgmt": "Integra??es"
+    },
+    "players": "Jogadores",
+    "player-evaluation": "Avalia??o de jogadores",
+    "contracts": "Contratos",
+    "negotiations": "Negocia??es",
+    "player-videos": "V?deos de jogadores",
+    "opportunities": "Oportunidades e servi?os",
+    "ai-analysis": "An?lise de IA",
+    "market-values": "Valores de mercado",
+    "marketing": "Marketing",
+    "search": "Buscar",
+    "ariaLabel": "Navega??o lateral",
+    "quickNavigation": "Navega??o r?pida",
+    "fullMenu": "Menu completo",
+    "more": "Mais",
+    "open": "Abrir menu",
+    "expand": "Expandir menu",
+    "collapse": "Recolher menu"
   },
   "payment": {
     "title": "Pagamentos e Assinaturas",
@@ -2399,5 +2435,37 @@
     "agentDesc": "Acompanhe todas as notificações e alertas importantes do agente",
     "marketerTitle": "Notificações do promotor",
     "marketerDesc": "Acompanhe todas as notificações e alertas importantes do promotor"
+  },
+  "accountTypes": {
+    "player": "Jogador",
+    "club": "Clube esportivo",
+    "academy": "Academia esportiva",
+    "agent": "Agente esportivo",
+    "trainer": "Treinador",
+    "marketer": "Profissional de marketing",
+    "admin": "Administrador",
+    "parent": "Respons?vel",
+    "dream-academy": "Academia do Sonho",
+    "user": "Usu?rio"
+  },
+  "employeeRoles": {
+    "support": "Agente de suporte",
+    "finance": "Respons?vel financeiro",
+    "content": "Editor de conte?do",
+    "admin": "Administrador do sistema",
+    "supervisor": "Supervisor",
+    "sales": "Representante de vendas"
+  },
+  "appShell": {
+    "employee": "Funcion?rio",
+    "logoutConfirm": {
+      "eyebrow": "Sair",
+      "title": "Tem certeza de que deseja sair?",
+      "warningTitle": "Antes de continuar",
+      "warningBody": "Sua sess?o atual ser? encerrada e voc? sair? do painel. Voc? pode entrar novamente a qualquer momento.",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar sa?da",
+      "confirming": "Saindo..."
+    }
   }
 }

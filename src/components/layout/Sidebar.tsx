@@ -15,6 +15,7 @@ import React from 'react';
 import { useAppShell } from './AppShellContext';
 import SidebarNav, { MenuGroup } from './SidebarNav';
 import SidebarUserPanel from './SidebarUserPanel';
+import { useTranslation } from '@/lib/i18n';
 
 // ─── Brand logo mark ──────────────────────────────────────────────────────────
 
@@ -54,6 +55,8 @@ function BrandMark({ collapsed }: { collapsed: boolean }) {
 // ─── Collapse toggle button ────────────────────────────────────────────────────
 
 function CollapseButton({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  const { t } = useTranslation();
+
   return (
     <button
       onClick={onToggle}
@@ -68,7 +71,7 @@ function CollapseButton({ collapsed, onToggle }: { collapsed: boolean; onToggle:
       }}
       onMouseEnter={e => (e.currentTarget.style.background = 'var(--sidebar-bg-hover)')}
       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-      title={collapsed ? 'توسيع القائمة' : 'طي القائمة'}
+      title={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
     >
       {collapsed
         ? <PanelLeftOpen size={16} />
@@ -100,6 +103,7 @@ export default function Sidebar({
   onLogout,
 }: SidebarProps) {
   const { isCollapsed, isMobileOpen, toggleCollapse, closeMobile, isMobile } = useAppShell();
+  const { t } = useTranslation();
 
   const collapsed = !isMobile && isCollapsed;
 
@@ -124,7 +128,7 @@ export default function Sidebar({
           collapsed && 'collapsed',
           isMobile && isMobileOpen && 'mobile-open',
         )}
-        aria-label="القائمة الجانبية"
+        aria-label={t('sidebar.ariaLabel')}
       >
         {/* Brand */}
         <BrandMark collapsed={collapsed} />
@@ -153,11 +157,11 @@ export default function Sidebar({
               'text-red-500 hover:bg-red-50 hover:text-red-600 active:scale-95',
               collapsed ? 'justify-center mx-auto w-10 px-0' : '',
             )}
-            data-tooltip={collapsed ? 'تسجيل الخروج' : undefined}
+            data-tooltip={collapsed ? t('common.logout') : undefined}
             style={{ width: collapsed ? 40 : 'calc(100% - 16px)' }}
           >
             <LogOut className="w-4 h-4 flex-shrink-0" />
-            {!collapsed && <span>تسجيل الخروج</span>}
+            {!collapsed && <span>{t('common.logout')}</span>}
           </button>
 
           {/* Collapse toggle (desktop only) */}

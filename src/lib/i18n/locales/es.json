@@ -339,7 +339,43 @@
     "search-players": "Buscar Jugadores",
     "player-cinema": "Cine de Jugadores",
     "tournaments": "Torneos Actuales",
-    "lessons": "Lecciones y Entrenamiento"
+    "lessons": "Lecciones y Entrenamiento",
+    "group": {
+      "main": "Panel",
+      "finance": "Finanzas y suscripciones",
+      "discovery": "Descubrimiento de oportunidades",
+      "academy": "Escuela del Sue?o",
+      "school": "Escuela del Sue?o",
+      "management": "Gesti?n",
+      "team-mgmt": "Gesti?n del equipo",
+      "analysis": "An?lisis y marketing",
+      "identity-mgmt": "Gesti?n de identidades",
+      "comm-mgmt": "Soporte y comunicaci?n",
+      "subscriptions-mgmt": "Suscripciones de la plataforma",
+      "store-mgmt": "Tienda",
+      "tournaments-mgmt": "Torneos",
+      "academy-mgmt": "Academia del Sue?o",
+      "ops-mgmt": "Operaciones y sistema",
+      "content-mgmt": "Marketing y medios",
+      "integrations-mgmt": "Integraciones"
+    },
+    "players": "Jugadores",
+    "player-evaluation": "Evaluaci?n de jugadores",
+    "contracts": "Contratos",
+    "negotiations": "Negociaciones",
+    "player-videos": "Videos de jugadores",
+    "opportunities": "Oportunidades y servicios",
+    "ai-analysis": "An?lisis de IA",
+    "market-values": "Valores de mercado",
+    "marketing": "Marketing",
+    "search": "Buscar",
+    "ariaLabel": "Navegaci?n lateral",
+    "quickNavigation": "Navegaci?n r?pida",
+    "fullMenu": "Men? completo",
+    "more": "M?s",
+    "open": "Abrir men?",
+    "expand": "Expandir men?",
+    "collapse": "Contraer men?"
   },
   "payment": {
     "title": "Pago y Suscripciones",
@@ -2399,5 +2435,37 @@
     "agentDesc": "Siga todas las notificaciones y alertas importantes del agente",
     "marketerTitle": "Notificaciones del comercial",
     "marketerDesc": "Siga todas las notificaciones y alertas importantes del comercial"
+  },
+  "accountTypes": {
+    "player": "Jugador",
+    "club": "Club deportivo",
+    "academy": "Academia deportiva",
+    "agent": "Agente deportivo",
+    "trainer": "Entrenador",
+    "marketer": "Comercializador",
+    "admin": "Administrador",
+    "parent": "Padre/Madre",
+    "dream-academy": "Academia del Sue?o",
+    "user": "Usuario"
+  },
+  "employeeRoles": {
+    "support": "Agente de soporte",
+    "finance": "Responsable financiero",
+    "content": "Editor de contenido",
+    "admin": "Administrador del sistema",
+    "supervisor": "Supervisor",
+    "sales": "Representante de ventas"
+  },
+  "appShell": {
+    "employee": "Empleado",
+    "logoutConfirm": {
+      "eyebrow": "Cerrar sesi?n",
+      "title": "?Seguro que quieres cerrar sesi?n?",
+      "warningTitle": "Antes de continuar",
+      "warningBody": "Tu sesi?n actual terminar? y saldr?s del panel. Puedes volver a iniciar sesi?n en cualquier momento.",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar cierre de sesi?n",
+      "confirming": "Cerrando sesi?n..."
+    }
   }
 }

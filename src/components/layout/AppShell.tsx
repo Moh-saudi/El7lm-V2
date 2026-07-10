@@ -28,6 +28,7 @@ import AppFooter from './AppFooter';
 import AppHeader from './AppHeader';
 import MobileBottomNav from './MobileBottomNav';
 import Sidebar from './Sidebar';
+import { useTranslation } from '@/lib/i18n';
 
 // â”€â”€â”€ Default employee permissions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -81,14 +82,6 @@ const INVALID_DISPLAY_VALUES = new Set([
   'nan',
 ]);
 
-const EMPLOYEE_ROLE_LABELS: Partial<Record<EmployeeRole, string>> = {
-  support: 'موظف دعم',
-  finance: 'موظف مالي',
-  content: 'محرر محتوى',
-  admin: 'مدير النظام',
-  supervisor: 'مشرف',
-  sales: 'مندوب مبيعات',
-};
 
 function pickValidText(...values: unknown[]): string | null {
   for (const value of values) {
@@ -111,30 +104,30 @@ function pickValidText(...values: unknown[]): string | null {
 function getAccountFallbackLabel(accountType: string): string {
   switch (accountType) {
     case 'player':
-      return 'لاعب';
+      return 'Player';
     case 'club':
-      return 'نادي رياضي';
+      return 'Sports Club';
     case 'academy':
-      return 'أكاديمية';
+      return 'Sports Academy';
     case 'agent':
-      return 'وكيل';
+      return 'Sports Agent';
     case 'trainer':
-      return 'مدرب';
+      return 'Coach';
     case 'marketer':
-      return 'مسوق كروي';
+      return 'Marketer';
     case 'admin':
-      return 'مدير النظام';
+      return 'Admin';
     case 'parent':
-      return 'ولي أمر';
+      return 'Parent';
     case 'dream-academy':
-      return 'أكاديمية الحلم';
+      return 'Dream Academy';
     default:
-      return 'مستخدم';
+      return 'User';
   }
 }
 
-function resolveDisplayName(userData: any, user: any, accountType: string): string {
-  const fallback = getAccountFallbackLabel(accountType);
+function resolveDisplayName(userData: any, user: any, accountType: string, fallbackOverride?: string): string {
+  const fallback = fallbackOverride || getAccountFallbackLabel(accountType);
   const emailName =
     typeof user?.email === 'string' && user.email.includes('@')
       ? user.email.split('@')[0]
@@ -199,7 +192,7 @@ function resolveDisplayName(userData: any, user: any, accountType: string): stri
         user?.user_metadata?.full_name,
         user?.user_metadata?.name,
         emailName,
-      ) || 'مدير النظام';
+      ) || fallback;
     default:
       return pickValidText(
         userData?.full_name,
@@ -212,17 +205,6 @@ function resolveDisplayName(userData: any, user: any, accountType: string): stri
   }
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  player: 'لاعب',
-  club: 'نادي رياضي',
-  academy: 'أكاديمية رياضية',
-  agent: 'وكيل رياضي',
-  trainer: 'مدرب',
-  marketer: 'مسوق',
-  admin: 'مدير',
-  'dream-academy': 'أكاديمية الحلم',
-  parent: 'ولي أمر',
-};
 // â”€â”€â”€ Inner shell (needs context) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface InnerShellProps {
@@ -236,6 +218,7 @@ interface InnerShellProps {
 function InnerShell({ accountType, children, noPadding, showHeader = true, showSidebar = true }: InnerShellProps) {
   const { isCollapsed, isMobile } = useAppShell();
   const { user, userData, logout } = useAuth();
+  const { t, isRTL } = useTranslation();
 
   const [profileName, setProfileName] = useState<string | null>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -308,8 +291,10 @@ function InnerShell({ accountType, children, noPadding, showHeader = true, showS
   // â”€â”€ Resolved values â”€â”€
   const displayName = useMemo(() => {
     if (profileName) return profileName;
-    return resolveDisplayName(userData, user, accountType);
-  }, [userData, user, accountType, profileName]);
+    const fallbackKey = `accountTypes.${accountType}`;
+    const fallback = t(fallbackKey) !== fallbackKey ? t(fallbackKey) : t('accountTypes.user');
+    return resolveDisplayName(userData, user, accountType, fallback);
+  }, [userData, user, accountType, profileName, t]);
 
   const avatarUrl = useMemo(() => {
     if (profileImage) return profileImage;
@@ -318,18 +303,18 @@ function InnerShell({ accountType, children, noPadding, showHeader = true, showS
   }, [accountType, clubLogo, profileImage, userData, user]);
 
   const roleName = useMemo(() => {
-    const resolvedEmployeeRole = pickValidText(
-      userData?.roleName,
-      EMPLOYEE_ROLE_LABELS[userData?.employeeRole as EmployeeRole],
-      EMPLOYEE_ROLE_LABELS[userData?.role as EmployeeRole],
-    );
+    const employeeRole = (userData?.employeeRole || userData?.role) as EmployeeRole | undefined;
+    const employeeRoleKey = employeeRole ? `employeeRoles.${employeeRole}` : '';
+    const translatedEmployeeRole = employeeRoleKey && t(employeeRoleKey) !== employeeRoleKey ? t(employeeRoleKey) : null;
+    const resolvedEmployeeRole = pickValidText(userData?.roleName, translatedEmployeeRole);
 
     if (resolvedEmployeeRole && (userData?.employeeId || userData?.employeeRole || userData?.role)) {
-      return `موظف - ${resolvedEmployeeRole}`;
+      return `${t('appShell.employee')} - ${resolvedEmployeeRole}`;
     }
 
-    return ROLE_LABELS[accountType] || getAccountFallbackLabel(accountType);
-  }, [userData?.employeeId, userData?.employeeRole, userData?.role, userData?.roleName, accountType]);
+    const accountRoleKey = `accountTypes.${accountType}`;
+    return t(accountRoleKey) !== accountRoleKey ? t(accountRoleKey) : t('accountTypes.user');
+  }, [userData?.employeeId, userData?.employeeRole, userData?.role, userData?.roleName, accountType, t]);
 
   const employeePermissions = useMemo((): RolePermissions | null => {
     if (!userData) return null;
@@ -366,7 +351,7 @@ function InnerShell({ accountType, children, noPadding, showHeader = true, showS
 
   return (
     <div
-      dir="rtl"
+      dir={isRTL ? 'rtl' : 'ltr'}
       className="min-h-screen"
       style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif" }}
       data-account={accountType}
@@ -426,10 +411,10 @@ function InnerShell({ accountType, children, noPadding, showHeader = true, showS
                   </div>
                   <div>
                     <p className="mb-1 text-xs font-semibold tracking-[0.24em] text-slate-400">
-                      LOGOUT
+                      {t('appShell.logoutConfirm.eyebrow')}
                     </p>
                     <h3 className="text-xl font-bold leading-8 text-slate-900">
-                      هل أنت متأكد من تسجيل الخروج؟
+                      {t('appShell.logoutConfirm.title')}
                     </h3>
                   </div>
                 </div>
@@ -438,7 +423,7 @@ function InnerShell({ accountType, children, noPadding, showHeader = true, showS
                   type="button"
                   onClick={() => setShowLogoutConfirm(false)}
                   className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                  aria-label="إغلاق"
+                  aria-label={t('common.close')}
                 >
                   ×
                 </button>
@@ -447,10 +432,10 @@ function InnerShell({ accountType, children, noPadding, showHeader = true, showS
               <div className="mb-6 rounded-2xl border border-slate-100 bg-gradient-to-br from-slate-50 via-white to-rose-50/40 p-4">
                 <div className="mb-2 flex items-center gap-2 text-amber-600">
                   <AlertTriangle className="h-4 w-4" />
-                  <span className="text-sm font-semibold">تنبيه قبل المتابعة</span>
+                  <span className="text-sm font-semibold">{t('appShell.logoutConfirm.warningTitle')}</span>
                 </div>
                 <p className="text-sm leading-7 text-slate-600">
-                  سيتم إنهاء جلستك الحالية والخروج من لوحة التحكم. يمكنك تسجيل الدخول مجددًا في أي وقت.
+                  {t('appShell.logoutConfirm.warningBody')}
                 </p>
               </div>
 
@@ -460,7 +445,7 @@ function InnerShell({ accountType, children, noPadding, showHeader = true, showS
                   onClick={() => setShowLogoutConfirm(false)}
                   className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
-                  إلغاء
+                  {t('appShell.logoutConfirm.cancel')}
                 </button>
                 <button
                   type="button"
@@ -469,7 +454,7 @@ function InnerShell({ accountType, children, noPadding, showHeader = true, showS
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 via-rose-500 to-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(244,63,94,0.28)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <LogOut className="h-4 w-4" />
-                  {isLoggingOut ? 'جاري تسجيل الخروج...' : 'تأكيد تسجيل الخروج'}
+                  {isLoggingOut ? t('appShell.logoutConfirm.confirming') : t('appShell.logoutConfirm.confirm')}
                 </button>
               </div>
             </div>
