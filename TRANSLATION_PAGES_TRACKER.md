@@ -1,15 +1,15 @@
 # سجل متابعة ترجمة صفحات المشروع
 
-> آخر توليد آلي: الجمعة، ١٠ يوليو ٢٠٢٦ في ١١:٣٧ م
+> آخر توليد آلي: السبت، ١١ يوليو ٢٠٢٦ في ١٢:٠١ ص
 >
 > هذا التقرير هو المرجع المركزي لخطة الترجمة. الحالة «مكتملة مبدئياً» آلية وتحتاج اختباراً بصرياً قبل اعتمادها نهائياً.
 
 ## الملخص
 
 - إجمالي ملفات الصفحات: **256**
-- مكتملة مبدئياً: **58**
+- مكتملة مبدئياً: **59**
 - قيد التنفيذ: **0**
-- جزئية: **5**
+- جزئية: **4**
 - غير مربوطة بنظام الترجمة: **111**
 - تحويل أو إعادة استخدام: **71**
 - تحتاج مراجعة يدوية: **11**
@@ -18,10 +18,10 @@
 
 | اللغة | عدد المفاتيح | المفاتيح الناقصة مقارنة بالعربية |
 |---|---:|---:|
-| AR | 1938 | 0 |
-| EN | 1938 | 0 |
-| ES | 1659 | 279 |
-| PT | 1659 | 279 |
+| AR | 1941 | 0 |
+| EN | 1941 | 0 |
+| ES | 1662 | 279 |
+| PT | 1662 | 279 |
 
 > تنبيه: الإسبانية والبرتغالية ناقصتان حالياً عن القاموس العربي، ولذلك لا تُعتمد الصفحات المعتمدة على هذه المفاتيح قبل استكمالها.
 
@@ -266,7 +266,7 @@
 | `/dashboard/player/entity-profile` | `src/app/dashboard/player/entity-profile/page.tsx` | — | — | — | — | ❌ | 🔴 غير مربوطة | 118 نص ثابت محتمل |
 | `/dashboard/player/explore-opportunities` | `src/app/dashboard/player/explore-opportunities/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 122 مفتاح |
 | `/dashboard/player/messages` | `src/app/dashboard/player/messages/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | يعيد استخدام صفحة الرسائل المشتركة /dashboard/shared/messages؛ 1 نص ثابت محتمل |
-| `/dashboard/player/my-applications` | `src/app/dashboard/player/my-applications/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 جزئية | 28 مفتاح؛ 4 نص ثابت محتمل |
+| `/dashboard/player/my-applications` | `src/app/dashboard/player/my-applications/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 30 مفتاح |
 | `/dashboard/player/notifications` | `src/app/dashboard/player/notifications/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | 2 مفتاح |
 | `/dashboard/player/payment-cancelled` | `src/app/dashboard/player/payment-cancelled/page.tsx` | — | — | — | — | ❌ | 🔁 تحويل/إعادة استخدام | يعيد استخدام صفحة الدفع المشتركة /dashboard/shared/payment؛ 8 نص ثابت محتمل |
 | `/dashboard/player/payment-success` | `src/app/dashboard/player/payment-success/page.tsx` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ مكتملة مبدئياً | فحص يدوي مطلوب |

@@ -25,10 +25,10 @@ function daysUntil(iso: string) {
 const getStatusConfig = (status: ApplicationStatus, t: any) => {
   const labels: Record<ApplicationStatus, string> = {
     pending:    t('myApplications.tabPending'),
-    reviewed:   t('store.orders.statuses.confirmed') || 'تمت المراجعة',
+    reviewed:   t('myApplications.tabReviewed'),
     accepted:   t('myApplications.tabAccepted'),
     rejected:   t('myApplications.tabRejected'),
-    waitlisted: t('store.orders.statuses.pending') || 'قائمة الانتظار',
+    waitlisted: t('myApplications.tabWaitlisted'),
   };
   const configs: Record<ApplicationStatus, { icon: any; bg: string; text: string; border: string }> = {
     pending:    { icon: Clock,         bg: 'bg-yellow-50',  text: 'text-yellow-700', border: 'border-yellow-200' },
@@ -188,7 +188,7 @@ export default function MyApplicationsPage() {
                 const days = daysUntil(a.opportunityDeadline!);
                 return (
                   <p key={a.id} className="text-xs text-yellow-700">
-                    <span className="font-semibold">{a.opportunityTitle || 'فرصة'}</span>
+                    <span className="font-semibold">{a.opportunityTitle || t('myApplications.sportsOpportunityFallback')}</span>
                     {' — '}
                     {days === 0 ? t('myApplications.deadlineWarningText') : t('myApplications.deadlineWarningTextDays').replace('{{count}}', days.toString())}
                   </p>
@@ -268,7 +268,7 @@ export default function MyApplicationsPage() {
                   <div className="p-4 space-y-2">
                     {/* Title */}
                     <h3 className="text-sm font-bold text-gray-900 leading-snug">
-                      {app.opportunityTitle || (isRTL ? 'فرصة رياضية' : 'Sports Opportunity')}
+                      {app.opportunityTitle || t('myApplications.sportsOpportunityFallback')}
                     </h3>
 
                     {/* Organizer */}
