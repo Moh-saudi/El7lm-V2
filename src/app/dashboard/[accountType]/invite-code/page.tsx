@@ -243,7 +243,7 @@ function CodeCard({ code, onToggle }: { code: OrganizationReferral; onToggle: (i
   const [copiedLink, setCopiedLink] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  const copy = (text: string, type: 'code' | 'link') => {
+  const copyToClipboard = (text: string, type: 'code' | 'link') => {
     navigator.clipboard.writeText(text);
     if (type === 'code') { setCopied(true); setTimeout(() => setCopied(false), 2000); }
     else { setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000); }
@@ -274,7 +274,7 @@ function CodeCard({ code, onToggle }: { code: OrganizationReferral; onToggle: (i
             <div className="flex items-center gap-2">
               <span className="font-mono text-2xl font-black text-gray-900 tracking-widest">{code.referralCode}</span>
               <button
-                onClick={() => copy(code.referralCode, 'code')}
+                onClick={() => copyToClipboard(code.referralCode, 'code')}
                 className={cn(
                   'p-1.5 rounded-lg transition-colors',
                   copied ? 'bg-emerald-100 text-emerald-600' : 'hover:bg-gray-100 text-gray-400',
@@ -361,7 +361,7 @@ function CodeCard({ code, onToggle }: { code: OrganizationReferral; onToggle: (i
               <div className="flex items-center gap-2 bg-gray-50 rounded-2xl p-3">
                 <p className="flex-1 text-xs text-gray-600 font-mono truncate">{code.inviteLink}</p>
                 <button
-                  onClick={() => copy(code.inviteLink, 'link')}
+                  onClick={() => copyToClipboard(code.inviteLink, 'link')}
                   className={cn('p-1.5 rounded-lg flex-shrink-0 transition-colors',
                     copiedLink ? 'bg-emerald-100 text-emerald-600' : 'hover:bg-white text-gray-400')}
                 >
@@ -370,7 +370,7 @@ function CodeCard({ code, onToggle }: { code: OrganizationReferral; onToggle: (i
                 <button
                   onClick={() => {
                     if (navigator.share) navigator.share({ title: copy.inviteLink, url: code.inviteLink });
-                    else copy(code.inviteLink, 'link');
+                    else copyToClipboard(code.inviteLink, 'link');
                   }}
                   className="p-1.5 hover:bg-white rounded-lg transition-colors text-gray-400"
                 >
