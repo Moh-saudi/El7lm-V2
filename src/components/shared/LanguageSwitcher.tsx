@@ -19,7 +19,7 @@ const languages: LanguageOption[] = [
   { code: 'pt', name: 'Portuguese', flag: '🇵🇹', localName: 'Português' },
 ];
 
-export default function LanguageSwitcher({ variant = 'dark' }: { variant?: 'light' | 'dark' }) {
+export default function LanguageSwitcher({ variant = 'dark', compact = false }: { variant?: 'light' | 'dark'; compact?: boolean }) {
   const { locale, changeLanguage } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -38,8 +38,8 @@ export default function LanguageSwitcher({ variant = 'dark' }: { variant?: 'ligh
   const currentLang = languages.find((lang) => lang.code === locale) || languages[0];
 
   const buttonClasses = variant === 'dark'
-    ? 'flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-900/60 text-slate-200 hover:text-white hover:border-slate-500 hover:bg-slate-800/80 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 backdrop-blur-md'
-    : 'flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:text-slate-900 hover:border-slate-350 hover:bg-slate-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50';
+    ? `flex items-center gap-2 ${compact ? 'px-2 py-1' : 'px-3 py-1.5'} rounded-lg border border-slate-700 bg-slate-900/60 text-slate-200 hover:text-white hover:border-slate-500 hover:bg-slate-800/80 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 backdrop-blur-md`
+    : `flex items-center gap-2 ${compact ? 'px-2 py-1' : 'px-3 py-1.5'} rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:text-slate-900 hover:border-slate-350 hover:bg-slate-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50`;
 
   const dropdownClasses = variant === 'dark'
     ? `absolute mt-2 w-48 rounded-xl border border-slate-700/80 bg-slate-950/90 p-1.5 shadow-2xl backdrop-blur-xl z-[9999] ${locale === 'ar' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'}`
@@ -60,7 +60,7 @@ export default function LanguageSwitcher({ variant = 'dark' }: { variant?: 'ligh
         <span className="text-lg leading-none" role="img" aria-label={currentLang.name}>
           {currentLang.flag}
         </span>
-        <span className="text-xs sm:text-sm font-medium">
+        <span className={`${compact ? 'hidden sm:inline' : ''} text-xs sm:text-sm font-medium`}>
           {currentLang.localName}
         </span>
         <ChevronDown

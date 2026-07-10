@@ -1011,7 +1011,7 @@ function VideoCard({
         {/* Platform badge */}
         {isYT && (
           <div className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-            <Youtube className="w-3 h-3" /> {videoProviders.youtube.name}
+            <Youtube className="w-3 h-3" /> {PLATFORMS[0].name}
           </div>
         )}
         {video.type === 'uploaded' && (

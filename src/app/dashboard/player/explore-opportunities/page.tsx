@@ -622,7 +622,7 @@ export default function SearchPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredOpportunities.map(opp => {
-                  const cfg = OPPORTUNITY_TYPES[opp.opportunityType] ?? { label: opp.opportunityType, emoji: '📌', color: '#6B7280' };
+                  const cfg = OPPORTUNITY_TYPES[opp.opportunityType] ?? { label: opp.opportunityType, labelEn: opp.opportunityType, emoji: '📌', color: '#6B7280' };
                   return (
                     <div key={opp.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                       <div className="h-1 w-full" style={{ backgroundColor: cfg.color }} />
