@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Service role client — bypasses RLS, admin only
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-);
+export const dynamic = 'force-dynamic';
+
+function getSupabaseAdminClient() {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+        throw new Error('Supabase admin environment variables are not configured');
+    }
+
+    // Service role client — bypasses RLS, admin only
+    return createClient(supabaseUrl, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+    });
+}
 
 /**
  * POST /api/admin/tournament-clients/create
@@ -27,6 +36,8 @@ export async function POST(req: NextRequest) {
         if (password.length < 8) {
             return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
         }
+
+        const supabaseAdmin = getSupabaseAdminClient();
 
         // Step 1: Create Supabase Auth user
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
