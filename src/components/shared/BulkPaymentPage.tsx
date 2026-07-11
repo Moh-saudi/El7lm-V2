@@ -160,6 +160,36 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   const [currentPaymentDetails, setCurrentPaymentDetails] = useState<string>('');
   const [currentPaymentInstructions, setCurrentPaymentInstructions] = useState<string>('');
 
+  const getTranslatedValue = (key: string, fallback = '') => {
+    const translated = t(key);
+    return translated !== key ? translated : fallback;
+  };
+
+  const getPlanTitle = (plan?: Partial<SubscriptionPlan> | null) => {
+    if (!plan?.id) return plan?.title || '';
+    return getTranslatedValue(`payment.plans.${plan.id}.title`, plan.title || '');
+  };
+
+  const getPlanSubtitle = (plan?: Partial<SubscriptionPlan> | null) => {
+    if (!plan?.id) return (plan as any)?.subtitle || '';
+    return getTranslatedValue(`payment.plans.${plan.id}.subtitle`, (plan as any)?.subtitle || '');
+  };
+
+  const getPlanDescription = (plan?: Partial<SubscriptionPlan> | null) => {
+    if (!plan?.id) return (plan as any)?.description || '';
+    return getTranslatedValue(`payment.plans.${plan.id}.description`, (plan as any)?.description || (plan as any)?.subtitle || '');
+  };
+
+  const getPlanPeriod = (plan?: Partial<SubscriptionPlan> | null) => {
+    if (!plan?.id) return plan?.period || '';
+    return getTranslatedValue(`payment.plans.${plan.id}.period`, plan.period || '');
+  };
+
+  const getPlanFeature = (planId: string, feature: any, index: number) => {
+    const fallback = typeof feature === 'string' ? feature : feature?.name || '';
+    return getTranslatedValue(`payment.plans.${planId}.features.${index}`, fallback);
+  };
+
   // Handle Action Parameter & Subscription Detection
   useEffect(() => {
     const detectSubscription = async () => {
@@ -184,7 +214,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
             const pkgType = data.packageType || data.package_type || '';
             const bestMatch = PricingService.getBestMatchedPlan(amount, pkgType, availablePlans);
 
-            detectedPlanName = bestMatch.title;
+            detectedPlanName = getPlanTitle(bestMatch.plan || ({ id: pkgType, title: bestMatch.title } as any));
             detectedPkgId = bestMatch.plan?.id || pkgType;
           }
         }
@@ -205,7 +235,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                 const pkgType = data.packageType || data.package_type || '';
                 const bestMatch = PricingService.getBestMatchedPlan(amount, pkgType, availablePlans);
 
-                detectedPlanName = bestMatch.title;
+                detectedPlanName = getPlanTitle(bestMatch.plan || ({ id: pkgType, title: bestMatch.title } as any));
                 detectedPkgId = bestMatch.plan?.id || pkgType;
               }
             }
@@ -231,7 +261,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
           setActiveSubscriptionData({
             isActive: true,
             planName: detectedPlanName,
-            planDuration: activeSubscriptionData_raw?.package_duration || activeSubscriptionData_raw?.packageDuration || t('payment.undefinedDuration'),
+            planDuration: getPlanPeriod(currentPlan) || activeSubscriptionData_raw?.package_duration || activeSubscriptionData_raw?.packageDuration || t('payment.undefinedDuration'),
             isMaxPlan: !hasHigherPlan,
             daysLeft: daysLeft,
             expiryDate: expiresAt || undefined
@@ -593,11 +623,15 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       ...acc,
       [plan.id]: {
         ...plan,
+        title: getPlanTitle(plan),
+        subtitle: getPlanSubtitle(plan),
+        description: getPlanDescription(plan),
+        period: getPlanPeriod(plan),
         price: resolved.price,
         originalPrice: resolved.originalPrice,
         discount: `${discountPercent}%`,
         bonusFeatures: plan.bonusFeatures || [],
-        features: plan.features || []
+        features: (plan.features || []).map((feature, index) => getPlanFeature(plan.id, feature, index))
       }
     };
   }, {} as Record<string, any>);
@@ -781,9 +815,9 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         currency: currentCurrencyCode,
         paymentMethod: selectedPaymentMethod,
         packageType: selectedPackage,
-        packageName: packages[selectedPackage]?.title || t('payment.genericSub'),
-        packageDuration: packages[selectedPackage]?.period || t('payment.undefinedDuration'),
-        package_duration: packages[selectedPackage]?.period || t('payment.undefinedDuration'),
+        packageName: selectedPkg?.title || t('payment.genericSub'),
+        packageDuration: selectedPkg?.period || t('payment.undefinedDuration'),
+        package_duration: selectedPkg?.period || t('payment.undefinedDuration'),
         playerCount: countForCalculation,
         players: accountType === 'player' ? [user.id] : selectedPlayers.map(p => p.id),
         customerEmail: user.email || '',

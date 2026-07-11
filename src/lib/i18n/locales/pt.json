@@ -505,7 +505,64 @@
     "upgradePrompt": "Gostaria de mudar para o plano anual para garantir o monitoramento contínuo dos olheiros?",
     "upgradeDesc": "Escolha um dos planos premium para obter acesso total a todos os recursos da plataforma",
     "renewDesc": "Você pode estender facilmente a duração da sua assinatura atual selecionando o plano adequado",
-    "defaultActionDesc": "Bem-vindo! Escolha o plano que melhor se adapta a você para iniciar sua jornada profissional"
+    "defaultActionDesc": "Bem-vindo! Escolha o plano que melhor se adapta a você para iniciar sua jornada profissional",
+    "plans": {
+      "subscription_3months": {
+        "title": "Plano In?cio",
+        "subtitle": "Para testar e come?ar",
+        "description": "Comece sua presen?a esportiva com um perfil verificado e ferramentas essenciais.",
+        "period": "3 meses",
+        "features": [
+          "Perfil esportivo verificado com selo de jogador ativo",
+          "Armazenamento para at? 5 v?deos de habilidades em HD",
+          "Adicione estat?sticas b?sicas como altura, peso e posi??es",
+          "Apare?a nos resultados p?blicos de clubes e agentes",
+          "Envie e atualize o registro m?dico b?sico"
+        ]
+      },
+      "subscription_6months": {
+        "title": "Plano Pro",
+        "subtitle": "A escolha mais inteligente",
+        "description": "Aumente sua visibilidade com melhores an?lises, alertas e suporte.",
+        "period": "6 meses",
+        "features": [
+          "Perfil esportivo verificado com selo de jogador ativo",
+          "Armazenamento para at? 5 v?deos de habilidades em HD",
+          "Adicione estat?sticas b?sicas como altura, peso e posi??es",
+          "Apare?a nos resultados p?blicos de clubes e agentes",
+          "Envie e atualize o registro m?dico b?sico",
+          "Prioridade no topo dos resultados de busca para agentes",
+          "An?lises inteligentes de desempenho com gr?ficos interativos",
+          "Alertas instant?neos quando um olheiro ou clube visitar seu perfil",
+          "Galeria profissional de fotos de jogos e treinos oficiais",
+          "Suporte dedicado com resposta priorit?ria"
+        ]
+      },
+      "subscription_annual": {
+        "title": "Plano Sonho",
+        "subtitle": "Melhor valor e economia",
+        "description": "O pacote mais forte para destaque completo e acesso profissional a olheiros e agentes.",
+        "period": "12 meses",
+        "features": [
+          "Perfil esportivo verificado com selo de jogador ativo",
+          "Armazenamento para at? 5 v?deos de habilidades em HD",
+          "Adicione estat?sticas b?sicas como altura, peso e posi??es",
+          "Apare?a nos resultados p?blicos de clubes e agentes",
+          "Envie e atualize o registro m?dico b?sico",
+          "Prioridade no topo dos resultados de busca para agentes",
+          "An?lises inteligentes de desempenho com gr?ficos interativos",
+          "Alertas instant?neos quando um olheiro ou clube visitar seu perfil",
+          "Galeria profissional de fotos de jogos e treinos oficiais",
+          "Suporte dedicado com resposta priorit?ria",
+          "Destaque na se??o Talento da Semana",
+          "Ferramentas de contato direto e envio de curr?culo para agentes",
+          "Servi?o profissional de edi??o de v?deo de melhores habilidades",
+          "Prioridade de inscri??o e vagas em testes presenciais",
+          "Selo dourado Elite do Sonho para se destacar para olheiros",
+          "Relat?rio semestral detalhado de avalia??o com IA"
+        ]
+      }
+    }
   },
   "dashboard": {
     "checkingAuth": "Verificando permissões de acesso...",

@@ -505,7 +505,64 @@
     "upgradePrompt": "Would you like to upgrade to the annual plan to ensure continuous scouts monitoring?",
     "upgradeDesc": "Choose one of the premium plans to get full access to all platform features",
     "renewDesc": "You can easily extend your current subscription duration by selecting the appropriate plan",
-    "defaultActionDesc": "Welcome! Choose the plan that suits you to start your professional journey"
+    "defaultActionDesc": "Welcome! Choose the plan that suits you to start your professional journey",
+    "plans": {
+      "subscription_3months": {
+        "title": "Kickoff Plan",
+        "subtitle": "For testing and getting started",
+        "description": "Start your sports presence with a verified profile and essential visibility tools.",
+        "period": "3 months",
+        "features": [
+          "Verified sports profile with an active player badge",
+          "Storage for up to 5 HD skills videos",
+          "Add core stats such as height, weight, and positions",
+          "Appear in public search results for clubs and agents",
+          "Upload and update the basic medical record"
+        ]
+      },
+      "subscription_6months": {
+        "title": "Pro Plan",
+        "subtitle": "The smarter choice",
+        "description": "Expand your visibility with better analytics, alerts, and support.",
+        "period": "6 months",
+        "features": [
+          "Verified sports profile with an active player badge",
+          "Storage for up to 5 HD skills videos",
+          "Add core stats such as height, weight, and positions",
+          "Appear in public search results for clubs and agents",
+          "Upload and update the basic medical record",
+          "Priority placement at the top of agent search results",
+          "Smart performance analytics with interactive strength charts",
+          "Instant alerts when a scout or club visits your profile",
+          "Professional photo gallery for matches and official training",
+          "Dedicated support with priority response"
+        ]
+      },
+      "subscription_annual": {
+        "title": "Dream Plan",
+        "subtitle": "Best value and savings",
+        "description": "The strongest package for full distinction and professional access to scouts and agents.",
+        "period": "12 months",
+        "features": [
+          "Verified sports profile with an active player badge",
+          "Storage for up to 5 HD skills videos",
+          "Add core stats such as height, weight, and positions",
+          "Appear in public search results for clubs and agents",
+          "Upload and update the basic medical record",
+          "Priority placement at the top of agent search results",
+          "Smart performance analytics with interactive strength charts",
+          "Instant alerts when a scout or club visits your profile",
+          "Professional photo gallery for matches and official training",
+          "Dedicated support with priority response",
+          "Featured placement in the Talent of the Week section",
+          "Direct contact tools and CV sharing with agents",
+          "Professional best-skills video editing service",
+          "Priority registration and seats in real-world trials",
+          "Golden Dream Elite badge to stand out to scouts",
+          "Detailed semiannual AI-supported evaluation report"
+        ]
+      }
+    }
   },
   "dashboard": {
     "checkingAuth": "Verifying access permissions...",

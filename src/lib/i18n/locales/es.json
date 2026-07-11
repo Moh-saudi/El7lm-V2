@@ -505,7 +505,64 @@
     "upgradePrompt": "¿Te gustaría cambiar al plan anual para garantizar un seguimiento continuo de los cazatalentos?",
     "upgradeDesc": "Elige uno de los planes premium para obtener acceso completo a todas las funciones de la plataforma",
     "renewDesc": "Puedes extender fácilmente la duración de tu suscripción actual seleccionando el plan adecuado",
-    "defaultActionDesc": "¡Bienvenido! Elige el plan que más te convenga para comenzar tu viaje profesional"
+    "defaultActionDesc": "¡Bienvenido! Elige el plan que más te convenga para comenzar tu viaje profesional",
+    "plans": {
+      "subscription_3months": {
+        "title": "Plan Inicio",
+        "subtitle": "Para probar y empezar",
+        "description": "Inicia tu presencia deportiva con un perfil verificado y herramientas esenciales.",
+        "period": "3 meses",
+        "features": [
+          "Perfil deportivo verificado con insignia de jugador activo",
+          "Almacenamiento para hasta 5 videos de habilidades en HD",
+          "A?ade estad?sticas b?sicas como altura, peso y posiciones",
+          "Aparece en resultados de b?squeda p?blicos para clubes y agentes",
+          "Sube y actualiza el historial m?dico b?sico"
+        ]
+      },
+      "subscription_6months": {
+        "title": "Plan Pro",
+        "subtitle": "La opci?n m?s inteligente",
+        "description": "Ampl?a tu visibilidad con mejores anal?ticas, alertas y soporte.",
+        "period": "6 meses",
+        "features": [
+          "Perfil deportivo verificado con insignia de jugador activo",
+          "Almacenamiento para hasta 5 videos de habilidades en HD",
+          "A?ade estad?sticas b?sicas como altura, peso y posiciones",
+          "Aparece en resultados de b?squeda p?blicos para clubes y agentes",
+          "Sube y actualiza el historial m?dico b?sico",
+          "Prioridad en los primeros resultados de b?squeda para agentes",
+          "Anal?ticas inteligentes de rendimiento con gr?ficos interactivos",
+          "Alertas instant?neas cuando un scout o club visite tu perfil",
+          "Galer?a profesional para partidos y entrenamientos oficiales",
+          "Soporte dedicado con respuesta prioritaria"
+        ]
+      },
+      "subscription_annual": {
+        "title": "Plan Sue?o",
+        "subtitle": "Mejor valor y ahorro",
+        "description": "El paquete m?s completo para destacar y llegar profesionalmente a scouts y agentes.",
+        "period": "12 meses",
+        "features": [
+          "Perfil deportivo verificado con insignia de jugador activo",
+          "Almacenamiento para hasta 5 videos de habilidades en HD",
+          "A?ade estad?sticas b?sicas como altura, peso y posiciones",
+          "Aparece en resultados de b?squeda p?blicos para clubes y agentes",
+          "Sube y actualiza el historial m?dico b?sico",
+          "Prioridad en los primeros resultados de b?squeda para agentes",
+          "Anal?ticas inteligentes de rendimiento con gr?ficos interactivos",
+          "Alertas instant?neas cuando un scout o club visite tu perfil",
+          "Galer?a profesional para partidos y entrenamientos oficiales",
+          "Soporte dedicado con respuesta prioritaria",
+          "Aparici?n destacada en la secci?n Talento de la Semana",
+          "Herramientas de contacto directo y env?o de CV a agentes",
+          "Servicio profesional de edici?n de video de mejores habilidades",
+          "Prioridad de registro y plazas en pruebas presenciales",
+          "Insignia dorada ?lite del Sue?o para destacar ante scouts",
+          "Informe semestral detallado de evaluaci?n con IA"
+        ]
+      }
+    }
   },
   "dashboard": {
     "checkingAuth": "Verificando permisos de acceso...",
