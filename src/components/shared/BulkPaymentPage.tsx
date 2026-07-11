@@ -190,6 +190,14 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
     return getTranslatedValue(`payment.plans.${planId}.features.${index}`, fallback);
   };
 
+  const getPaymentMethodName = (method: any) => (
+    method?.nameKey ? getTranslatedValue(method.nameKey, method.name || method.id) : (method?.name || method?.id || '')
+  );
+
+  const getPaymentMethodDescription = (method: any) => (
+    method?.descKey ? getTranslatedValue(method.descKey, method.description || '') : (method?.description || '')
+  );
+
   // Handle Action Parameter & Subscription Detection
   useEffect(() => {
     const detectSubscription = async () => {
@@ -1119,9 +1127,13 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                     const isInsta = method.id === 'instapay';
 
                     let activeBorder = 'border-blue-500';
-                    let activeBg = 'bg-blue-50';
-                    if (isStc) { activeBorder = 'border-purple-500'; activeBg = 'bg-purple-50'; }
-                    if (isVodafone) { activeBorder = 'border-red-500'; activeBg = 'bg-red-50'; }
+                    let activeBg = 'bg-blue-50/90';
+                    let activeText = 'text-blue-950';
+                    let activeDesc = 'text-blue-700';
+                    let activeIcon = 'text-blue-700';
+                    if (isStc) { activeBorder = 'border-purple-500'; activeBg = 'bg-purple-50/90'; activeText = 'text-purple-950'; activeDesc = 'text-purple-700'; activeIcon = 'text-purple-700'; }
+                    if (isVodafone) { activeBorder = 'border-red-500'; activeBg = 'bg-red-50/90'; activeText = 'text-red-950'; activeDesc = 'text-red-700'; activeIcon = 'text-red-700'; }
+                    if (isInsta) { activeBorder = 'border-amber-500'; activeBg = 'bg-amber-50/90'; activeText = 'text-amber-950'; activeDesc = 'text-amber-700'; activeIcon = 'text-amber-700'; }
 
                     return (
                       <div
@@ -1130,23 +1142,23 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
                         className={`
                              relative cursor-pointer rounded-xl p-4 border-2 transition-all duration-200 flex items-center gap-4
                              ${isSelected
-                            ? `${activeBorder} ${activeBg} shadow-md`
-                            : 'border-transparent bg-white shadow-sm hover:shadow-md hover:scale-[1.01]'
+                            ? `${activeBorder} ${activeBg} shadow-md ring-1 ring-black/5`
+                            : 'border-slate-200 bg-white shadow-sm hover:border-blue-200 hover:shadow-md hover:scale-[1.01]'
                           }
                            `}
                       >
                         <div className={`
                               text-2xl w-14 h-14 rounded-xl flex items-center justify-center shadow-inner
-                              ${isSelected ? 'bg-white' : 'bg-gray-50'}
+                              ${isSelected ? 'bg-white text-slate-900' : 'bg-gray-50 text-slate-800'}
                             `}>
                           {method.icon}
                         </div>
                         <div className="flex-1">
                           <div className="flex justify-between items-center">
-                            <h4 className={`font-bold ${isSelected ? 'text-gray-900' : 'text-gray-700'}`}>{method.name}</h4>
-                            {isSelected && <CheckCircle className="w-5 h-5 text-blue-600" />}
+                            <h4 className={`font-bold ${isSelected ? activeText : 'text-gray-800'}`}>{getPaymentMethodName(method)}</h4>
+                            {isSelected && <CheckCircle className={`w-5 h-5 ${activeIcon}`} />}
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">{method.description}</p>
+                          <p className={`text-xs mt-1 ${isSelected ? activeDesc : 'text-gray-500'}`}>{getPaymentMethodDescription(method)}</p>
                           {isSelected && method.details && (
                             <div className="mt-3">
                               <p className="text-[10px] text-gray-500 mb-1 font-bold">{t('payment.transferNumber')}</p>
