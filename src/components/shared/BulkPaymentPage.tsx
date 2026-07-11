@@ -64,6 +64,16 @@ const SUPPORTED_COUNTRIES = COUNTRIES.reduce((acc, c) => ({
   [c.code]: { name: c.name, currency: c.currency, flag: c.flag }
 }), {} as Record<string, any>);
 
+const BROKEN_OR_ARABIC_TEXT_PATTERN = /[\u0600-\u06FF]|Ø|Ù|Â|â|ð|Ÿ/;
+
+const buildCountryFlag = (countryCode: string) => {
+  if (!/^[A-Z]{2}$/.test(countryCode)) return '';
+  return countryCode
+    .split('')
+    .map((char) => String.fromCodePoint(127397 + char.charCodeAt(0)))
+    .join('');
+};
+
 const DEFAULT_PAYMENT_METHODS = {
   global: [
     { id: 'geidea', nameKey: 'payment.methodCard', icon: '💳', descKey: 'payment.methodCardDesc', discount: 0, popular: true },
@@ -105,7 +115,7 @@ interface Partner {
 export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   const { user, userData } = useAuth();
   const router = useRouter();
-  const { t, isRTL } = useTranslation();
+  const { t, isRTL, locale } = useTranslation();
 
   // State
   const [selectedPackage, setSelectedPackage] = useState('subscription_6months');
@@ -618,7 +628,25 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   const getCurrentCurrencySymbol = () => {
     const currency = getCurrentCurrency();
     const info = getCurrencyInfo(currency, currencyRates);
-    return info?.symbol || '$';
+    const symbol = info?.symbol || '';
+    return symbol && !BROKEN_OR_ARABIC_TEXT_PATTERN.test(symbol) ? symbol : currency;
+  };
+
+  const getCountryDisplayName = (countryCode: string) => {
+    try {
+      return new Intl.DisplayNames([locale], { type: 'region' }).of(countryCode) || countryCode;
+    } catch {
+      const fallbackName = SUPPORTED_COUNTRIES[countryCode]?.name;
+      return fallbackName && !BROKEN_OR_ARABIC_TEXT_PATTERN.test(fallbackName) ? fallbackName : countryCode;
+    }
+  };
+
+  const getCountryFlag = (countryCode: string) => {
+    const generatedFlag = buildCountryFlag(countryCode);
+    if (generatedFlag) return generatedFlag;
+
+    const storedFlag = SUPPORTED_COUNTRIES[countryCode]?.flag;
+    return storedFlag && !BROKEN_OR_ARABIC_TEXT_PATTERN.test(storedFlag) ? storedFlag : '';
   };
 
 
@@ -953,8 +981,9 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
           <div className="flex items-center gap-3">
             {selectedCountry && SUPPORTED_COUNTRIES[selectedCountry] && (
               <div className="flex items-center gap-2 pl-4 pr-2 py-1.5 rounded-full bg-white border border-blue-100 shadow-sm hover:shadow-md transition-shadow cursor-default">
-                <span className="text-sm font-bold text-gray-700">{SUPPORTED_COUNTRIES[selectedCountry].name}</span>
-                <span className="text-2xl leading-none">{SUPPORTED_COUNTRIES[selectedCountry].flag}</span>
+                <span className="text-sm font-bold text-gray-700">{getCountryDisplayName(selectedCountry)}</span>
+                <span className="text-[11px] font-black uppercase tracking-wide text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{getCurrentCurrency()}</span>
+                <span className="text-2xl leading-none">{getCountryFlag(selectedCountry)}</span>
               </div>
             )}
           </div>
