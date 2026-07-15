@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Star } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n';
 
 interface StarRatingProps {
   initialRating?: number;
@@ -20,6 +21,7 @@ export default function StarRating({
   readonly = false,
   className = ''
 }: StarRatingProps) {
+  const { t } = useTranslation();
   const [rating, setRating] = useState(initialRating);
   const [hoveredRating, setHoveredRating] = useState(0);
 
@@ -79,7 +81,7 @@ export default function StarRating({
       
       {!readonly && (
         <span className="mr-2 text-sm text-white/70">
-          {displayRating > 0 ? `${displayRating}/${maxRating}` : 'اختر التقييم'}
+          {displayRating > 0 ? `${displayRating}/${maxRating}` : t('sharedComponents.starRating.chooseRating')}
         </span>
       )}
       

@@ -29,6 +29,7 @@ import {
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { dispatchNotification } from '@/lib/notifications/notification-dispatcher';
+import { useTranslation } from '@/lib/i18n';
 
 interface SendMessageButtonProps {
   // الخصائص المشتركة
@@ -57,45 +58,16 @@ interface SendMessageButtonProps {
 }
 
 const USER_TYPES = {
-  club: { name: 'نادي', icon: Building2, color: 'text-green-600' },
-  academy: { name: 'أكاديمية', icon: GraduationCap, color: 'text-purple-600' },
-  trainer: { name: 'مدرب', icon: UserCheck, color: 'text-blue-600' },
-  agent: { name: 'وكيل', icon: Phone, color: 'text-orange-600' },
-  player: { name: 'لاعب', icon: Users, color: 'text-gray-600' },
-  admin: { name: 'مشرف', icon: Shield, color: 'text-red-600' }
+  club: { icon: Building2, color: 'text-green-600' },
+  academy: { icon: GraduationCap, color: 'text-purple-600' },
+  trainer: { icon: UserCheck, color: 'text-blue-600' },
+  agent: { icon: Phone, color: 'text-orange-600' },
+  player: { icon: Users, color: 'text-gray-600' },
+  admin: { icon: Shield, color: 'text-red-600' }
 };
 
 // قوالب رسائل جاهزة لتسهيل الإرسال على اللاعب
-const MESSAGE_TEMPLATES = [
-  {
-    id: 'trial-request',
-    label: 'طلب تجربة',
-    subject: 'طلب تجربة/اختبار',
-    body:
-      'مرحباً {recipient},\n\nأنا {playerName}{positionPhrase}{agePhrase}. أرغب في الحصول على فرصة تجربة لديكم في {org}.\n\nهل يمكن تحديد موعد مناسب؟\n\nشكراً لكم.'
-  },
-  {
-    id: 'join-inquiry',
-    label: 'استفسار عن الانضمام',
-    subject: 'استفسار عن الانضمام',
-    body:
-      'تحية طيبة {recipient},\n\nأنا {playerName}{positionPhrase}{agePhrase}. أود الاستفسار عن شروط الانضمام والمتطلبات لديكم في {org}.\n\nبانتظار ردكم الكريم.'
-  },
-  {
-    id: 'agent-collab',
-    label: 'تعاون مع وكيل',
-    subject: 'طلب تعاون',
-    body:
-      'مرحباً {recipient},\n\nأنا {playerName}{positionPhrase}{agePhrase}. أرغب بالتعاون معكم لتمثيلي وفتح فرص مناسبة لمسيرتي الرياضية.\n\nأقدّر وقتكم، وشكراً.'
-  },
-  {
-    id: 'intro',
-    label: 'تعريف سريع',
-    subject: 'تعريف وبناء تواصل',
-    body:
-      'مرحباً {recipient},\n\nأنا {playerName}{positionPhrase}{agePhrase}. يشرفني التواصل معكم وبناء علاقة مهنية مستقبلية.\n\nمع خالص التحية.'
-  }
-];
+const MESSAGE_TEMPLATES = ['trialRequest', 'joinInquiry', 'agentCollab', 'intro'];
 
 const createNotification = async ({
   userId,
@@ -163,6 +135,8 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
   buttonSize = 'default'
 }) => {
   const router = useRouter();
+  const { t, isRTL } = useTranslation();
+  const msg = (key: string) => t(`sharedComponents.sendMessage.${key}`);
   const [isOpen, setIsOpen] = useState(false);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -174,19 +148,19 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
   const buildPositionPhrase = () => {
     const position = getString((userData as any)?.position || (userData as any)?.player_position || (userData as any)?.preferred_position);
     if (!position) return '';
-    return `، ألعب في مركز ${position}`;
+    return msg('positionPhrase').replace('{{position}}', position);
   };
 
   const buildAgePhrase = () => {
     const age = (userData as any)?.age || (userData as any)?.player_age;
     if (!age) return '';
-    return `، عمري ${age} سنة`;
+    return msg('agePhrase').replace('{{age}}', String(age));
     };
 
   const replacePlaceholders = (text: string) => {
     const playerName = getUserDisplayName?.() || getString((userData as any)?.full_name || (userData as any)?.name);
-    const org = getString(organizationName || targetUserName || 'المنظمة');
-    const recipient = getString(targetUserName || 'فريق العمل');
+    const org = getString(organizationName || targetUserName || msg('organization'));
+    const recipient = getString(targetUserName || msg('team'));
     const positionPhrase = buildPositionPhrase();
     const agePhrase = buildAgePhrase();
     return text
@@ -198,10 +172,9 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
   };
 
   const applyTemplate = (templateId: string) => {
-    const tpl = MESSAGE_TEMPLATES.find(t => t.id === templateId);
-    if (!tpl) return;
-    const newSubject = replacePlaceholders(tpl.subject);
-    const newBody = replacePlaceholders(tpl.body);
+    if (!MESSAGE_TEMPLATES.includes(templateId)) return;
+    const newSubject = replacePlaceholders(msg(`templates.${templateId}.subject`));
+    const newBody = replacePlaceholders(msg(`templates.${templateId}.body`));
     setSubject(newSubject);
     setMessage(newBody);
   };
@@ -212,12 +185,12 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
     const email = getString((userData as any)?.email || user?.email);
     const city = getString((userData as any)?.city || (userData as any)?.current_location);
     const nationality = getString((userData as any)?.nationality || (userData as any)?.country);
-    if (phone) lines.push(`الهاتف/واتساب: ${phone}`);
-    if (email) lines.push(`البريد: ${email}`);
-    if (city) lines.push(`المدينة: ${city}`);
-    if (nationality) lines.push(`الجنسية: ${nationality}`);
+    if (phone) lines.push(`${msg('phoneWhatsapp')}: ${phone}`);
+    if (email) lines.push(`${msg('email')}: ${email}`);
+    if (city) lines.push(`${msg('city')}: ${city}`);
+    if (nationality) lines.push(`${msg('nationality')}: ${nationality}`);
     if (lines.length === 0) return '';
-    return `\n\n—\nبيانات التواصل:\n${lines.join('\n')}`;
+    return `\n\n—\n${msg('contactInformation')}:\n${lines.join('\n')}`;
   };
 
   // التحقق من صحة البيانات
@@ -255,28 +228,28 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
     // التحقق من وجود المستخدم وبياناته
     if (!user || !userData) {
       console.error('خطأ: المستخدم غير مسجل الدخول أو البيانات غير متوفرة');
-      toast.error('يرجى تسجيل الدخول');
+      toast.error(msg('loginRequired'));
       return;
     }
 
     // التحقق من وجود المستلم
     if (!targetUserId) {
       console.error('خطأ: لم يتم تحديد المستلم');
-      toast.error('لم يتم تحديد المستلم');
+      toast.error(msg('recipientRequired'));
       return;
     }
 
     // التحقق من أن المستلم ليس نفس المرسل
     if (targetUserId === user.id) {
       console.error('خطأ: محاولة إرسال رسالة للنفس');
-      toast.error('لا يمكن إرسال رسالة لنفسك');
+      toast.error(msg('cannotMessageSelf'));
       return;
     }
 
     // التحقق من وجود نص الرسالة
     if (!message.trim()) {
       console.error('خطأ: الرسالة فارغة');
-      toast.error('يرجى كتابة رسالة');
+      toast.error(msg('messageRequired'));
       return;
     }
 
@@ -409,7 +382,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
       }
 
       // إنشاء إشعار للمستلم
-      const notificationTitle = isNewConversation ? 'رسالة جديدة' : 'رسالة جديدة في المحادثة';
+      const notificationTitle = isNewConversation ? msg('newMessage') : msg('newConversationMessage');
       const notificationBody = `${getUserDisplayName()}: ${finalMessage.substring(0, 50)}${finalMessage.length > 50 ? '...' : ''}`;
 
       await createNotification({
@@ -436,11 +409,11 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         .single();
 
       if (!verifyConversation) {
-        throw new Error('فشل في إنشاء المحادثة');
+        throw new Error(msg('conversationCreateFailed'));
       }
 
       if (!verifyMessage) {
-        throw new Error('فشل في إنشاء الرسالة');
+        throw new Error(msg('messageCreateFailed'));
       }
 
       console.log('تم إرسال الرسالة بنجاح:', {
@@ -450,7 +423,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         messageContent: message.trim().substring(0, 50) + '...'
       });
 
-      toast.success(isNewConversation ? 'تم إنشاء المحادثة وإرسال الرسالة بنجاح' : 'تم إرسال الرسالة بنجاح');
+      toast.success(isNewConversation ? msg('conversationCreatedAndSent') : msg('sent'));
 
       // Dispatch WhatsApp + in-app notification to receiver
       if (targetUserId && user) {
@@ -486,10 +459,10 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
           message: error.message,
           stack: error.stack
         });
-        toast.error(`حدث خطأ: ${error.message}`);
+        toast.error(`${msg('errorPrefix')}: ${error.message}`);
       } else {
         console.error('خطأ غير معروف:', error);
-        toast.error('حدث خطأ في إرسال الرسالة');
+        toast.error(msg('sendFailed'));
       }
 
     } finally {
@@ -549,7 +522,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
 
       await supabase.from('conversations').insert(conversationData);
 
-      toast.success('تم إنشاء المحادثة بنجاح');
+      toast.success(msg('conversationCreated'));
 
       if (redirectToMessages) {
         const messagesPath = getMessagesPath();
@@ -557,7 +530,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
       }
     } catch (error) {
       console.error('خطأ في إنشاء المحادثة:', error);
-      toast.error('حدث خطأ في إنشاء المحادثة');
+      toast.error(msg('conversationCreateError'));
     } finally {
       setSending(false);
     }
@@ -577,7 +550,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
       const receiverId = selectedConversation.participants.find((id: string) => id !== user.id);
       if (!receiverId) {
         console.error('لم يتم العثور على المستلم في المحادثة:', selectedConversation);
-        toast.error('لم يتم تحديد المستلم');
+        toast.error(msg('recipientRequired'));
         return;
       }
 
@@ -646,7 +619,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         // إنشاء إشعار للمستلم
         await createNotification({
           userId: receiverId,
-          title: 'رسالة جديدة',
+          title: msg('newMessage'),
           body: `${getUserDisplayName()}: ${newMessage.trim().substring(0, 50)}${newMessage.length > 50 ? '...' : ''}`,
           type: 'message',
           senderName: getUserDisplayName(),
@@ -665,7 +638,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
 
       } catch (error) {
         console.error('خطأ في إرسال الرسالة:', error);
-        toast.error('حدث خطأ في إرسال الرسالة');
+        toast.error(msg('sendFailed'));
       } finally {
         setSending(false);
       }
@@ -706,13 +679,13 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
           onClick={() => setIsOpen(true)}
         >
           <MessageSquare className="h-4 w-4" />
-          <span>{buttonText || 'رسالة'}</span>
+          <span>{buttonText || msg('message')}</span>
         </Button>
       </DialogTrigger>
 
       <DialogContent
         className="sm:max-w-[600px] rounded-xl"
-        dir="rtl"
+        dir={isRTL ? 'rtl' : 'ltr'}
         onEscapeKeyDown={(e) => {
           if (sending) e.preventDefault();
         }}
@@ -726,17 +699,17 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-purple-800 text-lg">
             <MessageSquare className="h-5 w-5 text-purple-700" />
-            إرسال رسالة جديدة
+            {msg('sendNewMessage')}
           </DialogTitle>
           <DialogDescription className="text-purple-600">
-            إلى {targetUserName}
+            {msg('to')} {targetUserName}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={async (e) => {
           e.preventDefault();
           if (!message.trim()) {
-            toast.error('يرجى كتابة رسالة');
+            toast.error(msg('messageRequired'));
             return;
           }
           await sendDirectMessage();
@@ -750,7 +723,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
               <div className="flex-1">
                 <h4 className="font-semibold text-purple-900">{targetUserName}</h4>
                 <div className="flex items-center gap-2 text-sm text-purple-700">
-                  <span>{USER_TYPES[targetUserType]?.name}</span>
+                  <span>{msg(`userTypes.${targetUserType || 'player'}`)}</span>
                   {organizationName && (
                     <>
                       <span>•</span>
@@ -763,19 +736,19 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
 
             {/* قوالب سريعة */}
             <div className="space-y-2">
-              <Label className="text-purple-800 font-medium">قوالب جاهزة</Label>
+              <Label className="text-purple-800 font-medium">{msg('readyTemplates')}</Label>
               <div className="grid grid-cols-2 gap-2">
-                {MESSAGE_TEMPLATES.map(tpl => (
+                {MESSAGE_TEMPLATES.map(templateId => (
                   <Button
-                    key={tpl.id}
+                    key={templateId}
                     type="button"
                     variant="outline"
                     size="sm"
                     className="rounded-lg border-purple-300 text-purple-700 hover:bg-purple-50 text-xs"
-                    onClick={() => applyTemplate(tpl.id)}
+                    onClick={() => applyTemplate(templateId)}
                     disabled={sending}
                   >
-                    {tpl.label}
+                    {msg(`templates.${templateId}.label`)}
                   </Button>
                 ))}
               </div>
@@ -783,10 +756,10 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
 
             {/* موضوع الرسالة */}
             <div className="space-y-2">
-              <Label htmlFor="subject" className="text-purple-800 font-medium">موضوع الرسالة (اختياري)</Label>
+              <Label htmlFor="subject" className="text-purple-800 font-medium">{msg('subjectOptional')}</Label>
               <Input
                 id="subject"
-                placeholder="مثال: استفسار عن الانضمام، عرض تعاون..."
+                placeholder={msg('subjectPlaceholder')}
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 maxLength={100}
@@ -796,11 +769,11 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
 
             {/* نص الرسالة */}
             <div className="space-y-2">
-              <Label htmlFor="message" className="text-purple-800 font-medium">الرسالة *</Label>
+              <Label htmlFor="message" className="text-purple-800 font-medium">{msg('messageLabel')} *</Label>
               <Textarea
                 id="message"
                 name="message"
-                placeholder="اكتب رسالتك هنا..."
+                placeholder={msg('messagePlaceholder')}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 rows={6}
@@ -824,13 +797,13 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
                 aria-labelledby="label-includeContact"
               />
               <Label id="label-includeContact" htmlFor="includeContact" className="cursor-pointer text-purple-900">
-                إرفاق بيانات التواصل تلقائياً (الهاتف/البريد/المدينة/الجنسية)
+                {msg('attachContact')}
               </Label>
             </div>
 
             {redirectToMessages && (
               <div className="text-sm text-purple-800 bg-purple-50 p-3 rounded-lg border border-purple-200">
-                💡 سيتم توجيهك لصفحة الرسائل بعد إرسال الرسالة لمتابعة المحادثة
+                💡 {msg('redirectAfterSend')}
               </div>
             )}
 
@@ -843,7 +816,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
                 disabled={sending}
                 className="border-purple-200 text-purple-700 hover:bg-purple-50"
               >
-                إلغاء
+                {msg('cancel')}
               </Button>
               <Button
                 type="submit"
@@ -853,12 +826,12 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
                 {sending ? (
                   <div className="flex items-center gap-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    جاري الإرسال...
+                    {msg('sending')}
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
                     <Send className="h-4 w-4" />
-                    إرسال
+                    {msg('send')}
                   </div>
                 )}
               </Button>

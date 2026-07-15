@@ -26,36 +26,25 @@ import {
 } from 'lucide-react';
 import { useCampaign, CampaignUser, VarMapping } from '@/lib/campaign/campaign-context';
 import { CampaignHistory } from './CampaignHistory';
+import { useTranslation } from '@/lib/i18n';
 
 // ─── Variable mapping types ────────────────────────────────────────────────────
 type VarSource = 'account_name' | 'country' | 'role' | 'custom';
 
-const VAR_SOURCE_LABELS: Record<VarSource, string> = {
-  account_name: '👤 اسم صاحب الحساب',
-  country:      '🌍 الدولة',
-  role:         '🏷️ الفئة',
-  custom:       '✏️ نص ثابت',
-};
-
-const ROLE_LABELS: Record<string, string> = {
-  player: 'لاعب', club: 'نادي', academy: 'أكاديمية',
-  trainer: 'مدرب', agent: 'وكيل', parent: 'ولي أمر',
-};
-
 const getCountryFlag = (phone: string, country?: string): string => {
    if (country) {
        const c = country.trim().toLowerCase();
-       if (c.includes('مصر') || c.includes('egypt')) return '🇪🇬';
-       if (c.includes('السعودية') || c.includes('saudi')) return '🇸🇦';
-       if (c.includes('الكويت') || c.includes('kuwait')) return '🇰🇼';
-       if (c.includes('الامارات') || c.includes('الإمارات') || c.includes('emirates') || c.includes('uae')) return '🇦🇪';
-       if (c.includes('قطر') || c.includes('qatar')) return '🇶🇦';
-       if (c.includes('عمان') || c.includes('عُمان') || c.includes('oman')) return '🇴🇲';
-       if (c.includes('البحرين') || c.includes('bahrain')) return '🇧🇭';
-       if (c.includes('الاردن') || c.includes('الأردن') || c.includes('jordan')) return '🇯🇴';
-       if (c.includes('المغرب') || c.includes('morocco')) return '🇲🇦';
-       if (c.includes('تونس') || c.includes('tunisia')) return '🇹🇳';
-       if (c.includes('الجزائر') || c.includes('algeria')) return '🇩🇿';
+       if (c.includes('\u0645\u0635\u0631') || c.includes('egypt')) return '🇪🇬';
+       if (c.includes('\u0627\u0644\u0633\u0639\u0648\u062f\u064a\u0629') || c.includes('saudi')) return '🇸🇦';
+       if (c.includes('\u0627\u0644\u0643\u0648\u064a\u062a') || c.includes('kuwait')) return '🇰🇼';
+       if (c.includes('\u0627\u0644\u0627\u0645\u0627\u0631\u0627\u062a') || c.includes('\u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062a') || c.includes('emirates') || c.includes('uae')) return '🇦🇪';
+       if (c.includes('\u0642\u0637\u0631') || c.includes('qatar')) return '🇶🇦';
+       if (c.includes('\u0639\u0645\u0627\u0646') || c.includes('\u0639\u064f\u0645\u0627\u0646') || c.includes('oman')) return '🇴🇲';
+       if (c.includes('\u0627\u0644\u0628\u062d\u0631\u064a\u0646') || c.includes('bahrain')) return '🇧🇭';
+       if (c.includes('\u0627\u0644\u0627\u0631\u062f\u0646') || c.includes('\u0627\u0644\u0623\u0631\u062f\u0646') || c.includes('jordan')) return '🇯🇴';
+       if (c.includes('\u0627\u0644\u0645\u063a\u0631\u0628') || c.includes('morocco')) return '🇲🇦';
+       if (c.includes('\u062a\u0648\u0646\u0633') || c.includes('tunisia')) return '🇹🇳';
+       if (c.includes('\u0627\u0644\u062c\u0632\u0627\u0626\u0631') || c.includes('algeria')) return '🇩🇿';
    }
 
    if (!phone) return '🌍';
@@ -74,6 +63,9 @@ const getCountryFlag = (phone: string, country?: string): string => {
 };
 
 export const CampaignManager: React.FC = () => {
+  const { isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('aiMessenger.campaignManager');
+  const withCount = (template: string, count: number) => template.replace('{{count}}', String(count));
   const [activeTab, setActiveTab] = useState<'builder' | 'history'>('builder');
   const { campaign, startCampaign } = useCampaign();
 
@@ -120,7 +112,7 @@ export const CampaignManager: React.FC = () => {
     const upsertDocs = (docs: any[], colName: string) => {
       for (const data of docs) {
         const accountType = collectionToType[colName] || data.accountType || colName;
-        const name = data.displayName || data.full_name || data.name || data.academyName || data.academy_name || data.clubName || data.club_name || data.userName || data.username || 'مستخدم مجهول';
+        const name = data.displayName || data.full_name || data.name || data.academyName || data.academy_name || data.clubName || data.club_name || data.userName || data.username || copy.unknownUser;
         const phone = data.phone || data.phoneNumber || data.whatsapp || data.official_contact?.phone || '';
         const country = data.country || data.countryName || '';
 
@@ -178,13 +170,13 @@ export const CampaignManager: React.FC = () => {
   };
 
   const handleStartCampaign = async () => {
-    if (!selectedTemplate) { toast.error('يرجى تحديد قالب للحملة'); return; }
+    if (!selectedTemplate) { toast.error(copy.selectTemplateError); return; }
     const filtered = users.filter(u => {
       const roleMatch = targetSegment === 'all' || u.role === targetSegment;
       const countryMatch = targetCountries.length === 0 || targetCountries.includes(u.country);
       return roleMatch && countryMatch;
     });
-    if (filtered.length === 0) { toast.error('لا يوجد مستخدمين متاحين'); return; }
+    if (filtered.length === 0) { toast.error(copy.noUsersError); return; }
     await startCampaign(
       filtered as CampaignUser[],
       selectedTemplate.name,
@@ -197,22 +189,22 @@ export const CampaignManager: React.FC = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full overflow-y-auto custom-scrollbar p-1" dir="rtl">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full overflow-y-auto custom-scrollbar p-1" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* 🟢 Right: Campaign Config & Builder Module */}
       <div className="lg:col-span-2 space-y-4">
          <Card className="border-none shadow-xl bg-white rounded-2xl relative overflow-hidden">
             <CardHeader className="p-4 pb-0">
                <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                   <Megaphone className="w-4 h-4 text-emerald-500 animate-bounce" />
-                  إنشاء حملة مراسلة جماعية ذكية
+                  {copy.title}
                </CardTitle>
-               <CardDescription className="text-[10px] text-slate-400">تحديد الجمهور والقوالب وبدء الإرسال الدفعي الآمن</CardDescription>
+               <CardDescription className="text-[10px] text-slate-400">{copy.description}</CardDescription>
 
                {/* Tab switcher */}
                <div className="flex gap-1 bg-slate-100 p-0.5 rounded-lg mt-3">
                  {[
-                   { id: 'builder', label: '🚀 إنشاء حملة' },
-                   { id: 'history', label: '📋 سجل الحملات' },
+                   { id: 'builder', label: copy.builderTab },
+                   { id: 'history', label: copy.historyTab },
                  ].map(t => (
                    <button key={t.id} onClick={() => setActiveTab(t.id as any)}
                      className={`flex-1 text-[10px] font-bold py-1 rounded-md transition-all ${activeTab === t.id ? 'bg-white shadow text-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}>
@@ -227,24 +219,24 @@ export const CampaignManager: React.FC = () => {
                    {/* Segment Filters */}
                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 border p-3 rounded-xl border-slate-100 bg-slate-50/50">
                       <div className="space-y-1">
-                         <Label className="text-xs font-bold text-slate-700">1. تصفية الفئة</Label>
+                         <Label className="text-xs font-bold text-slate-700">{copy.segmentFilter}</Label>
                          <Select onValueChange={setTargetSegment} defaultValue="all">
                             <SelectTrigger className="h-9 text-xs border-slate-200">
-                               <SelectValue placeholder="اختر الفئة..." />
+                               <SelectValue placeholder={copy.selectSegment} />
                             </SelectTrigger>
                             <SelectContent className="text-xs">
-                               <SelectItem value="all">الكل ({users.length})</SelectItem>
-                               <SelectItem value="player">لاعبين ({users.filter(u => u.role === 'player').length})</SelectItem>
-                               <SelectItem value="academy">أكاديميات ({users.filter(u => u.role === 'academy').length})</SelectItem>
-                               <SelectItem value="trainer">مدربين ({users.filter(u => u.role === 'trainer').length})</SelectItem>
-                               <SelectItem value="parent">أولياء أمور ({users.filter(u => u.role === 'parent').length})</SelectItem>
+                               <SelectItem value="all">{copy.all} ({users.length})</SelectItem>
+                               <SelectItem value="player">{copy.players} ({users.filter(u => u.role === 'player').length})</SelectItem>
+                               <SelectItem value="academy">{copy.academies} ({users.filter(u => u.role === 'academy').length})</SelectItem>
+                               <SelectItem value="trainer">{copy.trainers} ({users.filter(u => u.role === 'trainer').length})</SelectItem>
+                               <SelectItem value="parent">{copy.parents} ({users.filter(u => u.role === 'parent').length})</SelectItem>
                             </SelectContent>
                          </Select>
                       </div>
 
                       {/* Multi-select countries */}
                       <div className="space-y-1" ref={countryDropdownRef}>
-                         <Label className="text-xs font-bold text-slate-700">2. تصفية الدولة (متعدد)</Label>
+                         <Label className="text-xs font-bold text-slate-700">{copy.countryFilter}</Label>
                          <div className="relative">
                             <button
                               type="button"
@@ -253,8 +245,8 @@ export const CampaignManager: React.FC = () => {
                             >
                               <span className="truncate">
                                 {targetCountries.length === 0
-                                  ? `كل الدول (${users.length})`
-                                  : `${targetCountries.length} دولة محددة`}
+                                  ? withCount(copy.allCountries, users.length)
+                                  : withCount(copy.selectedCountries, targetCountries.length)}
                               </span>
                               <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
                             </button>
@@ -262,8 +254,8 @@ export const CampaignManager: React.FC = () => {
                               <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-52 overflow-y-auto">
                                 {/* Select all / clear */}
                                 <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100">
-                                  <button type="button" onClick={() => setTargetCountries(uniqueCountries as string[])} className="text-[10px] text-emerald-600 font-bold hover:underline">تحديد الكل</button>
-                                  <button type="button" onClick={() => setTargetCountries([])} className="text-[10px] text-slate-400 hover:underline">إلغاء الكل</button>
+                                  <button type="button" onClick={() => setTargetCountries(uniqueCountries as string[])} className="text-[10px] text-emerald-600 font-bold hover:underline">{copy.selectAll}</button>
+                                  <button type="button" onClick={() => setTargetCountries([])} className="text-[10px] text-slate-400 hover:underline">{copy.clearAll}</button>
                                 </div>
                                 {uniqueCountries.map((c, i) => (
                                   <label key={i} className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer">
@@ -298,22 +290,22 @@ export const CampaignManager: React.FC = () => {
                       </div>
 
                       <div className="space-y-1">
-                         <Label className="text-xs font-bold text-slate-700">3. نوع الحملة</Label>
+                         <Label className="text-xs font-bold text-slate-700">{copy.campaignType}</Label>
                          <Select onValueChange={setCampaignType} defaultValue="promo">
                             <SelectTrigger className="h-9 text-xs border-slate-200">
-                               <SelectValue placeholder="اختر النوع..." />
+                               <SelectValue placeholder={copy.selectType} />
                             </SelectTrigger>
                             <SelectContent className="text-xs">
-                               <SelectItem value="promo">📢 ترويجية وإعلانات</SelectItem>
-                               <SelectItem value="awareness">💡 توعية وإرشاد</SelectItem>
-                               <SelectItem value="notification">🔔 تنبيهات وإشعارات</SelectItem>
-                               <SelectItem value="administrative">📁 إدارية وخاصة</SelectItem>
+                               <SelectItem value="promo">{copy.types.promo}</SelectItem>
+                               <SelectItem value="awareness">{copy.types.awareness}</SelectItem>
+                               <SelectItem value="notification">{copy.types.notification}</SelectItem>
+                               <SelectItem value="administrative">{copy.types.administrative}</SelectItem>
                             </SelectContent>
                          </Select>
                       </div>
 
                       <div className="space-y-1 md:col-span-2">
-                         <Label className="text-xs font-bold text-slate-700">4. قالب الحملة الحصرية</Label>
+                         <Label className="text-xs font-bold text-slate-700">{copy.campaignTemplate}</Label>
                          <ChatAmanTemplateSelector onSelect={handleSelectTemplate} />
                       </div>
                    </div>
@@ -323,7 +315,7 @@ export const CampaignManager: React.FC = () => {
                      <div className="border border-slate-100 rounded-xl p-3 bg-slate-50/60 space-y-2">
                        <div className="flex items-center gap-1.5 mb-1">
                          <Tag className="w-3.5 h-3.5 text-purple-500" />
-                         <p className="text-xs font-bold text-slate-700">إعداد متغيرات القالب</p>
+                         <p className="text-xs font-bold text-slate-700">{copy.templateVariables}</p>
                        </div>
                        {varMappings.map((mapping, idx) => (
                          <div key={idx} className="flex items-center gap-2">
@@ -342,8 +334,8 @@ export const CampaignManager: React.FC = () => {
                                <SelectValue />
                              </SelectTrigger>
                              <SelectContent className="text-xs">
-                               {(Object.keys(VAR_SOURCE_LABELS) as VarSource[]).map(src => (
-                                 <SelectItem key={src} value={src}>{VAR_SOURCE_LABELS[src]}</SelectItem>
+                               {(Object.keys(copy.varSources) as VarSource[]).map(src => (
+                                 <SelectItem key={src} value={src}>{copy.varSources[src]}</SelectItem>
                                ))}
                              </SelectContent>
                            </Select>
@@ -355,7 +347,7 @@ export const CampaignManager: React.FC = () => {
                                  updated[idx] = { ...updated[idx], customValue: e.target.value };
                                  setVarMappings(updated);
                                }}
-                               placeholder="أدخل النص الثابت..."
+                               placeholder={copy.customPlaceholder}
                                className="h-8 text-xs flex-1 border-slate-200"
                              />
                            )}
@@ -374,8 +366,8 @@ export const CampaignManager: React.FC = () => {
                    <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-100 flex items-start gap-2">
                       <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
                       <div>
-                         <h4 className="text-[10px] font-bold text-amber-800">حماية الخادم ضد الحجب (Safe Delay Mode)</h4>
-                         <p className="text-[9px] text-amber-700 leading-relaxed mt-0.5">سيقوم محرك الحملات المراسلة بجدولة فاصل تأخير روتيني تبلغ **3 ثوانٍ** لمنع حظر الرقم والمظهر العشوائي.</p>
+                         <h4 className="text-[10px] font-bold text-amber-800">{copy.safeModeTitle}</h4>
+                         <p className="text-[9px] text-amber-700 leading-relaxed mt-0.5">{copy.safeModeDescription}</p>
                       </div>
                    </div>
 
@@ -383,23 +375,23 @@ export const CampaignManager: React.FC = () => {
                    {campaign.status === 'running' ? (
                      <div className="space-y-2">
                        <div className="flex items-center justify-between text-xs text-slate-600">
-                         <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin text-emerald-500" /> جاري الإرسال — يمكنك التنقل بحرية</span>
+                         <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin text-emerald-500" /> {copy.sending}</span>
                          <span className="font-bold">{campaign.progress}%</span>
                        </div>
                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                          <div className="h-full bg-gradient-to-r from-emerald-500 to-green-600 transition-all duration-300" style={{ width: `${campaign.progress}%` }} />
                        </div>
                        <div className="flex gap-4 text-[10px] text-slate-500">
-                         <span className="text-emerald-600 font-bold">✅ {campaign.success} نجح</span>
-                         <span className="text-rose-500 font-bold">❌ {campaign.failed} فشل</span>
-                         <span>من {campaign.total}</span>
+                         <span className="text-emerald-600 font-bold">✅ {campaign.success} {copy.succeeded}</span>
+                         <span className="text-rose-500 font-bold">❌ {campaign.failed} {copy.failed}</span>
+                         <span>{withCount(copy.ofTotal, campaign.total)}</span>
                        </div>
                      </div>
                    ) : (
                      <Button onClick={handleStartCampaign}
                        className="w-full h-10 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-1.5">
                        <Send className="w-3.5 h-3.5 ml-0.5" />
-                       إطلاق الحملة الجماعية الآن
+                       {copy.launch}
                      </Button>
                    )}
                  </>
@@ -416,16 +408,16 @@ export const CampaignManager: React.FC = () => {
             <CardHeader className="p-4 pb-2">
                <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-1">
                   <UserSquare2 className="w-4 h-4 text-emerald-500" />
-                  الأهداف والنطاقات المجهزة
+                  {copy.targetsTitle}
                </CardTitle>
-               <CardDescription className="text-[10px] text-slate-400">ملخص الجمهور المستهدف المصدق آلياً</CardDescription>
+               <CardDescription className="text-[10px] text-slate-400">{copy.targetsDescription}</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 p-4 flex flex-col justify-between">
                <div className="space-y-2 flex-1">
                   {[
-                     { label: "الأكاديميات الرياضية", count: users.filter(u => u.role === 'academy').length.toString(), color: "from-blue-500 to-indigo-600" },
-                     { label: "قاعدة اللاعبين المسجلة", count: users.filter(u => u.role === 'player').length.toString(), color: "from-teal-500 to-emerald-600" },
-                     { label: "المدربين وأولياء الأمور", count: (users.filter(u => u.role === 'trainer').length + users.filter(u => u.role === 'parent').length).toString(), color: "from-amber-500 to-orange-600" }
+                     { label: copy.sportsAcademies, count: users.filter(u => u.role === 'academy').length.toString(), color: "from-blue-500 to-indigo-600" },
+                     { label: copy.registeredPlayers, count: users.filter(u => u.role === 'player').length.toString(), color: "from-teal-500 to-emerald-600" },
+                     { label: copy.trainersParents, count: (users.filter(u => u.role === 'trainer').length + users.filter(u => u.role === 'parent').length).toString(), color: "from-amber-500 to-orange-600" }
                   ].map((item, idx) => (
                      <div key={idx} className="p-2 border rounded-xl border-slate-100 bg-slate-50/30 flex items-center justify-between">
                         <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
@@ -437,7 +429,7 @@ export const CampaignManager: React.FC = () => {
                   ))}
 
                   <div className="pt-2 border-t border-slate-100 mt-2">
-                     <p className="text-[10px] font-bold text-slate-500 mb-1">🌍 التوزيع الجغرافي للجمهور</p>
+                     <p className="text-[10px] font-bold text-slate-500 mb-1">{copy.geographicDistribution}</p>
                      <div className="grid grid-cols-2 gap-1">
                         {uniqueCountries.map((c, idx) => (
                            <div key={idx} className="p-1 px-2 border rounded-lg border-slate-100 flex items-center justify-between bg-white text-[10px] text-slate-600">
@@ -453,8 +445,8 @@ export const CampaignManager: React.FC = () => {
                   <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
                      <Settings className="w-4 h-4 fill-slate-300 stroke-none" />
                   </div>
-                  <p className="font-bold text-slate-600 text-[10px]">نظام الجدولة التأخيري الآمن (Safe Mode)</p>
-                  <p className="text-[9px] text-slate-400">تدفق المراسلة يضمن نسبة وصول 100% مستقرة</p>
+                  <p className="font-bold text-slate-600 text-[10px]">{copy.safeSchedule}</p>
+                  <p className="text-[9px] text-slate-400">{copy.deliveryGuarantee}</p>
                </div>
             </CardContent>
          </Card>

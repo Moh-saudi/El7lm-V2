@@ -17,6 +17,7 @@ import {
   Heart,
   Star
 } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n';
 
 interface LogoutScreenProps {
   onClose?: () => void;
@@ -24,6 +25,7 @@ interface LogoutScreenProps {
 
 export default function LogoutScreen({ onClose }: LogoutScreenProps) {
   const router = useRouter();
+  const { t, isRTL } = useTranslation();
   const [showScreen, setShowScreen] = useState(true);
   const [countdown, setCountdown] = useState(5);
 
@@ -82,6 +84,7 @@ export default function LogoutScreen({ onClose }: LogoutScreenProps) {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 z-50 flex items-center justify-center p-4"
+        dir={isRTL ? 'rtl' : 'ltr'}
       >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -101,8 +104,8 @@ export default function LogoutScreen({ onClose }: LogoutScreenProps) {
               >
                 <LogOut className="w-8 h-8 text-white" />
               </motion.div>
-              <h1 className="text-2xl font-bold text-white mb-2">تم تسجيل الخروج بنجاح</h1>
-              <p className="text-blue-100 text-sm">شكراً لك على استخدام منصة الحلم</p>
+              <h1 className="text-2xl font-bold text-white mb-2">{t('sharedComponents.logout.success')}</h1>
+              <p className="text-blue-100 text-sm">{t('sharedComponents.logout.thanks')}</p>
             </div>
 
             {/* Content */}
@@ -115,10 +118,10 @@ export default function LogoutScreen({ onClose }: LogoutScreenProps) {
               >
                 <div className="text-6xl mb-4">👋</div>
                 <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                  يرجى تسجيل الدخول للوصول إلى لوحة التحكم
+                  {t('sharedComponents.logout.loginRequired')}
                 </h2>
                 <p className="text-gray-600 text-sm">
-                  سيتم توجيهك تلقائياً إلى الصفحة الرئيسية خلال {countdown} ثانية
+                  {t('sharedComponents.logout.redirecting').replace('{{count}}', String(countdown))}
                 </p>
               </motion.div>
 
@@ -134,7 +137,7 @@ export default function LogoutScreen({ onClose }: LogoutScreenProps) {
                   className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-500 ease-out transform hover:scale-[1.02]"
                 >
                   <LogIn className="w-5 h-5 ml-2" />
-                  تسجيل الدخول
+                  {t('common.login')}
                 </Button>
 
                 <Button
@@ -143,7 +146,7 @@ export default function LogoutScreen({ onClose }: LogoutScreenProps) {
                   className="w-full border-2 border-purple-500 text-purple-600 hover:bg-purple-50 font-semibold py-3 rounded-xl transition-all duration-500 ease-out transform hover:scale-[1.02]"
                 >
                   <UserPlus className="w-5 h-5 ml-2" />
-                  إنشاء حساب جديد
+                  {t('sharedComponents.logout.register')}
                 </Button>
 
                 <Button
@@ -152,7 +155,7 @@ export default function LogoutScreen({ onClose }: LogoutScreenProps) {
                   className="w-full text-gray-600 hover:text-gray-800 hover:bg-gray-50 font-medium py-3 rounded-xl transition-all duration-300"
                 >
                   <Home className="w-5 h-5 ml-2" />
-                  الصفحة الرئيسية
+                  {t('sharedComponents.logout.home')}
                 </Button>
               </motion.div>
 
@@ -164,7 +167,7 @@ export default function LogoutScreen({ onClose }: LogoutScreenProps) {
                 className="border-t border-gray-200 pt-4"
               >
                 <h3 className="text-sm font-semibold text-gray-700 mb-3 text-center">
-                  الدعم الفني والمساعدة
+                  {t('sharedComponents.logout.support')}
                 </h3>
                 
                 <div className="space-y-2 text-sm">
@@ -175,12 +178,12 @@ export default function LogoutScreen({ onClose }: LogoutScreenProps) {
                   
                   <div className="flex items-center justify-center gap-2 text-gray-600">
                     <Mail className="w-4 h-4" />
-                    <span>support@el7lm.com</span>
+                    <span>{t('sharedComponents.logout.supportEmail')}</span>
                   </div>
                   
                   <div className="flex items-center justify-center gap-2 text-gray-600">
                     <MessageCircle className="w-4 h-4" />
-                    <span>واتساب: +966 50 123 4567</span>
+                    <span>{t('sharedComponents.logout.whatsapp')}: +966 50 123 4567</span>
                   </div>
                 </div>
 
@@ -189,15 +192,15 @@ export default function LogoutScreen({ onClose }: LogoutScreenProps) {
                   <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
                     <div className="flex items-center gap-1">
                       <Shield className="w-3 h-3" />
-                      <span>آمن 100%</span>
+                      <span>{t('sharedComponents.logout.secure')}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Star className="w-3 h-3" />
-                      <span>جودة عالية</span>
+                      <span>{t('sharedComponents.logout.quality')}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Heart className="w-3 h-3" />
-                      <span>دعم 24/7</span>
+                      <span>{t('sharedComponents.logout.alwaysSupport')}</span>
                     </div>
                   </div>
                 </div>
@@ -207,7 +210,7 @@ export default function LogoutScreen({ onClose }: LogoutScreenProps) {
             {/* Footer */}
             <div className="bg-gray-50 px-6 py-4 text-center">
               <p className="text-xs text-gray-500">
-                © 2024 منصة الحلم. جميع الحقوق محفوظة.
+                © {new Date().getFullYear()} {t('sharedComponents.footer.brand')}. {t('sharedComponents.footer.rights')}.
               </p>
             </div>
           </Card>

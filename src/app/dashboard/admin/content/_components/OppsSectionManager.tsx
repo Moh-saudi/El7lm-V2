@@ -17,6 +17,10 @@ export default function OppsSectionManager() {
     subAr: '',
     titleEn: '',
     subEn: '',
+    titleEs: '',
+    subEs: '',
+    titlePt: '',
+    subPt: '',
     selectedOpportunityIds: []
   });
 
@@ -170,6 +174,38 @@ export default function OppsSectionManager() {
             />
           </div>
         </div>
++
+        {([
+          { code: 'Es', label: 'النصوص (إسباني)', title: data.titleEs, sub: data.subEs },
+          { code: 'Pt', label: 'النصوص (برتغالي)', title: data.titlePt, sub: data.subPt },
+        ] as const).map((language) => (
+          <div key={language.code} className="space-y-4">
+            <h3 className="text-lg font-bold text-slate-700 dark:text-gray-200 border-b pb-2">{language.label}</h3>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">العنوان الرئيسي</label>
+              <input
+                type="text"
+                name={`title${language.code}`}
+                value={language.title}
+                onChange={handleChange}
+                dir="ltr"
+                className="w-full p-2 border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-[#0b1120] text-slate-900 dark:text-white text-left"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-gray-300 mb-1">النص الفرعي (الوصف)</label>
+              <textarea
+                name={`sub${language.code}`}
+                value={language.sub}
+                onChange={handleChange}
+                rows={3}
+                dir="ltr"
+                className="w-full p-2 border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-[#0b1120] text-slate-900 dark:text-white text-left"
+              />
+            </div>
+          </div>
+        ))}
+
       </div>
 
       <div className="space-y-4 mt-8 pt-8 border-t border-slate-200 dark:border-white/10">

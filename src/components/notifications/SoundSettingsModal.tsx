@@ -16,6 +16,7 @@ import {
 import { Volume2, VolumeX, Music, Settings, Info } from 'lucide-react';
 import { getSoundSettings, saveSoundSettings, playNotificationSound, enableSoundForMobile } from '@/lib/notifications/sound-notifications';
 import toast from 'react-hot-toast';
+import { useTranslation } from '@/lib/i18n';
 
 interface SoundSettingsModalProps {
   isOpen: boolean;
@@ -23,6 +24,8 @@ interface SoundSettingsModalProps {
 }
 
 export default function SoundSettingsModal({ isOpen, onClose }: SoundSettingsModalProps) {
+  const { t, isRTL } = useTranslation();
+  const nt = (key: string) => t(`sharedComponents.notifications.${key}`);
   const [enabled, setEnabled] = useState(true);
   const [volume, setVolume] = useState(0.5);
   const [isTesting, setIsTesting] = useState(false);
@@ -43,7 +46,7 @@ export default function SoundSettingsModal({ isOpen, onClose }: SoundSettingsMod
       volume,
       soundType: 'default'
     });
-    toast.success('تم حفظ الإعدادات بنجاح');
+    toast.success(nt('settingsSaved'));
     onClose();
   };
 
@@ -66,23 +69,23 @@ export default function SoundSettingsModal({ isOpen, onClose }: SoundSettingsMod
   const handleEnableMobileSound = async () => {
     try {
       await enableSoundForMobile();
-      toast.success('تم تفعيل الصوت بنجاح');
+      toast.success(nt('soundEnabledSuccess'));
       playNotificationSound('default');
     } catch (error) {
-      toast.error('فشل في تفعيل الصوت');
+      toast.error(nt('soundEnableFailed'));
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" dir={isRTL ? 'rtl' : 'ltr'}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5" />
-            إعدادات التنبيهات الصوتية
+            {nt('soundSettings')}
           </DialogTitle>
           <DialogDescription>
-            قم بتخصيص إعدادات التنبيهات الصوتية حسب تفضيلاتك
+            {nt('soundSettingsDescription')}
           </DialogDescription>
         </DialogHeader>
 
@@ -90,7 +93,7 @@ export default function SoundSettingsModal({ isOpen, onClose }: SoundSettingsMod
           {/* تفعيل/تعطيل الصوت */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">تفعيل التنبيهات الصوتية</CardTitle>
+              <CardTitle className="text-lg">{nt('enableSoundNotifications')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
@@ -102,10 +105,10 @@ export default function SoundSettingsModal({ isOpen, onClose }: SoundSettingsMod
                   )}
                   <div>
                     <Label htmlFor="sound-enabled" className="text-base font-medium">
-                      تفعيل الصوت
+                      {nt('enableSound')}
                     </Label>
                     <p className="text-sm text-gray-500">
-                      تشغيل صوت عند وصول إشعار جديد
+                      {nt('playOnNewNotification')}
                     </p>
                   </div>
                 </div>
@@ -122,12 +125,12 @@ export default function SoundSettingsModal({ isOpen, onClose }: SoundSettingsMod
           {enabled && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">مستوى الصوت</CardTitle>
+                <CardTitle className="text-lg">{nt('volumeLevel')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="volume">مستوى الصوت</Label>
+                    <Label htmlFor="volume">{nt('volumeLevel')}</Label>
                     <span className="text-sm text-gray-500">
                       {Math.round(volume * 100)}%
                     </span>
@@ -144,10 +147,10 @@ export default function SoundSettingsModal({ isOpen, onClose }: SoundSettingsMod
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <VolumeX className="w-4 h-4" />
-                  <span>صامت</span>
+                  <span>{nt('silent')}</span>
                   <div className="flex-1" />
                   <Volume2 className="w-4 h-4" />
-                  <span>عالٍ</span>
+                  <span>{nt('loud')}</span>
                 </div>
               </CardContent>
             </Card>
@@ -165,7 +168,7 @@ export default function SoundSettingsModal({ isOpen, onClose }: SoundSettingsMod
                     variant="outline"
                   >
                     <Music className="w-4 h-4 ml-2" />
-                    {isTesting ? 'جاري التشغيل...' : 'اختبار الصوت'}
+                    {isTesting ? nt('playing') : nt('testSound')}
                   </Button>
                   <Button
                     onClick={handleEnableMobileSound}
@@ -173,7 +176,7 @@ export default function SoundSettingsModal({ isOpen, onClose }: SoundSettingsMod
                     variant="outline"
                   >
                     <Volume2 className="w-4 h-4 ml-2" />
-                    تفعيل الصوت للموبايل
+                    {nt('enableMobileSound')}
                   </Button>
                 </div>
               </CardContent>
@@ -186,11 +189,11 @@ export default function SoundSettingsModal({ isOpen, onClose }: SoundSettingsMod
               <div className="flex items-start gap-3">
                 <Info className="w-5 h-5 text-blue-600 mt-0.5" />
                 <div className="space-y-1 text-sm text-blue-800">
-                  <p className="font-medium">ملاحظة:</p>
+                  <p className="font-medium">{nt('note')}:</p>
                   <ul className="list-disc list-inside space-y-1 text-blue-700">
-                    <li>التنبيهات الصوتية تعمل على الكمبيوتر والموبايل</li>
-                    <li>على الموبايل، قد تحتاج إلى تفعيل الصوت أولاً</li>
-                    <li>الصوت لا يعمل عندما تكون الصفحة غير نشطة</li>
+                    <li>{nt('soundInfoDevices')}</li>
+                    <li>{nt('soundInfoMobile')}</li>
+                    <li>{nt('soundInfoInactive')}</li>
                   </ul>
                 </div>
               </div>
@@ -201,10 +204,10 @@ export default function SoundSettingsModal({ isOpen, onClose }: SoundSettingsMod
         {/* الأزرار */}
         <div className="flex items-center justify-end gap-3 pt-4 border-t">
           <Button variant="outline" onClick={onClose}>
-            إلغاء
+            {nt('cancel')}
           </Button>
           <Button onClick={handleSave}>
-            حفظ الإعدادات
+            {nt('saveSettings')}
           </Button>
         </div>
       </DialogContent>

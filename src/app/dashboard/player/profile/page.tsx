@@ -33,7 +33,7 @@ const PlaceholderTab = ({ title, icon: Icon }: { title: string, icon: any }) => 
 };
 
 export default function PlayerProfilePage() {
-  const { t } = useTranslation();
+  const { t, isRTL } = useTranslation();
 
   const { form, loading, saving, saveProfile, user, isEditing, setIsEditing } = usePlayerProfile();
   const [errorTabs, setErrorTabs] = useState<string[]>([]);
@@ -205,7 +205,7 @@ export default function PlayerProfilePage() {
 
           {/* Main Content */}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6" dir="rtl">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
 
               <div className="sticky top-20 z-40 space-y-4 pt-4 pb-2 bg-gray-50/50 backdrop-blur-xl">
                 <div className="bg-white rounded-xl border shadow-sm px-6 py-4 flex items-center justify-between">

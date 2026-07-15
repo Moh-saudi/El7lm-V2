@@ -14,21 +14,23 @@ import {
   Loader2,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
+import { useTranslation } from '@/lib/i18n';
 
 interface DayStat { label: string; count: number; }
 interface TypeStat { type: string; label: string; count: number; icon: React.ElementType; color: string; }
 
-const TYPE_META: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  profile_view:     { label: 'مشاهدة ملف شخصي', icon: Eye,          color: 'text-indigo-500' },
-  video_view:       { label: 'مشاهدة فيديو',      icon: Eye,          color: 'text-blue-500'   },
-  message_received: { label: 'رسالة واردة',         icon: MessageSquare,color: 'text-emerald-500'},
-  video_like:       { label: 'إعجاب بفيديو',        icon: Heart,        color: 'text-rose-500'  },
-  follow:           { label: 'متابعة جديدة',        icon: UserCheck,    color: 'text-amber-500' },
+const TYPE_META: Record<string, { icon: React.ElementType; color: string }> = {
+  profile_view:     { icon: Eye,           color: 'text-indigo-500' },
+  video_view:       { icon: Eye,           color: 'text-blue-500' },
+  message_received: { icon: MessageSquare, color: 'text-emerald-500' },
+  video_like:       { icon: Heart,         color: 'text-rose-500' },
+  follow:           { icon: UserCheck,     color: 'text-amber-500' },
 };
 
-const DAY_NAMES = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-
 export const StatsOverview: React.FC = () => {
+  const { locale, isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('aiMessenger.stats');
+  const numberLocale = ({ ar: 'ar-EG', en: 'en-US', es: 'es-ES', pt: 'pt-PT' } as const)[locale];
   const [loading, setLoading] = useState(true);
   const [totalNotifs, setTotalNotifs] = useState(0);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -58,7 +60,7 @@ export const StatsOverview: React.FC = () => {
           .sort((a, b) => b[1] - a[1])
           .map(([type, count]) => ({
             type, count,
-            label: TYPE_META[type]?.label || type,
+            label: copy.types[type] || type,
             icon:  TYPE_META[type]?.icon  || Send,
             color: TYPE_META[type]?.color || 'text-slate-400',
           }));
@@ -83,7 +85,7 @@ export const StatsOverview: React.FC = () => {
         setDayStats(
           Object.entries(days7).map(([dateStr, count]) => {
             const d = new Date(dateStr);
-            return { label: DAY_NAMES[d.getDay()], count };
+            return { label: copy.days[d.getDay()], count };
           })
         );
 
@@ -101,58 +103,58 @@ export const StatsOverview: React.FC = () => {
       }
     };
     load();
-  }, []);
+  }, [locale]);
 
   const maxDay = Math.max(...dayStats.map(d => d.count), 1);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-full gap-2">
         <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
-        <span className="mr-2 text-sm text-slate-500">جاري تحميل الإحصائيات...</span>
+        <span className="text-sm text-slate-500">{copy.loading}</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 h-full overflow-y-auto custom-scrollbar p-1" dir="rtl">
+    <div className="space-y-6 h-full overflow-y-auto custom-scrollbar p-1" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* ── Top metrics ────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Total notifications */}
         <Card className="border-none shadow-xl">
           <CardHeader className="p-4 flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-xs font-bold text-slate-500">إجمالي الإشعارات (30 يوم)</CardTitle>
+            <CardTitle className="text-xs font-bold text-slate-500">{copy.totalNotifications}</CardTitle>
             <Send className="w-4 h-4 text-indigo-500" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-black text-slate-800">{totalNotifs.toLocaleString('ar')}</div>
-            <p className="text-[10px] text-slate-400 mt-1">إشعار تفاعلي في آخر 30 يوم</p>
+            <div className="text-2xl font-black text-slate-800">{totalNotifs.toLocaleString(numberLocale)}</div>
+            <p className="text-[10px] text-slate-400 mt-1">{copy.interactiveNotifications}</p>
           </CardContent>
         </Card>
 
         {/* Total audience */}
         <Card className="border-none shadow-xl">
           <CardHeader className="p-4 flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-xs font-bold text-slate-500">إجمالي قاعدة المستخدمين</CardTitle>
+            <CardTitle className="text-xs font-bold text-slate-500">{copy.totalUsers}</CardTitle>
             <Users className="w-4 h-4 text-amber-500" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-black text-slate-800">{totalUsers.toLocaleString('ar')}</div>
-            <p className="text-[10px] text-slate-400 mt-1">مستخدم مسجل في المنصة</p>
+            <div className="text-2xl font-black text-slate-800">{totalUsers.toLocaleString(numberLocale)}</div>
+            <p className="text-[10px] text-slate-400 mt-1">{copy.registeredUsers}</p>
           </CardContent>
         </Card>
 
         {/* Today's activity */}
         <Card className="border-none shadow-xl">
           <CardHeader className="p-4 flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-xs font-bold text-slate-500">نشاط اليوم</CardTitle>
+            <CardTitle className="text-xs font-bold text-slate-500">{copy.todayActivity}</CardTitle>
             <TrendingUp className="w-4 h-4 text-emerald-500" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <div className="text-2xl font-black text-slate-800">
-              {(dayStats[dayStats.length - 1]?.count ?? 0).toLocaleString('ar')}
+              {(dayStats[dayStats.length - 1]?.count ?? 0).toLocaleString(numberLocale)}
             </div>
-            <p className="text-[10px] text-slate-400 mt-1">إشعار منذ بداية اليوم</p>
+            <p className="text-[10px] text-slate-400 mt-1">{copy.notificationsToday}</p>
           </CardContent>
         </Card>
       </div>
@@ -164,14 +166,14 @@ export const StatsOverview: React.FC = () => {
           <CardHeader className="p-4 pb-2">
             <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-1">
               <BarChart className="w-4 h-4 text-emerald-500" />
-              نشاط الإشعارات — آخر 7 أيام
+              {copy.activityTitle}
             </CardTitle>
-            <CardDescription className="text-[10px] text-slate-400">عدد الإشعارات التفاعلية يومياً</CardDescription>
+            <CardDescription className="text-[10px] text-slate-400">{copy.activityDescription}</CardDescription>
           </CardHeader>
           <CardContent className="p-4 pt-2">
             {dayStats.every(d => d.count === 0) ? (
               <div className="flex items-center justify-center h-28 text-slate-400 text-xs">
-                لا توجد بيانات في آخر 7 أيام
+                {copy.noRecentData}
               </div>
             ) : (
               <div className="flex items-end gap-2 h-28">
@@ -195,13 +197,13 @@ export const StatsOverview: React.FC = () => {
           <CardHeader className="p-4 pb-2">
             <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-1">
               <CheckCircle2 className="w-4 h-4 text-indigo-500" />
-              توزيع الإشعارات بالنوع
+              {copy.typeDistribution}
             </CardTitle>
-            <CardDescription className="text-[10px] text-slate-400">آخر 30 يوم</CardDescription>
+            <CardDescription className="text-[10px] text-slate-400">{copy.last30Days}</CardDescription>
           </CardHeader>
           <CardContent className="p-4 pt-2 space-y-2">
             {typeStats.length === 0 ? (
-              <div className="text-center text-slate-400 text-xs py-8">لا توجد إشعارات بعد</div>
+              <div className="text-center text-slate-400 text-xs py-8">{copy.noNotifications}</div>
             ) : (
               typeStats.map((t, i) => {
                 const Icon = t.icon;

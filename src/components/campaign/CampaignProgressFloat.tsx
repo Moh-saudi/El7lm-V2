@@ -2,23 +2,25 @@
 import React from 'react';
 import { useCampaign } from '@/lib/campaign/campaign-context';
 import { CheckCircle2, X, Loader2 } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n';
 
 export const CampaignProgressFloat: React.FC = () => {
   const { campaign, dismissResult } = useCampaign();
+  const { t, isRTL } = useTranslation();
 
   if (campaign.status === 'idle') return null;
 
   const isRunning = campaign.status === 'running';
 
   return (
-    <div className="fixed bottom-6 left-6 z-50 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 space-y-2" dir="rtl">
+    <div className="fixed bottom-6 left-6 z-50 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 space-y-2" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {isRunning
             ? <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" />
             : <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
           <span className="text-xs font-bold text-slate-700">
-            {isRunning ? 'حملة جارية...' : 'اكتملت الحملة ✅'}
+            {isRunning ? t('sharedComponents.campaign.running') : t('sharedComponents.campaign.completed')}
           </span>
         </div>
         {!isRunning && (
@@ -37,20 +39,22 @@ export const CampaignProgressFloat: React.FC = () => {
       </div>
 
       <div className="flex items-center justify-between text-[10px] text-slate-500">
-        <span>القالب: <span className="font-semibold text-slate-700">{campaign.templateName}</span></span>
+        <span>{t('sharedComponents.campaign.template')}: <span className="font-semibold text-slate-700">{campaign.templateName}</span></span>
         <span className="font-bold">{campaign.progress}%</span>
       </div>
 
       <div className="flex gap-3 text-[10px]">
-        <span className="text-emerald-600 font-bold">✅ {campaign.success} نجح</span>
-        <span className="text-rose-500 font-bold">❌ {campaign.failed} فشل</span>
-        <span className="text-slate-400">من {campaign.total}</span>
+        <span className="text-emerald-600 font-bold">✅ {campaign.success} {t('sharedComponents.campaign.succeeded')}</span>
+        <span className="text-rose-500 font-bold">❌ {campaign.failed} {t('sharedComponents.campaign.failed')}</span>
+        <span className="text-slate-400">{t('sharedComponents.campaign.of')} {campaign.total}</span>
       </div>
 
       {campaign.failedEntries.length > 0 && (
         <details className="text-[10px]" open={!isRunning && campaign.failed > 0}>
           <summary className="cursor-pointer text-rose-500 font-semibold select-none">
-            {isRunning ? `❌ ${campaign.failed} فشل حتى الآن` : `تفاصيل الفشل (${campaign.failedEntries.length})`}
+            {isRunning
+              ? t('sharedComponents.campaign.failedSoFar').replace('{{count}}', String(campaign.failed))
+              : t('sharedComponents.campaign.failureDetails').replace('{{count}}', String(campaign.failedEntries.length))}
           </summary>
           <div className="mt-1 max-h-36 overflow-y-auto space-y-1 pr-1">
             {campaign.failedEntries.map((f, i) => (

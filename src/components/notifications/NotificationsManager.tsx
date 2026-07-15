@@ -9,6 +9,7 @@ import NotificationsList from './NotificationsList';
 import { playNotificationSound, getSoundTypeFromNotificationType, enableSoundForMobile } from '@/lib/notifications/sound-notifications';
 import { resolveAvatarUrl, normalizeNotificationMetadata, SenderContext } from '@/lib/notifications/sender-utils';
 import { getSupabaseImageUrl } from '@/lib/supabase/image-utils';
+import { useTranslation } from '@/lib/i18n';
 
 interface Notification {
   id: string;
@@ -107,8 +108,8 @@ const mergeSenderInfo = (
 };
 
 export default function NotificationsManager({
-  title = "الإشعارات",
-  description = "تابع جميع الإشعارات والتنبيهات المهمة",
+  title,
+  description,
   showSenderInfo = true,
   showStats = true,
   showFilters = true,
@@ -116,6 +117,10 @@ export default function NotificationsManager({
   accountType
 }: NotificationsManagerProps) {
   const { user, userData } = useAuth();
+  const { t, isRTL } = useTranslation();
+  const nt = (key: string) => t(`sharedComponents.notifications.${key}`);
+  const displayTitle = title || nt('title');
+  const displayDescription = description || nt('description');
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [systemNotifications, setSystemNotifications] = useState<Notification[]>([]);
@@ -351,8 +356,8 @@ export default function NotificationsManager({
           return {
             id: row.id,
             userId: row.userId,
-            title: row.title || 'إشعار تفاعلي',
-            message: row.message || 'لا توجد تفاصيل',
+            title: row.title || nt('interactiveNotification'),
+            message: row.message || nt('noDetails'),
             type: row.type === 'profile_view' ? 'info' :
               row.type === 'message_sent' ? 'success' :
                 row.type === 'connection_request' ? 'warning' : 'info',
@@ -476,7 +481,7 @@ export default function NotificationsManager({
                   <p className="font-semibold text-sm">{notification.title}</p>
                   <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
                   {notification.senderName && (
-                    <p className="text-xs text-blue-600 mt-1">من: {notification.senderName}</p>
+                    <p className="text-xs text-blue-600 mt-1">{nt('from')}: {notification.senderName}</p>
                   )}
                 </div>
                 <button
@@ -523,10 +528,10 @@ export default function NotificationsManager({
           .eq('id', notificationId);
       }
 
-      toast.success('تم تحديد الإشعار كمقروء');
+      toast.success(nt('markedAsRead'));
     } catch (error) {
       console.error('خطأ في تحديث حالة الإشعار:', error);
-      toast.error('حدث خطأ في تحديث الإشعار');
+      toast.error(nt('updateFailed'));
     }
   };
 
@@ -534,10 +539,10 @@ export default function NotificationsManager({
   const archiveNotification = async (notificationId: string) => {
     try {
       // هنا يمكن إضافة منطق الأرشفة في Supabase
-      toast.success('تم أرشفة الإشعار');
+      toast.success(nt('archived'));
     } catch (error) {
       console.error('خطأ في أرشفة الإشعار:', error);
-      toast.error('حدث خطأ في أرشفة الإشعار');
+      toast.error(nt('archiveFailed'));
     }
   };
 
@@ -545,23 +550,23 @@ export default function NotificationsManager({
   const deleteNotification = async (notificationId: string) => {
     try {
       // هنا يمكن إضافة منطق الحذف في Supabase
-      toast.success('تم حذف الإشعار');
+      toast.success(nt('deleted'));
     } catch (error) {
       console.error('خطأ في حذف الإشعار:', error);
-      toast.error('حدث خطأ في حذف الإشعار');
+      toast.error(nt('deleteFailed'));
     }
   };
 
   // الرد على الإشعار
   const replyToNotification = (notification: Notification) => {
     // هنا يمكن إضافة منطق الرد
-    toast.success('سيتم فتح صفحة الرد');
+    toast.success(nt('openingReply'));
   };
 
   // إعادة توجيه الإشعار
   const forwardNotification = (notification: Notification) => {
     // هنا يمكن إضافة منطق إعادة التوجيه
-    toast.success('سيتم فتح صفحة إعادة التوجيه');
+    toast.success(nt('openingForward'));
   };
 
   // تحديد جميع الإشعارات كمقروءة
@@ -584,10 +589,10 @@ export default function NotificationsManager({
       });
 
       await Promise.all(updatePromises);
-      toast.success('تم تحديد جميع الإشعارات كمقروءة');
+      toast.success(nt('allMarkedRead'));
     } catch (error) {
       console.error('خطأ في تحديث جميع الإشعارات:', error);
-      toast.error('حدث خطأ في تحديث الإشعارات');
+      toast.error(nt('notificationsUpdateFailed'));
     }
   };
 
@@ -688,10 +693,10 @@ export default function NotificationsManager({
         createTestWarningNotification(user.id)
       ]);
 
-      toast.success('تم إنشاء الإشعارات التجريبية بنجاح');
+      toast.success(nt('testCreated'));
     } catch (error) {
       console.error('خطأ في إنشاء الإشعارات التجريبية:', error);
-      toast.error('حدث خطأ في إنشاء الإشعارات التجريبية');
+      toast.error(nt('testCreateFailed'));
     }
   };
 
@@ -708,24 +713,24 @@ export default function NotificationsManager({
       }
 
       await Promise.all(promises);
-      toast.success('تم إنشاء 10 إشعارات تجريبية بنجاح');
+      toast.success(nt('tenCreated'));
     } catch (error) {
       console.error('خطأ في إنشاء الإشعارات المتعددة:', error);
-      toast.error('حدث خطأ في إنشاء الإشعارات المتعددة');
+      toast.error(nt('multipleCreateFailed'));
     }
   };
 
   // معالجة حالة عدم وجود مستخدم
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="text-center">
           <div className="text-6xl mb-4">🔒</div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            يجب تسجيل الدخول أولاً
+            {nt('loginRequired')}
           </h3>
           <p className="text-gray-600">
-            يرجى تسجيل الدخول لعرض الإشعارات
+            {nt('loginToView')}
           </p>
         </div>
       </div>
@@ -735,14 +740,14 @@ export default function NotificationsManager({
   // معالجة حالة عدم وجود بيانات المستخدم
   if (!userData) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="text-center">
           <div className="text-6xl mb-4">⏳</div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            جاري تحميل البيانات
+            {nt('loadingData')}
           </h3>
           <p className="text-gray-600">
-            يرجى الانتظار قليلاً...
+            {nt('pleaseWait')}
           </p>
         </div>
       </div>
@@ -764,8 +769,8 @@ export default function NotificationsManager({
       onCreateTestNotifications={showTestButtons ? createTestNotifications : undefined}
       onCreateMultipleNotifications={showTestButtons ? createMultipleNotifications : undefined}
       showSenderInfo={showSenderInfo}
-      title={title}
-      description={description}
+      title={displayTitle}
+      description={displayDescription}
       showStats={showStats}
       showFilters={showFilters}
       showTestButtons={showTestButtons}

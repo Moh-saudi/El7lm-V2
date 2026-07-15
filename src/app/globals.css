@@ -2434,3 +2434,20 @@ body,
     font-size: 0.7rem;
   }
 }
+
+/* Trainer resume print layout */
+@media print {
+  @page {
+    margin: 0.5cm;
+    size: A4;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+}

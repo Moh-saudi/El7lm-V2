@@ -9,10 +9,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
-import { ar } from 'date-fns/locale';
+import { ar, enUS, es, ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/lib/i18n';
 
 interface ConversationItem {
     id: string;
@@ -25,6 +26,7 @@ interface ConversationItem {
 }
 
 export default function UnifiedMessagesButton() {
+    const { t, locale } = useTranslation();
     const { user } = useAuth();
     const router = useRouter();
     const [conversations, setConversations] = useState<ConversationItem[]>([]);
@@ -49,9 +51,9 @@ export default function UnifiedMessagesButton() {
             const otherParticipantId = (row.participants || []).find((id: string) => id !== user.id);
             return {
                 id: row.id,
-                senderName: row.participantNames?.[otherParticipantId] || 'User',
+                senderName: row.participantNames?.[otherParticipantId] || t('sharedComponents.messages.defaultUser'),
                 senderAvatar: row.participantAvatars?.[otherParticipantId],
-                lastMessage: row.lastMessage || 'No messages',
+                lastMessage: row.lastMessage || t('sharedComponents.messages.noMessages'),
                 updatedAt: row.updatedAt ? new Date(row.updatedAt) : new Date(),
                 unread: (row.unreadCount?.[user.id] || 0) > 0,
                 participantId: otherParticipantId
@@ -143,7 +145,7 @@ export default function UnifiedMessagesButton() {
                         <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                             <MessageSquare className="w-4 h-4 text-blue-600" />
                         </div>
-                        <h3 className="font-bold text-sm text-slate-900 dark:text-white">الرسائل</h3>
+                        <h3 className="font-bold text-sm text-slate-900 dark:text-white">{t('sharedComponents.messages.title')}</h3>
                     </div>
                     <div className="flex gap-2">
                         <Button
@@ -166,7 +168,7 @@ export default function UnifiedMessagesButton() {
                                 : "text-slate-500 hover:text-slate-700"
                         )}
                     >
-                        المحادثات
+                        {t('sharedComponents.messages.conversations')}
                     </button>
                     <button
                         onClick={() => setActiveTab('unread')}
@@ -177,7 +179,7 @@ export default function UnifiedMessagesButton() {
                                 : "text-slate-500 hover:text-slate-700"
                         )}
                     >
-                        غير مقروءة ({unreadCount})
+                        {t('sharedComponents.messages.unread')} ({unreadCount})
                     </button>
                 </div>
 
@@ -203,9 +205,9 @@ export default function UnifiedMessagesButton() {
                             >
                                 <Sparkles className="w-10 h-10 text-blue-300 dark:text-blue-800" />
                             </motion.div>
-                            <h4 className="text-slate-900 dark:text-white font-black text-xl mb-2">لا توجد رسائل</h4>
+                            <h4 className="text-slate-900 dark:text-white font-black text-xl mb-2">{t('sharedComponents.messages.noMessages')}</h4>
                             <p className="text-sm text-slate-500 max-w-[220px] leading-relaxed font-medium">
-                                {activeTab === 'unread' ? "لقد قرأت جميع رسائلك!" : "ابدأ محادثة جديدة الآن."}
+                                {activeTab === 'unread' ? t('sharedComponents.messages.allRead') : t('sharedComponents.messages.startConversation')}
                             </p>
                         </div>
                     ) : (
@@ -243,7 +245,7 @@ export default function UnifiedMessagesButton() {
                                             <div className="flex justify-between items-center mb-0.5">
                                                 <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate pr-1">{conv.senderName}</span>
                                                 <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 flex-shrink-0">
-                                                    {formatDistanceToNow(conv.updatedAt, { locale: ar, addSuffix: true })}
+                                                    {formatDistanceToNow(conv.updatedAt, { locale: { ar, en: enUS, es, pt: ptBR }[locale], addSuffix: true })}
                                                 </span>
                                             </div>
                                             <p className={cn(
@@ -273,7 +275,7 @@ export default function UnifiedMessagesButton() {
                         size="sm"
                         className="w-full flex items-center justify-center gap-2 h-8 rounded-lg text-xs font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all"
                     >
-                        <span>عرض كل الرسائل</span>
+                        <span>{t('sharedComponents.messages.viewAll')}</span>
                         <MessageSquare className="w-3 h-3" />
                     </Button>
                 </div>

@@ -35,6 +35,7 @@ import {
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/lib/i18n';
 
 // Custom Scrollbar Styles
 const scrollbarStyles = `
@@ -68,7 +69,7 @@ const calculateAge = (birthDate: string | Date | null): number | null => {
 };
 
 const getCurrencySymbol = (currency: string = 'EGP'): string => {
-  const symbols: Record<string, string> = { 'EGP': 'ج.م', 'SAR': 'ر.س', 'USD': '$', 'EUR': '€' };
+  const symbols: Record<string, string> = { EGP: 'EGP', SAR: 'SAR', USD: '$', EUR: '€' };
   return symbols[currency] || currency;
 };
 
@@ -95,11 +96,10 @@ const getSafeAvatarUrl = (avatar: any): string | undefined => {
   return fixed || undefined;
 };
 
-const getPlayerDisplayName = (player: any): string => {
-  return player?.full_name || player?.name || 'لاعب غير محدد';
-};
-
 export default function UnifiedTournamentRegistrationPage() {
+  const { getTranslations } = useTranslation();
+  const copy = getTranslations<any>('unifiedTournamentRegistration');
+  const getPlayerDisplayName = (player:any):string => player?.full_name || player?.name || copy.unknownPlayer;
   const router = useRouter();
   const { user, userData } = useAuth();
 
@@ -168,25 +168,25 @@ export default function UnifiedTournamentRegistrationPage() {
           // Set default fallback methods based on country
           const defaultMethods: any[] = [];
 
-          if (country === 'EG' || country === 'Egypt' || country === 'مصر') {
+          if (country === 'EG' || country === 'Egypt' || country === '\u0645\u0635\u0631') {
             defaultMethods.push(
-              { id: 'vodafone_cash', name: 'فودافون كاش', enabled: true, accountNumber: '01017799580' },
-              { id: 'instapay', name: 'انستاباي', enabled: true, accountNumber: '01017799580' }
+              { id: 'vodafone_cash', name: 'Vodafone Cash', enabled: true, accountNumber: '01017799580' },
+              { id: 'instapay', name: 'InstaPay', enabled: true, accountNumber: '01017799580' }
             );
-          } else if (country === 'SA' || country === 'Saudi Arabia' || country === 'السعودية') {
+          } else if (country === 'SA' || country === 'Saudi Arabia' || country === '\u0627\u0644\u0633\u0639\u0648\u062f\u064a\u0629') {
             defaultMethods.push(
               { id: 'stc_pay', name: 'STC Pay', enabled: true, accountNumber: '0505149446' }
             );
-          } else if (country === 'QA' || country === 'Qatar' || country === 'قطر') {
+          } else if (country === 'QA' || country === 'Qatar' || country === '\u0642\u0637\u0631') {
             defaultMethods.push(
-              { id: 'fawran', name: 'خدمة فورا', enabled: true, accountNumber: '70900058' }
+              { id: 'fawran', name: 'Fawran', enabled: true, accountNumber: '70900058' }
             );
           } else {
             // Generic fallback for unknown countries
             console.log(`[Payment Settings] Unknown country: ${country}, using Egypt defaults`);
             defaultMethods.push(
-              { id: 'vodafone_cash', name: 'فودافون كاش', enabled: true, accountNumber: '01017799580' },
-              { id: 'instapay', name: 'انستاباي', enabled: true, accountNumber: '01017799580' }
+              { id: 'vodafone_cash', name: 'Vodafone Cash', enabled: true, accountNumber: '01017799580' },
+              { id: 'instapay', name: 'InstaPay', enabled: true, accountNumber: '01017799580' }
             );
           }
 
@@ -327,7 +327,7 @@ export default function UnifiedTournamentRegistrationPage() {
         setAvailablePlayers(players);
       } catch (e) {
         console.error('Error fetching players:', e);
-        toast.error('حدث خطأ أثناء جلب بيانات اللاعبين');
+        toast.error(copy.errors.players);
       }
     };
 
@@ -406,7 +406,7 @@ export default function UnifiedTournamentRegistrationPage() {
     // Check duplicates
     const duplicates = selectedPlayers.filter(p => paidPlayerIds.has(p.id));
     if (duplicates.length > 0) {
-      toast.error(`اللاعبين التاليين مسجلين مسبقاً: ${duplicates.map(getPlayerDisplayName).join(', ')}`);
+      toast.error(copy.errors.duplicate.replace('{names}',duplicates.map(getPlayerDisplayName).join(', ')));
       return;
     }
 
@@ -447,12 +447,12 @@ export default function UnifiedTournamentRegistrationPage() {
         createdAt: new Date().toISOString()
       });
 
-      toast.success('تم التسجيل بنجاح! سيتم مراجعة طلبك قريباً');
+      toast.success(copy.success.registered);
       setSelectedPlayers([]);
       setCurrentStep(1);
       setSelectedTournament(null);
     } catch (e) {
-      toast.error('حدث خطأ أثناء التسجيل');
+      toast.error(copy.errors.registration);
       console.error(e);
     } finally {
       setSubmitting(false);
@@ -476,12 +476,12 @@ export default function UnifiedTournamentRegistrationPage() {
         createdAt: new Date().toISOString()
       });
       setShowPaymentModal(false);
-      toast.success('تم الدفع والتسجيل بنجاح!');
+      toast.success(copy.success.paid);
       setSelectedPlayers([]);
       setCurrentStep(1);
       setSelectedTournament(null);
     } catch (e) {
-      toast.error('حدث خطأ');
+      toast.error(copy.errors.generic);
     }
   };
 
@@ -504,12 +504,12 @@ export default function UnifiedTournamentRegistrationPage() {
       if (data.success && data.payUrl) {
         window.location.href = data.payUrl;
       } else {
-        toast.error(data.error || 'فشل إنشاء عملية الدفع');
+        toast.error(data.error || copy.errors.payment);
         setLoading(false);
       }
     } catch (error) {
       console.error(error);
-      toast.error('حدث خطأ غير متوقع');
+      toast.error(copy.errors.unexpected);
       setLoading(false);
     }
   };
@@ -544,14 +544,14 @@ export default function UnifiedTournamentRegistrationPage() {
       }
 
       setShowWalletModal(false);
-      toast.success('تم رفع الإيصال بنجاح! سيتم مراجعته قريباً');
+      toast.success(copy.success.receipt);
       setSelectedPlayers([]);
       setCurrentStep(1);
       setSelectedTournament(null);
       setWalletReceipt(null);
       setWalletReceiptNumber('');
     } catch (e) {
-      toast.error('حدث خطأ');
+      toast.error(copy.errors.generic);
     } finally {
       setWalletUploading(false);
     }
@@ -568,16 +568,16 @@ export default function UnifiedTournamentRegistrationPage() {
           {/* Progress Bar */}
           <div className="mb-6 sm:mb-8">
             <div className="flex justify-between items-center mb-3">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">تسجيل في بطولة</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">{copy.title}</h1>
               <Badge variant="outline" className="text-sm">
-                الخطوة {currentStep} من 3
+                {copy.step.replace('{current}',currentStep)}
               </Badge>
             </div>
             <Progress value={progress} className="h-2 bg-gray-200" />
             <div className="flex justify-between mt-2 text-xs sm:text-sm text-gray-600">
-              <span className={currentStep >= 1 ? 'text-blue-600 font-semibold' : ''}>اختر البطولة</span>
-              <span className={currentStep >= 2 ? 'text-blue-600 font-semibold' : ''}>اختر اللاعبين</span>
-              <span className={currentStep >= 3 ? 'text-blue-600 font-semibold' : ''}>راجع وادفع</span>
+              <span className={currentStep >= 1 ? 'text-blue-600 font-semibold' : ''}>{copy.steps[0]}</span>
+              <span className={currentStep >= 2 ? 'text-blue-600 font-semibold' : ''}>{copy.steps[1]}</span>
+              <span className={currentStep >= 3 ? 'text-blue-600 font-semibold' : ''}>{copy.steps[2]}</span>
             </div>
           </div>
 
@@ -588,16 +588,16 @@ export default function UnifiedTournamentRegistrationPage() {
                 <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
                   <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                     <Trophy className="w-5 h-5 sm:w-6 sm:h-6" />
-                    اختر البطولة
+                    {copy.steps[0]}
                   </CardTitle>
-                  <CardDescription className="text-blue-100">اختر البطولة التي تريد التسجيل فيها</CardDescription>
+                  <CardDescription className="text-blue-100">{copy.chooseTournament}</CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-6">
                   {/* Filter Tabs */}
                   <div className="flex gap-2 mb-4 p-1 bg-gray-100 rounded-lg">
                     {[
                       {
-                        id: 'current', label: 'جارية', count: tournaments.filter(t => {
+                        id: 'current', label: copy.filters[0], count: tournaments.filter(t => {
                           const now = new Date();
                           const start = t.startDate ? new Date(t.startDate) : null;
                           const end = t.endDate ? new Date(t.endDate) : null;
@@ -608,13 +608,13 @@ export default function UnifiedTournamentRegistrationPage() {
                         }).length
                       },
                       {
-                        id: 'upcoming', label: 'قادمة', count: tournaments.filter(t => {
+                        id: 'upcoming', label: copy.filters[1], count: tournaments.filter(t => {
                           const start = t.startDate ? new Date(t.startDate) : null;
                           return start && start > new Date();
                         }).length
                       },
                       {
-                        id: 'past', label: 'سابقة', count: tournaments.filter(t => {
+                        id: 'past', label: copy.filters[2], count: tournaments.filter(t => {
                           const end = t.endDate ? new Date(t.endDate) : null;
                           return end && end < new Date();
                         }).length
@@ -639,15 +639,15 @@ export default function UnifiedTournamentRegistrationPage() {
                   {loading ? (
                     <div className="text-center py-12">
                       <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                      <p className="text-gray-600">جاري تحميل البطولات...</p>
+                      <p className="text-gray-600">{copy.loadingTournaments}</p>
                     </div>
                   ) : filteredTournaments.length === 0 ? (
                     <div className="text-center py-12">
                       <Trophy className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-600">
-                        {tournamentFilter === 'current' && 'لا توجد بطولات جارية حالياً'}
-                        {tournamentFilter === 'upcoming' && 'لا توجد بطولات قادمة'}
-                        {tournamentFilter === 'past' && 'لا توجد بطولات سابقة'}
+                        {tournamentFilter === 'current' && copy.noTournaments[0]}
+                        {tournamentFilter === 'upcoming' && copy.noTournaments[1]}
+                        {tournamentFilter === 'past' && copy.noTournaments[2]}
                       </p>
                     </div>
                   ) : (
@@ -715,7 +715,7 @@ export default function UnifiedTournamentRegistrationPage() {
                                     ) : (
                                       <CheckCircle className="w-3 h-3 mr-1" />
                                     )}
-                                    {isPending ? 'قيد المراجعة' : 'مسجل'}
+                                    {isPending ? copy.pending : copy.registered}
                                   </Badge>
                                 </div>
                               );
@@ -737,42 +737,42 @@ export default function UnifiedTournamentRegistrationPage() {
                 <CardHeader className="bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-t-lg">
                   <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                     <Users className="w-5 h-5 sm:w-6 sm:h-6" />
-                    اختر اللاعبين
+                    {copy.steps[1]}
                   </CardTitle>
                   <CardDescription className="text-green-100">
-                    البطولة: {selectedTournament.name}
+                    {copy.tournament.replace('{name}',selectedTournament.name)}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-6">
                   {!user ? (
                     <div className="text-center py-12">
                       <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-600 mb-4">يجب تسجيل الدخول للمتابعة</p>
-                      <Button onClick={() => router.push('/auth/login')} size="lg">تسجيل الدخول</Button>
+                      <p className="text-gray-600 mb-4">{copy.loginRequired}</p>
+                      <Button onClick={() => router.push('/auth/login')} size="lg">{copy.login}</Button>
                     </div>
                   ) : userData?.accountType === 'player' && selectedTournament?.feeType === 'club' ? (
                     <div className="text-center py-12 space-y-4">
                       <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center mx-auto">
                         <Users className="w-10 h-10 text-orange-500" />
                       </div>
-                      <h3 className="text-lg font-bold text-gray-800">هذه البطولة للفرق فقط</h3>
+                      <h3 className="text-lg font-bold text-gray-800">{copy.teamsOnly}</h3>
                       <p className="text-gray-500 max-w-sm mx-auto">
-                        لا يمكن للاعبين الاشتراك بشكل فردي في هذه البطولة. التسجيل متاح للأندية والأكاديميات فقط.
+                        {copy.teamsOnlyHelp}
                       </p>
                       <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 max-w-sm mx-auto text-right">
-                        <p className="text-sm font-semibold text-orange-800 mb-1">هل تريد الانضمام؟</p>
-                        <p className="text-xs text-orange-600">تواصل مع الإدارة لطلب الانضمام ضمن فريق مشارك.</p>
+                        <p className="text-sm font-semibold text-orange-800 mb-1">{copy.wantJoin}</p>
+                        <p className="text-xs text-orange-600">{copy.contactHelp}</p>
                       </div>
                       <div className="flex gap-3 justify-center pt-2">
                         <Button variant="outline" onClick={() => setCurrentStep(1)}>
-                          اختر بطولة أخرى
+                          {copy.chooseOther}
                         </Button>
                         {selectedTournament?.contactInfo && (
                           <Button
                             className="bg-orange-500 hover:bg-orange-600 text-white"
                             onClick={() => window.open(`https://wa.me/${selectedTournament.contactInfo?.replace(/\D/g,'')}`, '_blank')}
                           >
-                            تواصل مع الإدارة
+                            {copy.contact}
                           </Button>
                         )}
                       </div>
@@ -782,12 +782,12 @@ export default function UnifiedTournamentRegistrationPage() {
                       <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                       {userData?.accountType === 'player' ? (
                         <>
-                          <p className="text-gray-600 mb-4">لم يتم العثور على ملفك الشخصي كلاعب</p>
-                          <Button onClick={() => router.push('/dashboard/player/profile')} variant="outline">أكمل ملفك الشخصي</Button>
+                          <p className="text-gray-600 mb-4">{copy.noProfile}</p>
+                          <Button onClick={() => router.push('/dashboard/player/profile')} variant="outline">{copy.completeProfile}</Button>
                         </>
                       ) : (
                         <>
-                          <p className="text-gray-600 mb-4">لا يوجد لاعبين مسجلين تحت إدارتك</p>
+                          <p className="text-gray-600 mb-4">{copy.noManagedPlayers}</p>
                           <Button onClick={() => {
                             const type = userData?.accountType;
                             const paths: Record<string, string> = {
@@ -798,7 +798,7 @@ export default function UnifiedTournamentRegistrationPage() {
                               marketer: '/dashboard/marketer/players',
                             };
                             router.push(paths[type] || '/dashboard');
-                          }} variant="outline">إضافة لاعبين</Button>
+                          }} variant="outline">{copy.addPlayers}</Button>
                         </>
                       )}
                     </div>
@@ -819,17 +819,15 @@ export default function UnifiedTournamentRegistrationPage() {
                             <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
                           )}
                           <h3 className="text-lg font-bold text-gray-900 mb-2">
-                            {isPending ? 'طلبك قيد المراجعة' : 'تم التسجيل بنجاح!'}
+                            {isPending ? copy.requestPending : copy.registeredSuccess}
                           </h3>
                           <p className="text-gray-600 mb-4">
                             {isPending ? (
                               tournamentStatus === 'pending_review'
-                                ? 'تم رفع إيصال الدفع وننتظر تأكيد الإدارة'
-                                : 'طلبك معلق بانتظار اكتمال الدفع'
+                                ? copy.receiptPending : copy.paymentPending
                             ) : (
                               availablePlayers.length === 1
-                                ? 'لقد قمت بالتسجيل في هذه البطولة مسبقاً'
-                                : 'جميع اللاعبين مسجلين في هذه البطولة مسبقاً'
+                                ? copy.alreadyPlayer : copy.alreadyAll
                             )}
                           </p>
                           <div className="flex gap-3 justify-center">
@@ -837,13 +835,13 @@ export default function UnifiedTournamentRegistrationPage() {
                               onClick={() => setCurrentStep(1)}
                               variant="outline"
                             >
-                              اختر بطولة أخرى
+                              {copy.chooseOther}
                             </Button>
                             <Button
                               onClick={() => router.push('/tournaments/unified-registration')}
                               className={isPending ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-green-600 hover:bg-green-700'}
                             >
-                              عرض بطولاتي
+                              {copy.viewMine}
                             </Button>
                           </div>
                         </div>
@@ -854,8 +852,8 @@ export default function UnifiedTournamentRegistrationPage() {
                       <>
                         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                           <p className="text-sm text-blue-800">
-                            <strong>{selectedPlayers.length}</strong> لاعب محدد •
-                            رسوم التسجيل: <strong>{calculateTotal()} {getCurrencySymbol(selectedTournament.currency)}</strong>
+                            <strong>{copy.selected.replace('{count}',selectedPlayers.length)}</strong> •
+                            {copy.fee} <strong>{calculateTotal()} {getCurrencySymbol(selectedTournament.currency)}</strong>
                           </p>
                         </div>
 
@@ -891,12 +889,12 @@ export default function UnifiedTournamentRegistrationPage() {
                                 <div className="flex-1 min-w-0">
                                   <h4 className="font-bold text-sm sm:text-base text-gray-900 truncate">{getPlayerDisplayName(player)}</h4>
                                   <p className="text-xs sm:text-sm text-gray-600">
-                                    {player.primary_position || 'غير محدد'} • {calculateAge(player.birth_date) || '-'} سنة
+                                    {player.primary_position || copy.unknown} • {calculateAge(player.birth_date) || '-'} {copy.years}
                                   </p>
                                 </div>
                                 {isPaid && (
                                   <Badge variant="outline" className="bg-gray-200 text-gray-700 border-gray-400">
-                                    مسجل
+                                    {copy.registered}
                                   </Badge>
                                 )}
                               </div>
@@ -916,19 +914,19 @@ export default function UnifiedTournamentRegistrationPage() {
                   className="flex-1 h-12 text-base"
                 >
                   <ArrowRight className="w-5 h-5 ml-2" />
-                  السابق
+                  {copy.previous}
                 </Button>
                 <Button
                   onClick={() => {
                     if (selectedPlayers.length === 0) {
-                      toast.error('يرجى اختيار لاعب واحد على الأقل');
+                      toast.error(copy.errors.selectPlayer);
                       return;
                     }
 
                     // Enforce team size validation
                     const requiredCount = selectedTournament.maxPlayersPerClub;
                     if (requiredCount && requiredCount > 1 && selectedPlayers.length !== requiredCount) {
-                      toast.error(`عدد اللاعبين غير مكتمل. الرجاء استكمال العدد المطلوب (${requiredCount} لاعبين) لاستكمال الاشتراك بالبطولة.`);
+                      toast.error(copy.errors.playerCount.replace('{count}',requiredCount));
                       return;
                     }
 
@@ -937,7 +935,7 @@ export default function UnifiedTournamentRegistrationPage() {
                   className="flex-1 h-12 text-base bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                   disabled={selectedPlayers.length === 0}
                 >
-                  التالي
+                  {copy.next}
                   <ArrowLeft className="w-5 h-5 mr-2" />
                 </Button>
               </div>
@@ -951,21 +949,21 @@ export default function UnifiedTournamentRegistrationPage() {
                 <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-t-lg">
                   <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
                     <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6" />
-                    مراجعة التسجيل
+                    {copy.review}
                   </CardTitle>
-                  <CardDescription className="text-purple-100">تأكد من البيانات قبل التأكيد</CardDescription>
+                  <CardDescription className="text-purple-100">{copy.reviewHelp}</CardDescription>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-6 space-y-6">
 
                   {/* Tournament Summary */}
                   <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    <h3 className="font-bold text-sm text-gray-600 mb-2">البطولة</h3>
+                    <h3 className="font-bold text-sm text-gray-600 mb-2">{copy.tournament.replace(': {name}','')}</h3>
                     <p className="font-bold text-base sm:text-lg text-gray-900">{selectedTournament.name}</p>
                   </div>
 
                   {/* Players List */}
                   <div>
-                    <h3 className="font-bold text-sm text-gray-600 mb-3">اللاعبين المحددين ({selectedPlayers.length})</h3>
+                    <h3 className="font-bold text-sm text-gray-600 mb-3">{copy.selectedPlayers.replace('{count}',selectedPlayers.length)}</h3>
                     <div className="space-y-2">
                       {selectedPlayers.map(player => (
                         <div key={player.id} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
@@ -985,20 +983,20 @@ export default function UnifiedTournamentRegistrationPage() {
                   {/* Total */}
                   <div className="p-4 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl text-white">
                     <div className="flex justify-between items-center">
-                      <span className="text-base sm:text-lg">الإجمالي</span>
+                      <span className="text-base sm:text-lg">{copy.total}</span>
                       <span className="text-2xl sm:text-3xl font-bold">{calculateTotal()} {getCurrencySymbol(selectedTournament.currency)}</span>
                     </div>
                   </div>
 
                   {/* Payment Method */}
                   <div>
-                    <h3 className="font-bold text-sm text-gray-600 mb-3">طريقة الدفع</h3>
+                    <h3 className="font-bold text-sm text-gray-600 mb-3">{copy.paymentMethod}</h3>
                     <div className="grid grid-cols-2 gap-3">
                       {(() => {
                         const methods: any[] = [];
 
                         // 1. "Later" option is always available (unless we want to control it too, but let's keep it for now)
-                        methods.push({ id: 'later', label: 'دفع لاحقاً', icon: Clock });
+                        methods.push({ id: 'later', label: copy.payLater, icon: Clock });
 
                         // 2. Dynamic Methods from Admin Settings (Firestore)
                         // 'paymentMethods' is already loaded via useEffect when tournament is selected.
@@ -1007,12 +1005,12 @@ export default function UnifiedTournamentRegistrationPage() {
                             if (setting.enabled) {
                               // Map Admin Setting ID to UI Component
                               if (setting.id === 'skipcash' && isSkipCashAvailable) {
-                                methods.push({ id: 'skipcash', label: setting.name || 'بطاقة بنكية / Apple Pay', icon: CreditCard });
+                                methods.push({ id: 'skipcash', label: setting.name || copy.cardApple, icon: CreditCard });
                               } else if (setting.id === 'geidea' || (setting.type === 'card' && setting.id !== 'skipcash')) {
                                 // Generic Card or Geidea
                                 // Check if we already added a card method to avoid duplicates if configured weirdly by user
                                 if (!methods.find(m => m.id === 'card' || m.id === 'geidea')) {
-                                  methods.push({ id: 'card', label: setting.name || 'بطاقة بنكية', icon: CreditCard });
+                                  methods.push({ id: 'card', label: setting.name || copy.card, icon: CreditCard });
                                 }
                               } else if (setting.type === 'wallet' || setting.type === 'bank_transfer') {
                                 // Wallets and Transfers
@@ -1029,10 +1027,10 @@ export default function UnifiedTournamentRegistrationPage() {
                         } else {
                           // FALLBACK if no settings loaded (e.g. offline or error)
                           const country = selectedTournament.country || selectedTournament.location_country || 'EG';
-                          if (isSkipCashAvailable && ['QA', 'Qatar', 'قطر'].includes(country)) {
-                            methods.push({ id: 'skipcash', label: 'بطاقة بنكية / Apple Pay', icon: CreditCard });
+                          if (isSkipCashAvailable && ['QA', 'Qatar', '\u0642\u0637\u0631'].includes(country)) {
+                            methods.push({ id: 'skipcash', label: copy.cardApple, icon: CreditCard });
                           } else {
-                            methods.push({ id: 'card', label: 'بطاقة بنكية', icon: CreditCard });
+                            methods.push({ id: 'card', label: copy.card, icon: CreditCard });
                           }
                         }
 
@@ -1048,7 +1046,7 @@ export default function UnifiedTournamentRegistrationPage() {
                           });
                         }
 
-                        methods.push({ id: 'office', label: 'في المكتب', icon: DollarSign });
+                        methods.push({ id: 'office', label: copy.office, icon: DollarSign });
 
                         return methods.map(method => (
                           <div
@@ -1068,7 +1066,7 @@ export default function UnifiedTournamentRegistrationPage() {
                             {/* Wallet Number with Copy Button */}
                             {method.number && paymentMethod === method.id && (
                               <div className="mt-3 space-y-1">
-                                <p className="text-[10px] text-gray-500 font-bold">رقم المحفظة:</p>
+                                <p className="text-[10px] text-gray-500 font-bold">{copy.walletNumber}</p>
                                 <div className="flex items-center gap-2">
                                   <code className="flex-1 text-sm font-black text-purple-700 bg-white border-2 border-dashed border-purple-200 px-2 py-1 rounded-lg tracking-wider text-center select-all shadow-sm">
                                     {method.number}
@@ -1077,10 +1075,10 @@ export default function UnifiedTournamentRegistrationPage() {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       navigator.clipboard.writeText(method.number);
-                                      toast.success('تم نسخ الرقم');
+                                      toast.success(copy.success.copied);
                                     }}
                                     className="p-1.5 bg-white border border-gray-200 text-gray-400 rounded-lg hover:text-purple-600 hover:border-purple-300 hover:shadow-md transition-all"
-                                    title="نسخ الرقم"
+                                    title={copy.copyNumber}
                                   >
                                     <Copy className="w-4 h-4" />
                                   </button>
@@ -1105,7 +1103,7 @@ export default function UnifiedTournamentRegistrationPage() {
                   className="flex-1 h-12 text-base"
                 >
                   <ArrowRight className="w-5 h-5 ml-2" />
-                  السابق
+                  {copy.previous}
                 </Button>
                 <Button
                   onClick={handleSubmit}
@@ -1115,12 +1113,12 @@ export default function UnifiedTournamentRegistrationPage() {
                   {submitting ? (
                     <>
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin ml-2"></div>
-                      جاري التسجيل...
+                      {copy.registering}
                     </>
                   ) : (
                     <>
                       <CheckCircle className="w-5 h-5 ml-2" />
-                      تأكيد التسجيل
+                      {copy.confirm}
                     </>
                   )}
                 </Button>
@@ -1135,11 +1133,11 @@ export default function UnifiedTournamentRegistrationPage() {
         visible={showPaymentModal}
         onRequestClose={() => setShowPaymentModal(false)}
         onPaymentSuccess={handlePaymentSuccess}
-        onPaymentFailure={() => toast.error('فشلت عملية الدفع')}
+        onPaymentFailure={() => toast.error(copy.errors.paymentFailed)}
         amount={calculateTotal()}
         currency="EGP"
-        title={`دفع البطولة - ${selectedTournament?.name}`}
-        description={`رسوم تسجيل ${selectedPlayers.length} لاعبين`}
+        title={copy.paymentTitle.replace('{name}',selectedTournament?.name||'')}
+        description={copy.paymentDescription.replace('{count}',selectedPlayers.length)}
         customerEmail={user?.email || userData?.email || ''}
         merchantReferenceId={`REG_${selectedTournament?.id}_${Date.now()}`}
       />
@@ -1148,13 +1146,13 @@ export default function UnifiedTournamentRegistrationPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <Card className="w-full max-w-md">
             <CardHeader className="bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-t-lg">
-              <CardTitle className="text-lg">الدفع بالمحفظة الإلكترونية</CardTitle>
+              <CardTitle className="text-lg">{copy.walletTitle}</CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               <div>
-                <Label>مزود الخدمة</Label>
+                <Label>{copy.provider}</Label>
                 <select className="w-full border rounded p-2 mt-1" value={walletProvider} onChange={e => setWalletProvider(e.target.value)}>
-                  <option value="">اختر المزود</option>
+                  <option value="">{copy.selectProvider}</option>
                   {paymentMethods
                     .filter(m => m.enabled !== false && m.id !== 'geidea' && m.id !== 'bank_transfer')
                     .map(method => (
@@ -1164,7 +1162,7 @@ export default function UnifiedTournamentRegistrationPage() {
                 </select>
               </div>
               <div>
-                <Label>رقم التحويل</Label>
+                <Label>{copy.transferNumber}</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <Input
                     value={(() => {
@@ -1180,29 +1178,29 @@ export default function UnifiedTournamentRegistrationPage() {
                       const number = selectedMethod?.accountNumber || selectedMethod?.details || '';
                       if (number) {
                         navigator.clipboard.writeText(number);
-                        toast.success('تم نسخ الرقم');
+                        toast.success(copy.success.copied);
                       }
                     }}
                     className="p-2 bg-white border border-gray-200 text-gray-400 rounded-lg hover:text-emerald-600 hover:border-emerald-300 hover:shadow-md transition-all"
-                    title="نسخ الرقم"
+                    title={copy.copyNumber}
                   >
                     <Copy className="w-4 h-4" />
                   </button>
                 </div>
               </div>
               <div>
-                <Label>رقم الإيصال</Label>
-                <Input value={walletReceiptNumber} onChange={e => setWalletReceiptNumber(e.target.value)} placeholder="رقم العملية" className="mt-1" />
+                <Label>{copy.receiptNumber}</Label>
+                <Input value={walletReceiptNumber} onChange={e => setWalletReceiptNumber(e.target.value)} placeholder={copy.transactionNumber} className="mt-1" />
               </div>
               <div>
-                <Label>صورة الإيصال</Label>
+                <Label>{copy.receiptImage}</Label>
                 <Input type="file" onChange={e => e.target.files && setWalletReceipt(e.target.files[0])} className="mt-1" />
               </div>
               <div className="flex gap-2 pt-2">
                 <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700" onClick={handleWalletUpload} disabled={walletUploading || !walletReceipt}>
-                  {walletUploading ? 'جاري الرفع...' : 'تأكيد'}
+                  {walletUploading ? copy.uploading : copy.confirm}
                 </Button>
-                <Button variant="outline" onClick={() => setShowWalletModal(false)}>إلغاء</Button>
+                <Button variant="outline" onClick={() => setShowWalletModal(false)}>{copy.cancel}</Button>
               </div>
             </CardContent>
           </Card>

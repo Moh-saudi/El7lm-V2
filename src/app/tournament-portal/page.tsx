@@ -10,6 +10,7 @@ import {
 import { getCurrentClient, TournamentClient } from '@/lib/tournament-portal/auth';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
 import { PortalShell } from './_components/PortalShell';
+import { useTranslation } from '@/lib/i18n';
 
 type TournamentRow = {
     id: string; slug: string; name: string; status: string; type: string;
@@ -18,22 +19,18 @@ type TournamentRow = {
     created_at: string;
 };
 
-const STATUS_CONFIG: Record<string, { label: string; icon: any; cls: string }> = {
-    draft:     { label: 'مسودة',    icon: Clock,         cls: 'bg-slate-100 text-slate-600'   },
-    open:      { label: 'مفتوح',    icon: CheckCircle,   cls: 'bg-emerald-100 text-emerald-700' },
-    closed:    { label: 'مغلق',     icon: XCircle,       cls: 'bg-rose-100 text-rose-700'     },
-    ongoing:   { label: 'جارٍ',     icon: Activity,      cls: 'bg-blue-100 text-blue-700'     },
-    completed: { label: 'منتهي',    icon: CheckCircle,   cls: 'bg-purple-100 text-purple-700' },
-    cancelled: { label: 'ملغي',     icon: AlertCircle,   cls: 'bg-orange-100 text-orange-700' },
-};
-
-const TYPE_LABEL: Record<string, string> = {
-    knockout:         'كأس (إقصائي)',
-    league:           'دوري',
-    groups_knockout:  'مجموعات + إقصاء',
+const STATUS_CONFIG: Record<string, { icon: any; cls: string }> = {
+    draft:     { icon: Clock,         cls: 'bg-slate-100 text-slate-600'   },
+    open:      { icon: CheckCircle,   cls: 'bg-emerald-100 text-emerald-700' },
+    closed:    { icon: XCircle,       cls: 'bg-rose-100 text-rose-700'     },
+    ongoing:   { icon: Activity,      cls: 'bg-blue-100 text-blue-700'     },
+    completed: { icon: CheckCircle,   cls: 'bg-purple-100 text-purple-700' },
+    cancelled: { icon: AlertCircle,   cls: 'bg-orange-100 text-orange-700' },
 };
 
 export default function TournamentPortalDashboard() {
+    const { locale, isRTL, getTranslations } = useTranslation();
+    const copy = getTranslations<any>('tournamentPortal');
     const [client,      setClient]      = useState<TournamentClient | null>(null);
     const [tournaments, setTournaments] = useState<TournamentRow[]>([]);
     const [loading,     setLoading]     = useState(true);
@@ -78,26 +75,26 @@ export default function TournamentPortalDashboard() {
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-2xl font-black text-slate-900">بطولاتي</h1>
+                    <h1 className="text-2xl font-black text-slate-900">{copy.dashboard.title}</h1>
                     <p className="text-slate-500 text-sm mt-0.5">
-                        أهلاً {client.name}، إليك نظرة عامة على بطولاتك
+                        {copy.dashboard.welcome.replace('{name}', client.name)}
                     </p>
                 </div>
                 <Link
                     href="/tournament-portal/new"
                     className="flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-yellow-500/20 transition-all text-sm"
                 >
-                    <Plus className="w-4 h-4" /> بطولة جديدة
+                    <Plus className="w-4 h-4" /> {copy.common.newTournament}
                 </Link>
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
                 {[
-                    { label: 'إجمالي البطولات', value: stats.total,     color: 'from-slate-600 to-slate-800'   },
-                    { label: 'جارية الآن',       value: stats.ongoing,   color: 'from-blue-500 to-indigo-600'   },
-                    { label: 'مفتوحة للتسجيل',  value: stats.open,      color: 'from-emerald-500 to-teal-600'  },
-                    { label: 'منتهية',           value: stats.completed, color: 'from-purple-500 to-violet-600' },
+                    { label: copy.dashboard.total, value: stats.total,     color: 'from-slate-600 to-slate-800'   },
+                    { label: copy.dashboard.ongoing, value: stats.ongoing,   color: 'from-blue-500 to-indigo-600'   },
+                    { label: copy.dashboard.open, value: stats.open,      color: 'from-emerald-500 to-teal-600'  },
+                    { label: copy.dashboard.completed, value: stats.completed, color: 'from-purple-500 to-violet-600' },
                 ].map(s => (
                     <div key={s.label} className={`bg-gradient-to-br ${s.color} rounded-2xl p-4 text-white`}>
                         <p className="text-3xl font-black">{s.value}</p>
@@ -116,13 +113,13 @@ export default function TournamentPortalDashboard() {
                     <div className="w-20 h-20 bg-yellow-50 rounded-3xl flex items-center justify-center mb-4">
                         <Trophy className="w-10 h-10 text-yellow-500" />
                     </div>
-                    <p className="font-bold text-slate-600 text-lg">لا توجد بطولات بعد</p>
-                    <p className="text-sm mt-1 mb-6">ابدأ بإنشاء بطولتك الأولى</p>
+                    <p className="font-bold text-slate-600 text-lg">{copy.dashboard.emptyTitle}</p>
+                    <p className="text-sm mt-1 mb-6">{copy.dashboard.emptyText}</p>
                     <Link
                         href="/tournament-portal/new"
                         className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-white font-bold px-5 py-2.5 rounded-xl transition-colors"
                     >
-                        <Plus className="w-4 h-4" /> إنشاء بطولة
+                        <Plus className="w-4 h-4" /> {copy.dashboard.create}
                     </Link>
                 </div>
             ) : (
@@ -146,10 +143,10 @@ export default function TournamentPortalDashboard() {
                                     )}
                                     <div className="flex-1 min-w-0">
                                         <h3 className="font-bold text-slate-900 text-sm truncate group-hover:text-yellow-600 transition-colors">{t.name}</h3>
-                                        <p className="text-xs text-slate-400 mt-0.5">{TYPE_LABEL[t.type] || t.type}</p>
+                                        <p className="text-xs text-slate-400 mt-0.5">{copy.dashboard.types[t.type] || t.type}</p>
                                     </div>
                                     <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${cfg.cls}`}>
-                                        <StatusIcon className="w-3 h-3" /> {cfg.label}
+                                        <StatusIcon className="w-3 h-3" /> {copy.dashboard.statuses[t.status] || t.status}
                                     </span>
                                 </div>
 
@@ -162,22 +159,22 @@ export default function TournamentPortalDashboard() {
                                     {t.start_date && (
                                         <span className="flex items-center gap-1">
                                             <Calendar className="w-3 h-3" />
-                                            {new Date(t.start_date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}
+                                            {new Date(t.start_date).toLocaleDateString(locale, { month: 'short', day: 'numeric' })}
                                         </span>
                                     )}
                                     {t.max_teams && (
                                         <span className="flex items-center gap-1">
-                                            <Users className="w-3 h-3" /> {t.max_teams} فريق
+                                        <Users className="w-3 h-3" /> {t.max_teams} {copy.dashboard.team}
                                         </span>
                                     )}
                                 </div>
 
                                 <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
                                     <span className="text-[10px] text-slate-400">
-                                        {new Date(t.created_at).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                        {new Date(t.created_at).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}
                                     </span>
                                     <span className="text-[11px] text-yellow-600 font-semibold flex items-center gap-0.5 group-hover:gap-1.5 transition-all">
-                                        إدارة <ChevronLeft className="w-3 h-3" />
+                                        {copy.dashboard.manage} <ChevronLeft className={`w-3 h-3 ${isRTL ? '' : 'rotate-180'}`} />
                                     </span>
                                 </div>
                             </Link>

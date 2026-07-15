@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
+import { useTranslation } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 interface Branch {
   name: string;
@@ -112,18 +114,17 @@ const initialAcademyData: AcademyData = {
   stats: { students: 0, programs: 0, coaches: 0, graduates: 0 },
 };
 
-const AGE_GROUPS = ['U-6', 'U-8', 'U-10', 'U-12', 'U-14', 'U-16', 'U-18', 'أكابر'];
-const FACILITIES = ['ملعب طبيعي', 'ملعب صناعي', 'صالة مغلقة', 'حمام سباحة', 'صالة لياقة', 'غرف تغيير', 'كافتيريا', 'قاعة اجتماعات'];
+const SENIOR_AGE_GROUP = '\u0623\u0643\u0627\u0628\u0631';
+const AGE_GROUPS = ['U-6', 'U-8', 'U-10', 'U-12', 'U-14', 'U-16', 'U-18', SENIOR_AGE_GROUP];
+const FACILITIES = [
+  '\u0645\u0644\u0639\u0628 \u0637\u0628\u064a\u0639\u064a', '\u0645\u0644\u0639\u0628 \u0635\u0646\u0627\u0639\u064a',
+  '\u0635\u0627\u0644\u0629 \u0645\u063a\u0644\u0642\u0629', '\u062d\u0645\u0627\u0645 \u0633\u0628\u0627\u062d\u0629',
+  '\u0635\u0627\u0644\u0629 \u0644\u064a\u0627\u0642\u0629', '\u063a\u0631\u0641 \u062a\u063a\u064a\u064a\u0631',
+  '\u0643\u0627\u0641\u062a\u064a\u0631\u064a\u0627', '\u0642\u0627\u0639\u0629 \u0627\u062c\u062a\u0645\u0627\u0639\u0627\u062a',
+];
 
-const REQUIRED_FIELDS: { key: keyof AcademyData; label: string }[] = [
-  { key: 'academy_name',  label: 'اسم الأكاديمية' },
-  { key: 'academy_type',  label: 'نوع الأكاديمية' },
-  { key: 'country',       label: 'الدولة' },
-  { key: 'city',          label: 'المدينة' },
-  { key: 'phone',         label: 'رقم الهاتف' },
-  { key: 'email',         label: 'البريد الإلكتروني' },
-  { key: 'description',   label: 'نبذة عن الأكاديمية' },
-  { key: 'founding_year', label: 'سنة التأسيس' },
+const REQUIRED_FIELD_KEYS: (keyof AcademyData)[] = [
+  'academy_name', 'academy_type', 'country', 'city', 'phone', 'email', 'description', 'founding_year',
 ];
 
 const getImageUrl = (path: string) => {
@@ -134,6 +135,11 @@ const getImageUrl = (path: string) => {
 };
 
 export default function AcademyProfilePage() {
+  const { isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('academyProfile');
+  const interpolate = (template: string, values: Record<string, string | number>) =>
+    template.replace(/\{\{(\w+)\}\}/g, (_, key) => String(values[key] ?? ''));
+  const requiredFields = REQUIRED_FIELD_KEYS.map(key => ({ key, label: copy.requiredLabels[key] }));
   const { userData, user, updateUserData } = useAuth();
   const router = useRouter();
 
@@ -188,7 +194,7 @@ export default function AcademyProfilePage() {
       }
     } catch (err) {
       console.error('Error fetching academy data:', err);
-      toast.error('حدث خطأ أثناء تحميل البيانات');
+      toast.error(copy.loadError);
     } finally {
       setLoading(false);
     }
@@ -204,7 +210,7 @@ export default function AcademyProfilePage() {
   }, [user, fetchData, router]);
 
 
-  const missingFields = REQUIRED_FIELDS.filter(({ key }) => {
+  const missingFields = requiredFields.filter(({ key }) => {
     const val = academyData[key];
     return !val || (typeof val === 'string' && !val.trim());
   });
@@ -225,15 +231,15 @@ export default function AcademyProfilePage() {
 
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof AcademyData, string>> = {};
-    REQUIRED_FIELDS.forEach(({ key, label }) => {
+    requiredFields.forEach(({ key, label }) => {
       const val = academyData[key];
       if (!val || (typeof val === 'string' && !val.trim())) {
-        newErrors[key] = `${label} مطلوب`;
+        newErrors[key] = interpolate(copy.required, { field: label });
       }
     });
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) {
-      toast.error('يرجى استكمال البيانات الأساسية المطلوبة');
+      toast.error(copy.completeRequired);
       return false;
     }
     return true;
@@ -260,8 +266,8 @@ export default function AcademyProfilePage() {
 
   const handleImageUpload = async (file: File, type: 'logo' | 'cover' | 'gallery') => {
     if (!user?.id) return;
-    if (!file.type.startsWith('image/')) { toast.error('يرجى اختيار ملف صورة صالح'); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error('حجم الصورة يتجاوز 5 ميجابايت'); return; }
+    if (!file.type.startsWith('image/')) { toast.error(copy.invalidImage); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error(copy.imageTooLarge); return; }
     setUploading(true);
     try {
       const ext = file.name.split('.').pop();
@@ -273,7 +279,7 @@ export default function AcademyProfilePage() {
       formData.append('contentType', file.type);
 
       const res = await fetch('/api/storage/upload', { method: 'POST', body: formData });
-      if (!res.ok) throw new Error('فشل الرفع');
+      if (!res.ok) throw new Error(copy.uploadFailed);
       const { publicUrl } = await res.json();
 
       if (type === 'gallery') {
@@ -281,10 +287,10 @@ export default function AcademyProfilePage() {
       } else {
         setAcademyData(prev => ({ ...prev, [type === 'logo' ? 'logo' : 'coverImage']: publicUrl }));
       }
-      toast.success('تم رفع الصورة بنجاح');
+      toast.success(copy.uploadSuccess);
     } catch (err) {
       console.error('Upload error:', err);
-      toast.error('حدث خطأ أثناء رفع الصورة');
+      toast.error(copy.uploadError);
     } finally {
       setUploading(false);
     }
@@ -341,19 +347,19 @@ export default function AcademyProfilePage() {
         logo: academyData.logo,
         profile_image: academyData.logo,
       });
-      toast.success('تم حفظ بيانات الأكاديمية بنجاح');
+      toast.success(copy.saveSuccess);
       setEditMode(false);
     } catch (err: unknown) {
       console.error('Save error:', err);
       const msg = err && typeof err === 'object' && 'message' in err ? (err as { message: string }).message : String(err);
-      toast.error(`فشل الحفظ: ${msg}`);
+      toast.error(interpolate(copy.saveFailed, { error: msg }));
     } finally {
       setUploading(false);
     }
   };
 
   const handleAddBranch = () => {
-    if (!newBranch.name.trim()) { toast.error('يرجى إدخال اسم الفرع'); return; }
+    if (!newBranch.name.trim()) { toast.error(copy.branchNameRequired); return; }
     setAcademyData(prev => ({ ...prev, branches: [...prev.branches, { ...newBranch }] }));
     setNewBranch({ name: '', address: '', contact: '' });
     setShowAddBranch(false);
@@ -364,14 +370,14 @@ export default function AcademyProfilePage() {
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 rounded-full border-4 border-orange-200 animate-spin border-t-orange-600"></div>
-          <p className="text-gray-600">جاري تحميل بيانات الأكاديمية...</p>
+          <p className="text-gray-600">{copy.loading}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-orange-50" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* Sticky Header */}
       <div className="sticky top-0 z-50 border-b border-gray-200 shadow-sm backdrop-blur-md bg-white/95">
@@ -379,30 +385,31 @@ export default function AcademyProfilePage() {
           <div className="flex justify-between items-center">
             <button onClick={() => router.back()}
               className="flex gap-2 items-center px-4 py-2 text-gray-600 rounded-lg transition hover:text-gray-800 hover:bg-gray-100">
-              <ArrowLeft className="w-5 h-5" />
-              <span className="font-medium">العودة</span>
+              <ArrowLeft className={`w-5 h-5 ${isRTL ? '' : 'rotate-180'}`} />
+              <span className="font-medium">{copy.back}</span>
             </button>
             <div className="text-center">
-              <h1 className="text-xl font-bold text-gray-900">الملف الشخصي - الأكاديمية الرياضية</h1>
+              <h1 className="text-xl font-bold text-gray-900">{copy.title}</h1>
               {academyData.academy_name && <p className="text-sm text-gray-500">{academyData.academy_name}</p>}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <LanguageSwitcher />
               {editMode ? (
                 <>
                   <button onClick={handleSave} disabled={uploading}
                     className="flex gap-2 items-center px-4 py-2 text-white bg-green-600 rounded-lg transition hover:bg-green-700 disabled:opacity-60">
                     <Save className="w-4 h-4" />
-                    {uploading ? 'جاري الحفظ...' : 'حفظ'}
+                    {uploading ? copy.saving : copy.save}
                   </button>
                   <button onClick={() => { fetchData(); setEditMode(false); }}
                     className="flex gap-2 items-center px-4 py-2 text-gray-700 bg-gray-100 rounded-lg transition hover:bg-gray-200">
-                    <X className="w-4 h-4" /> إلغاء
+                    <X className="w-4 h-4" /> {copy.cancel}
                   </button>
                 </>
               ) : (
                 <button onClick={() => setEditMode(true)}
                   className="flex gap-2 items-center px-5 py-2 text-white rounded-lg shadow transition hover:scale-105 bg-gradient-to-l from-orange-500 to-orange-700">
-                  <Edit className="w-4 h-4" /> تعديل البيانات
+                  <Edit className="w-4 h-4" /> {copy.edit}
                 </button>
               )}
             </div>
@@ -419,9 +426,9 @@ export default function AcademyProfilePage() {
               <Award className="w-5 h-5 text-amber-600" />
             </div>
             <div className="flex-1">
-              <p className="mb-1 text-sm font-bold text-amber-800">الملف الشخصي غير مكتمل</p>
+              <p className="mb-1 text-sm font-bold text-amber-800">{copy.incompleteTitle}</p>
               <p className="mb-2 text-xs text-amber-700">
-                أكمل بياناتك الأساسية لتحسين ظهور أكاديميتك وجذب اللاعبين. الحقول الناقصة:
+                {copy.incompleteDescription}
               </p>
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {missingFields.map(({ label }) => (
@@ -434,9 +441,9 @@ export default function AcademyProfilePage() {
                 <button
                   onClick={() => setEditMode(true)}
                   className="px-4 py-1.5 text-xs font-semibold text-white bg-amber-500 rounded-lg transition hover:bg-amber-600">
-                  استكمال البيانات الآن
+                  {copy.completeNow}
                 </button>
-                <span className="text-xs text-amber-500">سيتم تذكيرك مجدداً بعد {SNOOZE_DAYS} أيام عند الإغلاق</span>
+                <span className="text-xs text-amber-500">{interpolate(copy.reminder, { days: SNOOZE_DAYS })}</span>
               </div>
             </div>
             <button
@@ -444,7 +451,7 @@ export default function AcademyProfilePage() {
                 localStorage.setItem(BANNER_SNOOZE_KEY, String(Date.now()));
                 setShowCompletionBanner(false);
               }}
-              title={`تذكيري بعد ${SNOOZE_DAYS} أيام`}
+              title={interpolate(copy.reminderTitle, { days: SNOOZE_DAYS })}
               className="text-amber-400 hover:text-amber-600">
               <X className="w-4 h-4" />
             </button>
@@ -453,7 +460,7 @@ export default function AcademyProfilePage() {
 
         {/* Cover Image */}
         <div className="overflow-hidden relative mb-8 h-52 rounded-2xl shadow-lg">
-          <img src={academyData.coverImage || '/images/hero-1.jpg'} alt="صورة الغلاف"
+          <img src={academyData.coverImage || '/images/hero-1.jpg'} alt={copy.coverAlt}
             className="object-cover w-full h-full" />
           {editMode && (
             <label className="flex absolute inset-0 justify-center items-center transition cursor-pointer bg-black/50 hover:bg-black/60">
@@ -461,7 +468,7 @@ export default function AcademyProfilePage() {
                 onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'cover')} />
               <div className="flex flex-col items-center gap-2 text-white">
                 <Camera className="w-8 h-8" />
-                <span className="text-sm font-medium">تغيير صورة الغلاف</span>
+                <span className="text-sm font-medium">{copy.changeCover}</span>
               </div>
             </label>
           )}
@@ -470,7 +477,7 @@ export default function AcademyProfilePage() {
         {/* Profile Card */}
         <div className="flex flex-col gap-6 items-center p-8 mb-8 bg-white rounded-2xl shadow-lg md:flex-row">
           <div className="relative flex-shrink-0">
-            <img src={academyData.logo || '/images/club-avatar.png'} alt="شعار الأكاديمية"
+            <img src={academyData.logo || '/images/club-avatar.png'} alt={copy.logoAlt}
               className="object-cover w-32 h-32 rounded-full border-4 border-orange-500 shadow-lg" />
             {editMode && (
               <label className="flex absolute inset-0 justify-center items-center rounded-full transition cursor-pointer bg-black/50 hover:bg-black/60">
@@ -485,23 +492,23 @@ export default function AcademyProfilePage() {
               <div className="mb-2">
                 <input type="text" value={academyData.academy_name}
                   onChange={e => { handleChange('academy_name', e.target.value); setErrors(p => ({ ...p, academy_name: '' })); }}
-                  placeholder="اسم الأكاديمية *"
+                  placeholder={copy.academyNamePlaceholder}
                   className={`w-full text-2xl font-bold text-right text-gray-900 bg-transparent border-b-2 focus:outline-none ${errors.academy_name ? 'border-red-400' : 'border-orange-300 focus:border-orange-600'}`} />
                 {errors.academy_name && <p className="mt-1 text-xs text-red-500">{errors.academy_name}</p>}
               </div>
             ) : (
-              <h2 className="mb-1 text-2xl font-bold text-orange-700">{academyData.academy_name || 'أكاديمية رياضية'}</h2>
+              <h2 className="mb-1 text-2xl font-bold text-orange-700">{academyData.academy_name || copy.academyFallback}</h2>
             )}
             {editMode ? (
               <div className="mb-3">
                 <input type="text" value={academyData.academy_type}
                   onChange={e => { handleChange('academy_type', e.target.value); setErrors(p => ({ ...p, academy_type: '' })); }}
-                  placeholder="نوع الأكاديمية (مثال: كرة قدم، متعددة الرياضات...) *"
+                  placeholder={copy.typePlaceholder}
                   className={`w-full text-right text-gray-600 bg-transparent border-b focus:outline-none ${errors.academy_type ? 'border-red-400' : 'border-gray-200 focus:border-orange-400'}`} />
                 {errors.academy_type && <p className="mt-0.5 text-xs text-red-500">{errors.academy_type}</p>}
               </div>
             ) : (
-              <p className="mb-3 text-gray-600">{academyData.academy_type || 'أكاديمية رياضية'}</p>
+              <p className="mb-3 text-gray-600">{academyData.academy_type || copy.academyFallback}</p>
             )}
             <div className="flex flex-wrap gap-4 text-sm text-gray-500">
               <span className="flex gap-1 items-center">
@@ -510,12 +517,12 @@ export default function AcademyProfilePage() {
                   <>
                     <input type="text" value={academyData.city}
                       onChange={e => { handleChange('city', e.target.value); setErrors(p => ({ ...p, city: '' })); }}
-                      placeholder="المدينة *"
+                      placeholder={copy.cityPlaceholder}
                       className={`w-20 bg-transparent border-b focus:outline-none ${errors.city ? 'border-red-400' : 'border-gray-200'}`} />
                     <span>,</span>
                     <input type="text" value={academyData.country}
                       onChange={e => { handleChange('country', e.target.value); setErrors(p => ({ ...p, country: '' })); }}
-                      placeholder="الدولة *"
+                      placeholder={copy.countryPlaceholder}
                       className={`w-20 bg-transparent border-b focus:outline-none ${errors.country ? 'border-red-400' : 'border-gray-200'}`} />
                   </>
                 ) : (`${academyData.city || '—'}${academyData.country ? `, ${academyData.country}` : ''}`)}
@@ -525,14 +532,14 @@ export default function AcademyProfilePage() {
                 {editMode ? (
                   <input type="text" value={academyData.founding_year}
                     onChange={e => { handleChange('founding_year', e.target.value); setErrors(p => ({ ...p, founding_year: '' })); }}
-                    placeholder="سنة التأسيس *"
+                    placeholder={copy.yearPlaceholder}
                     className={`w-20 bg-transparent border-b focus:outline-none ${errors.founding_year ? 'border-red-400' : 'border-gray-200'}`} />
-                ) : (academyData.founding_year ? `تأسست ${academyData.founding_year}` : '—')}
+                ) : (academyData.founding_year ? interpolate(copy.founded, { year: academyData.founding_year }) : '—')}
               </span>
             </div>
             <div className="flex gap-2 mt-4">
-              <span className="self-center text-sm text-gray-500">اعتماد الاتحاد:</span>
-              {[{ label: 'معتمدة', val: true }, { label: 'غير معتمدة', val: false }].map(({ label, val }) => (
+              <span className="self-center text-sm text-gray-500">{copy.federationApproval}</span>
+              {[{ label: copy.approved, val: true }, { label: copy.unapproved, val: false }].map(({ label, val }) => (
                 <button key={label} disabled={!editMode}
                   onClick={() => editMode && handleChange('is_federation_approved', val)}
                   className={`px-4 py-1.5 rounded-full text-sm font-medium border-2 transition disabled:cursor-default ${
@@ -551,10 +558,10 @@ export default function AcademyProfilePage() {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-4 mb-8 md:grid-cols-4">
           {[
-            { icon: <Users size={26} />, label: 'اللاعبون', field: 'students', color: 'from-orange-400 to-orange-600' },
-            { icon: <BookOpen size={26} />, label: 'البرامج', field: 'programs', color: 'from-blue-400 to-blue-600' },
-            { icon: <GraduationCap size={26} />, label: 'المدربون', field: 'coaches', color: 'from-green-400 to-green-600' },
-            { icon: <Trophy size={26} />, label: 'الخريجون', field: 'graduates', color: 'from-purple-400 to-purple-600' },
+            { icon: <Users size={26} />, label: copy.stats.students, field: 'students', color: 'from-orange-400 to-orange-600' },
+            { icon: <BookOpen size={26} />, label: copy.stats.programs, field: 'programs', color: 'from-blue-400 to-blue-600' },
+            { icon: <GraduationCap size={26} />, label: copy.stats.coaches, field: 'coaches', color: 'from-green-400 to-green-600' },
+            { icon: <Trophy size={26} />, label: copy.stats.graduates, field: 'graduates', color: 'from-purple-400 to-purple-600' },
           ].map(({ icon, label, field, color }) => (
             <div key={field} className={`flex flex-col items-center p-5 text-white bg-gradient-to-br ${color} rounded-xl shadow`}>
               {icon}
@@ -574,31 +581,31 @@ export default function AcademyProfilePage() {
         <div className="grid grid-cols-1 gap-8 mb-8 md:grid-cols-2">
           <div className="p-6 bg-white rounded-xl shadow">
             <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-orange-700">
-              <FileText size={20} /> نبذة عن الأكاديمية
+              <FileText size={20} /> {copy.aboutTitle}
             </h3>
             {editMode ? (
               <>
                 <textarea value={academyData.description}
                   onChange={e => { handleChange('description', e.target.value); setErrors(p => ({ ...p, description: '' })); }}
-                  rows={5} placeholder="اكتب نبذة عن الأكاديمية وأهدافها... *"
+                  rows={5} placeholder={copy.aboutPlaceholder}
                   className={`p-3 w-full text-right text-sm rounded-lg border resize-none focus:outline-none focus:ring-2 ${errors.description ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:ring-orange-300'}`} />
                 {errors.description && <p className="mt-1 text-xs text-red-500">{errors.description}</p>}
               </>
             ) : (
-              <p className="text-sm leading-relaxed text-right text-gray-600">{academyData.description || 'لا توجد نبذة بعد.'}</p>
+              <p className="text-sm leading-relaxed text-gray-600">{academyData.description || copy.noAbout}</p>
             )}
           </div>
           <div className="p-6 bg-white rounded-xl shadow">
             <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-orange-700">
-              <Phone size={20} /> بيانات التواصل
+              <Phone size={20} /> {copy.contactTitle}
             </h3>
             <div className="space-y-3">
               {[
-                { icon: <Phone size={15} />, label: 'الهاتف', field: 'phone', type: 'tel', required: true },
-                { icon: <Phone size={15} />, label: 'واتساب', field: 'whatsapp', type: 'tel', required: false },
-                { icon: <Mail size={15} />, label: 'البريد', field: 'email', type: 'email', required: true },
-                { icon: <MapPin size={15} />, label: 'العنوان', field: 'address', type: 'text', required: false },
-                { icon: <Globe size={15} />, label: 'الموقع', field: 'website', type: 'url', required: false },
+                { icon: <Phone size={15} />, label: copy.contactFields.phone, field: 'phone', type: 'tel', required: true },
+                { icon: <Phone size={15} />, label: copy.contactFields.whatsapp, field: 'whatsapp', type: 'tel', required: false },
+                { icon: <Mail size={15} />, label: copy.contactFields.email, field: 'email', type: 'email', required: true },
+                { icon: <MapPin size={15} />, label: copy.contactFields.address, field: 'address', type: 'text', required: false },
+                { icon: <Globe size={15} />, label: copy.contactFields.website, field: 'website', type: 'url', required: false },
               ].map(({ icon, label, field, type, required }) => (
                 <div key={field} className="flex gap-3 items-start">
                   <span className="mt-1.5 text-orange-500">{icon}</span>
@@ -624,13 +631,13 @@ export default function AcademyProfilePage() {
         {/* License Info */}
         <div className="p-6 mb-8 bg-white rounded-xl shadow">
           <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-orange-700">
-            <Shield size={20} /> بيانات الترخيص والتسجيل
+            <Shield size={20} /> {copy.licensingTitle}
           </h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {[
-              { label: 'رقم الترخيص', field: 'license_number', type: 'text' },
-              { label: 'تاريخ التسجيل', field: 'registration_date', type: 'date' },
-              { label: 'سنة التأسيس', field: 'founding_year', type: 'text' },
+              { label: copy.licenseNumber, field: 'license_number', type: 'text' },
+              { label: copy.registrationDate, field: 'registration_date', type: 'date' },
+              { label: copy.foundingYear, field: 'founding_year', type: 'text' },
             ].map(({ label, field, type }) => (
               <div key={field} className="flex gap-2 items-center">
                 <span className="w-32 text-sm text-gray-500 shrink-0">{label}:</span>
@@ -650,7 +657,7 @@ export default function AcademyProfilePage() {
         <div className="grid grid-cols-1 gap-8 mb-8 md:grid-cols-2">
           <div className="p-6 bg-white rounded-xl shadow">
             <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-orange-700">
-              <Target size={20} /> الفئات العمرية
+              <Target size={20} /> {copy.ageGroupsTitle}
             </h3>
             <div className="flex flex-wrap gap-2">
               {AGE_GROUPS.map(group => (
@@ -661,21 +668,21 @@ export default function AcademyProfilePage() {
                       ? 'border-orange-600 bg-orange-50 text-orange-700 font-medium'
                       : 'border-gray-200 text-gray-400'
                   }`}>
-                  {group}
+                  {group === SENIOR_AGE_GROUP ? copy.senior : group}
                 </button>
               ))}
             </div>
             {academyData.age_groups.length === 0 && !editMode && (
-              <p className="mt-2 text-xs text-gray-400">لم يتم التحديد</p>
+              <p className="mt-2 text-xs text-gray-400">{copy.notSelected}</p>
             )}
           </div>
 
           <div className="p-6 bg-white rounded-xl shadow">
             <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-orange-700">
-              <Building2 size={20} /> المرافق الرياضية
+              <Building2 size={20} /> {copy.facilitiesTitle}
             </h3>
             <div className="flex flex-wrap gap-2">
-              {FACILITIES.map(fac => (
+              {FACILITIES.map((fac, index) => (
                 <button key={fac} disabled={!editMode}
                   onClick={() => editMode && toggleArrayItem('sports_facilities', fac)}
                   className={`px-3 py-1.5 rounded-full text-sm border-2 transition disabled:cursor-default ${
@@ -683,12 +690,12 @@ export default function AcademyProfilePage() {
                       ? 'border-orange-600 bg-orange-50 text-orange-700 font-medium'
                       : 'border-gray-200 text-gray-400'
                   }`}>
-                  {fac}
+                  {copy.facilities[index]}
                 </button>
               ))}
             </div>
             {academyData.sports_facilities.length === 0 && !editMode && (
-              <p className="mt-2 text-xs text-gray-400">لم يتم التحديد</p>
+              <p className="mt-2 text-xs text-gray-400">{copy.notSelected}</p>
             )}
           </div>
         </div>
@@ -697,11 +704,11 @@ export default function AcademyProfilePage() {
         <div className="grid grid-cols-1 gap-8 mb-8 md:grid-cols-2">
           <div className="p-6 bg-white rounded-xl shadow">
             <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-orange-700">
-              <BookOpen size={20} /> البرامج التدريبية
+              <BookOpen size={20} /> {copy.programsTitle}
             </h3>
             {editMode ? (
               <textarea value={academyData.training_programs} onChange={e => handleChange('training_programs', e.target.value)}
-                rows={5} placeholder="صف البرامج التدريبية المتاحة في الأكاديمية..."
+                rows={5} placeholder={copy.programsPlaceholder}
                 className="p-3 w-full text-right text-sm rounded-lg border border-gray-200 resize-none focus:outline-none focus:ring-2 focus:ring-orange-300" />
             ) : (
               <p className="text-sm leading-relaxed text-right text-gray-600">{academyData.training_programs || '—'}</p>
@@ -709,11 +716,11 @@ export default function AcademyProfilePage() {
           </div>
           <div className="p-6 bg-white rounded-xl shadow">
             <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-orange-700">
-              <Star size={20} /> أهداف الأكاديمية
+              <Star size={20} /> {copy.goalsTitle}
             </h3>
             {editMode ? (
               <textarea value={academyData.academy_goals} onChange={e => handleChange('academy_goals', e.target.value)}
-                rows={5} placeholder="ما هي أهداف ورؤية الأكاديمية؟"
+                rows={5} placeholder={copy.goalsPlaceholder}
                 className="p-3 w-full text-right text-sm rounded-lg border border-gray-200 resize-none focus:outline-none focus:ring-2 focus:ring-orange-300" />
             ) : (
               <p className="text-sm leading-relaxed text-right text-gray-600">{academyData.academy_goals || '—'}</p>
@@ -726,12 +733,12 @@ export default function AcademyProfilePage() {
           {/* Technical Director */}
           <div className="p-6 bg-white rounded-xl shadow">
             <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-orange-700">
-              <UserCircle2 size={20} /> المدير الفني
+              <UserCircle2 size={20} /> {copy.technicalDirector}
             </h3>
             <div className="flex gap-4 items-start">
               <div className="relative shrink-0">
                 <img src={academyData.technical_director.photo || '/images/club-avatar.png'}
-                  alt="المدير الفني" className="object-cover w-16 h-16 rounded-full border-2 border-orange-200" />
+                  alt={copy.technicalDirectorAlt} className="object-cover w-16 h-16 rounded-full border-2 border-orange-200" />
                 {editMode && (
                   <label className="flex absolute inset-0 justify-center items-center rounded-full cursor-pointer bg-black/40 hover:bg-black/60">
                     <input type="file" accept="image/*" className="hidden" onChange={async e => {
@@ -759,19 +766,19 @@ export default function AcademyProfilePage() {
                   <>
                     <input type="text" value={academyData.technical_director.name}
                       onChange={e => handleChange('name', e.target.value, 'technical_director')}
-                      placeholder="الاسم" className="w-full px-2 py-1 text-sm rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-300" />
+                      placeholder={copy.namePlaceholder} className="w-full px-2 py-1 text-sm rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-300" />
                     <input type="text" value={academyData.technical_director.license}
                       onChange={e => handleChange('license', e.target.value, 'technical_director')}
-                      placeholder="الرخصة (UEFA A, AFC...)" className="w-full px-2 py-1 text-sm rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-300" />
+                      placeholder={copy.licensePlaceholder} className="w-full px-2 py-1 text-sm rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-300" />
                     <input type="text" value={academyData.technical_director.experience}
                       onChange={e => handleChange('experience', e.target.value, 'technical_director')}
-                      placeholder="سنوات الخبرة" className="w-full px-2 py-1 text-sm rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-300" />
+                      placeholder={copy.experiencePlaceholder} className="w-full px-2 py-1 text-sm rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-300" />
                   </>
                 ) : (
                   <>
                     <p className="font-bold text-gray-900">{academyData.technical_director.name || '—'}</p>
-                    <p className="text-sm text-gray-500">الرخصة: {academyData.technical_director.license || '—'}</p>
-                    <p className="text-sm text-gray-500">الخبرة: {academyData.technical_director.experience || '—'}</p>
+                    <p className="text-sm text-gray-500">{copy.licenseLabel} {academyData.technical_director.license || '—'}</p>
+                    <p className="text-sm text-gray-500">{copy.experienceLabel} {academyData.technical_director.experience || '—'}</p>
                   </>
                 )}
               </div>
@@ -781,12 +788,12 @@ export default function AcademyProfilePage() {
           {/* General Director */}
           <div className="p-6 bg-white rounded-xl shadow">
             <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-orange-700">
-              <UserCircle2 size={20} /> المدير العام
+              <UserCircle2 size={20} /> {copy.generalDirector}
             </h3>
             <div className="flex gap-4 items-start">
               <div className="relative shrink-0">
                 <img src={academyData.director.photo || '/images/club-avatar.png'}
-                  alt="المدير العام" className="object-cover w-16 h-16 rounded-full border-2 border-orange-200" />
+                  alt={copy.generalDirectorAlt} className="object-cover w-16 h-16 rounded-full border-2 border-orange-200" />
                 {editMode && (
                   <label className="flex absolute inset-0 justify-center items-center rounded-full cursor-pointer bg-black/40 hover:bg-black/60">
                     <input type="file" accept="image/*" className="hidden" onChange={async e => {
@@ -814,13 +821,13 @@ export default function AcademyProfilePage() {
                   <>
                     <input type="text" value={academyData.director.name}
                       onChange={e => handleChange('name', e.target.value, 'director')}
-                      placeholder="الاسم" className="w-full px-2 py-1 text-sm rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-300" />
+                      placeholder={copy.namePlaceholder} className="w-full px-2 py-1 text-sm rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-300" />
                     <input type="text" value={academyData.director.bio}
                       onChange={e => handleChange('bio', e.target.value, 'director')}
-                      placeholder="المؤهل / النبذة" className="w-full px-2 py-1 text-sm rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-300" />
+                      placeholder={copy.qualificationPlaceholder} className="w-full px-2 py-1 text-sm rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-300" />
                     <input type="text" value={academyData.director.contact}
                       onChange={e => handleChange('contact', e.target.value, 'director')}
-                      placeholder="بيانات التواصل" className="w-full px-2 py-1 text-sm rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-300" />
+                      placeholder={copy.contactPlaceholder} className="w-full px-2 py-1 text-sm rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-300" />
                   </>
                 ) : (
                   <>
@@ -837,14 +844,14 @@ export default function AcademyProfilePage() {
         {/* Achievements */}
         <div className="p-6 mb-8 bg-white rounded-xl shadow">
           <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-orange-700">
-            <Award size={20} /> الإنجازات والجوائز
+            <Award size={20} /> {copy.achievementsTitle}
           </h3>
           {editMode ? (
             <textarea value={academyData.achievements} onChange={e => handleChange('achievements', e.target.value)}
-              rows={4} placeholder="أبرز إنجازات وجوائز الأكاديمية..."
+              rows={4} placeholder={copy.achievementsPlaceholder}
               className="p-3 w-full text-right text-sm rounded-lg border border-gray-200 resize-none focus:outline-none focus:ring-2 focus:ring-orange-300" />
           ) : (
-            <p className="text-sm leading-relaxed text-right text-gray-600">{academyData.achievements || 'لا توجد إنجازات مسجّلة بعد.'}</p>
+            <p className="text-sm leading-relaxed text-gray-600">{academyData.achievements || copy.noAchievements}</p>
           )}
         </div>
 
@@ -854,12 +861,12 @@ export default function AcademyProfilePage() {
           <div className="p-6 bg-white rounded-xl shadow">
             <div className="flex justify-between items-center mb-4">
               <h3 className="flex gap-2 items-center text-lg font-bold text-orange-700">
-                <Star size={20} /> قصص النجاح
+                <Star size={20} /> {copy.successStories}
               </h3>
               {editMode && (
                 <button onClick={() => setShowAddStory(true)}
                   className="flex gap-1 items-center text-xs text-orange-600 hover:text-orange-800">
-                  <Plus size={13} /> إضافة
+                  <Plus size={13} /> {copy.add}
                 </button>
               )}
             </div>
@@ -867,16 +874,16 @@ export default function AcademyProfilePage() {
               <div className="flex gap-2 mb-3">
                 <input type="text" value={newStory} onChange={e => setNewStory(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && newStory.trim() && (setAcademyData(p => ({ ...p, success_stories: [...p.success_stories, newStory.trim()] })), setNewStory(''), setShowAddStory(false))}
-                  placeholder="اكتب قصة النجاح"
+                  placeholder={copy.storyPlaceholder}
                   className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-300" />
                 <button onClick={() => { if (newStory.trim()) { setAcademyData(p => ({ ...p, success_stories: [...p.success_stories, newStory.trim()] })); setNewStory(''); setShowAddStory(false); } }}
-                  className="px-3 py-1.5 text-sm text-white bg-orange-600 rounded-lg hover:bg-orange-700">إضافة</button>
+                  className="px-3 py-1.5 text-sm text-white bg-orange-600 rounded-lg hover:bg-orange-700">{copy.add}</button>
                 <button onClick={() => { setShowAddStory(false); setNewStory(''); }}
                   className="px-2 text-gray-500 hover:text-red-500"><X size={16} /></button>
               </div>
             )}
             {academyData.success_stories.length === 0 ? (
-              <p className="text-sm text-center text-gray-400 py-4">لا توجد قصص نجاح بعد</p>
+              <p className="text-sm text-center text-gray-400 py-4">{copy.noStories}</p>
             ) : (
               <div className="space-y-2">
                 {academyData.success_stories.map((story, i) => (
@@ -896,12 +903,12 @@ export default function AcademyProfilePage() {
           <div className="p-6 bg-white rounded-xl shadow">
             <div className="flex justify-between items-center mb-4">
               <h3 className="flex gap-2 items-center text-lg font-bold text-orange-700">
-                <CheckSquare size={20} /> الشراكات
+                <CheckSquare size={20} /> {copy.partnerships}
               </h3>
               {editMode && (
                 <button onClick={() => setShowAddPartner(true)}
                   className="flex gap-1 items-center text-xs text-orange-600 hover:text-orange-800">
-                  <Plus size={13} /> إضافة
+                  <Plus size={13} /> {copy.add}
                 </button>
               )}
             </div>
@@ -909,16 +916,16 @@ export default function AcademyProfilePage() {
               <div className="flex gap-2 mb-3">
                 <input type="text" value={newPartner} onChange={e => setNewPartner(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && newPartner.trim() && (setAcademyData(p => ({ ...p, partnerships: [...p.partnerships, newPartner.trim()] })), setNewPartner(''), setShowAddPartner(false))}
-                  placeholder="اسم الشريك"
+                  placeholder={copy.partnerPlaceholder}
                   className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-300" />
                 <button onClick={() => { if (newPartner.trim()) { setAcademyData(p => ({ ...p, partnerships: [...p.partnerships, newPartner.trim()] })); setNewPartner(''); setShowAddPartner(false); } }}
-                  className="px-3 py-1.5 text-sm text-white bg-orange-600 rounded-lg hover:bg-orange-700">إضافة</button>
+                  className="px-3 py-1.5 text-sm text-white bg-orange-600 rounded-lg hover:bg-orange-700">{copy.add}</button>
                 <button onClick={() => { setShowAddPartner(false); setNewPartner(''); }}
                   className="px-2 text-gray-500 hover:text-red-500"><X size={16} /></button>
               </div>
             )}
             {academyData.partnerships.length === 0 ? (
-              <p className="text-sm text-center text-gray-400 py-4">لا توجد شراكات بعد</p>
+              <p className="text-sm text-center text-gray-400 py-4">{copy.noPartnerships}</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {academyData.partnerships.map((partner, i) => (
@@ -939,23 +946,23 @@ export default function AcademyProfilePage() {
         <div className="p-6 mb-8 bg-white rounded-xl shadow">
           <div className="flex justify-between items-center mb-5">
             <h3 className="flex gap-2 items-center text-lg font-bold text-orange-700">
-              <Building2 size={20} /> الفروع
+              <Building2 size={20} /> {copy.branches}
             </h3>
             {editMode && (
               <button onClick={() => setShowAddBranch(true)}
                 className="flex gap-1 items-center px-3 py-1.5 text-sm text-white bg-orange-600 rounded-lg hover:bg-orange-700">
-                <Plus size={16} /> إضافة فرع
+                <Plus size={16} /> {copy.addBranch}
               </button>
             )}
           </div>
           {showAddBranch && editMode && (
             <div className="p-4 mb-4 rounded-xl border border-orange-100 bg-orange-50">
-              <h4 className="mb-3 font-semibold text-orange-700">إضافة فرع جديد</h4>
+              <h4 className="mb-3 font-semibold text-orange-700">{copy.newBranch}</h4>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 {[
-                  { label: 'اسم الفرع *', field: 'name', placeholder: 'فرع الرياض' },
-                  { label: 'العنوان', field: 'address', placeholder: 'حي النزهة، شارع...' },
-                  { label: 'التواصل', field: 'contact', placeholder: '+966...' },
+                  { label: copy.branchFields.name, field: 'name', placeholder: copy.branchFields.namePlaceholder },
+                  { label: copy.branchFields.address, field: 'address', placeholder: copy.branchFields.addressPlaceholder },
+                  { label: copy.branchFields.contact, field: 'contact', placeholder: copy.branchFields.contactPlaceholder },
                 ].map(({ label, field, placeholder }) => (
                   <div key={field}>
                     <label className="block mb-1 text-xs text-gray-600">{label}</label>
@@ -967,14 +974,14 @@ export default function AcademyProfilePage() {
                 ))}
               </div>
               <div className="flex gap-2 justify-end mt-4">
-                <button onClick={handleAddBranch} className="px-4 py-2 text-sm text-white bg-orange-600 rounded-lg hover:bg-orange-700">إضافة</button>
+                <button onClick={handleAddBranch} className="px-4 py-2 text-sm text-white bg-orange-600 rounded-lg hover:bg-orange-700">{copy.add}</button>
                 <button onClick={() => { setShowAddBranch(false); setNewBranch({ name: '', address: '', contact: '' }); }}
-                  className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">إلغاء</button>
+                  className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">{copy.cancel}</button>
               </div>
             </div>
           )}
           {academyData.branches.length === 0 ? (
-            <p className="py-4 text-sm text-center text-gray-400">لا توجد فروع مسجّلة بعد</p>
+            <p className="py-4 text-sm text-center text-gray-400">{copy.noBranches}</p>
           ) : (
             <div className="space-y-3">
               {academyData.branches.map((branch, i) => (
@@ -997,7 +1004,7 @@ export default function AcademyProfilePage() {
         {/* Social Media */}
         <div className="p-6 mb-8 bg-white rounded-xl shadow">
           <h3 className="flex gap-2 items-center mb-5 text-lg font-bold text-orange-700">
-            <Globe size={20} /> وسائل التواصل الاجتماعي
+            <Globe size={20} /> {copy.socialMedia}
           </h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {[
@@ -1029,12 +1036,12 @@ export default function AcademyProfilePage() {
         {/* Facility Photos Gallery */}
         <div className="p-6 bg-white rounded-xl shadow">
           <h3 className="flex gap-2 items-center mb-5 text-lg font-bold text-orange-700">
-            <Camera size={20} /> معرض صور المنشآت
+            <Camera size={20} /> {copy.gallery}
           </h3>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {academyData.facility_photos.map((img, idx) => (
               <div key={idx} className="overflow-hidden relative rounded-lg aspect-square group">
-                <img src={img} alt={`صورة ${idx + 1}`} className="object-cover w-full h-full" />
+                <img src={img} alt={interpolate(copy.imageAlt, { number: idx + 1 })} className="object-cover w-full h-full" />
                 {editMode && (
                   <button
                     onClick={() => setAcademyData(p => ({ ...p, facility_photos: p.facility_photos.filter((_, i) => i !== idx) }))}
@@ -1049,12 +1056,12 @@ export default function AcademyProfilePage() {
                 <input type="file" accept="image/*" className="hidden"
                   onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'gallery')} />
                 <Plus size={24} className="text-gray-400" />
-                <span className="text-xs text-gray-400">إضافة صورة</span>
+                <span className="text-xs text-gray-400">{copy.addImage}</span>
               </label>
             )}
           </div>
           {academyData.facility_photos.length === 0 && !editMode && (
-            <p className="py-6 text-sm text-center text-gray-400">لا توجد صور في المعرض بعد</p>
+            <p className="py-6 text-sm text-center text-gray-400">{copy.noImages}</p>
           )}
         </div>
 

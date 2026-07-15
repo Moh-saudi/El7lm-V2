@@ -11,9 +11,11 @@ import {
 import { Bell, BellOff, Check, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/lib/i18n';
 
 export default function PushNotificationSetup() {
   const { user } = useAuth();
+  const { t, isRTL } = useTranslation();
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +58,7 @@ export default function PushNotificationSetup() {
 
   const handleEnableNotifications = async () => {
     if (!user) {
-      toast.error('يرجى تسجيل الدخول أولاً');
+      toast.error(t('sharedComponents.pushNotifications.loginRequired'));
       return;
     }
 
@@ -70,20 +72,20 @@ export default function PushNotificationSetup() {
         setPermission('granted');
         setShowPrompt(false);
 
-        toast.success('✅ تم تفعيل الإشعارات الفورية!', {
-          description: 'ستصلك إشعارات فورية عند وجود تحديثات جديدة'
+        toast.success(t('sharedComponents.pushNotifications.enabled'), {
+          description: t('sharedComponents.pushNotifications.enabledDescription')
         });
 
         // إرسال إشعار تجريبي
         await testLocalNotification();
       } else {
-        toast.error('فشل في تفعيل الإشعارات', {
-          description: 'يرجى التأكد من السماح بالإشعارات في إعدادات المتصفح'
+        toast.error(t('sharedComponents.pushNotifications.enableFailed'), {
+          description: t('sharedComponents.pushNotifications.permissionHint')
         });
       }
     } catch (error) {
       console.error('Error enabling notifications:', error);
-      toast.error('حدث خطأ أثناء تفعيل الإشعارات');
+      toast.error(t('sharedComponents.pushNotifications.unexpectedError'));
     } finally {
       setIsLoading(false);
     }
@@ -107,7 +109,7 @@ export default function PushNotificationSetup() {
   // عرض بطاقة الـ prompt
   if (showPrompt) {
     return (
-      <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 animate-slide-up" dir="rtl">
+      <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 animate-slide-up" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="bg-white rounded-xl shadow-2xl border border-purple-100 p-4">
           {/* Header */}
           <div className="flex items-start justify-between mb-3">
@@ -116,14 +118,14 @@ export default function PushNotificationSetup() {
                 <Bell className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <h3 className="font-bold text-gray-900">تفعيل الإشعارات الفورية</h3>
-                <p className="text-xs text-gray-500 mt-0.5">ابقَ على اطلاع دائم</p>
+                <h3 className="font-bold text-gray-900">{t('sharedComponents.pushNotifications.title')}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{t('sharedComponents.pushNotifications.subtitle')}</p>
               </div>
             </div>
             <button
               onClick={handleDismiss}
               className="text-gray-400 hover:text-gray-600 transition-colors"
-              aria-label="إغلاق"
+              aria-label={t('sharedComponents.otp.close')}
             >
               <X className="h-4 w-4" />
             </button>
@@ -131,20 +133,20 @@ export default function PushNotificationSetup() {
 
           {/* Body */}
           <p className="text-sm text-gray-600 mb-4">
-            احصل على إشعارات فورية عند:
+            {t('sharedComponents.pushNotifications.receiveWhen')}
           </p>
           <ul className="text-sm text-gray-600 mb-4 space-y-2">
             <li className="flex items-center gap-2">
               <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-              <span>وصول رسائل جديدة</span>
+              <span>{t('sharedComponents.pushNotifications.newMessages')}</span>
             </li>
             <li className="flex items-center gap-2">
               <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-              <span>تحديثات مهمة على حسابك</span>
+              <span>{t('sharedComponents.pushNotifications.accountUpdates')}</span>
             </li>
             <li className="flex items-center gap-2">
               <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-              <span>فرص وعروض جديدة</span>
+              <span>{t('sharedComponents.pushNotifications.newOffers')}</span>
             </li>
           </ul>
 
@@ -158,12 +160,12 @@ export default function PushNotificationSetup() {
               {isLoading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                  <span>جاري التفعيل...</span>
+                  <span>{t('sharedComponents.pushNotifications.enabling')}</span>
                 </>
               ) : (
                 <>
                   <Bell className="h-4 w-4" />
-                  <span>تفعيل الآن</span>
+                  <span>{t('sharedComponents.pushNotifications.enableNow')}</span>
                 </>
               )}
             </button>
@@ -171,13 +173,13 @@ export default function PushNotificationSetup() {
               onClick={handleDismiss}
               className="px-4 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors"
             >
-              لاحقاً
+              {t('sharedComponents.pushNotifications.later')}
             </button>
           </div>
 
           {/* Android Only Notice */}
           <p className="text-xs text-gray-400 mt-3 text-center">
-            💡 الإشعارات الفورية متاحة على Android فقط
+            {t('sharedComponents.pushNotifications.androidOnly')}
           </p>
         </div>
       </div>

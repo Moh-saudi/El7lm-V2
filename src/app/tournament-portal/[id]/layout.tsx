@@ -8,20 +8,19 @@ import { getCurrentClient, createPortalClient, TournamentClient } from '@/lib/to
 import { PortalShell, usePortalTheme } from '../_components/PortalShell';
 import { TournamentNav } from './_components/TournamentNav';
 import '../portal.css';
+import { useTranslation } from '@/lib/i18n';
 
 const STATUS_DOT: Record<string, string> = {
   draft: '#64748b', open: '#16a34a', closed: '#ef4444',
   ongoing: '#3b82f6', completed: '#8b5cf6', cancelled: '#94a3b8',
 };
-const STATUS_LBL: Record<string, string> = {
-  draft: 'مسودة', open: 'مفتوح', closed: 'مغلق',
-  ongoing: 'جارٍ', completed: 'منتهي', cancelled: 'ملغي',
-};
-
 function TournamentHeader({ tournament, id }: { tournament: any; id: string }) {
+  const { locale, getTranslations } = useTranslation();
+  const section = getTranslations<any>('tournamentPortalSection');
+  const portal = getTranslations<any>('tournamentPortal');
   const { isDark } = usePortalTheme();
   const dotColor = STATUS_DOT[tournament.status] || '#64748b';
-  const statusLbl = STATUS_LBL[tournament.status] || tournament.status;
+  const statusLbl = portal.dashboard.statuses[tournament.status] || tournament.status;
 
   return (
     <div style={{
@@ -33,7 +32,7 @@ function TournamentHeader({ tournament, id }: { tournament: any; id: string }) {
         {/* Breadcrumb */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
           <Link href="/tournament-portal" style={{ fontSize: 12, color: isDark ? '#475569' : '#94a3b8', textDecoration: 'none' }}>
-            بطولاتي
+            {section.myTournaments}
           </Link>
           <span style={{ fontSize: 10, color: isDark ? '#374151' : '#d1d5db' }}>›</span>
           <span style={{ fontSize: 12, fontWeight: 600, color: isDark ? '#e2e8f0' : '#374151', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -61,7 +60,7 @@ function TournamentHeader({ tournament, id }: { tournament: any; id: string }) {
             </div>
             <div style={{ fontSize: 11, color: isDark ? '#475569' : '#94a3b8', marginTop: 2 }}>
               {[tournament.city, tournament.country].filter(Boolean).join('، ')}
-              {tournament.start_date && ` · ${new Date(tournament.start_date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', year: 'numeric' })}`}
+              {tournament.start_date && ` · ${new Date(tournament.start_date).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })}`}
             </div>
           </div>
         </div>
@@ -73,6 +72,8 @@ function TournamentHeader({ tournament, id }: { tournament: any; id: string }) {
 }
 
 export default function TournamentLayout({ children }: { children: React.ReactNode }) {
+  const { getTranslations } = useTranslation();
+  const section = getTranslations<any>('tournamentPortalSection');
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [client,     setClient]     = useState<TournamentClient | null>(null);
@@ -100,7 +101,7 @@ export default function TournamentLayout({ children }: { children: React.ReactNo
   if (!tournament) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: 12, padding: '20px 28px', color: '#991b1b', fontSize: 14, fontWeight: 600 }}>
-        البطولة غير موجودة أو ليس لديك صلاحية الوصول
+        {section.notFound}
       </div>
     </div>
   );

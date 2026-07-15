@@ -10,6 +10,9 @@ import PlayerImage from '@/components/ui/player-image';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/ar';
+import 'dayjs/locale/es';
+import 'dayjs/locale/pt';
+import { useTranslation } from '@/lib/i18n';
 dayjs.extend(relativeTime);
 
 interface Comment {
@@ -36,6 +39,8 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const { user } = useAuth();
+  const { t, locale, isRTL } = useTranslation();
+  const text = (key: string) => t(`sharedComponents.comments.${key}`);
 
   useEffect(() => {
     if (isOpen) {
@@ -70,11 +75,11 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
   const handleSubmitComment = async () => {
     if (submitting) return;
     if (!newComment.trim()) {
-      setError('يرجى إدخال تعليق');
+      setError(text('commentRequired'));
       return;
     }
     if (!user) {
-      setError('يجب تسجيل الدخول أولاً');
+      setError(text('loginRequired'));
       return;
     }
 
@@ -87,12 +92,12 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
       const { data: playerData } = await supabase.from('players').select('*').eq('id', playerId).maybeSingle();
 
       if (!playerData) {
-        setError('لم يتم العثور على الفيديو');
+        setError(text('videoNotFound'));
         return;
       }
 
       // Fetch commenter's display info
-      let userName = user.user_metadata?.full_name || 'مستخدم';
+      let userName = user.user_metadata?.full_name || text('user');
       let userImage = user.user_metadata?.avatar_url || '';
       try {
         const { data: ud } = await supabase.from('users').select('*').eq('id', user.id).maybeSingle();
@@ -154,11 +159,11 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
       // Optimistic UI update
       setComments(prev => [...prev, newCommentObj]);
       setNewComment('');
-      setMessage('تم إرسال التعليق بنجاح!');
+      setMessage(text('sent'));
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
       console.error('Comment error:', err);
-      setError('حدث خطأ في إرسال التعليق');
+      setError(text('sendFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -167,7 +172,7 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
   if (!isOpen) return null;
 
   return (
-    <div className={inline ? "absolute inset-0 z-30 flex flex-col justify-end" : "fixed inset-0 z-50 flex flex-col justify-end"}>
+    <div dir={isRTL ? 'rtl' : 'ltr'} className={inline ? "absolute inset-0 z-30 flex flex-col justify-end" : "fixed inset-0 z-50 flex flex-col justify-end"}>
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -193,7 +198,7 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
         {/* Header */}
         <div className="px-6 py-4 flex items-center justify-between sticky top-6 bg-zinc-900/50 backdrop-blur-sm z-20">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            التعليقات
+            {text('title')}
             <span className="text-sm font-normal text-white/50 bg-white/5 px-2 py-0.5 rounded-full">
               {comments.length}
             </span>
@@ -201,7 +206,7 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
           <button
             onClick={() => onClose(comments.length)}
             className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 text-white/70 hover:bg-white/10 hover:text-white transition-all"
-            aria-label="إغلاق"
+            aria-label={text('close')}
           >
             ✕
           </button>
@@ -212,13 +217,13 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
           {loading ? (
             <div className="flex flex-col justify-center items-center py-20 space-y-4">
               <div className="animate-spin rounded-full h-10 w-10 border-2 border-white/10 border-t-white"></div>
-              <p className="text-white/40 text-sm">جاري تحميل التعليقات...</p>
+              <p className="text-white/40 text-sm">{text('loading')}</p>
             </div>
           ) : comments.length === 0 ? (
             <div className="flex flex-col justify-center items-center py-20 opacity-40">
               <MessageCircle className="w-16 h-16 mb-4" />
-              <p className="text-lg">لا توجد تعليقات بعد</p>
-              <p className="text-sm">كن أول من يعلق على هذا الفيديو!</p>
+              <p className="text-lg">{text('empty')}</p>
+              <p className="text-sm">{text('beFirst')}</p>
             </div>
           ) : (
             comments.map((comment) => (
@@ -245,7 +250,7 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
                             typeof comment.createdAt.toDate === 'function'
                               ? comment.createdAt.toDate()
                               : comment.createdAt
-                          ).locale('ar').fromNow()
+                          ).locale(locale).fromNow()
                         : ''}
                     </span>
                   </div>
@@ -277,7 +282,7 @@ export default function Comments({ videoId, isOpen, onClose, inline = false }: C
               type="text"
               value={newComment}
               onChange={(e) => { setNewComment(e.target.value); if (error) setError(''); }}
-              placeholder="أضف تعليقاً..."
+              placeholder={text('placeholder')}
               className="flex-1 bg-white/8 border border-white/10 rounded-full py-3 px-5 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:bg-white/10 transition-all text-sm"
               style={{ fontFamily: "'Cairo', 'Tajawal', sans-serif" }}
             />

@@ -15,6 +15,8 @@ import {
 } from '@ant-design/icons';
 import { Toaster } from 'sonner';
 import { signOutClient, TournamentClient } from '@/lib/tournament-portal/auth';
+import { useTranslation } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 const { Text } = Typography;
 
@@ -67,23 +69,24 @@ const LIGHT = {
 
 const SIDEBAR_W = 252;
 
-const NAV = [
-  { href: '/tournament-portal',     icon: <DashboardOutlined />, label: 'لوحة التحكم'  },
-  { href: '/tournament-portal/new', icon: <PlusOutlined />,     label: 'بطولة جديدة'   },
-];
-
 interface Props {
   client: TournamentClient;
   children: React.ReactNode;
 }
 
 export function PortalShell({ client, children }: Props) {
+  const { isRTL, getTranslations } = useTranslation();
+  const t = getTranslations<any>('tournamentPortal');
   const pathname    = usePathname();
   const router      = useRouter();
   const [open,     setOpen]     = useState(false);   // mobile drawer
   const [isDark,   setIsDark]   = useState(false);
 
   const C = isDark ? DARK : LIGHT;
+  const nav = [
+    { href: '/tournament-portal', icon: <DashboardOutlined />, label: t.common.dashboard },
+    { href: '/tournament-portal/new', icon: <PlusOutlined />, label: t.common.newTournament },
+  ];
 
   useEffect(() => {
     const saved = localStorage.getItem('portal-theme');
@@ -111,13 +114,13 @@ export function PortalShell({ client, children }: Props) {
   const userMenuItems: MenuProps['items'] = [
     {
       key: 'profile', icon: <UserOutlined />,
-      label: <span style={{ color: C.textPrimary }}>الملف الشخصي</span>,
+      label: <span style={{ color: C.textPrimary }}>{t.common.profile}</span>,
       onClick: () => router.push('/tournament-portal/profile'),
     },
     { type: 'divider' },
     {
       key: 'logout', icon: <LogoutOutlined />,
-      label: <span style={{ color: '#ef4444' }}>تسجيل الخروج</span>,
+      label: <span style={{ color: '#ef4444' }}>{t.common.logout}</span>,
       onClick: handleSignOut,
     },
   ];
@@ -146,10 +149,10 @@ export function PortalShell({ client, children }: Props) {
           </div>
           <div>
             <p style={{ color: C.textPrimary, fontWeight: 800, fontSize: 16, margin: 0, lineHeight: 1.2, transition: 'color 0.3s' }}>
-              منصة الحلم
+              {t.common.platform}
             </p>
             <p style={{ color: C.textSec, fontSize: 12, margin: 0, transition: 'color 0.3s' }}>
-              بوابة منظمي البطولات
+              {t.common.organizerPortal}
             </p>
           </div>
         </div>
@@ -189,7 +192,7 @@ export function PortalShell({ client, children }: Props) {
             </Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a', flexShrink: 0 }} />
-              <Text style={{ color: C.textSec, fontSize: 12, transition: 'color 0.3s' }}>منظم بطولات</Text>
+              <Text style={{ color: C.textSec, fontSize: 12, transition: 'color 0.3s' }}>{t.common.organizer}</Text>
             </div>
           </div>
         </div>
@@ -197,7 +200,7 @@ export function PortalShell({ client, children }: Props) {
 
       {/* ── Nav ── */}
       <nav style={{ flex: 1, padding: '10px 10px', overflowY: 'auto' }}>
-        {NAV.map((item) => {
+        {nav.map((item) => {
           const active = pathname === item.href;
           return (
             <button
@@ -241,7 +244,7 @@ export function PortalShell({ client, children }: Props) {
           }}
         >
           <LogoutOutlined style={{ fontSize: 14 }} />
-          تسجيل الخروج
+          {t.common.logout}
         </button>
       </div>
     </div>
@@ -251,7 +254,7 @@ export function PortalShell({ client, children }: Props) {
     <PortalThemeContext.Provider value={{ isDark }}>
       <ConfigProvider
         locale={arEG}
-        direction="rtl"
+        direction={isRTL ? 'rtl' : 'ltr'}
         theme={{
           algorithm: isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
           token: {
@@ -263,7 +266,7 @@ export function PortalShell({ client, children }: Props) {
       >
       <Toaster position="top-center" richColors />
 
-      <div style={{ minHeight: '100vh', background: C.contentBg, direction: 'rtl', transition: 'background 0.3s' }}>
+      <div style={{ minHeight: '100vh', background: C.contentBg, direction: isRTL ? 'rtl' : 'ltr', transition: 'background 0.3s' }}>
 
         {/* ══════════════════════════════════════
             DESKTOP: Sidebar ثابت على اليمين
@@ -348,14 +351,14 @@ export function PortalShell({ client, children }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Image src="/el7lm-logo.png" alt="El7lm" width={24} height={24} style={{ objectFit: 'contain', opacity: isDark ? 0.6 : 0.7 }} />
               <Text style={{ color: C.textSec, fontSize: 12, fontWeight: 500, transition: 'color 0.3s' }}>
-                بوابة البطولات
+                {t.common.portal}
               </Text>
             </div>
 
             <div style={{ flex: 1 }} />
 
             {/* Theme toggle */}
-            <Tooltip title={isDark ? 'الوضع النهاري' : 'الوضع الليلي'}>
+            <Tooltip title={isDark ? t.common.lightMode : t.common.darkMode}>
               <button
                 onClick={toggleTheme}
                 style={{
@@ -369,6 +372,8 @@ export function PortalShell({ client, children }: Props) {
                 {isDark ? <SunOutlined /> : <MoonOutlined />}
               </button>
             </Tooltip>
+
+            <LanguageSwitcher />
 
             {/* Bell */}
             <Badge dot offset={[-3, 3]} color="#d97706">

@@ -7,24 +7,24 @@ import { createPortalClient } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { TeamLogo } from '../../_components/TeamLogo';
 import { resolveImg } from '../../_utils/img';
+import { useTranslation } from '@/lib/i18n';
 
-const TYPE_LBL: Record<string, string> = {
-  knockout: 'كأس إقصائي', league: 'دوري', groups_knockout: 'مجموعات + إقصاء',
-};
 const STATUS_STEPS = ['draft','open','closed','ongoing','completed'];
-const STATUS_LBL:   Record<string,string> = { draft:'مسودة', open:'مفتوح', closed:'مغلق', ongoing:'جارٍ', completed:'منتهي' };
 const STATUS_DOT:   Record<string,string> = { draft:'#64748b', open:'#16a34a', closed:'#ef4444', ongoing:'#3b82f6', completed:'#8b5cf6' };
 
 const QUICK_LINKS = [
-  { href:'registrations', label:'الفرق',       icon:'👥', color:'#3b82f6' },
-  { href:'schedule',      label:'الجدول',       icon:'📅', color:'#d97706' },
-  { href:'matches',       label:'المباريات',    icon:'⚽', color:'#ef4444' },
-  { href:'groups',        label:'الترتيب',      icon:'📊', color:'#16a34a' },
-  { href:'stats',         label:'الإحصائيات',  icon:'🏆', color:'#8b5cf6' },
-  { href:'notifications', label:'الإشعارات',   icon:'🔔', color:'#f59e0b' },
+  { href:'registrations', icon:'👥', color:'#3b82f6' },
+  { href:'schedule',      icon:'📅', color:'#d97706' },
+  { href:'matches',       icon:'⚽', color:'#ef4444' },
+  { href:'groups',        icon:'📊', color:'#16a34a' },
+  { href:'stats',         icon:'🏆', color:'#8b5cf6' },
+  { href:'notifications', icon:'🔔', color:'#f59e0b' },
 ];
 
 export default function TournamentOverviewPage() {
+  const { locale, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('tournamentPortalOverview');
+  const portalCopy = getTranslations<any>('tournamentPortal');
   const { id }  = useParams<{ id: string }>();
   const { isDark } = usePortalTheme();
   const [data, setData] = useState<any>(null);
@@ -89,15 +89,15 @@ export default function TournamentOverviewPage() {
               <span style={{ fontSize:22, fontWeight:900, color:'#fff' }}>{t?.name}</span>
               <span style={{ display:'inline-flex', alignItems:'center', gap:5, background:`${STATUS_DOT[t?.status] || '#64748b'}22`, border:`1px solid ${STATUS_DOT[t?.status] || '#64748b'}44`, borderRadius:12, padding:'3px 10px', fontSize:12, fontWeight:700, color:STATUS_DOT[t?.status] || '#94a3b8' }}>
                 <span style={{ width:6, height:6, borderRadius:'50%', background:STATUS_DOT[t?.status] || '#64748b', display:'inline-block' }} />
-                {STATUS_LBL[t?.status] || t?.status}
+                {portalCopy.dashboard.statuses[t?.status] || t?.status}
               </span>
             </div>
 
             {/* Meta */}
             <div style={{ display:'flex', gap:18, flexWrap:'wrap', marginBottom:16 }}>
-              {t?.type   && <span style={{ fontSize:12, color:'rgba(255,255,255,0.5)' }}>🏆 {TYPE_LBL[t.type] || t.type}</span>}
+              {t?.type   && <span style={{ fontSize:12, color:'rgba(255,255,255,0.5)' }}>🏆 {portalCopy.dashboard.types[t.type] || t.type}</span>}
               {t?.city   && <span style={{ fontSize:12, color:'rgba(255,255,255,0.5)' }}>📍 {t.city}{t.country ? `, ${t.country}`:''}</span>}
-              {t?.start_date && <span style={{ fontSize:12, color:'rgba(255,255,255,0.5)' }}>📅 {new Date(t.start_date).toLocaleDateString('ar-EG',{dateStyle:'medium'})}</span>}
+              {t?.start_date && <span style={{ fontSize:12, color:'rgba(255,255,255,0.5)' }}>📅 {new Date(t.start_date).toLocaleDateString(locale,{dateStyle:'medium'})}</span>}
             </div>
 
             {/* Progress */}
@@ -105,7 +105,7 @@ export default function TournamentOverviewPage() {
               <>
                 <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
                   {STATUS_STEPS.map((s, i) => (
-                    <span key={s} style={{ fontSize:10, fontWeight: i === statusIdx ? 700 : 400, color: i <= statusIdx ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.25)' }}>{STATUS_LBL[s]}</span>
+                    <span key={s} style={{ fontSize:10, fontWeight: i === statusIdx ? 700 : 400, color: i <= statusIdx ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.25)' }}>{portalCopy.dashboard.statuses[s]}</span>
                   ))}
                 </div>
                 <div style={{ height:4, background:'rgba(255,255,255,0.1)', borderRadius:2 }}>
@@ -118,7 +118,7 @@ export default function TournamentOverviewPage() {
           {/* Settings link */}
           <Link href={`/tournament-portal/${id}/setup`} style={{ textDecoration:'none' }}>
             <button style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.18)', borderRadius:10, color:'rgba(255,255,255,0.8)', fontSize:12, fontWeight:600, cursor:'pointer' }}>
-              ⚙️ إعدادات
+              ⚙️ {copy.settings}
             </button>
           </Link>
         </div>
@@ -127,10 +127,10 @@ export default function TournamentOverviewPage() {
       {/* ── KPIs ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10 }} className="sp-grid-4col">
         {[
-          { icon:'👥', v:approved.length,  lbl:'فريق مقبول',       sub: t?.max_teams ? `من ${t.max_teams}` : '', color:'#3b82f6', bg:'rgba(37,99,235,0.12)' },
-          { icon:'⏳', v:pending.length,   lbl:'طلب معلق',          sub: pending.length > 0 ? 'بانتظار الموافقة' : 'الكل مقبول', color:'#f59e0b', bg:'rgba(245,158,11,0.12)' },
-          { icon:'✅', v:completed.length, lbl:'مباراة منتهية',     sub:`من ${matches.length} إجمالي`, color:'#16a34a', bg:'rgba(22,163,74,0.12)' },
-          { icon:'⚽', v:totalGoals,        lbl:'هدف مسجل',          sub: completed.length > 0 ? `معدل ${(totalGoals/completed.length).toFixed(1)}/م`:'', color:'#8b5cf6', bg:'rgba(139,92,246,0.12)' },
+          { icon:'👥', v:approved.length,  lbl:copy.acceptedTeam, sub: t?.max_teams ? `${copy.of} ${t.max_teams}` : '', color:'#3b82f6', bg:'rgba(37,99,235,0.12)' },
+          { icon:'⏳', v:pending.length, lbl:copy.pendingRequest, sub: pending.length > 0 ? copy.awaiting : copy.allAccepted, color:'#f59e0b', bg:'rgba(245,158,11,0.12)' },
+          { icon:'✅', v:completed.length, lbl:copy.finishedMatch, sub:`${copy.of} ${matches.length} ${copy.total}`, color:'#16a34a', bg:'rgba(22,163,74,0.12)' },
+          { icon:'⚽', v:totalGoals, lbl:copy.goal, sub: completed.length > 0 ? `${copy.average} ${(totalGoals/completed.length).toFixed(1)}`:'', color:'#8b5cf6', bg:'rgba(139,92,246,0.12)' },
         ].map(s => (
           <div key={s.lbl} className="sp-kpi" style={{ background:S.surface, borderColor:S.border }}>
             <div className="sp-kpi-icon" style={{ background:s.bg, fontSize:20 }}>{s.icon}</div>
@@ -152,11 +152,11 @@ export default function TournamentOverviewPage() {
             <div style={{ background: isDark?'rgba(245,158,11,0.07)':'#fffbeb', border:`1px solid ${isDark?'rgba(245,158,11,0.2)':'#fcd34d'}`, borderRadius:14, padding:'14px 18px', display:'flex', alignItems:'center', gap:14 }}>
               <div style={{ width:40, height:40, borderRadius:11, background:'#f59e0b', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>⏳</div>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:14, fontWeight:700, color: isDark?'#fbbf24':'#92400e' }}>{pending.length} فريق ينتظر الموافقة</div>
-                <div style={{ fontSize:12, color: isDark?'#d97706':'#b45309', marginTop:2 }}>راجع طلبات التسجيل وقبل الفرق لتتمكن من بدء البطولة</div>
+                <div style={{ fontSize:14, fontWeight:700, color: isDark?'#fbbf24':'#92400e' }}>{copy.pendingTitle.replace('{count}', pending.length)}</div>
+                <div style={{ fontSize:12, color: isDark?'#d97706':'#b45309', marginTop:2 }}>{copy.pendingHelp}</div>
               </div>
               <Link href={`/tournament-portal/${id}/registrations`} style={{ textDecoration:'none' }}>
-                <button style={{ padding:'8px 16px', background:'#f59e0b', border:'none', borderRadius:10, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>مراجعة ←</button>
+                <button style={{ padding:'8px 16px', background:'#f59e0b', border:'none', borderRadius:10, color:'#fff', fontSize:12, fontWeight:700, cursor:'pointer' }}>{copy.review}</button>
               </Link>
             </div>
           )}
@@ -165,8 +165,8 @@ export default function TournamentOverviewPage() {
           {upcoming.length > 0 && (
             <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
               <div style={{ padding:'12px 18px', borderBottom:`1px solid ${S.border}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <span style={{ fontSize:14, fontWeight:700, color:S.text }}>📅 المباريات القادمة</span>
-                <Link href={`/tournament-portal/${id}/schedule`} style={{ fontSize:12, color:'#d97706', textDecoration:'none', fontWeight:600 }}>عرض الكل →</Link>
+                <span style={{ fontSize:14, fontWeight:700, color:S.text }}>📅 {copy.upcoming}</span>
+                <Link href={`/tournament-portal/${id}/schedule`} style={{ fontSize:12, color:'#d97706', textDecoration:'none', fontWeight:600 }}>{copy.viewAll}</Link>
               </div>
               {upcoming.slice(0,5).map((m: any) => (
                 <MiniMatch key={m.id} match={m} teams={teams} S={S} isDark={isDark} />
@@ -178,8 +178,8 @@ export default function TournamentOverviewPage() {
           {lastResults.length > 0 && (
             <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
               <div style={{ padding:'12px 18px', borderBottom:`1px solid ${S.border}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <span style={{ fontSize:14, fontWeight:700, color:S.text }}>🏁 آخر النتائج</span>
-                <Link href={`/tournament-portal/${id}/matches`} style={{ fontSize:12, color:'#d97706', textDecoration:'none', fontWeight:600 }}>عرض الكل →</Link>
+                <span style={{ fontSize:14, fontWeight:700, color:S.text }}>🏁 {copy.latestResults}</span>
+                <Link href={`/tournament-portal/${id}/matches`} style={{ fontSize:12, color:'#d97706', textDecoration:'none', fontWeight:600 }}>{copy.viewAll}</Link>
               </div>
               {lastResults.map((m: any) => (
                 <MiniMatch key={m.id} match={m} teams={teams} S={S} isDark={isDark} showScore />
@@ -191,10 +191,10 @@ export default function TournamentOverviewPage() {
           {upcoming.length === 0 && lastResults.length === 0 && (
             <div style={{ background:S.surface, border:`2px dashed ${S.border}`, borderRadius:16, padding:'48px 24px', textAlign:'center' }}>
               <div style={{ fontSize:40, marginBottom:12 }}>🏟️</div>
-              <div style={{ fontSize:15, fontWeight:700, color:S.text, marginBottom:6 }}>لا توجد مباريات بعد</div>
-              <div style={{ fontSize:13, color:S.text2, marginBottom:20 }}>ابدأ بقبول الفرق ثم ولّد الجدول من تبويب «الجدول»</div>
+              <div style={{ fontSize:15, fontWeight:700, color:S.text, marginBottom:6 }}>{copy.emptyTitle}</div>
+              <div style={{ fontSize:13, color:S.text2, marginBottom:20 }}>{copy.emptyHelp}</div>
               <Link href={`/tournament-portal/${id}/schedule`} style={{ textDecoration:'none' }}>
-                <button className="sp-btn sp-btn-primary">📅 الذهاب للجدول</button>
+                <button className="sp-btn sp-btn-primary">📅 {copy.goSchedule}</button>
               </Link>
             </div>
           )}
@@ -205,7 +205,7 @@ export default function TournamentOverviewPage() {
 
           {/* Quick nav */}
           <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
-            <div style={{ padding:'11px 16px', borderBottom:`1px solid ${S.border}`, fontSize:12, fontWeight:700, color:S.text2 }}>تنقل سريع</div>
+            <div style={{ padding:'11px 16px', borderBottom:`1px solid ${S.border}`, fontSize:12, fontWeight:700, color:S.text2 }}>{copy.quickNav}</div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr' }}>
               {QUICK_LINKS.map((nav, i) => (
                 <Link key={nav.href} href={`/tournament-portal/${id}/${nav.href}`} style={{ textDecoration:'none' }}>
@@ -216,7 +216,7 @@ export default function TournamentOverviewPage() {
                     transition:'background 0.15s',
                   }}>
                     <div style={{ width:30, height:30, borderRadius:8, background:`${nav.color}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}>{nav.icon}</div>
-                    <span style={{ fontSize:12, fontWeight:600, color:S.text }}>{nav.label}</span>
+                    <span style={{ fontSize:12, fontWeight:600, color:S.text }}>{copy.quickLinks[i]}</span>
                   </div>
                 </Link>
               ))}
@@ -225,13 +225,13 @@ export default function TournamentOverviewPage() {
 
           {/* Tournament info */}
           <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
-            <div style={{ padding:'11px 16px', borderBottom:`1px solid ${S.border}`, fontSize:12, fontWeight:700, color:S.text2 }}>معلومات البطولة</div>
+            <div style={{ padding:'11px 16px', borderBottom:`1px solid ${S.border}`, fontSize:12, fontWeight:700, color:S.text2 }}>{copy.info}</div>
             <div style={{ padding:'4px 0' }}>
               {[
-                { lbl:'الفئات',       val: cats.map((c: any) => c.name).join(' · ') || '—' },
-                { lbl:'الحد الأقصى', val: t?.max_teams ? `${t.max_teams} فريق` : '—' },
-                { lbl:'تاريخ البدء', val: t?.start_date ? new Date(t.start_date).toLocaleDateString('ar-EG',{dateStyle:'medium'}) : '—' },
-                { lbl:'تاريخ الانتهاء', val: t?.end_date ? new Date(t.end_date).toLocaleDateString('ar-EG',{dateStyle:'medium'}) : '—' },
+                { lbl:copy.categories, val: cats.map((c: any) => c.name).join(' · ') || '—' },
+                { lbl:copy.maximum, val: t?.max_teams ? `${t.max_teams} ${copy.team}` : '—' },
+                { lbl:copy.start, val: t?.start_date ? new Date(t.start_date).toLocaleDateString(locale,{dateStyle:'medium'}) : '—' },
+                { lbl:copy.end, val: t?.end_date ? new Date(t.end_date).toLocaleDateString(locale,{dateStyle:'medium'}) : '—' },
               ].map(row => (
                 <div key={row.lbl} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 16px', borderBottom:`1px solid ${S.border}` }}>
                   <span style={{ fontSize:12, color:S.text2 }}>{row.lbl}</span>
@@ -244,7 +244,7 @@ export default function TournamentOverviewPage() {
           {/* QR + Public link */}
           {t?.slug && (
             <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
-              <div style={{ padding:'11px 16px', borderBottom:`1px solid ${S.border}`, fontSize:12, fontWeight:700, color:S.text2 }}>🔗 الصفحة العامة</div>
+              <div style={{ padding:'11px 16px', borderBottom:`1px solid ${S.border}`, fontSize:12, fontWeight:700, color:S.text2 }}>🔗 {copy.publicPage}</div>
               <div style={{ padding:'16px', display:'flex', flexDirection:'column', alignItems:'center', gap:12 }}>
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`${typeof window !== 'undefined' ? window.location.origin : ''}/tournaments/${t.slug}`)}&color=d97706&bgcolor=${isDark ? '131929' : 'ffffff'}`}
@@ -256,10 +256,10 @@ export default function TournamentOverviewPage() {
                 </div>
                 <div style={{ display:'flex', gap:8, width:'100%' }}>
                   <a href={`/tournaments/${t.slug}`} target="_blank" rel="noopener noreferrer" style={{ flex:1, textAlign:'center', padding:'8px', background:'rgba(217,119,6,0.1)', border:'1px solid rgba(217,119,6,0.3)', borderRadius:8, fontSize:11, fontWeight:700, color:'#d97706', textDecoration:'none' }}>
-                    🌐 فتح
+                    🌐 {copy.open}
                   </a>
                   <button onClick={() => { navigator.clipboard?.writeText(`${window.location.origin}/tournaments/${t.slug}`); }} style={{ flex:1, padding:'8px', background:S.surface, border:`1px solid ${S.border}`, borderRadius:8, fontSize:11, fontWeight:700, color:S.text2, cursor:'pointer' }}>
-                    📋 نسخ
+                    📋 {copy.copy}
                   </button>
                 </div>
               </div>
@@ -272,6 +272,8 @@ export default function TournamentOverviewPage() {
 }
 
 function MiniMatch({ match, teams, S, isDark, showScore = false }: any) {
+  const { locale, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('tournamentPortalOverview');
   const home = teams.find((t: any) => t.id === match.home_team_id);
   const away = teams.find((t: any) => t.id === match.away_team_id);
   const Logo = ({ t }: { t: any }) => <TeamLogo name={t?.name || '?'} logo={t?.logo_url} size={26} />;
@@ -291,10 +293,10 @@ function MiniMatch({ match, teams, S, isDark, showScore = false }: any) {
             </div>
           : match.match_date
             ? <div>
-                <div style={{ fontSize:14, fontWeight:800, color:S.text }}>{new Date(match.match_date).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})}</div>
-                <div style={{ fontSize:10, color:S.text2 }}>{new Date(match.match_date).toLocaleDateString('ar-SA',{month:'short',day:'numeric'})}</div>
+                <div style={{ fontSize:14, fontWeight:800, color:S.text }}>{new Date(match.match_date).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'})}</div>
+                <div style={{ fontSize:10, color:S.text2 }}>{new Date(match.match_date).toLocaleDateString(locale,{month:'short',day:'numeric'})}</div>
               </div>
-            : <span style={{ fontSize:12, fontWeight:700, color:S.text2 }}>vs</span>
+            : <span style={{ fontSize:12, fontWeight:700, color:S.text2 }}>{copy.versus}</span>
         }
       </div>
       <div style={{ display:'flex', alignItems:'center', gap:8 }}>

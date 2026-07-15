@@ -1,4 +1,50 @@
 {
+  "tournamentDraw": { "minGroups":"Crie pelo menos dois grupos","groupsCreated":"Foram criados {count} grupos","moved":"{team} foi movido","swapped":"Trocados {first} ↔ {second}","createGroupsFirst":"Crie os grupos primeiro","noAcceptedTeams":"Não há equipes aceitas","drawReady":"Sorteio concluído — revise a distribuição e salve","saved":"Sorteio salvo ✓","loading":"Carregando sorteio...","steps":["Criar grupos","Distribuir equipes","Salvar sorteio"],"team":"equipe","group":"grupo","unassigned":"não distribuído","complete":"Concluído","readyToSave":"Pronto para salvar","groups":"Grupos:","recreate":"Recriar","create":"Criar","redraw":"Refazer sorteio","randomDraw":"Sorteio aleatório","saving":"Salvando...","save":"Salvar sorteio","noTeamsTitle":"Ainda não há equipes aceitas","noTeamsHelp":"Aceite equipes em Inscrições antes do sorteio","selectedFromGroup":"Selecionada de um grupo — clique em outro grupo para mover ou em uma equipe para trocar","clickGroup":"Clique em um grupo para adicionar","unassignedTeams":"Equipes não distribuídas","seed":"Cabeça de chave {number}","move":"← Mover","noGroups":"Os grupos não foram criados","noGroupsHelp":"Escolha a quantidade de grupos e clique em Criar","clickMoveHere":"← Clique para mover aqui","clickToMove":"← Clique aqui para mover a equipe","emptyGroup":"Grupo vazio","legend":["Equipe selecionada — clique em um grupo para mover","Pode ser trocada com a equipe selecionada","Clique × para devolver a equipe à espera"] },
+  "tournamentTeamView": { "invalidTeam":"ID da equipe inválido. Verifique o link.","tabs":["Partidas","Jogadores ({count})","Classificação"],"stats":["Vitórias","Empates","Derrotas","Gols"],"noMatches":"Ainda não há partidas","results":["Vitória","Derrota","Empate"],"tbd":"A definir","noPlayers":"Não há jogadores registrados","player":"Jogador","position":"Posição","phone":"Telefone","platform":"Plataforma","noStandings":"Ainda não há classificação","team":"Equipe","played":"J","won":"V","drawn":"E","lost":"D","goals":"GP:GC","difference":"SG","points":"Pts","teamLink":"Link da equipe","copied":"Link copiado","copy":"Copiar" },
+  "tournamentSetup": { "statusActions":["Abrir inscrições","Fechar inscrições","Iniciar torneio","Concluir torneio"],"statuses":{"draft":"Rascunho","open":"Aberto","closed":"Fechado","ongoing":"Em andamento","completed":"Concluído","cancelled":"Cancelado"},"types":["Copa eliminatória","Liga","Grupos + eliminatória"],"savedCategories":"Categorias salvas","saveFailed":"Falha ao salvar: {error}","statusChanged":"Status alterado para: {status}","venueRequired":"O nome do campo é obrigatório","refereeRequired":"O nome do árbitro é obrigatório","added":"Adicionado","deleted":"Excluído","newCategory":"Nova categoria","deleteCategory":"Excluir categoria","delete":"Excluir","cancel":"Cancelar","categoryName":"Nome da categoria *","categoryPlaceholder":"Adulto / U17 / U14...","competition":"Formato da competição","categoryFields":["Idade mínima","Idade máxima","Máximo de equipes"],"groupSettings":"Configurações dos grupos","groupFields":["Número de grupos","Equipes por grupo","Classificados por grupo"],"currentStatus":"Status atual do torneio","nextStep":"Próxima etapa: {status}","tournamentComplete":"Torneio concluído","categories":"Categorias de idade","categoriesHelp":"Defina as categorias do torneio","addCategory":"Adicionar categoria","noCategories":"Nenhuma categoria adicionada","noCategoriesHelp":"Adicione uma categoria para organizar a competição","saving":"Salvando...","saveCategories":"Salvar categorias","venues":"Campos","venuesHelp":"Adicione campos usados nas partidas","venueName":"Nome do campo *","country":"País","city":"Cidade","address":"Endereço completo","capacity":"Capacidade","add":"Adicionar","noVenues":"Nenhum campo adicionado","capacityValue":"Capacidade {count}","deleteVenue":"Excluir campo?","no":"Não","referees":"Árbitros","refereesHelp":"Adicione árbitros para as partidas","refereeName":"Nome do árbitro *","phone":"Telefone","level":"Nível","levels":["Iniciante","Intermediário","Profissional","Internacional"],"noReferees":"Nenhum árbitro adicionado","deleteReferee":"Excluir árbitro?" },
+  "tournamentRegistrations": { "statuses":{"pending":"Pendente","approved":"Aceita","rejected":"Rejeitada","withdrawn":"Desistiu"},"payments":{"pending":"Não pago","paid":"Pago","partial":"Parcial","free":"Grátis","refunded":"Reembolsado"},"positions":["Goleiro","Defensor","Meio-campista","Atacante","Reserva"],"acceptedMessage":"Olá {team} 🎉\nTemos o prazer de confirmar que sua equipe foi aceita no torneio.\nBoa sorte! 🏆","rejectedMessage":"Olá {team}\nInfelizmente, sua inscrição não foi aceita desta vez.\nObrigado pelo interesse.","accepted":"Aceita","rejected":"Rejeitada","updated":"Atualizado","sendWhatsapp":"Enviar WhatsApp →","paymentUpdated":"Pagamento atualizado","playerRequired":"O nome do jogador é obrigatório","added":"Adicionado","deleted":"Excluído","imported":"\"{name}\" foi importado","playerAdded":"\"{name}\" foi adicionado","teamRequired":"O nome da equipe é obrigatório","importNote":"Importado ({type})","search":"Buscar por nome...","allCategories":"Todas as categorias","addTeam":"Adicionar equipe","filters":["Todas","Pendentes","Aceitas","Rejeitadas"],"noTeams":"Não há equipes","noTeamsAll":"Adicione uma equipe ou aguarde inscrições","noTeamsFilter":"Nenhuma equipe corresponde ao filtro","tabs":["Informações","Jogadores ({count})","Importar da plataforma"],"seed":"Cabeça de chave {number}","approve":"Aceitar","reject":"Rejeitar","restore":"Restaurar","payment":"Pagamento:","teamPortal":"Portal da equipe","deleteTeamQuestion":"Excluir a equipe permanentemente?","deleteTeam":"Excluir equipe","no":"Não","loading":"Carregando...","player":"Jogador","position":"Posição","phone":"Telefone","platform":"Plataforma","deletePlayer":"Excluir jogador?","playerName":"Nome do jogador *","add":"Adicionar","importTypes":["Todas","Clubes / academias","Jogadores"],"nameOrPhone":"Nome ou telefone...","searchButton":"Buscar","resultTypes":["Jogador","Academia","Clube"],"addPlayer":"Jogador","team":"Equipe","noResults":"Nenhum resultado","importFromPlatform":"Importar da plataforma","importHelp":"Clube, academia ou jogador","manual":"Adicionar manualmente","manualHelp":"Insira os dados da equipe","back":"Voltar","searchNamePhone":"Buscar por nome ou telefone...","noCategory":"Sem categoria","import":"Importar","teamName":"Nome da equipe *","teamPlaceholder":"Exemplo: Clube Vitória","city":"Cidade","cityPlaceholder":"Lisboa","category":"Categoria","adding":"Adicionando..." },
+  "publicVideos": { "player":"Jogador","noMusic":"Sem música","linkCopied":"Link do vídeo copiado" },
+  "tournamentPublic": { "statuses":{"open":"Inscrições abertas","ongoing":"Em andamento","closed":"Fechado","completed":"Concluído","draft":"Em breve"},"types":{"knockout":"Copa eliminatória","league":"Liga","groups_knockout":"Grupos + eliminatória"},"rounds":{"league":"Liga","group_stage":"Fase de grupos","R16":"Oitavas de final","QF":"Quartas de final","SF":"Semifinais","F":"Final","3rd":"Terceiro lugar","quarter_final":"Quartas de final","semi_final":"Semifinais","third_place":"Terceiro lugar","final":"Final"},"notFound":"Torneio não encontrado","back":"Voltar aos torneios","tabs":["Informações","Equipes","Agenda","Classificação","Estatísticas","Copa"],"noDate":"Sem data","generalStandings":"Classificação geral","tbd":"A definir","tournaments":"Torneios","registerTeam":"Inscrever equipe","share":"Compartilhar","about":"Sobre o torneio","ageCategories":"Categorias de idade","from":"De {age}","to":"até {age} anos","categoryTypes":["Copa","Liga","Grupos"],"prizes":"Prêmios","rules":"Regras e regulamentos","registration":"Inscrição","fee":"Taxa de inscrição","free":"Grátis","deadline":"Prazo","maximum":"Máximo","teamCount":"{count} equipes","registerNow":"Inscrever agora","dates":"Datas do torneio","start":"Data de início","end":"Data de término","location":"Local","contact":"Contato","noSchedule":"A agenda de partidas ainda não foi criada","matchAbbr":"J","live":"Ao vivo","noStandings":"A classificação aparecerá após o início dos jogos","table":["Equipe","J","V","E","D","GP:GC","SG","Pts"],"noStats":"As estatísticas aparecerão após registrar eventos","scorers":"Artilheiros","goal":"Gols","assist":"Assistências","noTeams":"Ainda não há equipes aceitas","noBracket":"A chave aparecerá no início da fase eliminatória","sponsors":"Patrocinadores do torneio" },
+  "tournamentRegister": { "defaultCountry":"Portugal","required":{"team":"O nome da equipe é obrigatório","contact":"O nome do responsável é obrigatório","phone":"O telefone é obrigatório","player":"O nome do jogador é obrigatório"},"failed":"Falha na inscrição: {error}","individualTeam":"Jogador individual — {name}","individualNote":"[Jogador individual] {note}","unavailable":"As inscrições não estão disponíveis","back":"Voltar aos torneios","success":"Inscrição enviada!","successTeam":"Recebemos a inscrição da equipe. Os organizadores analisarão e entrarão em contato.","successPlayer":"Recebemos sua inscrição individual. Os organizadores formarão uma equipe com outros jogadores.","view":"Ver torneio","title":"Inscrição no torneio","type":"Tipo de inscrição","teamRegistration":"Inscrever equipe","teamHelp":"Clube ou grupo organizado","individual":"Jogador individual","individualHelp":"Você será colocado em uma equipe","howTitle":"Como funciona a inscrição individual?","howText":"Você se inscreverá como jogador individual, e os organizadores formarão uma equipe com outros jogadores. Entrarão em contato após o encerramento.","teamData":"Dados da equipe","playerData":"Dados do jogador","category":"Categoria de idade *","selectCategory":"Selecione a categoria...","years":"anos","teamName":"Nome da equipe *","teamPlaceholder":"Clube Vitória","club":"Clube / academia","optional":"Opcional","city":"Cidade","cityPlaceholder":"Lisboa","contactName":"Nome do responsável *","contactPlaceholder":"João Silva","phone":"Telefone *","email":"E-mail","notes":"Observações","teamNotes":"Informações adicionais...","playerName":"Nome do jogador *","playerPlaceholder":"João Silva","birthDate":"Data de nascimento","position":"Posição","select":"Selecione...","positions":["Goleiro","Defensor","Meio-campista","Atacante"],"playerNotes":"Informações para os organizadores...","submitting":"Inscrevendo...","submitTeam":"Enviar inscrição da equipe","submitPlayer":"Enviar inscrição individual" },
+  "unifiedTournamentRegistration": { "unknownPlayer":"Jogador desconhecido","errors":{"players":"Não foi possível carregar os jogadores","duplicate":"Já inscritos: {names}","registration":"Falha na inscrição","generic":"Ocorreu um erro","payment":"Não foi possível criar o pagamento","unexpected":"Erro inesperado","selectPlayer":"Selecione pelo menos um jogador","playerCount":"Selecione os {count} jogadores necessários para continuar.","paymentFailed":"O pagamento falhou"},"success":{"registered":"Inscrição concluída! Sua solicitação será analisada","paid":"Pagamento e inscrição concluídos!","receipt":"Comprovante enviado! Será analisado em breve","copied":"Número copiado"},"title":"Inscrição em torneio","step":"Etapa {current} de 3","steps":["Escolher torneio","Escolher jogadores","Revisar e pagar"],"chooseTournament":"Escolha o torneio que deseja disputar","filters":["Atuais","Próximos","Anteriores"],"loadingTournaments":"Carregando torneios...","noTournaments":["Não há torneios atuais","Não há próximos torneios","Não há torneios anteriores"],"pending":"Em análise","registered":"Inscrito","tournament":"Torneio: {name}","loginRequired":"Entre para continuar","login":"Entrar","teamsOnly":"Este torneio é exclusivo para equipes","teamsOnlyHelp":"Jogadores não podem se inscrever individualmente. Apenas clubes e academias.","wantJoin":"Quer participar?","contactHelp":"Fale com a administração para entrar em uma equipe.","chooseOther":"Escolher outro torneio","contact":"Falar com a administração","noProfile":"Seu perfil de jogador não foi encontrado","completeProfile":"Completar perfil","noManagedPlayers":"Não há jogadores sob sua gestão","addPlayers":"Adicionar jogadores","requestPending":"Sua solicitação está em análise","registeredSuccess":"Inscrição concluída!","receiptPending":"Comprovante enviado; aguardando confirmação","paymentPending":"Sua solicitação aguarda pagamento","alreadyPlayer":"Você já está inscrito neste torneio","alreadyAll":"Todos os jogadores já estão inscritos","viewMine":"Ver meus torneios","selected":"{count} jogadores selecionados","fee":"Taxa de inscrição:","unknown":"Não definido","years":"anos","previous":"Anterior","next":"Próximo","review":"Revisar inscrição","reviewHelp":"Confira os dados antes de confirmar","selectedPlayers":"Jogadores selecionados ({count})","total":"Total","paymentMethod":"Forma de pagamento","payLater":"Pagar depois","cardApple":"Cartão / Apple Pay","card":"Cartão bancário","office":"No escritório","walletNumber":"Número da carteira:","copyNumber":"Copiar número","registering":"Inscrevendo...","confirm":"Confirmar inscrição","paymentTitle":"Pagamento do torneio - {name}","paymentDescription":"Taxa de {count} jogadores","walletTitle":"Pagamento com carteira eletrônica","provider":"Provedor","selectProvider":"Selecione o provedor","transferNumber":"Número da transferência","receiptNumber":"Número do comprovante","transactionNumber":"Número da operação","receiptImage":"Imagem do comprovante","uploading":"Enviando...","cancel":"Cancelar" },
+  "trainerProfile": { "ageGroups":["Juvenil","Júnior","Sênior","Feminino","Todas"],"services":["Treino individual","Treino em grupo","Clubes","Seleções","Academias"],"availability":["Tempo integral","Meio período","Disponível para mudança","Remoto"],"requiredFields":["Nome completo","Nacionalidade","Telefone","E-mail","Especialização","Anos de experiência","Biografia"],"loadError":"Erro ao carregar dados","required":"{field} é obrigatório","completeRequired":"Preencha as informações obrigatórias","invalidImage":"Selecione uma imagem válida","largeImage":"A imagem excede 5 MB","uploadFailed":"Falha no envio","uploadSuccess":"Imagem enviada","uploadError":"Erro ao enviar imagem","saveSuccess":"Perfil salvo","saveError":"Erro ao salvar","certRequired":"Digite o nome do certificado","loading":"Carregando perfil...","back":"Voltar","title":"Perfil - Treinador esportivo","saving":"Salvando...","save":"Salvar","cancel":"Cancelar","export":"Exportar PDF","edit":"Editar dados","incomplete":"Perfil incompleto","incompleteHelp":"Complete seus dados para melhorar a visibilidade. Campos pendentes:","completeNow":"Completar agora","snooze":"Lembraremos novamente em {days} dias","cover":"Imagem de capa","changeCover":"Alterar capa","profileImage":"Imagem de perfil","fullName":"Nome completo","defaultName":"Treinador esportivo","specialization":"Especialização (ex.: futebol, goleiros...)","defaultSpecialization":"Treinador esportivo","nationality":"Nacionalidade","location":"Localização","experience":"anos de experiência","accreditation":"Credenciamento:","accreditationValues":["Credenciado","Não credenciado"],"stats":["Jogadores treinados","Sessões","Taxa de sucesso %","Anos de experiência"],"bio":"Biografia","bioPlaceholder":"Descreva sua experiência e carreira...","noBio":"Ainda não há biografia.","contact":"Contato","contactFields":["Telefone","WhatsApp","E-mail","Site"],"professional":"Informações profissionais","trainingLevel":"Nível:","license":"Licença:","licenseExpiry":"Validade:","birthDate":"Data de nascimento:","languages":"Idiomas:","languagesPlaceholder":"Português, inglês (separados por vírgula)","previousClubs":"Clubes anteriores","add":"Adicionar","clubName":"Nome do clube","noClubs":"Nenhum clube registrado","philosophy":"Filosofia de treino","philosophyPlaceholder":"Descreva seu estilo e metodologia...","noPhilosophy":"Nenhuma filosofia registrada.","ageCategories":"Faixas etárias","serviceType":"Tipo de serviço","availabilityTitle":"Disponibilidade","notSet":"Não definido","certificates":"Certificados e cursos","addCertificate":"Adicionar certificado","newCertificate":"Adicionar certificado / curso","certificateFields":["Nome do certificado / curso *","Entidade","Ano"],"noCertificates":"Nenhum certificado","notablePlayers":"Jogadores de destaque","playerName":"Nome do jogador","noPlayers":"Nenhum jogador de destaque","achievements":"Conquistas e prêmios","achievementsPlaceholder":"Suas principais conquistas e prêmios...","noAchievements":"Nenhuma conquista.","references":"Referências","referencesPlaceholder":"Nomes de referências...","noReferences":"Nenhuma referência.","videos":"Vídeos de treino","addLink":"Adicionar link","noVideos":"Nenhum link de vídeo","social":"Redes sociais","gallery":"Galeria de fotos","image":"Imagem {number}","addImage":"Adicionar imagem","noImages":"Nenhuma imagem" },
+  "tournamentsLayout": { "title":"Portal de torneios","subtitle":"Sistema dedicado para participantes e organizadores","all":"Todos os torneios","registration":"Inscrição unificada","home":"Site principal","footerTitle":"Ambiente dedicado a torneios","footerText":"Esta área reúne páginas públicas, detalhes e inscrições do sistema independente de torneios.","tournaments":"Torneios","organizers":"Portal dos organizadores","back":"Voltar ao site" },
+  "sharedComponents": {
+    "supportLabel": "Ajuda e suporte",
+    "checkingAccess": "Verificando permissões de acesso...",
+    "playerProfile": { "english":"Inglês", "bmi":"IMC", "openInNewWindow":"Abrir em uma nova janela", "playerId":"ID do jogador", "userId":"ID do usuário", "viewMode":"Modo de visualização" },
+    "phoneCollection": { "countryRequired":"Selecione um país", "phoneRequired":"Digite o telefone", "phoneLength":"O telefone deve ter {{count}} dígitos ({{country}})", "whatsappRequired":"Digite o número do WhatsApp", "whatsappCountryRequired":"Selecione o país do WhatsApp", "whatsappLength":"O número do WhatsApp deve ter {{count}} dígitos ({{country}})", "saved":"Dados de contato salvos com sucesso", "saveFailed":"Não foi possível salvar os dados", "title":"Atualizar contato", "description":"Adicione seu telefone para receber notificações e ofertas", "country":"País", "selectCountry":"Selecione o país...", "searchCountry":"Pesquisar país...", "countryNotFound":"Nenhum país encontrado com esse nome.", "phone":"Telefone", "differentWhatsapp":"WhatsApp diferente?", "differentWhatsappDescription":"Ative se o WhatsApp usa outro país ou número", "whatsappCountry":"País do WhatsApp", "saving":"Salvando...", "saveConfirm":"Salvar e confirmar" },
+    "trainerResume": { "creatingPdf":"Criando PDF...", "pdfError":"Não foi possível criar o PDF. Tente novamente.", "downloading":"Baixando...", "downloadPdf":"Baixar PDF", "print":"Imprimir", "preview":"Prévia do perfil do treinador", "trainerPhoto":"Foto do treinador", "sportsTrainer":"Treinador esportivo", "yearsExperience":"{count} anos de experiência", "level":"Nível {level}", "certifiedTrainer":"Treinador certificado", "platformName":"Plataforma El7lm de descoberta de talentos do futebol 2025", "issueDate":"Data de emissão: {date}", "documentDisclaimer":"Este documento foi gerado pelo titular da conta na plataforma El7lm, sem responsabilidade para a plataforma.", "playersTrained":"Jogadores treinados", "trainingSessions":"Sessões de treino", "successRate":"Taxa de sucesso", "experienceYears":"Anos de experiência", "contactInformation":"Informações de contato", "whatsapp":"WhatsApp", "bio":"Biografia", "professionalInformation":"Informações profissionais", "specialization":"Especialização", "coachingLevel":"Nível de treino", "licenseNumber":"Número da licença", "licenseExpiry":"Validade da licença", "dateOfBirth":"Data de nascimento", "availability":"Disponibilidade", "languages":"Idiomas", "categoriesAndServices":"Categorias e serviços", "ageGroups":"Faixas etárias", "serviceType":"Tipo de serviço", "trainingPhilosophy":"Filosofia de treino", "certificationsAndCourses":"Certificados e cursos", "certificateOrCourse":"Certificado / curso", "issuer":"Entidade emissora", "year":"Ano", "previousClubs":"Clubes anteriores", "notablePlayers":"Jogadores de destaque", "achievementsAndAwards":"Conquistas e prêmios", "referencesAndRecommendations":"Referências e recomendações", "trainingVideoLinks":"Links de vídeos de treino", "socialMedia":"Redes sociais", "photoGallery":"Galeria de fotos", "photoNumber":"Foto {number}", "platformFooter":"Plataforma El7lm — el7lm.com", "createdAt":"Este perfil foi criado em {date}", "informationDisclaimer":"Todas as informações deste perfil são de responsabilidade do titular; a plataforma não responde por sua exatidão." },
+    "clubPlayerForm": { "clubIdMissing":"O ID do clube está ausente", "fullNameRequired":"O nome completo é obrigatório", "emailRequired":"O e-mail é obrigatório", "emailInvalid":"O e-mail é inválido", "phoneRequired":"O telefone é obrigatório", "personal":"Informações pessoais", "sports":"Informações esportivas", "education":"Educação", "medical":"Histórico médico", "skills":"Habilidades", "objectives":"Objetivos", "media":"Mídia", "contracts":"Contratos", "fullName":"Nome completo", "email":"E-mail", "phone":"Telefone", "whatsapp":"WhatsApp", "birthDate":"Data de nascimento", "nationality":"Nacionalidade", "primaryPosition":"Posição principal", "secondaryPosition":"Posição secundária", "preferredFoot":"Pé preferido", "selectPreferredFoot":"Selecione o pé preferido", "right":"Direito", "left":"Esquerdo", "both":"Ambos", "saving":"Salvando...", "save":"Salvar", "cancel":"Cancelar" },
+    "referrals": { "codeRequired":"Digite o código de indicação", "requestSent":"Solicitação de entrada enviada com sucesso!", "codeSendFailed":"Não foi possível enviar o código", "invalidCode":"O código de indicação é inválido ou expirou", "codeVerified":"Código verificado com sucesso!", "codeVerifyFailed":"Não foi possível verificar o código", "requestSendFailed":"Não foi possível enviar a solicitação", "welcome":"Bem-vindo à El7lm!", "haveReferralCode":"Você tem um código de indicação de uma academia?", "joinAcademy":"Entre em uma academia", "joinAcademyBenefit":"Receba treinamento profissional e acompanhamento contínuo", "betterOpportunities":"Melhores oportunidades", "betterOpportunitiesBenefit":"Conecte-se com clubes locais e internacionais", "fullSupport":"Suporte completo", "fullSupportBenefit":"Receba ajuda para criar um perfil profissional", "codePlaceholder":"Digite o código (exemplo: ACAD-123)", "sending":"Enviando...", "joinNow":"Entrar agora", "noCodeNow":"Não tenho um código agora", "doNotShowAgain":"Não mostrar esta janela novamente", "addCodeLater":"Você pode adicionar o código depois na página de indicações", "closesInSevenSeconds":"Fecha automaticamente em 7 segundos", "joinOrganization":"Entrar em uma organização", "notJoined":"Você ainda não entrou em uma academia ou clube", "joinBenefit":"Entre em uma academia para receber treinamento profissional e melhores oportunidades", "affiliations":"Minhas afiliações", "viewAll":"Ver tudo", "accepted":"Aceito", "acceptedAt":"Aceito", "pending":"Pendente", "sentAt":"Enviado", "rejected":"Rejeitado", "reason":"Motivo", "joinNewOrganization":"Entrar em uma nova organização", "confirmJoin":"Confirmar entrada", "enterCodeDescription":"Digite o código recebido da academia ou clube", "verifying":"Verificando...", "verifyCode":"Verificar código", "note":"Observação", "verifyNote":"Depois de inserir um código válido, os dados da organização aparecerão para confirmação", "validCode":"Código válido", "joined":"membros", "requestWillBeSent":"Uma solicitação de entrada será enviada para", "approvalRequired":"Você será aceito após a organização aprovar sua solicitação.", "cancel":"Cancelar", "orgTypes":{"academy":"Academia","club":"Clube","agent":"Agente","trainer":"Treinador","organization":"Organização"} },
+    "dreamAcademy": { "title":"Academia Dream", "subtitle":"Aprenda os idiomas e habilidades necessários para o esporte profissional — conteúdo selecionado e especialistas em futebol", "freshContent":"Conteúdo novo e atualizado", "freshContentDescription":"Vídeos selecionados para as necessidades do jogador", "privateSessions":"Sessões particulares pagas", "privateSessionsDescription":"Com treinadores e especialistas em futebol", "fieldLanguage":"A linguagem do campo", "fieldLanguageDescription":"Termos e aplicações práticas dentro e fora do campo", "addPrivateSession":"Adicionar sessão particular", "retry":"Tentar novamente", "videoErrorHelp":"Tente novamente ou escolha outro vídeo. Se o problema continuar, assista diretamente no YouTube.", "watchYoutube":"Assistir no YouTube", "videoLoadError":"Não foi possível carregar o vídeo. Tente novamente ou verifique sua conexão.", "directPlaybackUnavailable":"Este vídeo não está disponível para reprodução direta. Use “Assistir no YouTube”.", "youtubeConnectionIssue":"Há um problema de conexão com o YouTube. Tente novamente ou use o link direto.", "youtubeServerFailed":"Não foi possível conectar ao YouTube. Verifique a conexão e tente novamente.", "networkDisconnected":"A conexão de rede foi perdida. Verifique a conexão e tente novamente.", "youtubeBlocked":"A conexão com o YouTube foi bloqueada. Tente novamente ou use o link direto.", "directPlaybackUnsupported":"Este vídeo não aceita reprodução direta. Use “Assistir no YouTube”.", "videoPrivate":"Este vídeo não está disponível ou é privado. Abra no YouTube para verificar o acesso.", "loadingVideo":"Carregando vídeo...", "videoLoadErrorTitle":"Erro ao carregar vídeo", "cannotLoadVideo":"Não foi possível carregar o vídeo", "checkConnection":"Verifique a conexão e tente novamente", "videoTimeout":"O vídeo demorou muito para carregar. Pode haver um problema de rede; tente novamente ou use o link direto.", "requestPrivateSession":"Solicitar sessão particular", "requestDescription":"Informe seus dados e a solicitação usará a moeda e o método de pagamento escolhidos", "fullName":"Nome completo", "namePlaceholder":"Nome", "whatsapp":"WhatsApp", "durationMinutes":"Duração (minutos)", "sessionType":"Tipo de sessão", "selectType":"Selecione o tipo", "currency":"Moeda", "paymentMethod":"Forma de pagamento", "wallet":"Carteira", "price":"Preço", "free":"Grátis", "notes":"Observações", "notesPlaceholder":"Objetivo, nível, preferências...", "genericError":"Ocorreu um erro", "completeRequest":"Concluir solicitação" },
+    "redirects": { "messages":"Redirecionando para Mensagens...", "subscription":"Redirecionando para o status da assinatura...", "dreamAcademy":"Redirecionando para a nova página da Dream Academy..." },
+    "referralSummary": { "loadFailed":"Não foi possível carregar os códigos de indicação", "manage":"Gerenciar indicações", "page":"Página de indicações", "loading":"Carregando...", "totalCodes":"Total de códigos", "activeCodes":"Códigos ativos", "createManage":"Criar/gerenciar códigos", "goToPage":"Ir para indicações", "latestCode":"Código mais recente", "copyCode":"Copiar código", "copyLink":"Copiar link" },
+    "notifications": { "title":"Notificações", "description":"Acompanhe todas as notificações e alertas importantes", "user":"Usuário", "now":"Agora", "profileView":"Visualização do perfil", "newMessage":"Nova mensagem", "connectionRequest":"Solicitação de conexão", "follow":"Seguir", "like":"Curtir", "comment":"Comentário", "interaction":"Interação", "success":"Sucesso", "warning":"Aviso", "error":"Erro", "information":"Informações", "club":"Clube", "academy":"Academia", "agent":"Agente", "trainer":"Treinador", "player":"Jogador", "admin":"Administrador", "marketer":"Profissional de marketing", "viewedYourProfile":"Viu seu perfil", "new":"Novo", "markAsRead":"Marcar como lida", "viewProfile":"Ver perfil", "viewSenderProfile":"Ver perfil do remetente", "viewDetails":"Ver detalhes", "archived":"Notificação arquivada", "archiveFailed":"Não foi possível arquivar a notificação", "deleted":"Notificação excluída", "deleteFailed":"Não foi possível excluir a notificação", "openingReply":"Abrindo a página de resposta", "openingForward":"Abrindo a página de encaminhamento", "total":"Total", "unread":"Não lidas", "read":"Lidas", "warnings":"Avisos", "errors":"Erros", "views":"Visualizações", "messages":"Mensagens", "connections":"Conexões", "searchPlaceholder":"Pesquisar notificações...", "notificationType":"Tipo de notificação", "allTypes":"Todos os tipos", "readStatus":"Status de leitura", "allNotifications":"Todas as notificações", "actionType":"Tipo de ação", "allActions":"Todas as ações", "message":"Mensagem", "markAllRead":"Marcar todas como lidas", "soundSettings":"Configurações de som", "createTestNotifications":"Criar notificações de teste", "createTenNotifications":"Criar 10 notificações", "empty":"Nenhuma notificação", "emptyFiltered":"Nenhuma notificação corresponde aos filtros", "emptyDescription":"Novas notificações aparecerão aqui quando ocorrerem eventos importantes", "clearFilters":"Limpar filtros", "showing":"Mostrando {{shown}} de {{total}} notificações", "dateNotSpecified":"Data não especificada", "textCopied":"Texto copiado", "saved":"Notificação salva", "reported":"Notificação denunciada", "actionFailed":"Não foi possível processar a ação", "details":"Detalhes da notificação", "detailsDescription":"Informações detalhadas da notificação", "senderInformation":"Informações do remetente", "technicalSupportMessage":"Enviar mensagem ao suporte técnico", "notificationInformation":"Informações da notificação", "createdDate":"Data de criação", "since":"Desde", "type":"Tipo", "status":"Status", "metadata":"Metadados", "actions":"Ações", "openLink":"Abrir link", "save":"Salvar", "share":"Compartilhar", "reply":"Responder", "forward":"Encaminhar", "report":"Denunciar", "archive":"Arquivar", "delete":"Excluir", "close":"Fechar", "interactiveNotification":"Notificação interativa", "noDetails":"Nenhum detalhe disponível", "from":"De", "markedAsRead":"Notificação marcada como lida", "updateFailed":"Não foi possível atualizar a notificação", "allMarkedRead":"Todas as notificações foram marcadas como lidas", "notificationsUpdateFailed":"Não foi possível atualizar as notificações", "testCreated":"Notificações de teste criadas com sucesso", "testCreateFailed":"Não foi possível criar as notificações de teste", "tenCreated":"10 notificações de teste criadas com sucesso", "multipleCreateFailed":"Não foi possível criar várias notificações", "loginRequired":"Entre primeiro", "loginToView":"Entre para ver as notificações", "loadingData":"Carregando dados", "pleaseWait":"Aguarde um momento...", "settingsSaved":"Configurações salvas com sucesso", "soundEnabledSuccess":"Som ativado com sucesso", "soundEnableFailed":"Não foi possível ativar o som", "soundSettingsDescription":"Personalize as configurações de som conforme suas preferências", "enableSoundNotifications":"Ativar notificações sonoras", "enableSound":"Ativar som", "playOnNewNotification":"Reproduzir som ao receber uma nova notificação", "volumeLevel":"Volume", "silent":"Silencioso", "loud":"Alto", "playing":"Reproduzindo...", "testSound":"Testar som", "enableMobileSound":"Ativar som no celular", "note":"Observação", "soundInfoDevices":"As notificações sonoras funcionam no computador e no celular", "soundInfoMobile":"No celular, talvez seja necessário ativar o som primeiro", "soundInfoInactive":"O som não funciona quando a página está inativa", "cancel":"Cancelar", "saveSettings":"Salvar configurações" },
+    "sendMessage": { "positionPhrase":", jogo como {{position}}", "agePhrase":", tenho {{age}} anos", "organization":"a organização", "team":"a equipe", "phoneWhatsapp":"Telefone/WhatsApp", "email":"E-mail", "city":"Cidade", "nationality":"Nacionalidade", "contactInformation":"Dados de contato", "loginRequired":"Entre na sua conta", "recipientRequired":"Nenhum destinatário selecionado", "cannotMessageSelf":"Você não pode enviar mensagem para si mesmo", "messageRequired":"Escreva uma mensagem", "newMessage":"Nova mensagem", "newConversationMessage":"Nova mensagem na conversa", "conversationCreateFailed":"Não foi possível criar a conversa", "messageCreateFailed":"Não foi possível criar a mensagem", "conversationCreatedAndSent":"Conversa criada e mensagem enviada com sucesso", "sent":"Mensagem enviada com sucesso", "errorPrefix":"Erro", "sendFailed":"Não foi possível enviar a mensagem", "conversationCreated":"Conversa criada com sucesso", "conversationCreateError":"Não foi possível criar a conversa", "message":"Mensagem", "sendNewMessage":"Enviar nova mensagem", "to":"Para", "readyTemplates":"Modelos prontos", "subjectOptional":"Assunto (opcional)", "subjectPlaceholder":"Exemplo: Consulta para entrar, proposta de colaboração...", "messageLabel":"Mensagem", "messagePlaceholder":"Escreva sua mensagem aqui...", "attachContact":"Anexar automaticamente os dados de contato (telefone/e-mail/cidade/nacionalidade)", "redirectAfterSend":"Você será redirecionado para Mensagens para continuar a conversa", "cancel":"Cancelar", "sending":"Enviando...", "send":"Enviar", "userTypes":{"club":"Clube","academy":"Academia","trainer":"Treinador","agent":"Agente","player":"Jogador","admin":"Administrador"}, "templates":{"trialRequest":{"label":"Solicitar teste","subject":"Solicitação de teste","body":"Olá {recipient},\n\nSou {playerName}{positionPhrase}{agePhrase}. Gostaria de uma oportunidade de teste na {org}.\n\nPodemos marcar um horário adequado?\n\nObrigado."},"joinInquiry":{"label":"Consulta para entrar","subject":"Consulta para entrar","body":"Olá {recipient},\n\nSou {playerName}{positionPhrase}{agePhrase}. Gostaria de saber os requisitos para entrar na {org}.\n\nAguardo seu retorno."},"agentCollab":{"label":"Colaboração com agente","subject":"Solicitação de colaboração","body":"Olá {recipient},\n\nSou {playerName}{positionPhrase}{agePhrase}. Gostaria de contar com sua representação e acessar oportunidades adequadas para minha carreira.\n\nObrigado pelo seu tempo."},"intro":{"label":"Apresentação rápida","subject":"Apresentação e contato","body":"Olá {recipient},\n\nSou {playerName}{positionPhrase}{agePhrase}. É um prazer entrar em contato e construir uma futura relação profissional.\n\nAtenciosamente."}} },
+    "comments": { "commentRequired":"Digite um comentário", "loginRequired":"Entre primeiro", "videoNotFound":"Vídeo não encontrado", "user":"Usuário", "sent":"Comentário enviado com sucesso!", "sendFailed":"Não foi possível enviar o comentário", "title":"Comentários", "close":"Fechar", "loading":"Carregando comentários...", "empty":"Ainda não há comentários", "beFirst":"Seja o primeiro a comentar neste vídeo!", "placeholder":"Adicione um comentário..." },
+    "messageComposer": { "user":"Usuário", "sendFailed":"Não foi possível enviar a mensagem. Tente novamente", "sent":"Enviado com sucesso!", "willNotify":"{{name}} receberá uma notificação sobre sua mensagem", "close":"Fechar", "newMessage":"Nova mensagem", "placeholder":"Escreva uma mensagem para {{name}}...", "send":"Enviar mensagem", "loginRequired":"Entre para enviar" },
+    "geideaPayment": { "title":"Pagamento online", "description":"Conclua o pagamento com cartão de forma segura", "preparing":"Preparando a página de pagamento...", "redirectSoon":"Você será redirecionado para a página segura de pagamento em instantes", "paymentError":"Erro no pagamento", "retry":"Tentar novamente", "cancel":"Cancelar", "sessionCreated":"Sessão de pagamento criada", "sessionCreatedHelp":"A sessão de pagamento foi criada com sucesso. Se a página não abrir automaticamente, clique no botão abaixo.", "openPaymentPage":"Abrir página de pagamento", "copyLinkPrompt":"Ou copie o link a seguir", "copyLink":"Copiar link", "close":"Fechar", "testMode":"Modo de teste", "testModeHelp":"Uma sessão de pagamento de teste foi criada. Em produção, você será redirecionado para a página de pagamento real.", "note":"Observação", "testModeSetup":"Este é o modo de teste. Para ativar pagamentos reais, adicione as credenciais da Geidea ao .env.local", "redirecting":"Redirecionando para o pagamento", "geideaWindowSoon":"A janela segura de pagamento da Geidea será aberta em instantes...", "securePayment":"Pagamento seguro", "securePaymentHelp":"Você será levado ao gateway oficial da Geidea para inserir os dados do cartão com segurança", "securePayments":"Pagamentos seguros", "cards":"Cartões de crédito e mada" },
+    "playerResumeExtra": { "education":"Educação", "level":"Nível", "specialization":"Especialização", "graduation":"Formatura", "languages":"Idiomas", "arabic":"Árabe", "english":"Inglês", "documents":"Documentos", "passport":"Passaporte", "available":"Disponível", "notAvailable":"Indisponível", "guardianConsent":"Consentimento do responsável", "required":"Obrigatório", "skillsAndAbilities":"Habilidades e capacidades", "pace":"Velocidade", "shooting":"Finalização", "passing":"Passe", "dribbling":"Drible", "defending":"Defesa", "physical":"Físico", "coreAbilities":"Capacidades principais", "technicalSkills":"Habilidades técnicas", "physicalSkills":"Habilidades físicas", "socialSkills":"Habilidades sociais", "careerGoals":"Objetivos profissionais", "noGoals":"Nenhum objetivo registrado", "europeanLeagues":"Ligas europeias", "arabLeagues":"Ligas árabes", "localLeagues":"Ligas locais", "professional":"Carreira profissional", "training":"Treinamento", "trials":"Testes", "sportsHistory":"Histórico esportivo e de treinamento", "clubCareer":"Carreira em clubes", "present":"Até o momento", "noPreviousClubs":"Nenhum clube anterior registrado", "trainingDevelopment":"Treinamento e desenvolvimento", "academies":"Academias", "now":"Agora", "noAcademies":"Nenhuma academia", "privateCoaches":"Treinadores particulares", "noPrivateCoaches":"Nenhum treinador particular", "photosAndVideos":"Fotos e vídeos", "photos":"Fotos", "profilePhoto":"Foto de perfil", "primary":"Principal", "additionalPhoto":"Foto adicional", "photo":"Foto", "videos":"Vídeos", "video":"Vídeo", "watch":"Assistir", "clickToWatch":"Clique aqui para assistir ao vídeo", "videoDescription":"Descrição do vídeo", "videoType":"Tipo de vídeo", "noMedia":"Nenhuma foto ou vídeo disponível", "resumeCreatedOn":"Este currículo foi criado em", "informationAccurate":"Todas as informações estavam corretas quando o documento foi criado", "preparedByPlatform":"Este documento foi preparado pela El7lm, plataforma especializada em descobrir e desenvolver talentos do futebol" },
+    "playerResume": { "pdfElementMissing":"Erro: não foi possível encontrar o elemento necessário para criar o PDF", "creatingPdf":"Criando PDF... Aguarde", "pdfCreated":"PDF criado com sucesso!\nNome do arquivo: {{fileName}}\nVerifique sua pasta de downloads.", "pdfError":"Não foi possível criar o PDF. Tente novamente.\n\nDetalhes: {{error}}", "downloadPdf":"Baixar PDF", "imageDownloaded":"Imagem baixada com sucesso!", "imageDownloadError":"Não foi possível baixar a imagem: {{error}}", "downloadImage":"Baixar como imagem", "player":"Jogador", "shareReport":"Compartilhar relatório" },
+    "playerResumeDetails": { "playerPhoto":"Foto do jogador", "playerName":"Nome do jogador", "playerPosition":"Posição do jogador", "years":"anos", "notSpecified":"Não especificado", "platformName":"Plataforma El7lm de descoberta de talentos do futebol 2025", "createdDate":"Data de criação", "lastUpdated":"Última atualização", "accountOwnerDisclaimer":"Este documento foi criado pelo titular da conta na plataforma El7lm; a plataforma não assume responsabilidade pelo conteúdo", "contactInformation":"Informações de contato", "unavailable":"Indisponível", "summary":"Resumo", "statusAndAffiliation":"Status e afiliação", "officialNegotiator":"Parte negociadora oficial", "legalGuardianship":"Tutela legal", "guardianshipAlert":"Aviso de tutela", "guardianConsentComplete":"Consentimento do responsável concluído", "underGuardianship":"Sob tutela legal", "negotiationAllowed":"A negociação e os procedimentos podem continuar", "awaitingGuardianConsent":"Aguardando consentimento oficial do responsável", "talentEvaluation":"Avaliação de talento", "evaluated":"Avaliado", "underEvaluation":"Em avaliação", "byTechnicalCommittee":"Pelo comitê técnico da plataforma", "personalInformation":"Informações pessoais", "basicData":"Dados básicos", "birthDate":"Data de nascimento", "age":"Idade", "legalStatus":"Status legal", "nationality":"Nacionalidade", "city":"Cidade", "physicalData":"Dados físicos", "height":"Altura", "cm":"cm", "weight":"Peso", "kg":"kg", "bloodType":"Tipo sanguíneo", "preferredFoot":"Pé preferido", "sportsData":"Dados esportivos", "primaryPosition":"Posição principal", "secondaryPosition":"Posição secundária", "jerseyNumber":"Número da camisa", "currentClub":"Clube atual", "freeAgent":"Agente livre", "experienceYears":"Anos de experiência", "contractStatus":"Status contratual", "contracted":"Sob contrato", "loan":"Emprestado", "healthStatus":"Estado de saúde", "healthCondition":"Condição de saúde", "hasNotes":"Há observações", "fullyHealthy":"Totalmente saudável", "allergies":"Alergias", "none":"Nenhuma" },
+    "playerCredentials": { "copied":"Copiado para a área de transferência", "copyFailed":"Não foi possível copiar", "noWhatsappOrPhone":"O jogador não tem WhatsApp nem telefone", "noPhone":"O jogador não tem telefone", "confirmWhatsapp":"Confirme o número do WhatsApp", "player":"Jogador", "organization":"Organização", "orgTypes":{"club":"clube","academy":"academia","trainer":"treinador","agent":"agente","organization":"organização"}, "loginMessage":"Olá, {{playerName}}! 🎉\n\nSua conta de acesso foi criada:\n\n📧 E-mail: {{email}}\n🔑 Senha: {{password}}\n\nPara entrar:\n1. Abra a página de login\n2. Use o e-mail e a senha acima\n3. Você pode alterar sua senha após entrar\n\nBem-vindo! 🎯", "officialMessage":"Olá, {{playerName}}! 👋\n\nA {{organizationName}} dá as boas-vindas! {{orgEmoji}}\n\nSua conta de acesso foi criada:\n\n📧 E-mail: {{email}}\n🔑 Senha: {{password}}\n\nEtapas de login:\n1️⃣ Abra a página de login\n2️⃣ Digite o e-mail e a senha acima\n3️⃣ Você pode alterar sua senha quando quiser\n\nBem-vindo! 🎯\n\n---\nAdministração da {{organizationName}}\n{{senderPhone}}", "emailSubject":"Dados de acesso - {{playerName}}", "officialSent":"Os dados de acesso foram enviados com sucesso para {{playerName}} pelo WhatsApp oficial", "sendFailed":"Falha ao enviar a mensagem", "unknownError":"Erro desconhecido", "officialSendFailed":"Falha ao enviar a mensagem oficial: {{error}}", "loginCredentials":"Dados de acesso", "email":"E-mail", "password":"Senha", "loginSteps":"Etapas de login", "stepOpenLogin":"Abra a página de login", "stepEnterEmail":"Digite o e-mail indicado acima", "stepEnterPassword":"Digite a senha indicada acima", "stepChangePassword":"Você pode alterar a senha após entrar", "stepWelcome":"Bem-vindo à sua conta!", "createdAt":"Criado em", "management":"Administração", "accountCreated":"Conta de acesso criada!", "accountCreatedFor":"Uma conta de acesso foi criada com sucesso para {{playerName}}", "contactInformation":"Informações de contato", "shareWithPlayer":"Compartilhar dados de acesso com o jogador", "officialWhatsapp":"Enviar pelo WhatsApp oficial", "featured":"Destaque", "sentFrom":"Será enviado pelo número de {{organizationType}} {{organizationName}}: {{senderPhone}}", "confirmPlayerWhatsapp":"Confirmar o WhatsApp do jogador", "verifyCountryCode":"Verifique o número antes de enviar; ele deve incluir o código do país", "messagePreview":"Prévia da mensagem", "sending":"Enviando...", "sendNow":"Enviar agora", "cancel":"Cancelar", "regularWhatsapp":"WhatsApp comum", "sms":"Mensagem de texto", "print":"Imprimir", "copiedShort":"Copiado!", "copyFullMessage":"Copiar mensagem completa", "instructions":"Instruções", "officialSending":"Envio oficial", "fromOrganization":"pelo número de {{organizationType}} {{organizationName}}", "checkWhatsapp":"Verifique o número do WhatsApp antes de enviar", "canChangePassword":"O jogador pode alterar a senha após o primeiro acesso", "organizationNumber":"Número de {{organizationType}}: {{senderPhone}}", "close":"Fechar" },
+    "messageCenterUi": { "addEmoji":"Adicionar emoji", "chooseEmoji":"Escolha um emoji", "clearAll":"Limpar tudo", "welcome":"Bem-vindo à central de mensagens", "welcomeDescription":"Escolha uma conversa ou inicie uma nova", "ready":"Pronto para conversar", "availableContacts":"{{count}} contatos disponíveis", "startNew":"Iniciar uma conversa", "contactSearch":"Pesquisar por nome ou organização...", "dependent":"Dependente", "cannotCreate":"Não é possível criar uma conversa agora" },
+    "messageCenter": { "loginRequired":"Entre na sua conta", "alreadyExists":"Esta conversa já existe", "createFailed":"Não foi possível criar a conversa", "contactsFailed":"Não foi possível carregar os contatos", "sent":"Mensagem enviada", "sendFailed":"Não foi possível enviar a mensagem", "loading":"Carregando a central de mensagens...", "loadError":"Erro ao carregar", "signedOut":"Sessão não iniciada", "signInToAccess":"Entre para acessar a central de mensagens", "loadingContacts":"Carregando contatos...", "noContacts":"Nenhum contato", "noContactsDescription":"Nenhum contato foi encontrado no sistema", "retry":"Tentar novamente", "back":"Voltar às mensagens", "counts":"{{conversations}} conversas • {{contacts}} contatos", "searchPlaceholder":"Pesquisar conversas...", "yesterday":"Ontem", "you":"Você", "noConversations":"Nenhuma conversa", "startConversation":"Inicie uma conversa com um contato", "online":"Online agora", "messagePlaceholder":"Digite sua mensagem aqui..." },
+    "newChat": { "title":"Nova conversa", "subtitle":"Pesquise usuário, jogador, clube, academia, treinador ou agente", "placeholder":"Pesquisar por nome, e-mail ou telefone...", "searching":"Pesquisando em todas as contas...", "noResults":"Nenhum resultado", "tryDifferent":"Tente outros termos de pesquisa", "startSearch":"Começar a pesquisar", "searchScope":"Pesquise usuários, jogadores, clubes, academias, treinadores e agentes", "noEmail":"Sem e-mail", "foundPrefix":"Foram encontradas", "account":"contas", "defaultUser":"Usuário", "types":{"player":"Jogador","club":"Clube","academy":"Academia","trainer":"Treinador","agent":"Agente"} },
+    "starRating": { "chooseRating": "Escolha uma avaliação" },
+    "otp": { "title": "Verificar número de telefone", "titleWhatsapp": "Verificar pelo WhatsApp", "subtitleSms": "Um código de verificação foi enviado ao seu telefone", "subtitleWhatsapp": "Um código de verificação foi enviado pelo WhatsApp", "sentTo": "Um código de verificação foi enviado para {{phone}}", "maxAttempts": "Você atingiu o número máximo de tentativas.", "invalidCode": "O código de verificação está incorreto.", "verified": "Verificação concluída!", "resendFailed": "Não foi possível reenviar o código", "resent": "O código foi reenviado com sucesso.", "resentWhatsapp": "O código foi reenviado com sucesso pelo WhatsApp.", "timeRemaining": "Tempo restante", "expired": "O código expirou.", "resend": "Reenviar código", "close": "Fechar", "digitLabel": "Dígito de verificação {{number}}", "testTitle": "Teste simples do código de verificação", "phoneNumber": "Número de telefone: {{phone}}", "sending": "Enviando...", "testSent": "Código de verificação enviado!", "testSendFailed": "Não foi possível enviar o código de verificação" },
+    "footer": { "brand":"EL7LM", "version":"v2.0", "privacyShort":"Privacidade", "termsShort":"Termos", "supportShort":"Suporte", "rights":"Todos os direitos reservados", "privacy":"Política de privacidade", "terms":"Termos e condições", "support":"Suporte técnico" },
+    "campaign": { "running":"Campanha em andamento...", "completed":"Campanha concluída ✅", "template":"Modelo", "succeeded":"sucessos", "failed":"falhas", "of":"de", "failedSoFar":"❌ {{count}} falhas até agora", "failureDetails":"Detalhes das falhas ({{count}})" },
+    "logout": { "success":"Sessão encerrada com sucesso", "thanks":"Obrigado por usar o El7lm", "loginRequired":"Entre para acessar o painel", "redirecting":"Você será redirecionado ao início em {{count}} segundos", "register":"Criar uma nova conta", "home":"Início", "support":"Suporte técnico e ajuda", "supportEmail":"support@el7lm.com", "whatsapp":"WhatsApp", "secure":"100% seguro", "quality":"Alta qualidade", "alwaysSupport":"Suporte 24/7" },
+    "pushNotifications": { "loginRequired":"Entre primeiro", "enabled":"✅ Notificações ativadas!", "enabledDescription":"Você receberá notificações instantâneas sobre novas atualizações", "enableFailed":"Não foi possível ativar as notificações", "permissionHint":"Permita notificações nas configurações do navegador", "unexpectedError":"Ocorreu um erro ao ativar as notificações", "title":"Ativar notificações", "subtitle":"Fique sempre informado", "receiveWhen":"Receba notificações instantâneas de:", "newMessages":"Novas mensagens", "accountUpdates":"Atualizações importantes da conta", "newOffers":"Novas oportunidades e ofertas", "enabling":"Ativando...", "enableNow":"Ativar agora", "later":"Mais tarde", "androidOnly":"💡 As notificações estão disponíveis apenas no Android" },
+    "supportWidget": { "loginRequired":"Entre primeiro", "created":"Uma nova conversa de suporte foi criada", "createFailed":"Não foi possível criar a conversa de suporte", "supportSystem":"Sistema de suporte", "welcomeMessage":"Bem-vindo ao suporte do El7lm! 👋\n\nComo podemos ajudar hoje? Nossa equipe responderá assim que possível.", "sent":"Mensagem enviada", "sendFailed":"Não foi possível enviar a mensagem", "newSupportMessage":"Nova mensagem de suporte", "open":"Abrir suporte técnico", "title":"Suporte técnico", "openFullPage":"Abrir a página completa de suporte", "welcomeTitle":"Bem-vindo ao suporte técnico", "welcomeQuestion":"Como podemos ajudar hoje?", "now":"agora", "placeholder":"Digite sua mensagem..." },
+    "ads": { "urgency":{"critical":"🚨 Urgente","high":"⚡ Importante","medium":"📢 Normal","low":"💡 Baixa"}, "endsIn":"Termina em", "types":{"video":"🎥 Vídeo","image":"🖼️ Imagem","ad":"📝 Anúncio"}, "limitedOffer":"Oferta limitada — não perca!", "views":"visualizações", "clicks":"cliques", "conversion":"conversão" },
+    "profileReminder": { "title":"Complete seu perfil", "description":"Seu perfil está incompleto — conclua-o para melhorar sua visibilidade e atrair oportunidades.", "more":"mais", "completeNow":"Completar agora", "remindLater":"Aparecerá novamente em 3 horas", "fields":{"academy_name":"Nome da academia","academy_type":"Tipo de academia","country":"País","city":"Cidade","phone":"Telefone","email":"E-mail","description":"Descrição","founding_year":"Ano de fundação","club_name":"Nome do clube","name":"Nome","nationality":"Nacionalidade","position":"Posição","dateOfBirth":"Data de nascimento","specialization":"Especialização"} },
+    "shareModal": { "shareMessage": "Relatório de {{playerName}} - Plataforma El7lm de descoberta de talentos no futebol", "copied": "Link copiado para a área de transferência!", "whatsapp": "WhatsApp", "facebook": "Facebook", "linkedin": "LinkedIn", "twitter": "X (Twitter)", "copyLink": "Copiar link", "share": "Compartilhar", "title": "Compartilhar o relatório de {{playerName}}", "choosePlatform": "Escolha sua plataforma de compartilhamento preferida", "fullReportHint": "O link levará o destinatário ao relatório completo" },
+    "messages": { "title": "Mensagens", "conversations": "Conversas", "unread": "Não lidas", "noMessages": "Nenhuma mensagem", "allRead": "Você leu todas as suas mensagens!", "startConversation": "Inicie uma nova conversa agora.", "viewAll": "Ver todas as mensagens", "defaultUser": "Usuário" },
+    "notifications": { "title": "Notificações", "markAllRead": "Marcar tudo como lido", "all": "Todas", "unread": "Não lidas", "emptyTitle": "Nenhuma notificação", "allCaughtUp": "Você está em dia!", "emptyDescription": "Novas atualizações aparecerão aqui.", "viewDetails": "Ver detalhes", "markRead": "Marcar como lida", "delete": "Excluir notificação", "viewAll": "Ver todas as notificações", "newOpportunity": "Nova oportunidade 🎯", "publishedOpportunity": "{{organizer}} publicou: {{title}}", "system": "Sistema" }
+  },
   "common": {
     "welcome": "Bem-vindo à plataforma El7lm",
     "siteName": "Plataforma Digital El7lm",
@@ -126,6 +172,7 @@
     "whatsappOtpText": "Ou por WhatsApp",
     "termsAgreementText": "Eu aceito os Termos e Condições",
     "termsModalTitle": "Termos e Condições",
+    "registrationTermsText": "Termos e Condições da Plataforma El7lm\n\n1. Elegibilidade e Registro\nO usuário deve ter pelo menos 18 anos de idade, ou consentimento do responsável se for menor. Você garante que todos os dados inseridos estão corretos.\n\n2. Natureza dos Serviços\nA plataforma \"El7lm\" fornece ferramentas analíticas e oportunidades de exibição perante clubes, mas não garante profissionalismo ou renda para o jogador.\n\n3. Assinaturas e Pagamentos\nA plataforma aceita apenas pagamentos eletrônicos. As taxas de assinatura não são reembolsáveis após a ativação do serviço.\n\n4. Propriedade Intelectual\nTodos os algoritmos e logotipos são de propriedade exclusiva da Misk Company. Depois de enviar qualquer vídeo, você concede à plataforma uma licença para usá-lo para análise e marketing.\n\n5. Privacidade\nColetamos dados pessoais (nome, telefone) e dados esportivos para fornecer o serviço. Você tem o direito de solicitar a exclusão de sua conta via info@el7lm.com.\n\n6. Lei Aplicável\nEstes termos são regidos pelas leis do Estado do Catar, e as disputas serão resolvidas por meio de arbitragem em Doha.\n\nAo clicar em \"Enviar Código de Verificação\", você concorda com todos os termos acima.",
     "agreeAndClose": "Eu aceito os Termos e Condições",
     "sendVerificationCode": "Enviar código de verificação por WhatsApp",
     "alreadyHaveAccount": "Já tem uma conta?",
@@ -725,6 +772,37 @@
     "saveChangesBtn": "Salvar Alterações",
     "loading": "Carregando perfil...",
     "placeholderDesc": "Esta seção está em desenvolvimento e estará disponível em breve com recursos avançados.",
+    "notifications": {
+      "loadFailed": "Não foi possível carregar os dados do perfil",
+      "saved": "Alterações salvas com sucesso",
+      "saveFailed": "Ocorreu um erro ao salvar. Tente novamente."
+    },
+    "validation": {
+      "coachNameRequired": "O nome do treinador é obrigatório",
+      "academyNameRequired": "O nome da academia é obrigatório",
+      "clubNameRequired": "O nome do clube é obrigatório",
+      "seasonRequired": "A temporada é obrigatória",
+      "achievementTitleRequired": "O título da conquista é obrigatório",
+      "titleRequired": "O título é obrigatório",
+      "invalidUrl": "Insira uma URL válida",
+      "surgeryNameRequired": "O nome da cirurgia é obrigatório",
+      "documentTypeRequired": "O tipo de documento é obrigatório",
+      "documentNameRequired": "O nome do documento é obrigatório",
+      "documentUrlRequired": "A URL do documento é obrigatória",
+      "courseNameRequired": "O nome do curso é obrigatório",
+      "fullNameMin": "O nome completo deve ter pelo menos 3 caracteres",
+      "birthDateRequired": "A data de nascimento é obrigatória",
+      "genderRequired": "Selecione um gênero",
+      "nationalityRequired": "A nacionalidade é obrigatória",
+      "countryRequired": "O país de residência é obrigatório",
+      "cityRequired": "A cidade é obrigatória",
+      "invalidPhone": "Insira um número de telefone válido",
+      "invalidEmail": "Insira um e-mail válido",
+      "heightMin": "A altura deve ser de pelo menos 50 cm",
+      "weightMin": "O peso deve ser de pelo menos 20 kg",
+      "positionRequired": "A posição principal é obrigatória",
+      "contractEndPast": "A data de término do contrato não pode estar no passado"
+    },
     "missingFieldsWarning": "Aviso: Perfil não salvo devido a dados ausentes",
     "checkTabs": "Por favor, revise as seguintes abas:",
     "listSeparator": ", ",
@@ -2513,6 +2591,1726 @@
     "supervisor": "Supervisor",
     "sales": "Representante de vendas"
   },
+  "translationTest": {"subtitle":"Novo sistema de tradução","staticTitle":"1. Teste de tradução estática (JSON):","dynamicTitle":"2. Teste de tradução de conteúdo dinâmico do usuário:","playerName":"Ahmed Ali (Atacante)","bioLabel":"Biografia no futebol","sampleUserBio":"Sou um jogador de futebol talentoso que atua como atacante (número 9). Procuro sempre desenvolver minhas habilidades e jogar em uma liga profissional europeia. Destaco-me pela velocidade e pelo chute forte com o pé direito.","footer":"A direção, os idiomas e as fontes se adaptam automaticamente à sua seleção."},
+  "aiMessenger": {
+    "title": "Central inteligente de mensagens",
+    "badge": "Com IA",
+    "description": "Gerencie IA, campanhas em massa e suporte ao cliente em um só lugar",
+    "tabs": {
+      "stats": "Estatísticas",
+      "chat": "Chats ao vivo",
+      "campaigns": "Campanhas inteligentes",
+      "settings": "Configurações"
+    },
+    "stats": {
+      "types": {
+        "profile_view": "Visualização de perfil",
+        "video_view": "Visualização de vídeo",
+        "message_received": "Mensagem recebida",
+        "video_like": "Curtida no vídeo",
+        "follow": "Novo seguidor"
+      },
+      "days": [
+        "domingo",
+        "segunda-feira",
+        "terça-feira",
+        "quarta-feira",
+        "quinta-feira",
+        "sexta-feira",
+        "sábado"
+      ],
+      "loading": "Carregando estatísticas...",
+      "totalNotifications": "Total de notificações (30 dias)",
+      "interactiveNotifications": "Notificações interativas nos últimos 30 dias",
+      "totalUsers": "Base total de usuários",
+      "registeredUsers": "Usuários registrados na plataforma",
+      "todayActivity": "Atividade de hoje",
+      "notificationsToday": "Notificações desde o início do dia",
+      "activityTitle": "Atividade de notificações — últimos 7 dias",
+      "activityDescription": "Número diário de notificações interativas",
+      "noRecentData": "Não há dados nos últimos 7 dias",
+      "typeDistribution": "Notificações por tipo",
+      "last30Days": "Últimos 30 dias",
+      "noNotifications": "Ainda não há notificações"
+    },
+    "campaignHistory": {
+      "loadError": "Erro ao carregar o histórico de campanhas",
+      "retry": "Tentar novamente",
+      "emptyTitle": "Ainda não há campanhas registradas",
+      "emptyDescription": "As campanhas aparecerão aqui após o lançamento da primeira",
+      "refresh": "Atualizar",
+      "registeredCampaigns": "{{count}} campanhas registradas",
+      "runningNow": "🔴 Campanha em andamento",
+      "justCompleted": "✅ Recém-concluída",
+      "total": "Total",
+      "success": "Sucessos",
+      "failed": "Falhas",
+      "failureDetails": "Detalhes das falhas ({{count}})",
+      "completed": "Concluída",
+      "running": "Em andamento",
+      "successRate": "Taxa de sucesso",
+      "segment": "Segmento",
+      "all": "Todos",
+      "duration": "Duração",
+      "countries": "Países",
+      "finished": "Finalizada",
+      "failedNumbers": "Números com falha ({{count}})",
+      "minuteShort": "min",
+      "secondShort": "s",
+      "listSeparator": ", "
+    },
+    "notificationSettings": {
+      "events": {
+        "profile_view": { "label": "Visualização de perfil", "description": "Quando alguém visita o perfil de um usuário" },
+        "video_view": { "label": "Visualização de vídeo", "description": "Quando alguém assiste a um vídeo" },
+        "video_like": { "label": "Curtida no vídeo", "description": "Quando alguém curte um vídeo" },
+        "video_comment": { "label": "Comentário no vídeo", "description": "Quando alguém comenta em um vídeo" },
+        "video_share": { "label": "Compartilhamento de vídeo", "description": "Quando alguém compartilha um vídeo" },
+        "message_received": { "label": "Nova mensagem", "description": "Quando uma mensagem privada é enviada a um usuário" },
+        "follow": { "label": "Novo seguidor", "description": "Quando alguém segue outro usuário" }
+      },
+      "params": { "recipientName": "Nome do destinatário", "actorName": "Nome do remetente / visitante", "messagePreview": "Prévia da mensagem", "commentText": "Texto do comentário" },
+      "noTemplate": "Sem modelo",
+      "loadingTemplates": "Carregando modelos...",
+      "selectTemplate": "Selecione um modelo...",
+      "disableTemplate": "— Sem modelo (desativar WhatsApp para este tipo) —",
+      "marketing": "Marketing",
+      "utility": "Serviço",
+      "general": "Geral",
+      "loadError": "Ocorreu um erro ao carregar as configurações",
+      "saveSuccess": "Configurações dos modelos salvas com sucesso",
+      "saveError": "Ocorreu um erro ao salvar",
+      "title": "Modelos de notificações do WhatsApp",
+      "description": "Selecione um modelo ChatAman para cada tipo — deixe vazio para desativar o WhatsApp",
+      "refreshTemplates": "Atualizar modelos",
+      "sharedNoteStart": "O mesmo modelo pode ser usado em vários tipos de notificação. Todos suportam",
+      "recipientDefinition": "nome do destinatário",
+      "actorDefinition": "nome do remetente/visitante",
+      "saving": "Salvando...",
+      "saveAll": "Salvar todas as configurações",
+      "saved": "Salvo com sucesso"
+    },
+    "campaignManager": {
+      "varSources": { "account_name": "👤 Nome do titular", "country": "🌍 País", "role": "🏷️ Segmento", "custom": "✏️ Texto fixo" },
+      "roles": { "player": "Jogador", "club": "Clube", "academy": "Academia", "trainer": "Treinador", "agent": "Agente", "parent": "Responsável" },
+      "unknownUser": "Usuário desconhecido", "selectTemplateError": "Selecione um modelo de campanha", "noUsersError": "Não há usuários disponíveis",
+      "title": "Criar campanha inteligente de mensagens em massa", "description": "Selecione o público e o modelo e inicie um envio em massa seguro", "builderTab": "🚀 Criar campanha", "historyTab": "📋 Histórico de campanhas",
+      "segmentFilter": "1. Filtrar por segmento", "selectSegment": "Selecione um segmento...", "all": "Todos", "players": "Jogadores", "academies": "Academias", "trainers": "Treinadores", "parents": "Responsáveis",
+      "countryFilter": "2. Filtrar por país (vários)", "allCountries": "Todos os países ({{count}})", "selectedCountries": "{{count}} países selecionados", "selectAll": "Selecionar todos", "clearAll": "Limpar todos",
+      "campaignType": "3. Tipo de campanha", "selectType": "Selecione um tipo...", "types": { "promo": "📢 Promoções e anúncios", "awareness": "💡 Conscientização e orientação", "notification": "🔔 Alertas e notificações", "administrative": "📁 Administrativa e privada" },
+      "campaignTemplate": "4. Modelo exclusivo", "templateVariables": "Configurar variáveis do modelo", "customPlaceholder": "Digite o texto fixo...",
+      "safeModeTitle": "Proteção do servidor (Safe Delay Mode)", "safeModeDescription": "O mecanismo agenda uma pausa de 3 segundos para ajudar a evitar bloqueios.",
+      "sending": "Enviando — você pode navegar livremente", "succeeded": "Sucessos", "failed": "Falhas", "ofTotal": "de {{count}}", "launch": "Iniciar campanha em massa agora",
+      "targetsTitle": "Públicos e segmentos preparados", "targetsDescription": "Resumo verificado do público-alvo", "sportsAcademies": "Academias esportivas", "registeredPlayers": "Base de jogadores registrados", "trainersParents": "Treinadores e responsáveis", "geographicDistribution": "🌍 Distribuição geográfica do público",
+      "safeSchedule": "Agendamento seguro com atraso (Safe Mode)", "deliveryGuarantee": "O fluxo de mensagens mantém entrega estável"
+    },
+    "liveChat": {
+      "unknownUser": "Usuário desconhecido", "fillVariables": "Preencha todas as variáveis", "writeOrSelect": "Escreva uma mensagem ou selecione um modelo", "whatsappSent": "✅ Enviado pelo WhatsApp", "templatePrefix": "Modelo: {{name}}", "admin": "Administração", "variablesSaved": "❄️ Variáveis salvas para este modelo", "errorPrefix": "❌ Erro: {{error}}", "adminNotification": "Notificação da administração", "newMessage": "Nova mensagem", "appNotificationSent": "✅ Notificação do aplicativo enviada", "genericError": "Erro: {{error}}",
+      "search": "Pesquisar conversas ou clientes...", "segment": "Segmento", "allSegments": "Todos os segmentos", "country": "País", "all": "Todos", "chooseCustomer": "Selecione um cliente na lista para começar", "chooseCustomerHint": "O envio de modelos e o salvamento de variáveis estão disponíveis", "whatsapp": "WhatsApp", "appNotification": "Notificação do aplicativo", "noMessages": "Não há mensagens anteriores nesta conversa",
+      "shortcuts": { "segment": "Segmento", "country": "País", "subscriptionValue": "Valor da assinatura", "subscriptionDuration": "Duração da assinatura", "package": "Pacote", "expiryDate": "Data de expiração", "otp": "Código OTP" },
+      "freezeVariables": "Salvar estas variáveis para este modelo", "saveFeature": "Recurso de salvamento", "customMessage": "Mensagem de texto livre (personalizada)", "whatsappPlaceholder": "Escreva uma mensagem no WhatsApp...", "notificationPlaceholder": "Escreva uma notificação instantânea...", "sending": "Enviando...", "sendNow": "Enviar agora por {{method}}", "app": "o aplicativo"
+    }
+  },
+  "academyProfile": {
+    "requiredLabels": { "academy_name": "Nome da academia", "academy_type": "Tipo de academia", "country": "País", "city": "Cidade", "phone": "Telefone", "email": "E-mail", "description": "Sobre a academia", "founding_year": "Ano de fundação" },
+    "loadError": "Ocorreu um erro ao carregar os dados", "required": "{{field}} é obrigatório", "completeRequired": "Preencha as informações básicas obrigatórias", "invalidImage": "Selecione um arquivo de imagem válido", "imageTooLarge": "A imagem excede 5 MB", "uploadFailed": "Falha no envio", "uploadSuccess": "Imagem enviada com sucesso", "uploadError": "Ocorreu um erro ao enviar a imagem", "saveSuccess": "Perfil da academia salvo com sucesso", "saveFailed": "Falha ao salvar: {{error}}", "branchNameRequired": "Informe o nome da unidade",
+    "loading": "Carregando perfil da academia...", "back": "Voltar", "title": "Perfil - Academia esportiva", "saving": "Salvando...", "save": "Salvar", "cancel": "Cancelar", "edit": "Editar perfil", "incompleteTitle": "Perfil incompleto", "incompleteDescription": "Preencha as informações básicas para melhorar a visibilidade da academia e atrair jogadores. Campos pendentes:", "completeNow": "Completar perfil agora", "reminder": "Você será lembrado novamente {{days}} dias após fechar", "reminderTitle": "Lembrar em {{days}} dias",
+    "coverAlt": "Imagem de capa", "changeCover": "Alterar capa", "logoAlt": "Logotipo da academia", "academyNamePlaceholder": "Nome da academia *", "academyFallback": "Academia esportiva", "typePlaceholder": "Tipo de academia (ex.: futebol, multiesportiva...) *", "cityPlaceholder": "Cidade *", "countryPlaceholder": "País *", "yearPlaceholder": "Ano de fundação *", "founded": "Fundada em {{year}}", "federationApproval": "Aprovação da federação:", "approved": "Aprovada", "unapproved": "Não aprovada", "stats": { "students": "Jogadores", "programs": "Programas", "coaches": "Treinadores", "graduates": "Formados" },
+    "aboutTitle": "Sobre a academia", "aboutPlaceholder": "Descreva a academia e seus objetivos... *", "noAbout": "Ainda não há descrição.", "contactTitle": "Dados de contato", "contactFields": { "phone": "Telefone", "whatsapp": "WhatsApp", "email": "E-mail", "address": "Endereço", "website": "Site" },
+    "licensingTitle": "Licença e registro", "licenseNumber": "Número da licença", "registrationDate": "Data de registro", "foundingYear": "Ano de fundação", "ageGroupsTitle": "Faixas etárias", "senior": "Adulto", "notSelected": "Não selecionado", "facilitiesTitle": "Instalações esportivas", "facilities": ["Campo de grama natural", "Campo sintético", "Ginásio coberto", "Piscina", "Academia", "Vestiários", "Cafeteria", "Sala de reuniões"],
+    "programsTitle": "Programas de treinamento", "programsPlaceholder": "Descreva os programas de treinamento disponíveis...", "goalsTitle": "Objetivos da academia", "goalsPlaceholder": "Quais são os objetivos e a visão da academia?", "technicalDirector": "Diretor técnico", "technicalDirectorAlt": "Diretor técnico", "namePlaceholder": "Nome", "licensePlaceholder": "Licença (UEFA A, AFC...)", "experiencePlaceholder": "Anos de experiência", "licenseLabel": "Licença:", "experienceLabel": "Experiência:", "generalDirector": "Diretor geral", "generalDirectorAlt": "Diretor geral", "qualificationPlaceholder": "Qualificação / biografia", "contactPlaceholder": "Dados de contato",
+    "achievementsTitle": "Conquistas e prêmios", "achievementsPlaceholder": "Principais conquistas e prêmios da academia...", "noAchievements": "Ainda não há conquistas registradas.", "successStories": "Histórias de sucesso", "add": "Adicionar", "storyPlaceholder": "Escreva uma história de sucesso", "noStories": "Ainda não há histórias de sucesso", "partnerships": "Parcerias", "partnerPlaceholder": "Nome do parceiro", "noPartnerships": "Ainda não há parcerias", "branches": "Unidades", "addBranch": "Adicionar unidade", "newBranch": "Adicionar nova unidade", "branchFields": { "name": "Nome da unidade *", "namePlaceholder": "Unidade de Lisboa", "address": "Endereço", "addressPlaceholder": "Bairro, rua...", "contact": "Contato", "contactPlaceholder": "+351..." }, "noBranches": "Ainda não há unidades registradas", "socialMedia": "Redes sociais", "gallery": "Galeria das instalações", "imageAlt": "Imagem {{number}}", "addImage": "Adicionar imagem", "noImages": "Ainda não há imagens na galeria"
+  },
+  "agentProfile": {
+    "requiredLabels": { "full_name": "Nome completo", "nationality": "Nacionalidade", "phone": "Telefone", "email": "E-mail", "specialization": "Especialização", "bio": "Biografia" }, "required": "{{field}} é obrigatório", "completeRequired": "Preencha as informações básicas obrigatórias", "invalidImage": "Selecione uma imagem válida", "imageTooLarge": "A imagem excede 5 MB", "uploadFailed": "Falha no envio", "uploadSuccess": "Imagem enviada com sucesso", "uploadError": "Ocorreu um erro ao enviar a imagem",
+    "loading": "Carregando perfil...", "title": "Perfil - Agente de jogadores", "coverAlt": "Imagem de capa", "changeCover": "Alterar capa", "photoAlt": "Foto do perfil", "fullName": "Nome completo", "fallback": "Agente de jogadores", "specializationPlaceholder": "Especialização (ex.: agente internacional...)", "nationality": "Nacionalidade", "location": "Localização", "experienceYears": "{{count}} anos de experiência", "fifaLicense": "Licença FIFA:", "fifaLicensed": "Licenciado pela FIFA", "local": "Local", "stats": { "active": "Jogadores ativos", "deals": "Negócios concluídos", "commission": "Comissões totais (K)", "success": "Taxa de sucesso %" },
+    "bioTitle": "Biografia", "bioPlaceholder": "Descreva sua experiência e trajetória profissional...", "noBio": "Ainda não há biografia.", "contactTitle": "Dados de contato", "contactFields": { "phone": "Telefone", "whatsapp": "WhatsApp", "email": "E-mail", "office": "Escritório", "website": "Site" }, "professionalTitle": "Informações profissionais", "licenseNumber": "Número da licença:", "licenseExpiry": "Validade da licença:", "birthDate": "Data de nascimento:", "languages": "Idiomas:", "languagesPlaceholder": "Árabe, inglês (separados por vírgulas)",
+    "portfolio": "Portfólio de jogadores", "currentPlayers": "Jogadores atuais", "pastPlayers": "Jogadores anteriores", "add": "Adicionar", "playerName": "Nome do jogador", "noCurrent": "Não há jogadores atuais", "noPast": "Não há jogadores anteriores", "notableDeals": "Negócios de destaque", "dealsPlaceholder": "Descreva negócios e transferências importantes realizados...", "noDeals": "Ainda não há negócios de destaque.", "socialMedia": "Redes sociais", "gallery": "Galeria de fotos", "imageAlt": "Imagem {{number}}", "addImage": "Adicionar imagem", "noImages": "Ainda não há imagens na galeria"
+  },
+  "clubProfile": {
+    "pdf": "PDF",
+    "requiredLabels": { "name": "Nome do clube", "country": "País", "city": "Cidade", "phone": "Telefone", "email": "E-mail", "description": "Sobre o clube", "founded": "Ano de fundação", "type": "Tipo de clube" }, "required": "{{field}} é obrigatório", "completeRequired": "Preencha as informações básicas obrigatórias", "clubNotFound": "Clube não encontrado", "title": "Perfil do clube", "back": "Voltar", "incompleteDescription": "Preencha as informações básicas para melhorar a visibilidade do clube e atrair jogadores. Campos pendentes:", "completion": "Perfil concluído", "coverAlt": "Capa do clube", "changeCover": "Alterar capa", "logoAlt": "Logotipo do clube", "namePlaceholder": "Nome do clube *", "nameFallback": "Nome do clube",
+    "basicTitle": "Informações básicas", "fields": { "email": "E-mail", "phone": "Telefone", "whatsapp": "WhatsApp", "website": "Site", "founded": "Ano de fundação", "address": "Endereço", "manager": "Treinador principal", "colors": "Cores oficiais", "league": "Liga atual", "stadium": "Nome do estádio", "capacity": "Capacidade do estádio" }, "country": "País", "countryPlaceholder": "País *", "city": "Cidade", "cityPlaceholder": "Cidade *", "clubType": "Tipo de clube", "selectType": "Selecione o tipo", "types": ["Primeira divisão", "Segunda divisão", "Terceira divisão", "Amador", "Juvenil"], "description": "Sobre o clube", "descriptionPlaceholder": "Sobre o clube *",
+    "socialMedia": "Redes sociais", "linkPlaceholder": "Link do {{label}}", "statsTitle": "Estatísticas", "stats": { "players": "Jogadores", "contracts": "Contratos", "trophies": "Títulos", "staff": "Equipe" }, "trophiesTitle": "Títulos e conquistas", "noTrophies": "Nenhum título adicionado", "trophyName": "Nome do título", "year": "Ano", "category": "Categoria", "gallery": "Galeria de fotos", "imageAlt": "Imagem {{number}}", "add": "Adicionar", "lightboxAlt": "Imagem ampliada"
+  },
+  "clubChangePassword": { "allRequired": "Todos os campos são obrigatórios.", "mismatch": "As novas senhas não coincidem.", "success": "Senha alterada com sucesso.", "back": "Voltar ao painel", "title": "Alterar senha", "current": "Senha atual", "new": "Nova senha", "confirm": "Confirmar nova senha", "save": "Salvar alterações" },
+  "clubContracts": { "loadError": "Erro ao carregar os contratos", "loading": "Carregando contratos...", "back": "Voltar ao painel", "title": "Gestão de contratos", "subtitle": "Gerencie contratos de jogadores e funcionários", "searchPlaceholder": "Pesquisar jogador...", "newContract": "Novo contrato", "statuses": { "active": "Ativo", "expired": "Expirado", "pending": "Pendente", "terminated": "Encerrado" }, "dateRange": "De {{start}} até {{end}}", "perMonth": "/ mês", "types": { "full": "Contrato completo", "loan": "Empréstimo", "youth": "Base" }, "view": "Ver", "edit": "Editar", "emptyTitle": "Não há contratos", "emptyDescription": "Nenhum contrato foi adicionado ainda.", "addContract": "Adicionar novo contrato" },
+  "clubMarketValues": { "loadError": "Erro ao carregar os valores de mercado", "loading": "Carregando valores de mercado...", "back": "Voltar ao painel", "title": "Evolução do valor dos jogadores", "subtitle": "Acompanhe e analise o valor dos jogadores no mercado", "totalMarketValue": "Valor total de mercado", "averageChange": "Variação média", "highestValue": "Maior valor", "dailyUpdates": "Atualizações diárias", "searchPlaceholder": "Pesquisar jogador...", "emptyTitle": "Não há dados de valor de mercado", "emptyDescription": "Nenhum valor de mercado de jogador foi adicionado ainda.", "columns": { "player": "Jogador", "currentValue": "Valor atual", "change": "Variação", "lastUpdate": "Última atualização" } },
+  "clubAiAnalysis": { "noAnalysesToast": "Não há análises disponíveis no momento. Elas serão adicionadas em breve.", "loadError": "Erro ao carregar os dados de análise", "riskLevels": { "high": "Alto", "medium": "Médio", "low": "Baixo" }, "loading": "Carregando análises...", "back": "Voltar ao painel", "title": "Análise de desempenho com IA", "subtitle": "Análise avançada do desempenho dos jogadores com inteligência artificial", "emptyTitle": "Não há análises disponíveis no momento", "emptyDescription": "Nenhuma análise de jogador foi criada ainda. Este recurso será adicionado em breve para oferecer informações avançadas de desempenho.", "features": ["Análise geral do desempenho dos jogadores", "Previsões para as próximas partidas", "Recomendações para melhorar o desempenho", "Análise de fatores de risco"], "searchPlaceholder": "Pesquisar jogador...", "performanceTitle": "Desempenho geral", "performance": { "overall": "Geral", "physical": "Físico", "technical": "Técnico", "tactical": "Tático", "mental": "Mental" }, "riskFactors": "Fatores de risco", "risks": { "injury": "Lesão", "fatigue": "Fadiga", "form": "Forma" }, "recommendations": "Recomendações" },
+  "clubMarketing": { "demoNotice": "Dados de demonstração estão sendo exibidos", "loadError": "Erro ao carregar as campanhas de marketing", "loading": "Carregando campanhas de marketing...", "back": "Voltar ao painel", "title": "Marketing de jogadores", "subtitle": "Gerencie campanhas de marketing de jogadores", "addPlayer": "Adicionar jogador", "close": "Fechar", "searchPlaceholder": "Pesquisar campanhas...", "allStatuses": "Todos os status", "statuses": { "active": "Ativa", "completed": "Concluída", "scheduled": "Agendada" }, "allTypes": "Todos os tipos", "types": { "social": "Redes sociais", "traditional": "Tradicional", "digital": "Digital" }, "newCampaign": "Nova campanha", "metrics": { "reach": "Alcance", "engagement": "Engajamento", "conversions": "Conversões" }, "playersTable": { "image": "Imagem", "name": "Nome", "position": "Posição" }, "demo": { "playerOne": "Ahmed Mohamed", "campaignOne": "Campanha de marketing para Ahmed Mohamed", "playerTwo": "Mohamed Ali", "campaignTwo": "Campanha de marketing para Mohamed Ali", "budgetOne": "SAR 50.000", "budgetTwo": "SAR 30.000" } },
+  "clubNegotiations": { "missingClubTitle": "Não foi possível carregar as negociações: o ID do clube não foi encontrado.", "missingClubHelp": "Verifique os dados da conta ou entre em contato com o suporte técnico.", "loadError": "Erro ao carregar os dados de negociação", "loading": "Carregando negociações...", "back": "Voltar ao painel", "title": "Serviços de negociação", "subtitle": "Gerencie e acompanhe negociações com jogadores e clubes", "searchPlaceholder": "Pesquisar negociações...", "newNegotiation": "Nova negociação", "types": { "transfer": "Transferência", "contract": "Contrato", "sponsorship": "Patrocínio", "loan": "Empréstimo" }, "statuses": { "active": "Ativa", "completed": "Concluída", "cancelled": "Cancelada", "pending": "Pendente" }, "latestUpdates": "Últimas atualizações", "parties": "Partes envolvidas", "partyTypes": { "club": "Clube", "agent": "Agente", "player": "Jogador", "sponsor": "Patrocinador" }, "financialDetails": "Detalhes financeiros", "initialOffer": "Oferta inicial", "currentOffer": "Oferta atual", "view": "Ver", "edit": "Editar", "delete": "Excluir", "empty": "Não há negociações" },
+  "clubPlayerEvaluation": { "noEvaluationsToast": "Não há avaliações disponíveis no momento. Elas serão adicionadas em breve.", "loadError": "Erro ao carregar os dados de avaliação", "levels": { "excellent": "Excelente", "good": "Bom", "average": "Médio", "poor": "Fraco" }, "loading": "Carregando avaliações...", "back": "Voltar ao painel", "title": "Avaliação de jogadores", "subtitle": "Avaliação completa do desempenho dos jogadores", "stats": { "average": "Avaliação média", "completed": "Avaliações concluídas", "inProgress": "Em avaliação", "recommendations": "Recomendações" }, "searchPlaceholder": "Pesquisar jogador...", "newEvaluation": "Nova avaliação", "evaluatedBy": "Por {{name}}", "overall": "Avaliação geral", "technicalSkills": "Habilidades técnicas", "skills": { "passing": "Passe", "shooting": "Finalização", "dribbling": "Drible", "defending": "Defesa", "physical": "Físico" }, "recommendations": "Recomendações", "view": "Ver", "edit": "Editar", "delete": "Excluir", "empty": "Não há avaliações" },
+  "dashboardRedirect": { "redirecting": "Redirecionando você para o painel..." },
+  "marketerAiAnalysis": { "subtitle": "Análise avançada dos jogadores associados a você", "emptyDescription": "As análises com IA dos jogadores associados a você aparecerão aqui.", "newAnalysis": "Nova análise", "recentAnalysis": "Análise recente", "performanceMetrics": "Métricas de desempenho", "potential": "Potencial", "riskFactors": "Fatores de risco", "risks": { "injury": "Lesões", "fatigue": "Fadiga", "form": "Forma" }, "viewDetails": "Ver detalhes", "downloadReport": "Baixar relatório" },
+  "marketerContracts": { "subtitle": "Gerencie os contratos de jogadores que você supervisiona", "salaryPerMonth": "SAR {{salary}} / mês", "emptyDescription": "Nenhum contrato registrado foi encontrado." },
+  "marketerDreamAcademy": { "loadError": "Não foi possível carregar os programas da academia", "notSpecified": "Não especificado", "loading": "Carregando programas da Academia El7lm...", "subtitle": "Descubra programas avançados para desenvolver as habilidades dos seus jogadores", "heroTitle": "Academia El7lm de treinamento avançado", "heroDescription": "Programas especializados para desenvolver as habilidades dos jogadores e ajudá-los a realizar seus sonhos", "stats": { "programs": "Programas de treinamento", "averageRating": "Avaliação média", "successRate": "Taxa de sucesso" }, "selectLevel": "Selecionar nível", "allLevels": "Todos os níveis", "levels": { "beginner": "Iniciante", "intermediate": "Intermediário", "advanced": "Avançado", "professional": "Profissional" }, "selectStatus": "Selecionar status", "allStatuses": "Todos os status", "statuses": { "active": "Ativo", "upcoming": "Próximo", "completed": "Concluído" }, "emptyTitle": "Não há programas", "noMatch": "Nenhum programa corresponde aos critérios selecionados.", "noneAvailable": "Não há programas de treinamento disponíveis no momento.", "students": "alunos", "certifiedCoach": "Treinador certificado", "benefits": "Benefícios:", "moreBenefits": "+{{count}} outros benefícios", "completeProgram": "Pelo programa completo", "joinNow": "Participar agora" },
+  "marketerProfile": { "requiredFields": { "full_name": "Nome completo", "phone": "Telefone", "email": "E-mail", "city": "Cidade", "country": "País", "specialization": "Especialização", "bio": "Biografia" }, "clients": { "player": "jogador", "trainer": "treinador", "players": "Jogadores", "trainers": "Treinadores" }, "loadError": "Erro ao carregar os dados", "required": "{{field}} é obrigatório", "completeRequired": "Preencha as informações básicas obrigatórias", "invalidImage": "Selecione um arquivo de imagem válido", "uploadFailed": "Falha no upload", "uploadSuccess": "Imagem enviada com sucesso", "uploadError": "Erro ao enviar a imagem", "saveSuccess": "Perfil salvo com sucesso", "saveError": "Erro ao salvar o perfil", "enterClientName": "Digite o nome do {{client}}", "loading": "Carregando perfil...", "back": "Voltar", "title": "Perfil - Agente de futebol", "saving": "Salvando...", "save": "Salvar", "cancel": "Cancelar", "edit": "Editar informações", "bannerTitle": "O perfil está incompleto", "bannerDescription": "Preencha seus dados básicos para melhorar a visibilidade e atrair oportunidades. Campos pendentes:", "completeNow": "Preencher agora", "snooze": "Você será lembrado novamente {{days}} dias após fechar", "coverAlt": "Imagem de capa", "changeCover": "Alterar capa", "profileAlt": "Imagem de perfil", "fullName": "Nome completo", "defaultName": "Agente de futebol", "specializationPlaceholder": "Especialização (por exemplo: agente de jogadores, marketing esportivo...)", "defaultSpecialization": "Agente de futebol", "city": "Cidade", "country": "País", "years": "Anos", "experienceYears": "anos de experiência", "clientType": "Tipo de cliente:", "stats": { "activeDeals": "Negócios ativos", "completedDeals": "Negócios concluídos", "rating": "Avaliação" }, "bioTitle": "Biografia", "bioPlaceholder": "Escreva sobre sua experiência e trajetória profissional...", "noBio": "Nenhuma biografia foi adicionada ainda.", "contactTitle": "Informações de contato", "contact": { "phone": "Telefone", "whatsapp": "WhatsApp", "email": "E-mail", "nationality": "Nacionalidade", "license": "Número da licença" }, "dealsTitle": "Negócios concluídos", "addDeal": "Adicionar negócio", "newDeal": "Adicionar novo negócio", "clientName": "Nome do {{client}}", "previousClub": "Clube anterior", "newClub": "Novo clube", "dealValue": "Valor do negócio", "season": "Temporada", "year": "Ano", "notes": "Observações", "add": "Adicionar", "noDeals": "Nenhum negócio foi registrado ainda", "socialTitle": "Redes sociais e marketing", "website": "Site", "galleryTitle": "Galeria de fotos", "imageAlt": "Imagem {{number}}", "addImage": "Adicionar imagem", "noImages": "Ainda não há imagens na galeria" },
+  "opportunitiesPage": { "statuses": { "active": "Ativa", "draft": "Rascunho", "closed": "Fechada", "cancelled": "Cancelada" }, "loading": "Carregando...", "loadError": "Erro ao carregar as oportunidades", "confirmDelete": "Tem certeza de que deseja excluir esta oportunidade?", "deleted": "Oportunidade excluída", "deleteFailed": "Não foi possível excluir a oportunidade", "tabs": { "active": "Ativas", "draft": "Rascunhos", "closed": "Fechadas" }, "manageTitle": "Central de oportunidades", "manageSubtitle": "Gerencie suas oportunidades e acompanhe os candidatos", "publishNew": "Publicar nova oportunidade", "newShort": "Nova oportunidade", "stats": { "active": "Ativas", "applicants": "Candidatos", "views": "Visualizações", "drafts": "Rascunhos" }, "emptyStatus": "Não há oportunidades com este status", "applicants": "Candidatos", "applications": "Candidaturas", "edit": "Editar", "delete": "Excluir", "defaultPlayer": "Jogador", "applySuccess": "Sua candidatura foi enviada com sucesso!", "applyError": "Erro ao enviar a candidatura", "exploreTitle": "Explorar oportunidades", "exploreSubtitle": "Descubra oportunidades disponíveis e candidate-se agora", "searchPlaceholder": "Pesquisar oportunidade ou organizador...", "all": "Todas", "emptyExplore": "Não há oportunidades disponíveis no momento", "emptyHint": "Altere o filtro ou pesquise outra palavra", "featured": "Destaque", "share": "Compartilhar oportunidade", "benefits": { "accommodation": "🏠 Hospedagem", "meals": "🍽️ Refeições", "transport": "🚌 Transporte" }, "deadline": "Prazo: {{date}}", "slotsAvailable": "{{count}} vagas disponíveis", "full": "Lotada", "free": "Grátis", "seatsFull": "Todas as vagas estão preenchidas", "applyNow": "Candidatar-se", "applyTitle": "Candidatar-se a: {{title}}", "positionLabel": "Posição de jogo (opcional)", "positionPlaceholder": "Exemplo: ST ou GK", "messageLabel": "Mensagem adicional (opcional, máximo de 500 caracteres)", "messagePlaceholder": "Escreva qualquer informação adicional que deseja compartilhar...", "cancel": "Cancelar", "applying": "Enviando...", "confirmApply": "Confirmar candidatura" },
+  "opportunityApplications": { "relative": { "today": "Hoje", "yesterday": "Ontem", "daysAgo": "Há {{count}} dias" }, "statuses": { "pending": "Em análise", "reviewed": "Analisada", "accepted": "Aceita ✓", "rejected": "Rejeitada", "waitlisted": "Lista de espera" }, "ageYears": "{{age}} anos", "playerMessage": "Mensagem do jogador", "reviewNote": "Observação:", "fullProfile": "Ver perfil completo (foto — vídeos — estatísticas)", "rejectPlaceholder": "Motivo da rejeição (opcional)...", "accept": "Aceitar", "reject": "Rejeitar", "confirmReject": "Confirmar rejeição", "csvHeaders": ["Nome", "Posição", "País", "Idade", "Data da candidatura", "Status", "Mensagem"], "loadError": "Erro ao carregar os dados", "accepted": "Candidatura aceita", "rejected": "Candidatura rejeitada", "updateFailed": "Não foi possível atualizar a candidatura", "bulkAccepted": "{{count}} candidaturas aceitas", "bulkRejected": "{{count}} candidaturas rejeitadas", "bulkError": "Erro durante o processamento em massa", "tabs": { "all": "Todas", "pending": "Em análise", "accepted": "Aceitas", "rejected": "Rejeitadas" }, "notFound": "Oportunidade não encontrada", "exportCsv": "Exportar CSV", "stats": { "all": "Todas", "pending": "Pendentes", "accepted": "Aceitas", "rejected": "Rejeitadas", "rate": "Taxa de aceitação" }, "filterApplicants": "Filtrar candidatos", "clearSelection": "Limpar seleção", "selectAll": "Selecionar todos", "selected": "{{count}} selecionados", "searchPlaceholder": "Pesquisar por nome...", "allPositions": "Todas as posições", "allCountries": "Todos os países", "ageFrom": "Idade mínima", "ageTo": "Idade máxima", "clearFilters": "Limpar filtros", "empty": "Não há candidaturas com este status", "selectedRequests": "{{count}} candidaturas selecionadas", "bulkAccept": "Aceitar {{count}}", "bulkReject": "Rejeitar {{count}}" },
+  "opportunityTypes": { "trial": "Período de experiência", "tryout": "Sessão de avaliação", "training": "Programa de treinamento", "loan": "Empréstimo temporário", "job": "Emprego esportivo", "camp": "Acampamento de treinamento", "scout": "Captação de talentos", "intl": "Oportunidade internacional" },
+  "createOpportunity": { "steps": ["Tipo de oportunidade", "Detalhes", "Condições"], "validation": { "titleRequired": "O título é obrigatório", "titleMin": "O título deve ter pelo menos 5 caracteres", "titleMax": "O título não pode exceder 100 caracteres", "descriptionRequired": "A descrição é obrigatória", "descriptionMin": "A descrição deve ter pelo menos 30 caracteres", "startRequired": "A data de início é obrigatória", "startFuture": "A data de início deve ser hoje ou futura", "endRequired": "A data de término é obrigatória", "endAfterStart": "A data final deve ser posterior à inicial", "deadlineRequired": "O prazo de candidatura é obrigatório", "deadlineFuture": "O prazo deve ser hoje ou futuro", "deadlineBeforeStart": "O prazo deve ser anterior ou igual à data de início", "maxRequired": "O máximo de candidatos é obrigatório e deve ser pelo menos 1", "integer": "O valor deve ser um número inteiro", "maxLimit": "O máximo é de 10.000 candidatos", "ageMin": "A idade mínima deve estar entre 5 e 60", "ageMax": "A idade máxima deve estar entre 5 e 60", "ageOrder": "A idade máxima deve ser maior que a mínima", "fee": "Digite uma taxa maior que zero" }, "messages": { "loadFailed": "Falha ao carregar os dados", "noPublicUrl": "Nenhuma URL pública foi retornada após o upload.", "imageUploaded": "Imagem enviada com sucesso", "imageUploadFailed": "Não foi possível enviar a imagem", "videoUploaded": "Vídeo enviado com sucesso", "videoUploadFailed": "Não foi possível enviar o vídeo", "chooseType": "Escolha primeiro um tipo de oportunidade", "fixErrors": "Corrija os erros indicados", "updated": "Oportunidade atualizada com sucesso", "published": "Oportunidade publicada com sucesso!", "draftSaved": "Rascunho salvo", "saveError": "Erro ao salvar" }, "editTitle": "Editar oportunidade", "newTitle": "Publicar nova oportunidade", "stepProgress": "Etapa {{step}} de 3", "typeTitle": "Tipo de oportunidade", "typeSubtitle": "Escolha o tipo que deseja publicar", "detailsTitle": "Detalhes básicos", "detailsSubtitle": "Insira as informações da oportunidade", "titleLabel": "Título", "titlePlaceholder": "Exemplo: Acampamento de verão para jovens", "descriptionLabel": "Descrição", "descriptionPlaceholder": "Descrição detalhada, objetivos e benefícios para o candidato...", "moreChars": "({{count}} caracteres adicionais)", "imageTitle": "Imagem da oportunidade ou serviço", "imageHint": "Opcional; exibida nos cartões e detalhes", "changeImage": "Alterar imagem", "uploadImage": "Enviar imagem", "imageAlt": "Imagem da oportunidade", "deleteImage": "Excluir imagem", "noImage": "Nenhuma imagem foi enviada", "videoTitle": "Vídeo da oportunidade ou serviço", "videoHint": "Envie um vídeo curto ou informe uma URL direta", "changeVideo": "Alterar vídeo", "uploadVideo": "Enviar vídeo", "videoLink": "URL do vídeo", "optional": "(opcional)", "deleteVideo": "Excluir vídeo", "noVideo": "Nenhum vídeo foi enviado", "startDate": "Data de início", "endDate": "Data de término", "duration": "Duração: {{days}} dias", "deadline": "Prazo de candidatura", "deadlineHint": "(deve ser anterior ou igual à data de início)", "country": "País", "countryPlaceholder": "Brasil", "city": "Cidade", "cityPlaceholder": "São Paulo", "location": "Local / estádio", "locationPlaceholder": "Nome da instalação", "conditionsTitle": "Condições e configurações", "conditionsSubtitle": "Defina os critérios e serviços oferecidos", "maxApplicants": "Máximo de candidatos", "maxPlaceholder": "Exemplo: 20", "targetPositions": "Posições desejadas", "ageMin": "Idade mínima", "ageMinPlaceholder": "Exemplo: 16", "ageMax": "Idade máxima", "ageMaxPlaceholder": "Exemplo: 23", "gender": "Gênero", "genders": { "both": "Todos", "male": "Masculino", "female": "Feminino" }, "services": "Serviços oferecidos", "accommodation": "🏠 Hospedagem incluída", "meals": "🍽️ Refeições incluídas", "transport": "🚌 Transporte incluído", "paid": "💰 Oportunidade paga (exige taxa)", "fee": "Valor da taxa", "feePlaceholder": "Exemplo: 500", "currency": "Moeda", "currencies": { "SAR": "Riyal saudita (SAR)", "USD": "Dólar (USD)", "EUR": "Euro (EUR)", "AED": "Dirham (AED)" }, "compensation": "Compensação / bolsa", "compensationPlaceholder": "Exemplo: Bolsa integral de treinamento", "requirements": "Requisitos adicionais", "requirementsPlaceholder": "Requisitos especiais ou informações adicionais...", "publishStatus": "Status da publicação", "publishNow": "🚀 Publicar agora", "saveAsDraft": "💾 Salvar como rascunho", "previous": "Anterior", "next": "Próximo", "saving": "Salvando...", "publishOpportunity": "Publicar oportunidade", "saveDraft": "Salvar rascunho" },
+  "playerInvite": { "searchRequired": "Digite um nome, e-mail ou telefone para pesquisar", "organizations": { "club": "Jogador de clube", "academy": "Jogador de academia", "trainer": "Jogador de treinador", "agent": "Jogador de agente" }, "notFound": "Nenhum jogador afiliado foi encontrado com esse nome ou e-mail", "found": "{{count}} jogadores encontrados", "searchError": "Erro durante a pesquisa", "accountSuccess": "Conta criada com sucesso! Senha: {{password}}. Agora você pode entrar com seu e-mail e esta senha.", "accountFailed": "Falha ao criar a conta: {{message}}", "createError": "Erro ao criar a conta de acesso", "title": "🔐 Criar conta de acesso", "subtitle": "Se você pertence a um clube, academia ou treinador, crie uma conta para acessar seu perfil e notificações", "searchTitle": "Encontrar seu perfil", "searchDescription": "Pesquise usando seu nome completo, e-mail ou telefone", "searchLabel": "Nome / e-mail / telefone", "searchPlaceholder": "Digite seu nome completo, e-mail ou telefone", "searching": "Pesquisando...", "search": "Pesquisar", "results": "Resultados ({{count}})", "resultsDescription": "Jogadores afiliados encontrados", "canCreate": "Uma conta pode ser criada", "missingData": "Dados ausentes (e-mail e nome obrigatórios)", "creating": "Criando...", "create": "Criar conta", "unavailable": "Indisponível", "instructionsTitle": "📋 Como usar esta página", "instructions": [{ "title": "Encontre seu perfil:", "description": "Digite seu nome completo, e-mail ou telefone" }, { "title": "Verifique os dados:", "description": "Confirme que o perfil exibido é o seu" }, { "title": "Crie uma conta:", "description": "Clique em Criar conta se os dados estiverem corretos" }, { "title": "Salve a senha:", "description": "Uma senha temporária será exibida; guarde-a" }, { "title": "Entre:", "description": "Agora você pode entrar com seu e-mail e senha" }, { "title": "Altere a senha:", "description": "Você deverá alterá-la no primeiro acesso" }], "goToLogin": "Ir para o login" },
+  "inviteCode": {
+    "types": [
+      "Clube",
+      "Academia",
+      "Treinador",
+      "Agente",
+      "Profissional de marketing",
+      "Jogador"
+    ],
+    "error": "Ocorreu um erro. Tente novamente.",
+    "createSuccess": "Código de convite criado com sucesso",
+    "createTitle": "Criar novo código",
+    "createSub": "Será gerado automaticamente um código único",
+    "description": "Descrição do código",
+    "optional": "(opcional)",
+    "descriptionPh": "Exemplo: Nova época 2026",
+    "maxUsage": "Utilizações máximas",
+    "unlimited": "Ilimitado",
+    "expires": "Data de validade",
+    "howUse": "Como utilizar o código?",
+    "tips": [
+      "Partilhe o código com os jogadores que pretende convidar",
+      "O jogador introduz o código na página de adesão",
+      "Receberá um pedido para aprovar ou rejeitar"
+    ],
+    "creating": "A criar...",
+    "create": "Criar código de convite",
+    "copiedCode": "Código copiado",
+    "copiedLink": "Ligação copiada",
+    "active": "Ativo",
+    "expired": "Expirado",
+    "disabled": "Desativado",
+    "used": "Utilizado",
+    "from": "de",
+    "available": "Disponível",
+    "ends": "Expira",
+    "open": "Aberto",
+    "user": "utilizador",
+    "inviteLink": "Ligação do convite",
+    "invalidCode": "O código é inválido ou expirou",
+    "joinSuccess": "Pedido enviado para {{name}} com sucesso",
+    "enterCode": "Introduza o código de adesão",
+    "enterCodeSub": "Tem um código de um clube ou academia? Introduza-o aqui para aderir.",
+    "codeLabel": "Código de convite",
+    "verify": "Verificar",
+    "playersJoined": "jogadores aderiram com este código",
+    "sending": "A enviar...",
+    "sendJoin": "Enviar pedido",
+    "howWorks": "Como funciona?",
+    "steps": [
+      "Introduza o código enviado pelo clube ou academia",
+      "Verifique os dados e envie o pedido",
+      "Aguarde a aprovação da organização",
+      "Após a aprovação aderirá oficialmente"
+    ],
+    "loadError": "Falha ao carregar os códigos",
+    "enabled": "Código ativado",
+    "disabledToast": "Código desativado",
+    "playerTitle": "Código de adesão",
+    "playerSub": "Adira a um clube ou academia com um código",
+    "orgTitle": "Códigos de convite",
+    "orgSub": "Crie códigos para convidar jogadores",
+    "newCode": "Novo código",
+    "totalCodes": "Total de códigos",
+    "activeCodes": "Códigos ativos",
+    "totalJoins": "Total de adesões",
+    "noCodes": "Ainda não existem códigos",
+    "noCodesSub": "Crie o primeiro código para convidar jogadores",
+    "createFirst": "Criar primeiro código"
+  },
+  "paymentFailure": {
+    "selectedPackage": "Pacote selecionado",
+    "defaultError": "Ocorreu um erro inesperado durante o pagamento",
+    "mailSubject": "Problema no pagamento",
+    "title": "Pagamento falhou",
+    "subtitle": "Desculpe, não conseguimos concluir o pagamento. Tente novamente ou entre em contato com o suporte.",
+    "detailsTitle": "Detalhes do erro",
+    "amount": "Valor:",
+    "package": "Pacote:",
+    "errorCode": "Código do erro:",
+    "date": "Data:",
+    "suggestedSolutions": "Soluções sugeridas 🔧",
+    "checkCardTitle": "Verifique o cartão",
+    "checkCardDesc": "Confira se os dados do cartão e a validade estão corretos.",
+    "retryTitle": "Tente novamente",
+    "retryDesc": "Tente novamente em alguns minutos ou use outro cartão.",
+    "supportTitle": "Fale conosco",
+    "supportDesc": "Nossa equipe de suporte está pronta para ajudar.",
+    "retryPayment": "Tentar novamente",
+    "backToDashboard": "Voltar ao painel",
+    "contactSupport": "Contatar suporte",
+    "tipsTitle": "💡 Dicas importantes",
+    "tips": [
+      "Verifique se o cartão aceita pagamentos online",
+      "Confira o saldo do cartão antes de tentar novamente",
+      "Use um navegador atualizado e uma conexão estável",
+      "Se o problema continuar, tente outro cartão"
+    ],
+    "errors": {
+      "INSUFFICIENT_FUNDS": "Saldo insuficiente no cartão",
+      "CARD_DECLINED": "O cartão foi recusado pelo banco",
+      "EXPIRED_CARD": "O cartão está vencido",
+      "INVALID_CARD": "Dados do cartão inválidos",
+      "NETWORK_ERROR": "Erro de conexão de rede",
+      "TIMEOUT": "A transação expirou",
+      "CANCELLED": "A transação foi cancelada pelo usuário",
+      "UNKNOWN_ERROR": "Ocorreu um erro inesperado"
+    }
+  },
+  "paymentStatus": {
+    "loading": "Carregando dados...",
+    "notFoundError": "Dados da assinatura não encontrados",
+    "fetchError": "Ocorreu um erro ao carregar os dados da assinatura",
+    "genericError": "Ocorreu um erro",
+    "backToPayment": "Voltar para a página de pagamento",
+    "noSubscription": "Nenhuma assinatura",
+    "noActiveSubscription": "Nenhuma assinatura ativa foi encontrada",
+    "title": "Status do pagamento e assinatura",
+    "subtitle": "Revise o status da assinatura e os detalhes da fatura",
+    "status": {
+      "pending": "Aguardando confirmação",
+      "active": "Ativo",
+      "expired": "Expirado",
+      "cancelled": "Cancelado"
+    },
+    "invoice": "Fatura da assinatura",
+    "printInvoice": "Imprimir fatura",
+    "downloadInvoice": "Baixar fatura",
+    "downloadSoon": "Este recurso será adicionado em breve",
+    "customerInfo": "Informações do cliente",
+    "subscriptionInfo": "Detalhes da assinatura",
+    "invoiceNumber": "Número da fatura",
+    "issueDate": "Data de emissão",
+    "customerName": "Nome",
+    "email": "E-mail",
+    "phone": "Telefone",
+    "address": "Endereço",
+    "taxNumber": "Número fiscal",
+    "plan": "Plano",
+    "amount": "Valor",
+    "paymentMethod": "Método de pagamento",
+    "bankTransfer": "Transferência bancária",
+    "cardOrOther": "Cartão de crédito/outro",
+    "transactionId": "ID da transação",
+    "paymentDate": "Data do pagamento",
+    "startDate": "Data de início",
+    "endDate": "Data de término",
+    "autoRenew": "Renovação automática",
+    "yes": "Sim",
+    "no": "Não",
+    "unavailable": "Indisponível",
+    "supportNote": "Estamos sempre aqui para ajudar. Para dúvidas ou suporte, entre em contato por e-mail ou telefone.",
+    "thankYou": "Obrigado por escolher nossa plataforma para realizar suas ambições esportivas!",
+    "footer": "Plataforma mesk llc & El7lm - Todos os direitos reservados",
+    "electronicInvoice": "Esta fatura foi emitida eletronicamente e não requer assinatura.",
+    "print": "Imprimir fatura"
+  },
+  "academyBilling": {
+    "title": "Assinaturas e faturas",
+    "subscriptionDetails": "Detalhes da assinatura",
+    "description": "Página de gestão de assinaturas e faturas para academias"
+  },
+  "adminNotifications": {
+    "userFallback": "Usuário",
+    "deleted": "Excluído",
+    "newNotifications": "Novas notificações",
+    "title": "Notificações",
+    "tabs": {
+      "all": "Tudo",
+      "mentions": "Interações",
+      "system": "Sistema"
+    },
+    "emptyTitle": "Tudo está tranquilo por aqui",
+    "emptyDescription": "Você não recebeu novas notificações recentemente. Avisaremos quando algo acontecer.",
+    "others": "{{count}} outros",
+    "delete": "Excluir",
+    "reply": "Responder",
+    "follow": "Acompanhar"
+  },
+  "paymentSuccess": {
+    "selectedPackage": "Pacote selecionado",
+    "unavailable": "Indisponível",
+    "title": "Pagamento realizado com sucesso! 🎉",
+    "subtitle": "Obrigado pela confiança. Seu pagamento foi processado com sucesso e sua assinatura foi ativada.",
+    "detailsTitle": "Detalhes da transação",
+    "paidAmount": "Valor pago:",
+    "package": "Pacote selecionado:",
+    "transactionId": "ID da transação:",
+    "transactionDate": "Data da transação:",
+    "benefitsTitle": "Benefícios da sua nova assinatura ✨",
+    "instantAccessTitle": "Acesso imediato",
+    "instantAccessDesc": "Aproveite todos os recursos imediatamente após o pagamento.",
+    "exclusiveTitle": "Benefícios exclusivos",
+    "exclusiveDesc": "Acesse todos os conteúdos e serviços premium.",
+    "supportTitle": "Suporte técnico",
+    "supportDesc": "Suporte técnico disponível 24 horas por dia.",
+    "backToDashboard": "Voltar ao painel",
+    "viewSubscription": "Ver detalhes da assinatura",
+    "emailTitle": "📧 Confirmação por e-mail",
+    "emailDesc": "Enviamos a confirmação do pagamento para seu e-mail. Verifique sua caixa de entrada ou pasta de spam."
+  },
+  "homePage": {
+    "copy": {
+      "dir": "ltr",
+      "lang": "pt",
+      "joinBtn": "Junte-se agora",
+      "nav": [
+        "Início",
+        "Aplicação Hagzz",
+        "Academia",
+        "Clubes",
+        "Torneios"
+      ],
+      "badge": "Plataforma EL7LM com V Lab AI.",
+      "motivation": [
+        {
+          "a": "Reserve o seu lugar em torneios internacionais,",
+          "b": "e prove o seu talento perante o mundo."
+        },
+        {
+          "a": "Participe em testes profissionais,",
+          "b": "e viva a experiência dos clubes europeus."
+        },
+        {
+          "a": "A sua oportunidade de chegar ao profissionalismo,",
+          "b": "começa nos estádios internacionais."
+        },
+        {
+          "a": "Os melhores olheiros e clubes,",
+          "b": "esperam pelo seu talento."
+        },
+        {
+          "a": "Construa a sua carreira no futebol,",
+          "b": "com campos de treino de elite."
+        },
+        {
+          "a": "Não adie o seu sonho,",
+          "b": "comece hoje."
+        },
+        {
+          "a": "O futuro começa,",
+          "b": "com uma decisão tomada agora."
+        },
+        {
+          "a": "Uma viagem de mil quilómetros,",
+          "b": "começa com um passo corajoso."
+        },
+        {
+          "a": "Seja o herói,",
+          "b": "da sua própria história de sucesso."
+        },
+        {
+          "a": "A persistência transforma,",
+          "b": "o impossível em realidade."
+        },
+        {
+          "a": "Cada minuto de treino,",
+          "b": "aproxima-o do seu sonho."
+        },
+        {
+          "a": "Confie sempre nas suas capacidades,",
+          "b": "tem tudo o que é necessário."
+        },
+        {
+          "a": "Os campeões não nascem,",
+          "b": "constroem-se com trabalho árduo."
+        },
+        {
+          "a": "A determinação transforma o sonho,",
+          "b": "numa realidade concreta."
+        },
+        {
+          "a": "O sucesso pertence,",
+          "b": "a quem se atreve a tentar."
+        }
+      ],
+      "stats": [
+        {
+          "label": "Desempenho atual",
+          "value": "ELITE 98.4"
+        },
+        {
+          "label": "Análise de velocidade",
+          "value": "34.5 KM/H"
+        },
+        {
+          "label": "Precisão de passe",
+          "value": "ELITE 94%"
+        },
+        {
+          "label": "Avaliação técnica",
+          "value": "PRO 9.2/10"
+        },
+        {
+          "label": "Interesse de olheiros",
+          "value": "8 CLUBES AGORA"
+        },
+        {
+          "label": "Potência de remate",
+          "value": "ALTA 89%"
+        }
+      ],
+      "heroSub": "A maior plataforma de descoberta de talentos de futebol do Médio Oriente. Usamos inteligência artificial para analisar o seu desempenho e ligá-lo aos melhores olheiros e clubes internacionais.",
+      "startFree": "Comece gratuitamente",
+      "login": "Iniciar sessão",
+      "partnerLabel": "Com a confiança de parceiros profissionais",
+      "featuresTitle": "Ferramentas digitais para o sucesso",
+      "features": [
+        {
+          "icon": "analytics",
+          "title": "Análise de competências com IA",
+          "desc": "Analisamos os seus vídeos com visão computacional para obter estatísticas rigorosas de velocidade, passes e remates."
+        },
+        {
+          "icon": "visibility",
+          "title": "Visibilidade perante olheiros",
+          "desc": "O seu perfil chega a olheiros certificados a nível local e internacional, aumentando as suas oportunidades."
+        },
+        {
+          "icon": "hub",
+          "title": "Contacto direto com clubes",
+          "desc": "Um sistema seguro liga-o a diretores de academias e treinadores interessados nas suas competências."
+        }
+      ],
+      "aiVideoTitle": "Análise de vídeo com IA",
+      "aiVideoBadge": "Tecnologia de nova geração",
+      "aiVideoDesc": "Transforme as suas jogadas em dados profissionais. Analisamos cada movimento, passe e remate segundo padrões internacionais.",
+      "aiVideoFeatures": [
+        {
+          "icon": "label_important",
+          "color": "#84d993",
+          "title": "Marcação automática de golos e dribles",
+          "desc": "A IA identifica os melhores momentos e cria clipes prontos para partilhar com olheiros."
+        },
+        {
+          "icon": "map",
+          "color": "#bdc4ef",
+          "title": "Mapas de calor dos seus movimentos",
+          "desc": "Acompanhamento rigoroso da sua posição para compreender o esforço físico e a inteligência tática."
+        },
+        {
+          "icon": "leaderboard",
+          "color": "#fdba45",
+          "title": "Métricas avançadas de desempenho",
+          "desc": "Estatísticas imediatas de velocidade, precisão de passe e potência de remate sobre o vídeo."
+        }
+      ],
+      "tourTitle": "Torneios e competições",
+      "tourSub": "Participe nos melhores eventos para melhorar a sua classificação digital",
+      "tournaments": [
+        {
+          "title": "Torneio Elite - Cairo",
+          "desc": "Jogos internacionais e torneios oficiais com os melhores olheiros do Egito.",
+          "btn": "Ver no Instagram"
+        },
+        {
+          "title": "Internacional de Al Alamein",
+          "desc": "Torneios oficiais na nova cidade de Al Alamein com olheiros de elite.",
+          "btn": "Ver no Instagram"
+        },
+        {
+          "title": "Taça Sonho Árabe - Doha",
+          "desc": "Testes técnicos sob supervisão de treinadores da liga do Catar.",
+          "btn": "Ver no Instagram"
+        }
+      ],
+      "talentsTitle": "Talentos emergentes",
+      "talentsSub": "Os mais procurados pelos clubes esta semana",
+      "viewAll": "Ver todos os jogadores",
+      "oppsTitle": "Oportunidades disponíveis",
+      "oppsSub": "Oportunidades recentes dos melhores clubes e agentes",
+      "viewOpps": "Ver todas as oportunidades",
+      "players": [
+        {
+          "name": "Ahmed Kareem",
+          "pos": "Médio • 19 anos",
+          "badge": "Elite"
+        },
+        {
+          "name": "Yassine Omar",
+          "pos": "Avançado • 17 anos",
+          "badge": null
+        },
+        {
+          "name": "Mariam Hassan",
+          "pos": "Avançada • 18 anos",
+          "badge": "Escolha do olheiro"
+        },
+        {
+          "name": "Ziad Ali",
+          "pos": "Defesa • 20 anos",
+          "badge": null
+        }
+      ],
+      "contactTitle": "Contacte-nos",
+      "contactSub": "A nossa equipa de apoio está disponível para responder às suas questões sobre a plataforma e as subscrições.",
+      "contacts": [
+        {
+          "href": "https://wa.me/97470542458",
+          "icon": "chat",
+          "color": "#84d993",
+          "bg": "rgba(132,217,147,.1)",
+          "hb": "rgba(132,217,147,.5)",
+          "title": "WhatsApp",
+          "sub": "+974 7054 2458"
+        },
+        {
+          "href": "tel:+97470542458",
+          "icon": "call",
+          "color": "#bdc4ef",
+          "bg": "rgba(189,196,239,.1)",
+          "hb": "rgba(189,196,239,.5)",
+          "title": "Ligue-nos",
+          "sub": "+974 7054 2458"
+        },
+        {
+          "href": "mailto:info@el7lm.com",
+          "icon": "mail",
+          "color": "#fdba45",
+          "bg": "rgba(253,186,69,.1)",
+          "hb": "rgba(253,186,69,.5)",
+          "title": "Correio eletrónico",
+          "sub": "info@el7lm.com"
+        }
+      ],
+      "emailLbl": "Correio eletrónico",
+      "nameLbl": "Nome completo",
+      "subjectLbl": "Assunto",
+      "msgLbl": "Mensagem",
+      "emailPh": "example@mail.com",
+      "namePh": "Introduza o seu nome",
+      "subjectPh": "Como podemos ajudar?",
+      "msgPh": "Escreva os detalhes da sua questão...",
+      "sendBtn": "Enviar mensagem",
+      "ctaTitle": "Pronto para ser a próxima estrela?",
+      "ctaSub": "Junte-se a milhares de jogadores que iniciaram a carreira profissional através da EL7LM com V Lab AI.",
+      "ctaBtn": "Crie agora o seu perfil gratuito",
+      "footerDesc": "Uma plataforma líder que capacita o talento futebolístico árabe através de tecnologia moderna e inteligência artificial.",
+      "footerCols": [
+        {
+          "title": "Ligações rápidas",
+          "links": [
+            {
+              "l": "Pesquisa de talentos",
+              "h": "#"
+            },
+            {
+              "l": "Relatórios de desempenho",
+              "h": "#"
+            },
+            {
+              "l": "Academia digital",
+              "h": "#"
+            },
+            {
+              "l": "Calendário de jogos",
+              "h": "#"
+            },
+            {
+              "l": "Notícias das estrelas",
+              "h": "#"
+            }
+          ]
+        },
+        {
+          "title": "Empresa",
+          "links": [
+            {
+              "l": "Sobre nós",
+              "h": "/about"
+            },
+            {
+              "l": "Carreiras",
+              "h": "/careers"
+            },
+            {
+              "l": "Casos de sucesso",
+              "h": "/success-stories"
+            },
+            {
+              "l": "Contacto",
+              "h": "/contact"
+            }
+          ]
+        },
+        {
+          "title": "Legal",
+          "links": [
+            {
+              "l": "Privacidade",
+              "h": "/privacy"
+            },
+            {
+              "l": "Termos",
+              "h": "/terms"
+            },
+            {
+              "l": "Critérios de observação",
+              "h": "#"
+            },
+            {
+              "l": "Apoio técnico",
+              "h": "/support"
+            }
+          ]
+        }
+      ],
+      "copyright": "© 2026 EL7LM com V Lab AI. Todos os direitos reservados.",
+      "designedFor": "Concebido para campeões",
+      "all": "Tudo",
+      "trials": "Testes",
+      "pro": "Profissional",
+      "camps": "Estágios",
+      "training": "Treino",
+      "howTitle": "Como utilizar a plataforma?",
+      "howSub": "Quatro passos simples separam-no do futebol profissional",
+      "howSteps": [
+        {
+          "num": "01",
+          "title": "Crie a sua conta gratuita",
+          "desc": "Registe os dados básicos e escolha o tipo de conta em menos de dois minutos.",
+          "icon": "person_add",
+          "color": "#84d993"
+        },
+        {
+          "num": "02",
+          "title": "Complete o perfil profissional",
+          "desc": "Adicione fotos, vídeos, estatísticas e percurso para se destacar perante olheiros.",
+          "icon": "edit_note",
+          "color": "#bdc4ef"
+        },
+        {
+          "num": "03",
+          "title": "Descubra oportunidades",
+          "desc": "Explore oportunidades de clubes, academias e torneios e candidate-se com um clique.",
+          "icon": "explore",
+          "color": "#fdba45"
+        },
+        {
+          "num": "04",
+          "title": "Ligue-se aos clubes",
+          "desc": "Receba propostas, comunique com olheiros e inicie a carreira profissional.",
+          "icon": "handshake",
+          "color": "#10b981"
+        }
+      ],
+      "forWhomTitle": "Soluções para cada categoria",
+      "forWhomSub": "Uma experiência própria para cada interveniente do setor desportivo.",
+      "forWhom": [
+        {
+          "num": "01",
+          "title": "Para atletas",
+          "desc": "Apresente competências e registos de forma profissional.",
+          "btn": "Começar como atleta",
+          "href": "/auth/register?role=player",
+          "color": "#84d993"
+        },
+        {
+          "num": "02",
+          "title": "Para academias",
+          "desc": "Faça uma gestão mais eficiente de talentos, serviços e reservas.",
+          "btn": "Pedir versão para academias",
+          "href": "/auth/register?role=academy",
+          "color": "#bdc4ef"
+        },
+        {
+          "num": "03",
+          "title": "Para clubes e olheiros",
+          "desc": "Aceda rapidamente a jogadores, vídeos e análises.",
+          "btn": "Começar como clube ou olheiro",
+          "href": "/auth/register?role=club",
+          "color": "#fdba45"
+        },
+        {
+          "num": "04",
+          "title": "Para parceiros e organizações",
+          "desc": "Uma interface moderna para parcerias e oportunidades comerciais.",
+          "btn": "Falar sobre parceria",
+          "href": "/contact",
+          "color": "#10b981"
+        }
+      ],
+      "storeTitle": "Loja desportiva",
+      "storeSub": "Produtos e serviços desportivos para todas as contas, com pagamentos flexíveis e prestações.",
+      "storeBadge": "Loja partilhada + prestações flexíveis",
+      "storeCta": "Entrar na loja",
+      "storeSecondary": "Explorar opções de pagamento",
+      "storeHighlights": [
+        {
+          "title": "Uma loja para todos",
+          "desc": "Jogadores, clubes e academias compram na mesma loja."
+        },
+        {
+          "title": "Métodos de pagamento profissionais",
+          "desc": "Cartões e carteiras digitais através de fornecedores regionais."
+        },
+        {
+          "title": "Prestações que facilitam a compra",
+          "desc": "Opções como Tamara e Tabby reduzem as barreiras à compra."
+        }
+      ]
+    },
+    "ui": {
+      "partners": "Parceiros",
+      "partnersLead": "Os nossos parceiros aproximam-no das oportunidades",
+      "featured": "Ofertas em destaque",
+      "learnMore": "Saber mais",
+      "smartGuide": "Guia de início inteligente",
+      "discover": "Descubra oportunidades disponíveis",
+      "discoverDesc": "Explore oportunidades de clubes, academias e torneios e candidate-se com um clique.",
+      "startAthlete": "Começar como atleta",
+      "audience": "Para quem se destina?",
+      "selectedProducts": "Produtos selecionados",
+      "managedProducts": "Produtos geridos pelo conteúdo",
+      "openStore": "Abrir loja completa",
+      "noProducts": "Não existem produtos disponíveis na seleção atual.",
+      "installment": "Prestações disponíveis",
+      "founder": "Mensagem do fundador",
+      "founderName": "Mohamed Saudi",
+      "founderRole": "Fundador e diretor executivo",
+      "tournaments": "Torneios da plataforma",
+      "upcoming": "Torneios em curso e futuros",
+      "viewAll": "Ver tudo",
+      "tournamentDesc": "Explore torneios, registe a sua equipa ou acompanhe resultados em direto",
+      "statuses": [
+        "Aberto",
+        "Em curso",
+        "Fechado",
+        "Concluído",
+        "Cancelado"
+      ],
+      "dock": [
+        "Início",
+        "Processo",
+        "Funcionalidades",
+        "Análise IA",
+        "Contacto"
+      ],
+      "productDesc": "Produto em destaque da loja desportiva partilhada.",
+      "selectedNote": "Os produtos seguem a seleção e a ordem configuradas na gestão de conteúdos.",
+      "autoNote": "Sem seleção manual, são mostrados automaticamente produtos em destaque ou recentes."
+    },
+    "extra": {
+      "defaultProduct": "Produto atualmente disponível na loja El7lm.",
+      "categories": [
+        "Tudo",
+        "Equipamento",
+        "Roupa",
+        "Acessórios",
+        "Nutrição",
+        "Eletrónica",
+        "Outros"
+      ],
+      "nav": [
+        "Início",
+        "Funcionalidades",
+        "Parceiros",
+        "Oportunidades",
+        "Loja",
+        "Torneios",
+        "Contacto"
+      ],
+      "founderQuote": "Criámos a El7lm porque acreditamos que cada rua e academia guarda um talento por descobrir. Queremos dar-lhe o olhar digital e a oportunidade que merece para chegar ao mundo.",
+      "tournamentTypes": [
+        "Eliminatórias",
+        "Liga",
+        "Grupos"
+      ],
+      "register": "Inscrever →",
+      "details": "Ver detalhes →",
+      "tracking": "Rastreio ativo",
+      "currentSpeed": "Velocidade atual",
+      "verified": "Talento verificado",
+      "metrics": [
+        "Ritmo",
+        "Remate",
+        "Passe",
+        "Drible"
+      ],
+      "ad": "Anúncio",
+      "team": "equipas",
+      "inquiry": "Questão sobre a plataforma",
+      "emailOpening": "A aplicação de correio predefinida será aberta. Se nada acontecer, verifique a configuração."
+    }
+  },
+  "playerProfile": {
+    "orgTypes": {
+      "club": "Clube",
+      "academy": "Academia",
+      "trainer": "Treinador",
+      "agent": "Agente de jogadores"
+    },
+    "common": {
+      "back": "Voltar",
+      "loadingPermissions": "Verificando permissões...",
+      "noPlayerTitle": "Jogador não selecionado",
+      "noPlayerDesc": "O jogador a ser exibido não foi especificado",
+      "years": "anos",
+      "yes": "Sim",
+      "no": "Não",
+      "male": "Masculino",
+      "female": "Feminino",
+      "notSpecified": "Não especificado",
+      "unknown": "--",
+      "kg": "kg",
+      "cm": "cm",
+      "player": "Jogador",
+      "levelOutOfTen": "Nível: {{value}}/10",
+      "noDetails": "Sem detalhes",
+      "noAdditionalNotes": "Não há notas adicionais",
+      "available": "Available",
+      "unavailable": "Unavailable",
+      "loadingData": "Loading data...",
+      "loadDataError": "⚠️ Error loading data",
+      "reload": "🔄 Reload",
+      "playerNotFound": "Player data was not found",
+      "unknownError": "Unknown error",
+      "fetchPlayerError": "An error occurred while fetching player data: {{message}}",
+      "invalidVideoLink": "Video link {{number}} is invalid or empty",
+      "invalidVideoUrl": "Video link {{number}} is invalid",
+      "link": "Link: {{url}}"
+    },
+    "sections": {
+      "basicInfo": "Informações básicas",
+      "fullName": "Nome completo",
+      "birthDate": "Data de nascimento",
+      "nationality": "Nacionalidade",
+      "gender": "Gênero",
+      "position": "Posição",
+      "brief": "Resumo breve",
+      "guardianInfo": "Dados do responsável",
+      "guardianMinorNote": "O jogador é menor de idade (menos de 18 anos); dados de contato do responsável:",
+      "name": "Nome",
+      "phone": "Telefone",
+      "residenceContact": "Residência e contato",
+      "country": "País de residência",
+      "city": "Cidade",
+      "address": "Endereço detalhado",
+      "email": "E-mail",
+      "pitchMap": "Mapa do campo",
+      "primary": "Principal",
+      "secondary": "Secundária",
+      "primaryDetailed": "Posição principal (detalhada)",
+      "secondaryPosition": "Posição secundária",
+      "preferredFoot": "Pé preferido",
+      "height": "Altura",
+      "weight": "Peso",
+      "jerseyNumber": "Número da camisa",
+      "sportsCareer": "Carreira esportiva",
+      "currentClub": "Clube atual",
+      "club": "Clube",
+      "noClub": "Não vinculado a clube",
+      "experience": "Experiência: {{years}} anos",
+      "contractStart": "Início do contrato: {{date}}",
+      "clubHistory": "Histórico de clubes",
+      "noClubHistory": "Não há histórico anterior de clubes",
+      "trainingFoundation": "Treinamento e formação",
+      "academies": "Academias",
+      "privateCoaches": "Treinadores particulares",
+      "achievements": "Conquistas e prêmios",
+      "sportsNotes": "Notas esportivas",
+      "educationLevel": "Nível educacional",
+      "graduationYear": "Ano de formatura",
+      "languages": "Idiomas",
+      "noLanguages": "Não há idiomas registrados",
+      "courses": "Cursos e certificados",
+      "noCourses": "Não há cursos registrados",
+      "vitalSigns": "Sinais vitais",
+      "bloodType": "Tipo sanguíneo",
+      "chronicDiseases": "Doenças crônicas",
+      "chronicDetails": "Detalhes das doenças crônicas:",
+      "allergies": "Alergias",
+      "noAllergies": "Não há alergias registradas",
+      "medications": "Medicamentos contínuos",
+      "noMedications": "Não há medicamentos registrados",
+      "injuries": "Lesões anteriores",
+      "fullRecovery": "Recuperação completa",
+      "noInjuries": "Não há lesões registradas",
+      "surgeries": "Cirurgias",
+      "noSurgeries": "Não há cirurgias registradas",
+      "medicalNotes": "Notas médicas adicionais",
+      "technicalPhysicalAbilities": "Capacidades técnicas e físicas",
+      "mentalAbilities": "Capacidades mentais",
+      "advancedSkills": "Habilidades avançadas",
+      "weakFoot": "Pé fraco",
+      "skillMoves": "Habilidades de drible",
+      "attackRate": "Ritmo de ataque",
+      "defenseRate": "Ritmo defensivo",
+      "technicalSkills": "Habilidades técnicas",
+      "physicalSkills": "Habilidades físicas",
+      "socialSkills": "Habilidades sociais",
+      "noObjectives": "Nenhum objetivo definido ainda",
+      "objectivesSummary": "Resumo de objetivos e ambições",
+      "selectedObjectives": "Objetivos selecionados:",
+      "totalObjectives": "Total de objetivos:",
+      "profileImage": "Profile image",
+      "additionalImage": "Additional image {{number}}",
+      "images": "Images",
+      "imageUnavailable": "Image unavailable",
+      "noImages": "No images",
+      "noImagesDesc": "Add a profile image and additional photos to show your skills and achievements",
+      "videos": "Videos",
+      "videoTitle": "Video {{number}}",
+      "videoHint": "Click the link below to watch",
+      "noDescription": "No description",
+      "noVideos": "No videos",
+      "noVideosDesc": "No videos have been added yet",
+      "documents": "Documents and certificates",
+      "documentType": "Type: {{type}}",
+      "noDocuments": "No documents",
+      "noDocumentsDesc": "No documents have been added yet",
+      "viewDocument": "View document",
+      "addImagesHint": "You can add images from the profile edit page",
+      "arabicLanguage": "Arabic",
+      "contractStatus": "Contract status",
+      "freeAgent": "Free Agent",
+      "contracted": "Under contract",
+      "loan": "Loan",
+      "freePlayer": "Free player",
+      "passport": "Passport",
+      "marketValue": "Market value",
+      "estimatedValue": "Estimated value",
+      "contractEnd": "Contract end",
+      "currentAgent": "Current business agent",
+      "jobTitle": "Job title",
+      "whatsapp": "WhatsApp",
+      "socialAccounts": "Social media accounts",
+      "previousContracts": "Previous contract history",
+      "contractClub": "Club: {{club}}",
+      "contractPeriod": "Period: {{from}} - {{to}}",
+      "contractRole": "Position: {{role}}",
+      "noPreviousContracts": "No previous contracts registered",
+      "previousAgents": "Previous player agents record",
+      "agentName": "Name: {{name}}",
+      "period": "Period: {{from}} - {{to}}",
+      "subscriptionDetails": "Subscription details",
+      "status": "Status",
+      "type": "Type",
+      "endsAt": "Ends at",
+      "tabs": {
+        "personal": "Personal information",
+        "sports": "Sports information",
+        "education": "Education",
+        "medical": "Medical record",
+        "skills": "Skills",
+        "contracts": "Contracts",
+        "objectives": "Objectives",
+        "media": "Media",
+        "resume": "Resume"
+      },
+      "unavailableTab": "Tab unavailable",
+      "detailedPlayerProfile": "Detailed player profile",
+      "playerDataNotice": "All following data belongs to the displayed player",
+      "playerData": "📋 Player data",
+      "independentPlayerTitle": "Independent player",
+      "independentPlayerDesc": "This player is not currently linked to any organization",
+      "officialContact": "Official contact",
+      "noOfficialContact": "No official contact specified",
+      "noOfficialContactDesc": "The player can add this information in their profile",
+      "browsingAs": "Browsing as:",
+      "active": "Active",
+      "playerAlt": "Player",
+      "goToOrganizationProfile": "Go to {{type}} profile: {{name}}",
+      "organizationLogoAlt": "{{name}} logo",
+      "clickToOpenType": "Click to open {{type}}",
+      "independentPlayerTitleLong": "Independent player - not linked to any organization",
+      "independentShort": "Independent",
+      "playerOrganization": "Player organization",
+      "linkedToType": "✅ Linked to {{type}}",
+      "checking": "⏳ Checking",
+      "you": "You",
+      "addedThisPlayer": "You added this player",
+      "goToOrganizationPage": "Go to {{type}} page",
+      "viewType": "View {{type}}",
+      "founded": "Founded: {{year}}",
+      "searchingOrganization": "Searching for organization...",
+      "checkingRelations": "Checking club, academy, and trainer links...",
+      "checkingAllDatabases": "🔍 Checking all databases",
+      "loanPlayer": "Loan player",
+      "contractedPlayer": "Contracted player",
+      "linkedCurrentClub": "Currently linked to a club according to the profile",
+      "contactOfficialEntity": "Please contact the official contact entity",
+      "canJoinClubOrAcademy": "Can join a club or academy",
+      "canContractAgent": "Can contract with a player agent",
+      "canWorkWithTrainer": "Can work with a personal trainer",
+      "legalGuardianship": "Legal guardianship",
+      "guardianshipAlert": "Guardianship alert",
+      "guardianConsentComplete": "Guardian consent completed",
+      "underGuardian": "Under guardian supervision",
+      "canNegotiate": "Negotiation and procedures can proceed",
+      "waitingGuardianConsent": "Waiting for official guardian consent",
+      "talentEvaluation": "Talent evaluation",
+      "evaluated": "Evaluated",
+      "underEvaluation": "Under evaluation",
+      "byTechnicalCommittee": "By the platform technical committee"
+    },
+    "skills": {
+      "ball_control": "Controle de bola",
+      "passing": "Passe",
+      "shooting": "Finalização",
+      "dribbling": "Drible",
+      "heading": "Cabeceio",
+      "tackling": "Desarme",
+      "marking": "Marcação",
+      "positioning": "Posicionamento",
+      "vision": "Visão",
+      "decision_making": "Tomada de decisão",
+      "speed": "Velocidade",
+      "strength": "Força",
+      "stamina": "Resistência",
+      "agility": "Agilidade",
+      "balance": "Equilíbrio",
+      "flexibility": "Flexibilidade",
+      "jumping": "Salto",
+      "coordination": "Coordenação",
+      "reaction_time": "Tempo de reação",
+      "teamwork": "Trabalho em equipe",
+      "communication": "Comunicação",
+      "discipline": "Disciplina",
+      "self_confidence": "Autoconfiança",
+      "pressure_handling": "Controle sob pressão",
+      "punctuality": "Pontualidade",
+      "leadership": "Liderança",
+      "adaptability": "Adaptabilidade",
+      "motivation": "Motivação",
+      "pace": "Ritmo",
+      "defending": "Defesa",
+      "physical": "Físico",
+      "composure": "Compostura",
+      "aggression": "Agressividade"
+    },
+    "educationLevels": {
+      "primary": "Primário",
+      "middle": "Intermediário",
+      "high_school": "Secundário",
+      "bachelors": "Bacharelado",
+      "masters": "Mestrado",
+      "phd": "Doutorado"
+    },
+    "objectives": {
+      "professional": "Carreira profissional",
+      "trials": "Testes",
+      "local_leagues": "Jogar em ligas locais",
+      "arab_leagues": "Jogar em ligas árabes",
+      "european_leagues": "Jogar em ligas europeias",
+      "training": "Treinamento e desenvolvimento",
+      "other": "Outros objetivos"
+    }
+  },
+  "playerForm": {
+    "stepTitles": {
+      "0": "Dados pessoais",
+      "1": "Educação",
+      "2": "Histórico médico",
+      "3": "Informações esportivas",
+      "4": "Habilidades e capacidades",
+      "5": "Objetivos e ambições",
+      "6": "Fotos e vídeos",
+      "7": "Contratos e contatos"
+    },
+    "accountTypes": {
+      "club": "clube",
+      "academy": "academia",
+      "trainer": "treinador",
+      "agent": "agente",
+      "marketer": "promotor",
+      "admin": "administrador"
+    },
+    "positions": [
+      {
+        "value": "حارس مرمى",
+        "label": "Goleiro"
+      },
+      {
+        "value": "مدافع أيمن",
+        "label": "Lateral direito"
+      },
+      {
+        "value": "مدافع أيسر",
+        "label": "Lateral esquerdo"
+      },
+      {
+        "value": "قلب دفاع",
+        "label": "Zagueiro"
+      },
+      {
+        "value": "وسط دفاعي",
+        "label": "Volante"
+      },
+      {
+        "value": "وسط",
+        "label": "Meio-campista"
+      },
+      {
+        "value": "جناح أيمن",
+        "label": "Ponta direita"
+      },
+      {
+        "value": "جناح أيسر",
+        "label": "Ponta esquerda"
+      },
+      {
+        "value": "مهاجم صريح",
+        "label": "Centroavante"
+      },
+      {
+        "value": "مهاجم ثاني",
+        "label": "Segundo atacante"
+      }
+    ],
+    "educationLevels": [
+      {
+        "value": "ابتدائي",
+        "label": "Primário"
+      },
+      {
+        "value": "متوسط",
+        "label": "Intermediário"
+      },
+      {
+        "value": "ثانوي",
+        "label": "Secundário"
+      },
+      {
+        "value": "دبلوم",
+        "label": "Diploma"
+      },
+      {
+        "value": "بكالوريوس",
+        "label": "Bacharelado"
+      },
+      {
+        "value": "ماجستير",
+        "label": "Mestrado"
+      },
+      {
+        "value": "دكتوراه",
+        "label": "Doutorado"
+      }
+    ],
+    "languageLevels": [
+      {
+        "value": "مبتدئ",
+        "label": "Iniciante"
+      },
+      {
+        "value": "متوسط",
+        "label": "Intermediário"
+      },
+      {
+        "value": "متقدم",
+        "label": "Avançado"
+      },
+      {
+        "value": "محترف",
+        "label": "Profissional"
+      }
+    ],
+    "footPreferences": [
+      {
+        "value": "اليمنى",
+        "label": "Direito"
+      },
+      {
+        "value": "اليسرى",
+        "label": "Esquerdo"
+      },
+      {
+        "value": "كلتاهما",
+        "label": "Ambos"
+      }
+    ],
+    "skills": {
+      "technical": [
+        {
+          "value": "السيطرة على الكرة",
+          "label": "Controle de bola"
+        },
+        {
+          "value": "التمرير",
+          "label": "Passe"
+        },
+        {
+          "value": "التهديف",
+          "label": "Finalização"
+        },
+        {
+          "value": "المراوغة",
+          "label": "Drible"
+        },
+        {
+          "value": "التحكم بالكرة",
+          "label": "Primeiro toque"
+        },
+        {
+          "value": "اللعب الهوائي",
+          "label": "Jogo aéreo"
+        }
+      ],
+      "physical": [
+        {
+          "value": "السرعة",
+          "label": "Velocidade"
+        },
+        {
+          "value": "القوة",
+          "label": "Força"
+        },
+        {
+          "value": "التحمل",
+          "label": "Resistência"
+        },
+        {
+          "value": "المرونة",
+          "label": "Flexibilidade"
+        },
+        {
+          "value": "التوازن",
+          "label": "Equilíbrio"
+        },
+        {
+          "value": "رد الفعل",
+          "label": "Reação"
+        }
+      ],
+      "social": [
+        {
+          "value": "القيادة",
+          "label": "Liderança"
+        },
+        {
+          "value": "العمل الجماعي",
+          "label": "Trabalho em equipe"
+        },
+        {
+          "value": "التواصل",
+          "label": "Comunicação"
+        },
+        {
+          "value": "الانضباط",
+          "label": "Disciplina"
+        },
+        {
+          "value": "الثقة بالنفس",
+          "label": "Autoconfiança"
+        },
+        {
+          "value": "تحمل الضغط",
+          "label": "Controle sob pressão"
+        }
+      ]
+    },
+    "objectives": [
+      {
+        "value": "اللعب في الدوري المحلي",
+        "label": "Jogar na liga local"
+      },
+      {
+        "value": "اللعب في الدوري الأوروبي",
+        "label": "Jogar em uma liga europeia"
+      },
+      {
+        "value": "اللعب في المنتخب الوطني",
+        "label": "Jogar pela seleção nacional"
+      },
+      {
+        "value": "المعايشات الدولية",
+        "label": "Testes internacionais"
+      },
+      {
+        "value": "المعايشات المحلية",
+        "label": "Testes locais"
+      },
+      {
+        "value": "الاحتراف",
+        "label": "Profissionalizar-me"
+      },
+      {
+        "value": "الاشتراك في أندية استثمارية",
+        "label": "Entrar em clubes de investimento"
+      },
+      {
+        "value": "تعليم اللغة الإنجليزية",
+        "label": "Aprender inglês"
+      },
+      {
+        "value": "الحصول على منحة دراسية",
+        "label": "Obter bolsa de estudos"
+      },
+      {
+        "value": "أن أصبح مدرب كرة قدم",
+        "label": "Tornar-me treinador de futebol"
+      },
+      {
+        "value": "فتح أكاديمية كرة قدم",
+        "label": "Abrir uma academia de futebol"
+      },
+      {
+        "value": "اللعب في الأولمبياد",
+        "label": "Jogar nas Olimpíadas"
+      },
+      {
+        "value": "الحصول على جوائز فردية",
+        "label": "Ganhar prêmios individuais"
+      }
+    ],
+    "referralSources": {
+      "social_media": "Redes sociais",
+      "friend": "Amigo ou conhecido",
+      "coach": "Treinador",
+      "club": "Clube",
+      "internet": "Pesquisa na Internet",
+      "advertisement": "Anúncio",
+      "other": "Outro"
+    },
+    "errors": {
+      "fullNameRequired": "O nome completo é obrigatório",
+      "birthDateRequired": "A data de nascimento é obrigatória",
+      "minAge": "A idade deve ser de pelo menos 3 anos",
+      "maxAge": "A idade deve ser menor que 50 anos",
+      "nationalityRequired": "A nacionalidade é obrigatória",
+      "countryRequired": "O país é obrigatório",
+      "cityRequired": "A cidade é obrigatória",
+      "phoneRequired": "O telefone é obrigatório",
+      "emailRequired": "O e-mail é obrigatório",
+      "primaryPositionRequired": "A posição principal é obrigatória",
+      "preferredFootRequired": "O pé preferido é obrigatório",
+      "duplicateData": "Dados duplicados",
+      "unknownError": "Erro desconhecido",
+      "noPermission": "Você não tem permissão para editar este jogador",
+      "playerNotFound": "O jogador não foi encontrado no banco de dados",
+      "loadPlayer": "Ocorreu um erro ao carregar os dados do jogador",
+      "save": "Ocorreu um erro ao salvar os dados",
+      "invalidMode": "Não foi possível determinar o modo de salvamento",
+      "loginWithoutEmail": "Não é possível criar uma conta de acesso sem e-mail",
+      "loginCreate": "Ocorreu um erro ao criar a conta de acesso",
+      "loginFailed": "Falha ao criar a conta de acesso: {{message}}",
+      "uploadProfile": "Falha ao enviar a imagem de perfil",
+      "duplicateEmail": "O e-mail ({{value}}) já está registrado em {{collection}}.",
+      "duplicatePhone": "O telefone ({{value}}) já está registrado em {{collection}}.",
+      "collections": {
+        "users": "usuários",
+        "players": "jogadores",
+        "organizations": "organizações"
+      }
+    },
+    "status": {
+      "loading": "Carregando dados do jogador...",
+      "savingBlocked": "Player form save is already in progress",
+      "profileUploaded": "Profile image uploaded successfully",
+      "addSuccess": "Jogador adicionado com sucesso",
+      "addWithLoginSuccess": "Jogador adicionado e conta de acesso criada com sucesso.",
+      "updateSuccess": "Dados do jogador atualizados com sucesso",
+      "loginCreated": "Conta de acesso criada com sucesso.",
+      "uploadingImage": "Enviando imagem...",
+      "uploadingImages": "Enviando imagens...",
+      "uploadingVideo": "Enviando vídeo..."
+    },
+    "ui": {
+      "back": "Voltar",
+      "retry": "Tentar novamente",
+      "errorTitle": "Ocorreu um erro",
+      "addTitle": "Adicionar novo jogador",
+      "editTitle": "Editar dados do jogador",
+      "addSubtitle": "Adicionar um novo jogador por meio de {{accountType}}",
+      "editSubtitle": "Editar e atualizar os dados do jogador",
+      "profileImage": "Imagem de perfil",
+      "addImage": "Adicionar imagem",
+      "addImages": "Adicionar imagens",
+      "fullName": "Nome completo *",
+      "birthDate": "Data de nascimento *",
+      "nationality": "Nacionalidade *",
+      "country": "País *",
+      "city": "Cidade *",
+      "phone": "Telefone *",
+      "email": "E-mail *",
+      "whatsapp": "Número do WhatsApp",
+      "address": "Endereço detalhado",
+      "brief": "Resumo pessoal",
+      "selectNationality": "Selecione a nacionalidade",
+      "selectCountry": "Selecione o país",
+      "selectCity": "Selecione a cidade",
+      "selectCountryFirst": "Selecione primeiro o país",
+      "cityHint": "💡 Você pode digitar o nome da cidade para pesquisar ou clicar no campo para ver todas as cidades de {{country}}",
+      "cityWarning": "⚠️ Selecione primeiro o país para escolher a cidade",
+      "fullNamePlaceholder": "Digite o nome completo",
+      "phonePlaceholder": "Digite o telefone",
+      "emailPlaceholder": "Digite o e-mail",
+      "whatsappPlaceholder": "Digite o número do WhatsApp",
+      "addressPlaceholder": "Endereço completo (bairro, rua, número do prédio...)",
+      "briefPlaceholder": "Escreva um breve resumo sobre o jogador...",
+      "primaryPosition": "Posição principal *",
+      "secondaryPosition": "Posição secundária",
+      "preferredFoot": "Pé preferido *",
+      "experienceYears": "Anos de experiência",
+      "playerNumber": "Número atual do jogador",
+      "favoriteNumber": "Número favorito",
+      "selectPrimaryPosition": "Selecione a posição principal",
+      "selectSecondaryPosition": "Selecione a posição secundária",
+      "selectPreferredFoot": "Selecione o pé preferido",
+      "experiencePlaceholder": "Número de anos de experiência",
+      "playerNumberPlaceholder": "Número atual da camisa",
+      "favoriteNumberPlaceholder": "Número favorito",
+      "clubHistory": "Histórico de clubes",
+      "clubName": "Nome do clube",
+      "fromYear": "De (ano)",
+      "toYear": "Até (ano)",
+      "addClub": "Adicionar clube",
+      "sportsNotes": "Notas esportivas",
+      "sportsNotesPlaceholder": "Notas ou informações adicionais sobre o desempenho esportivo...",
+      "educationLevel": "Nível educacional",
+      "graduationYear": "Ano de formatura",
+      "degree": "Especialidade/título",
+      "englishLevel": "Nível de inglês",
+      "arabicLevel": "Nível de árabe",
+      "spanishLevel": "Nível de espanhol",
+      "selectEducation": "Selecione o nível educacional",
+      "selectGraduationYear": "Selecione o ano de formatura",
+      "selectLevel": "Selecione o nível",
+      "degreePlaceholder": "Exemplo: Administração, Engenharia, Medicina...",
+      "trainingCourses": "Cursos de treinamento",
+      "courseName": "Nome do curso",
+      "addCourse": "Adicionar curso",
+      "bloodType": "Tipo sanguíneo",
+      "selectBloodType": "Selecione o tipo sanguíneo",
+      "height": "Altura (cm)",
+      "weight": "Peso (kg)",
+      "heightPlaceholder": "Altura em centímetros",
+      "weightPlaceholder": "Peso em quilogramas",
+      "hasChronic": "Tem doenças crônicas",
+      "chronicDetails": "Detalhes das doenças crônicas",
+      "chronicPlaceholder": "Informe os detalhes das doenças crônicas...",
+      "allergies": "Alergias (se houver)",
+      "allergiesPlaceholder": "Informe alergias conhecidas...",
+      "medicalNotes": "Notas médicas adicionais",
+      "medicalNotesPlaceholder": "Outras notas médicas...",
+      "surgeries": "Cirurgias",
+      "surgeryType": "Tipo de cirurgia",
+      "addSurgery": "Adicionar cirurgia",
+      "mediaLimitImage": "Máximo: 5MB. Formatos aceitos: JPG, PNG, GIF",
+      "additionalImages": "Imagens adicionais",
+      "imageAlt": "Imagem {{number}}",
+      "skillVideos": "Links de vídeos de habilidades",
+      "videoUrl": "Link do vídeo (YouTube, Vimeo, etc.)",
+      "videoDescription": "Descrição do vídeo",
+      "addVideoLink": "Adicionar link de vídeo",
+      "uploadVideos": "Enviar arquivos de vídeo",
+      "uploadVideo": "Enviar vídeo",
+      "mediaLimitVideo": "Máximo: 50MB. Formatos aceitos: MP4, MOV, AVI",
+      "skillsHint": "Avalie as habilidades de 1 (fraco) a 10 (excelente)",
+      "technicalSkills": "Habilidades técnicas",
+      "physicalSkills": "Habilidades físicas",
+      "socialSkills": "Habilidades sociais",
+      "otherGoals": "Outros objetivos",
+      "otherGoalsPlaceholder": "Informe seus outros objetivos...",
+      "contractStatus": "Status contratual atual",
+      "hasContract": "Você tem contrato atualmente?",
+      "yes": "Sim",
+      "no": "Não",
+      "currentClub": "Clube atual",
+      "currentClubPlaceholder": "Nome do clube atual (se houver)",
+      "officialContact": "Informações de contato oficial",
+      "contactName": "Nome do contato",
+      "contactNamePlaceholder": "Responsável/agente/responsável legal",
+      "contactTitle": "Cargo/função",
+      "contactTitlePlaceholder": "Exemplo: pai, agente, gerente...",
+      "contactPhone": "Telefone",
+      "contactPhonePlaceholder": "Telefone do contato",
+      "contactEmail": "E-mail",
+      "contactEmailPlaceholder": "E-mail do contato",
+      "additionalInfo": "Informações adicionais",
+      "hasPassport": "Você tem passaporte?",
+      "referralQuestion": "Como conheceu nossa plataforma?",
+      "selectReferral": "Selecione a fonte",
+      "stageFallback": "Etapa {{number}}: {{title}}",
+      "allStagesComplete": "Todas as etapas estão completas. Você já pode salvar os dados.",
+      "createLoginAccount": "Criar uma conta de acesso para o jogador (com opções fáceis de compartilhamento)",
+      "unifiedPassword": "✨ Senha unificada:",
+      "loginShareHint": "📱 Os dados de acesso serão exibidos com opções de WhatsApp, SMS ou impressão",
+      "loginChangeHint": "🔒 O jogador pode alterar a senha após o primeiro acesso",
+      "viewCredentialsHint": "Clique em \"Ver credenciais\" para ver detalhes e opções de compartilhamento",
+      "viewCredentials": "Ver credenciais",
+      "previous": "Anterior",
+      "cancel": "Cancelar",
+      "next": "Próximo",
+      "addPlayer": "Adicionar jogador",
+      "saveChanges": "Salvar alterações",
+      "organization": "Organização"
+    }
+  },
+  "playersSearch": {
+    "show": "Mostrar",
+    "playersPerPage": "jogadores por página",
+    "range": "Mostrando {{from}} a {{to}} de {{total}} jogadores",
+    "previous": "Anterior",
+    "next": "Próximo",
+    "loading": "Carregando jogadores...",
+    "title": "Pesquisar jogadores",
+    "subtitle": "Descubra jogadores talentosos de todo o mundo",
+    "searchPlaceholder": "Pesquisar por nome, posição, nacionalidade ou clube...",
+    "filters": "Filtros",
+    "reset": "Redefinir",
+    "refresh": "Atualizar",
+    "basicInfo": "Informações básicas",
+    "position": "Posição",
+    "choosePosition": "Escolha a posição",
+    "allPositions": "🌍 Todas as posições",
+    "country": "País",
+    "chooseCountry": "Escolha o país",
+    "allCountries": "🌍 Todos os países",
+    "nationality": "Nacionalidade",
+    "chooseNationality": "Escolha a nacionalidade",
+    "allNationalities": "🌍 Todas as nacionalidades",
+    "ageAndBirth": "Idade e data de nascimento",
+    "minAge": "Idade mínima",
+    "maxAge": "Idade máxima",
+    "example18": "Exemplo: 18",
+    "example30": "Exemplo: 30",
+    "birthYear": "Ano de nascimento",
+    "chooseBirthYear": "Escolha o ano de nascimento",
+    "allYears": "📅 Todos os anos",
+    "additionalInfo": "Informações adicionais",
+    "skillLevel": "Nível de habilidade",
+    "chooseSkillLevel": "Escolha o nível de habilidade",
+    "allLevels": "⭐ Todos os níveis",
+    "phone": "Telefone",
+    "phonePlaceholder": "Pesquisar por telefone...",
+    "importantNote": "Nota importante",
+    "filtersNoteStart": "Todos os filtros funcionam juntos — você pode escolher um jogador de um país específico com uma idade específica ao mesmo tempo. Os resultados mostrarão apenas jogadores que correspondem a ",
+    "filtersNoteStrong": "todos",
+    "filtersNoteEnd": " os filtros selecionados.",
+    "resultsSummary": "Mostrando {{filtered}} de {{total}} jogadores",
+    "pageSummary": "Página {{current}} de {{total}}",
+    "noResults": "Sem resultados",
+    "noResultsDesc": "Tente alterar os critérios de busca ou filtros",
+    "defaultPlayer": "Jogador",
+    "unknownPlayer": "Jogador não definido",
+    "defaultUser": "Usuário",
+    "viewProfile": "Ver perfil",
+    "message": "Mensagem",
+    "orgLabels": {
+      "independent": "Independente",
+      "trainer": "Treinador",
+      "club": "Clube",
+      "agent": "Agente",
+      "academy": "Academia",
+      "unknown": "Não definido"
+    }
+  },
+  "playerVideos": {
+    "compactMillion": "M",
+    "compactThousand": "K",
+    "externalLink": "Link externo",
+    "errorMessages": {
+      "network": "Não foi possível acessar o vídeo — verifique sua conexão",
+      "format": "Este formato de vídeo não é suportado",
+      "timeout": "O carregamento demorou muito",
+      "unknown": "Não foi possível reproduzir o vídeo"
+    },
+    "externalNotice": "Este é um link externo — não é um problema da plataforma",
+    "slowConnectionHint": "A conexão pode estar lenta",
+    "openBrowserHint": "Tente abrir no navegador",
+    "unavailableHint": "O vídeo pode ter sido excluído ou ser privado",
+    "retry": "Tentar novamente",
+    "youtube": "YouTube",
+    "openInBrowser": "Abrir no navegador",
+    "followedTitle": "Seguindo",
+    "followTitle": "Seguir",
+    "message": "Mensagem",
+    "noVideosTitle": "Nenhum vídeo",
+    "noVideosDesc": "Os jogadores ainda não enviaram vídeos",
+    "back": "Voltar",
+    "defaultPlayer": "Jogador",
+    "defaultUser": "Usuário",
+    "loadingVideos": "Carregando vídeos",
+    "forYou": "Para você",
+    "following": "Seguindo",
+    "filtersTitle": "Filtrar jogadores",
+    "filtersCount": "{{count}} filtro",
+    "clearAll": "Limpar tudo",
+    "searchPlaceholder": "Nome do jogador ou descrição do vídeo...",
+    "position": "Posição",
+    "allPositions": "Todas as posições",
+    "country": "País",
+    "allCountries": "Todos os países",
+    "age": "Idade",
+    "from": "De",
+    "to": "Até",
+    "phone": "Telefone",
+    "phonePlaceholder": "Pesquisar por telefone...",
+    "resultCount": "{{filtered}} vídeos de {{total}}",
+    "showResults": "Mostrar resultados →",
+    "swipeUp": "Deslize para cima"
+  },
+  "playerVideoUpload": {
+    "categories": { "skills": "Habilidades", "match": "Jogo", "training": "Treino", "attack": "Ataque", "midfield": "Meio-campo", "defense": "Defesa", "goalkeeper": "Goleiro", "other": "Outro" },
+    "status": { "approved": "Aprovado", "rejected": "Rejeitado", "pending": "Em análise" },
+    "toast": {
+      "invalidFile": "Escolha um arquivo de vídeo válido",
+      "sizeError": "O tamanho do arquivo ({{size}} MB) excede o limite de 500 MB",
+      "uploadSuccess": "Vídeo enviado com sucesso! Será revisado em breve",
+      "uploadError": "Ocorreu um erro ao enviar o vídeo"
+    },
+    "loading": "Carregando...",
+    "title": "Enviar vídeos",
+    "earnPoints": "Ganhar pontos",
+    "availablePoints": "Pontos disponíveis",
+    "howToEarn": "Como ganhar pontos com vídeos?",
+    "steps": {
+      "upload": { "title": "Envie um vídeo", "description": "Envie um vídeo mostrando suas habilidades no futebol (até 500 MB)" },
+      "review": { "title": "Aguarde a análise", "description": "Nossa equipe analisará o vídeo em até 24 horas" },
+      "reward": { "title": "Ganhe pontos", "description": "1.000 pontos por cada vídeo aprovado" }
+    },
+    "uploadNew": "Enviar novo vídeo",
+    "reward": "Ganhe 1.000 pontos por cada vídeo aprovado",
+    "uploadedVideos": "Vídeos enviados ({{count}})",
+    "noVideos": "Você ainda não enviou vídeos",
+    "uploadFirst": "Enviar primeiro vídeo",
+    "analyzed": "Analisado",
+    "analysisQueued": "Na fila de análise",
+    "point": "ponto",
+    "modalTitle": "Enviar novo vídeo",
+    "chooseFile": "Escolher arquivo de vídeo",
+    "clickToChoose": "Clique para escolher um vídeo",
+    "supportedFormats": "MP4, WebM, MOV — até 500 MB",
+    "videoTitle": "Título do vídeo *",
+    "videoTitlePlaceholder": "Digite o título do vídeo",
+    "videoCategory": "Categoria do vídeo",
+    "videoDescription": "Descrição do vídeo",
+    "videoDescriptionPlaceholder": "Breve descrição do vídeo...",
+    "uploading": "Enviando...",
+    "tipsTitle": "Dicas para aprovação:",
+    "tips": {
+      "quality": "Garanta boa qualidade e iluminação",
+      "skills": "Mostre suas habilidades claramente",
+      "category": "Escolha a categoria correta para facilitar a análise",
+      "safeContent": "Evite conteúdo ofensivo"
+    },
+    "uploadVideo": "Enviar vídeo",
+    "cancel": "Cancelar"
+  },
+  "playerPaymentSuccess": {
+    "loading": "Carregando detalhes do pagamento...",
+    "title": "Pagamento realizado com sucesso!",
+    "description": "Obrigado pelo pagamento. Sua transação foi confirmada com sucesso.",
+    "detailsTitle": "Detalhes do pagamento",
+    "orderId": "ID do pedido:",
+    "amount": "Valor:",
+    "status": "Status:",
+    "completed": "Concluído",
+    "backToDashboard": "Voltar ao painel",
+    "backToPrevious": "Voltar à página anterior",
+    "receiptNote": "O recibo do pagamento será enviado para seu e-mail",
+    "supportNote": "Se tiver alguma dúvida, entre em contato com o suporte técnico",
+    "cancelledTitle": "Pagamento cancelado",
+    "cancelledDescription": "O pagamento foi cancelado. Nenhum valor foi cobrado da sua conta.",
+    "cancelledStatus": "Cancelado",
+    "retry": "Tentar novamente",
+    "noCharge": "Nenhum valor foi cobrado da sua conta",
+    "retryAnytime": "Você pode tentar novamente a qualquer momento"
+  },
   "appShell": {
     "employee": "Funcion?rio",
     "logoutConfirm": {
@@ -2524,5 +4322,198 @@
       "confirm": "Confirmar sa?da",
       "confirming": "Saindo..."
     }
-  }
+  },
+  "platformGuide": {
+    "hero": { "prefix": "Conheça a", "accent": "plataforma", "subtitle": "Descubra como a El7lm funciona e ajuda você a alcançar seus objetivos esportivos" },
+    "features": {
+      "title": "Recursos da plataforma", "subtitle": "Ferramentas avançadas para desenvolver sua carreira esportiva",
+      "items": [
+        { "title": "Gestão de perfil", "description": "Crie um perfil completo com habilidades e conquistas", "details": ["Envie fotos e vídeos", "Registre estatísticas e conquistas", "Mostre habilidades técnicas e físicas", "Atualize seus dados pessoais"] },
+        { "title": "Análise de desempenho", "description": "Análise avançada do seu desempenho com IA", "details": ["Análise automática de vídeos", "Estatísticas detalhadas", "Comparações entre atletas", "Recomendações de melhoria"] },
+        { "title": "Busca de oportunidades", "description": "Encontre oportunidades compatíveis com seu nível e ambição", "details": ["Busca inteligente de clubes", "Testes esportivos", "Programas especializados", "Bolsas esportivas"] },
+        { "title": "Comunicação direta", "description": "Conecte-se com clubes, treinadores e agentes", "details": ["Mensagens seguras", "Notificações instantâneas", "Arquivos e vídeos", "Agendamento de reuniões"] },
+        { "title": "Academia El7lm", "description": "Conteúdo educacional de idiomas, ciências e habilidades para a vida", "details": ["Aprenda idiomas", "Ciências e currículos", "Habilidades e orientação", "Preparação física e tática"] },
+        { "title": "Programa de indicações", "description": "Ganhe recompensas convidando amigos", "details": ["Recompensa por indicação válida", "Acompanhe seus ganhos", "Saques simples", "Link pessoal"] }
+      ]
+    },
+    "audiences": {
+      "title": "Uma plataforma para todos", "subtitle": "Criada para toda a comunidade esportiva",
+      "items": [
+        { "title": "Jogadores", "benefits": ["Mostre seu talento", "Analise seu desempenho", "Conecte-se com clubes", "Evolua na Academia El7lm"] },
+        { "title": "Clubes", "benefits": ["Descubra talentos", "Avalie jogadores", "Gerencie bancos de dados", "Analise a equipe"] },
+        { "title": "Treinadores", "benefits": ["Acompanhe a evolução", "Crie planos", "Analise pontos fortes e fracos", "Avalie continuamente"] },
+        { "title": "Agentes", "benefits": ["Gerencie carteiras", "Encontre oportunidades", "Negocie com clubes", "Acompanhe talentos"] }
+      ]
+    },
+    "steps": {
+      "title": "Como funciona?", "subtitle": "Quatro passos simples para começar",
+      "items": [
+        { "title": "Crie uma conta", "description": "Cadastre-se e escolha o tipo de conta ideal" },
+        { "title": "Complete seu perfil", "description": "Adicione dados, fotos e vídeos" },
+        { "title": "Analise o desempenho", "description": "Receba uma análise completa com IA" },
+        { "title": "Conecte-se e descubra", "description": "Conecte-se com clubes e encontre oportunidades" }
+      ]
+    },
+    "cta": { "title": "Pronto para começar?", "subtitle": "Junte-se a milhares de usuários que desenvolvem suas carreiras esportivas", "start": "Comece grátis", "contact": "Fale com a equipe" }
+  },
+  "tournamentPortalRegister": { "title": "Criar uma conta", "subtitle": "Entre e gerencie seus torneios profissionalmente", "name": "Nome completo *", "namePlaceholder": "Mohamed Ahmed", "organization": "Organização", "organizationPlaceholder": "Clube / academia", "email": "E-mail *", "phone": "Telefone", "country": "País", "selectCountry": "Selecione um país", "password": "Senha * (pelo menos 8 caracteres)", "confirmPassword": "Confirmar senha *", "required": "Preencha os campos obrigatórios", "shortPassword": "A senha deve ter pelo menos 8 caracteres", "passwordMismatch": "As senhas não coincidem", "failed": "Não foi possível criar a conta", "submitting": "Criando conta...", "submit": "Criar conta", "hasAccount": "Já tem uma conta?", "login": "Entrar", "countries": ["Arábia Saudita", "Emirados Árabes Unidos", "Catar", "Kuwait", "Bahrein", "Omã", "Egito", "Jordânia", "Iraque", "Líbano", "Síria", "Iêmen", "Líbia", "Tunísia", "Argélia", "Marrocos", "Sudão", "Palestina", "Mauritânia"] },
+  "tournamentPortalOverview": { "settings": "Configurações", "quickLinks": ["Equipes", "Agenda", "Partidas", "Classificação", "Estatísticas", "Notificações"], "acceptedTeam": "Equipe aceita", "of": "de", "pendingRequest": "Solicitação pendente", "awaiting": "Aguardando aprovação", "allAccepted": "Todas aceitas", "finishedMatch": "Partida concluída", "total": "total", "goal": "Gol marcado", "average": "Média", "pendingTitle": "{count} equipe(s) aguardam aprovação", "pendingHelp": "Revise as inscrições e aceite as equipes antes de iniciar", "review": "Revisar", "upcoming": "Próximas partidas", "latestResults": "Últimos resultados", "viewAll": "Ver tudo", "emptyTitle": "Ainda não há partidas", "emptyHelp": "Aceite as equipes e gere a agenda na aba Agenda", "goSchedule": "Ir para a agenda", "quickNav": "Navegação rápida", "info": "Informações do torneio", "categories": "Categorias", "maximum": "Máximo", "start": "Data de início", "end": "Data de término", "team": "equipe", "publicPage": "Página pública", "open": "Abrir", "copy": "Copiar", "versus": "vs" },
+  "tournamentPortalSection": { "myTournaments": "Meus torneios", "notFound": "O torneio não foi encontrado ou você não tem acesso", "nav": ["Visão geral", "Configuração", "Equipes", "Sorteio", "Agenda", "Resultados", "Classificação", "Copa", "Estatísticas", "Notificações", "Análises", "Certificados", "Galeria"] },
+  "tournamentBracket": { "rounds": { "R128":"Rodada de 128","R64":"Rodada de 64","R32":"Rodada de 32","R16":"Oitavas","QF":"Quartas","SF":"Semifinais","F":"Final","3rd":"Terceiro lugar" }, "noCategories":"Não há categorias eliminatórias", "noCategoriesHelp":"Adicione uma categoria eliminatória ou mista na configuração", "noMatches":"Não há partidas eliminatórias", "noMatchesHelp":"Gere a agenda e volte aqui", "champion":"Campeão do torneio", "tree":"Chave eliminatória", "match":"partida", "thirdPlace":"Disputa do terceiro lugar" },
+  "tournamentStats": { "tabs":["Artilheiros","Ataque","Defesa","Cartões"], "updated":"Estatísticas atualizadas", "calculating":"Calculando...", "recalculate":"Recalcular", "totalGoals":"Total de gols", "topScorer":"Artilheiro", "bestDefense":"Melhor defesa", "teamsCount":"Número de equipes", "noStatsHelp":"Sem estatísticas — registre eventos e recalcule", "noStats":"Sem estatísticas", "matches":"J", "goal":"Gol", "assist":"Assistência", "team":"Equipe", "played":"Jogos", "goals":"Gols", "average":"Média", "conceded":"Sofridos", "noCards":"Sem cartões", "player":"Jogador" },
+  "tournamentAnalytics": { "rounds":{"group_stage":"Fase de grupos","round_of_16":"Oitavas","quarter_final":"Quartas","semi_final":"Semifinais","third_place":"Terceiro lugar","final":"Final","QF":"Quartas","SF":"Semifinais","F":"Final","3rd":"Terceiro lugar"}, "totalGoals":"Total de gols", "avgGoals":"Média de gols/jogo", "decided":"Partidas decididas", "draws":"Empates", "goalTiming":"Minutos dos gols", "noEvents":"Não há eventos registrados", "commonScores":"Placares mais frequentes", "noResults":"Não há resultados", "goalsByRound":"Gols por rodada", "teamGoals":"Gols por equipe (marcados / sofridos)", "noFinished":"Não há partidas concluídas", "scored":"Marcados", "conceded":"Sofridos", "distribution":"Distribuição de resultados", "match":"partida", "topScorers":"Artilheiros", "goals":"gols" },
+  "tournamentCertificates": { "templates":["🥇 Campeão do torneio","🥈 Vice-campeão","🥉 Terceiro lugar","🎖️ Certificado de participação"], "documentTitle":"Certificado", "titles":["Certificado de campeão","Certificado de vice-campeão","Certificado de terceiro lugar","Certificado de participação"], "body":"Certificamos que {team} participou de {tournament} e demonstrou excelente espírito esportivo e desempenho.", "teamFallback":"a equipe", "create":"Criar certificado", "team":"Equipe", "type":"Tipo de certificado", "optionalTitle":"Título (opcional)", "optionalText":"Texto (opcional)", "print":"Imprimir certificado", "reset":"Redefinir", "preview":"Prévia do certificado", "appreciation":"Certificado de reconhecimento", "teamName":"Nome da equipe", "tournament":"Torneio", "issued":"Data de emissão", "bulk":"Impressão em lote", "bulkHelp":"Imprima certificados para todas as equipes aceitas", "showTeams":"Mostrar equipes para impressão" },
+  "tournamentGallery": { "tiers":["💎 Platina","🥇 Ouro","🥈 Prata","🥉 Bronze"], "uploadFailed":"Falha ao enviar a imagem", "uploaded":"Imagens enviadas", "deleted":"Excluído", "enterSponsor":"Digite o nome do patrocinador", "sponsorAdded":"Patrocinador adicionado", "tabs":["🖼️ Galeria","🤝 Patrocinadores"], "uploadTitle":"Enviar fotos do torneio", "uploadHelp":"Envie várias imagens · JPG, PNG, WebP", "uploading":"Enviando...", "upload":"Enviar fotos", "noPhotos":"Ainda não há fotos — envie as primeiras", "newSponsor":"Adicionar patrocinador", "cancel":"Cancelar", "addSponsor":"Adicionar", "sponsorName":"Nome *", "sponsorPlaceholder":"Exemplo: Empresa de telecomunicações", "tier":"Categoria", "website":"Site (opcional)", "logo":"Enviar logotipo", "removeLogo":"Remover logotipo", "save":"Salvar patrocinador", "noSponsors":"Ainda não há patrocinadores", "groups":["💎 Patrocinadores platina","🥇 Patrocinadores ouro","🥈 Patrocinadores prata","🥉 Patrocinadores bronze"], "site":"Site", "close":"Fechar" },
+  "tournamentGroups": { "created":"Foram criados {count} grupos", "group":"Grupo", "added":"Adicionado", "deleted":"Excluído", "updated":"Atualizado", "noFinished":"Não há partidas concluídas", "standingsUpdated":"Classificação atualizada", "calculating":"Calculando...", "refresh":"Atualizar classificação", "manage":"Gerenciar grupos", "groupCount":"{count} grupos", "batch":"Criar lote:", "recreate":"Recriar", "create":"Criar", "add":"Adicionar", "league":"Classificação da liga", "teamCount":"{count} equipes", "empty":"Sem classificação — insira resultados e atualize", "team":"Equipe", "played":"J", "won":"V", "draw":"E", "lost":"D", "goals":"GP:GC", "difference":"SG", "points":"Pontos" },
+  "tournamentSchedule": { "generated":"Foram geradas {count} partidas", "noChanges":"Sem alterações", "saved":"Foram salvas {count} partidas", "save":"Salvar", "deleteWarning":"As partidas não concluídas serão excluídas", "generateQuestion":"Gerar agenda?", "yes":"Sim", "no":"Não", "generating":"Gerando...", "generate":"Gerar agenda", "regenerate":"Gerar novamente", "print":"Imprimir agenda", "total":"Total de partidas", "dated":"Com data", "venueSet":"Com local", "completed":"Concluídas", "empty":"A agenda ainda não foi criada", "leagueHelp":"Será gerada uma liga em turno e returno", "knockoutHelp":"A chave será gerada e as equipes distribuídas automaticamente", "groupsHelp":"Faça primeiro o sorteio dos grupos e depois gere a agenda", "generateNow":"Gerar agora", "match":"partida", "home":"Mandante...", "away":"Visitante...", "date":"Data e hora", "venue":"Local", "selectReferee":"Selecionar árbitro...", "referee":"Árbitro" },
+  "tournamentPrint": { "preparing":"Preparando para impressão...", "general":"Classificação geral", "print":"Imprimir", "close":"Fechar", "titles":{"schedule":"Agenda de partidas","standings":"Tabela de classificação","teams":"Lista de equipes"}, "printed":"Impresso", "round":"Rodada", "home":"Mandante", "score":"Placar", "away":"Visitante", "date":"Data e hora", "venue":"Local", "status":"Status", "teamName":"Nome da equipe", "city":"Cidade", "manager":"Responsável", "phone":"Telefone", "category":"Categoria", "payment":"Status do pagamento", "brand":"Plataforma El7lm — Gestão de torneios" },
+  "tournamentNotifications": { "templates":[{"label":"📅 Horário da partida","title":"Lembrete da partida","body":"Lembramos sua equipe da próxima partida. Chegue no horário."},{"label":"⚽ Resultado","title":"Resultado da partida","body":"O resultado da última partida está disponível no aplicativo."},{"label":"📋 Agenda atualizada","title":"Agenda atualizada","body":"A agenda mudou. Confira os novos horários."},{"label":"🏆 Parabéns","title":"Parabéns pela classificação!","body":"Os organizadores parabenizam sua equipe pela próxima fase."},{"label":"📢 Aviso geral","title":"Notificação do torneio","body":""}], "enterContent":"Digite o título e o conteúdo", "selectTeam":"Selecione uma equipe", "selectChannel":"Selecione pelo menos um canal", "noWhatsapp":"Não há números de WhatsApp", "whatsappCreated":"Foram criados {count} links do WhatsApp", "noPhones":"Não há telefones disponíveis", "smsSent":"Foram enviados {count} SMS", "deleted":"Excluído", "sent":"Notificação enviada", "accepted":"Equipe aceita", "delivered":"Entregue", "create":"Criar notificação", "ready":"Modelos", "targets":"Destinatários", "allTeams":"Todas as equipes", "specific":"Equipe específica", "channels":"Canais", "channelNames":["No aplicativo","WhatsApp","SMS"], "phoneHelp":"WhatsApp e SMS exigem telefone cadastrado para cada equipe.", "title":"Título *", "titlePlaceholder":"Exemplo: Lembrete da partida", "body":"Texto *", "bodyPlaceholder":"Escreva a notificação...", "previewTitle":"Título", "previewBody":"Texto da notificação...", "now":"Agora · Torneio", "sending":"Enviando...", "send":"Enviar notificação", "whatsappLinks":"Links do WhatsApp — clique para abrir", "open":"Abrir", "hide":"Ocultar links", "history":"Histórico de notificações", "empty":"Nenhuma notificação foi enviada" },
+  "tournamentPortalNew": {
+    "title": "Novo torneio", "subtitle": "Conclua as etapas para criar seu torneio", "steps": ["Informações básicas", "Formato do torneio", "Inscrição e pagamento", "Regras e prêmios"],
+    "errors": { "name": "O nome do torneio é obrigatório", "country": "O país é obrigatório", "start": "A data de início é obrigatória", "end": "A data de término é obrigatória", "teams": "É necessário ter pelo menos 2 equipes", "create": "Não foi possível criar o torneio" },
+    "basic": { "name": "Nome do torneio *", "namePlaceholder": "Torneio de clubes campeões...", "description": "Descrição", "descriptionPlaceholder": "Breve descrição do torneio...", "country": "País *", "selectCountry": "Selecione um país", "city": "Cidade", "cityPlaceholder": "Riade", "location": "Estádio / local", "locationPlaceholder": "Estádio principal", "start": "Data de início *", "end": "Data de término *", "registrationDeadline": "Fim das inscrições" },
+    "system": { "type": "Formato do torneio *", "options": [{"value":"knockout","label":"Copa eliminatória","description":"O perdedor é eliminado"},{"value":"league","label":"Liga","description":"Todos jogam entre si"},{"value":"groups_knockout","label":"Grupos + copa","description":"Grupos e eliminatórias"}], "maxTeams": "Máximo de equipes *", "minTeams": "Mínimo de equipes", "playersPerTeam": "Jogadores por equipe", "groupsNote": "Nota — formato de grupos", "groupsHelp": "Você poderá definir os grupos e equipes por grupo na configuração após criar o torneio." },
+    "payment": { "paid": "Torneio pago", "paidHelp": "Cobrar taxa de inscrição das equipes", "entryFee": "Taxa de inscrição", "currency": "Moeda", "feeType": "Tipo de taxa", "perTeam": "Por equipe", "perPlayer": "Por jogador", "deadline": "Prazo de pagamento", "walletName": "Nome da carteira", "walletNumber": "Número da carteira", "installments": "Permitir parcelas", "installmentsCount": "Número de parcelas", "refund": "Política de reembolso", "refundPlaceholder": "Reembolso total ao desistir com 7 dias de antecedência..." },
+    "rules": { "rules": "Regras do torneio", "rulesPlaceholder": "Insira as regras e condições...", "prizes": "Prêmios", "prizesPlaceholder": "Insira os prêmios das posições vencedoras...", "contact": "Informações de contato", "contactPlaceholder": "Dúvidas: telefone / e-mail", "ready": "✅ Pronto para criar", "readyHelp": "Depois, adicione categorias etárias e abra as inscrições na configuração." },
+    "previous": "Anterior", "next": "Próximo", "create": "Criar torneio"
+  },
+  "tournamentPortal": {
+    "common": { "portal": "Portal de torneios", "platform": "Plataforma El7lm", "organizerPortal": "Portal dos organizadores", "organizer": "Organizador de torneios", "dashboard": "Painel", "newTournament": "Novo torneio", "profile": "Perfil", "logout": "Sair", "lightMode": "Modo claro", "darkMode": "Modo escuro" },
+    "login": { "subtitle": "Entre para gerenciar seus torneios", "email": "E-mail", "password": "Senha", "required": "Preencha todos os campos", "invalid": "O e-mail ou a senha estão incorretos", "failed": "Falha ao entrar", "submitting": "Entrando...", "submit": "Entrar", "noAccount": "Não tem uma conta?", "register": "Criar uma conta" },
+    "dashboard": { "title": "Meus torneios", "welcome": "Olá, {name}. Veja um resumo dos seus torneios", "total": "Total de torneios", "ongoing": "Em andamento", "open": "Inscrições abertas", "completed": "Concluídos", "emptyTitle": "Ainda não há torneios", "emptyText": "Comece criando seu primeiro torneio", "create": "Criar torneio", "manage": "Gerenciar", "team": "equipe", "statuses": { "draft": "Rascunho", "open": "Aberto", "closed": "Fechado", "ongoing": "Em andamento", "completed": "Concluído", "cancelled": "Cancelado" }, "types": { "knockout": "Copa eliminatória", "league": "Liga", "groups_knockout": "Grupos + eliminatórias" } }
+  },
+  "referralsPage": {
+    "accountTypes": {
+      "player": {
+        "title": "Embaixadores do Sonho",
+        "subtitle": "Programa de embaixadores e recompensas",
+        "referralLabel": "Jogadores indicados",
+        "typeLabel": "Jogador"
+      },
+      "club": {
+        "title": "Embaixadores do Sonho - Clubes",
+        "subtitle": "Gestão de afiliação e crescimento esportivo",
+        "referralLabel": "Jogadores afiliados",
+        "typeLabel": "Clube"
+      },
+      "academy": {
+        "title": "Embaixadores do Sonho - Academias",
+        "subtitle": "Gestão de talentos e afiliação",
+        "referralLabel": "Talentos registrados",
+        "typeLabel": "Academia"
+      },
+      "trainer": {
+        "title": "Embaixadores do Sonho - Treinadores",
+        "subtitle": "Programa de treinador embaixador e recompensas",
+        "referralLabel": "Treinandos indicados",
+        "typeLabel": "Treinador"
+      },
+      "agent": {
+        "title": "Embaixadores do Sonho - Agentes",
+        "subtitle": "Gestão de redes de jogadores e recompensas",
+        "referralLabel": "Jogadores indicados",
+        "typeLabel": "Agente"
+      },
+      "defaultTypeLabel": "Organização"
+    },
+    "toast": {
+      "invalidJoinCode": "O código de entrada é inválido ou expirou",
+      "joinSent": "Solicitação de entrada enviada para {{name}} com sucesso.",
+      "joinError": "Ocorreu um erro ao entrar",
+      "createCodeSuccess": "Código de indicação de embaixador criado com sucesso",
+      "createCodeError": "Falha ao criar o código",
+      "codeDisabled": "Código desativado",
+      "codeEnabled": "Código ativado",
+      "genericError": "Ocorreu um erro",
+      "requestApproved": "Solicitação de entrada do jogador aprovada",
+      "requestRejected": "Solicitação recusada",
+      "requestProcessError": "Não foi possível processar a solicitação",
+      "codeCopied": "Código de indicação copiado"
+    },
+    "whatsapp": {
+      "organization": "Junte-se a *{{type}} {{name}}* na plataforma El7lm!\nCódigo de entrada: *{{code}}*\nCadastre-se agora: https://el7lm.com/auth/register",
+      "personal": "Junte-se ao El7lm e registre suas habilidades esportivas!\nMeu código: *{{code}}*\nLink: https://el7lm.com"
+    },
+    "table": {
+      "ambassadorDesc": "Nome do embaixador / descrição",
+      "unnamedCode": "Código de embaixador sem nome",
+      "referralCode": "Código de indicação",
+      "copy": "Copiar",
+      "usage": "Uso",
+      "status": "Status",
+      "active": "Ativo",
+      "disabled": "Desativado",
+      "actions": "Ações",
+      "shareWhatsapp": "Compartilhar no WhatsApp",
+      "player": "Jogador",
+      "position": "Posição",
+      "unknownPosition": "Não especificado",
+      "requestDate": "Data da solicitação",
+      "approved": "Aprovado",
+      "pending": "Em revisão",
+      "rejected": "Recusado",
+      "approve": "Aprovar",
+      "reject": "Recusar",
+      "details": "Detalhes"
+    },
+    "ui": {
+      "eliteProgram": "Programa elite",
+      "headerSuffix": "Convide talentos, construa sua equipe e ganhe recompensas exclusivas.",
+      "egp": "EGP",
+      "withdraw": "Solicitar saque",
+      "joinOrganizationTitle": "Entrar em uma organização esportiva",
+      "joinOrganizationDesc": "Tem um código de convite de um clube ou academia? Insira aqui para entrar.",
+      "joinCodePlaceholder": "Digite o código de entrada (ex. ACD-X92F)",
+      "join": "Entrar",
+      "availablePoints": "Pontos disponíveis",
+      "newRequests": "Novas solicitações",
+      "spreadLevel": "Nível de alcance",
+      "overview": "Visão geral",
+      "personalReferralCode": "Código de indicação pessoal",
+      "personalReferralDesc": "Compartilhe seu código com jogadores e ganhe 10.000 pontos por cada nova assinatura.",
+      "hideQr": "Ocultar QR",
+      "showQr": "Mostrar QR",
+      "qrCodeLabel": "Código QR",
+      "qrScan": "Escaneie o código para se registrar imediatamente",
+      "cashConversion": "Converter pontos em dinheiro",
+      "cashConversionDesc": "Quando seu saldo atingir o mínimo (50.000 pontos), você poderá convertê-lo diretamente em saldo financeiro.",
+      "withdrawProgress": "Progresso do saque",
+      "badgesPath": "Caminho e medalhas",
+      "howToEarn": "Como ganhar?",
+      "directReferral": "Indicação direta",
+      "signupBonus": "Bônus de cadastro",
+      "annualEarning": "Ganho anual",
+      "pointsUnit": "{{points}} pontos",
+      "organizationCodes": "Códigos da organização",
+      "codeNamePlaceholder": "Nome do embaixador ou campanha (ex. Capitão Ahmed - campanha de verão)",
+      "createCode": "Criar código",
+      "noCodes": "Ainda não há códigos",
+      "joinRequests": "Solicitações de entrada",
+      "search": "Pesquisar...",
+      "noRequests": "Não há solicitações",
+      "registeredPlayers": "Jogadores registrados",
+      "noAcceptedPlayers": "Nenhum jogador foi aceito ainda",
+      "verifiedPlayer": "Jogador verificado",
+      "memberSince": "Membro desde",
+      "viewProfile": "Ver perfil",
+      "tips": [
+        {
+          "title": "Expanda sua rede",
+          "desc": "Compartilhar seu código em comunidades esportivas especializadas aumenta suas chances de atrair talentos reais.",
+          "emoji": "🌐"
+        },
+        {
+          "title": "Segurança e privacidade",
+          "desc": "O sistema de indicações da El7lm é criptografado e garante que as recompensas cheguem aos donos corretos.",
+          "emoji": "🔒"
+        },
+        {
+          "title": "Regras de recompensas",
+          "desc": "As recompensas seguem os termos de uso, e cada entrada é revisada para manter a qualidade.",
+          "emoji": "📋"
+        }
+      ]
+    }
+  },
+  "tournamentMatches": { "rounds":{"league":"Liga","group_stage":"Fase de grupos","R128":"Rodada de 128","R64":"Rodada de 64","R32":"Rodada de 32","R16":"Oitavas de final","QF":"Quartas de final","SF":"Semifinais","F":"Final","3rd":"Terceiro lugar"}, "events":["Gol","Gol contra","Cartão amarelo","Cartão vermelho","Segundo amarelo → expulso","Pênalti convertido ✓","Pênalti perdido ✗","Entrada","Saída"], "scoreSaved":"Placar salvo","winnerAdvanced":"O vencedor avançou automaticamente ✓","eventSaved":"Evento registrado","all":"Todos","finished":"encerrados","upcoming":"próximos","noMatches":"Ainda não há partidas","noMatchesHelp":"Gere os jogos na aba Agenda","goSchedule":"Ir para a agenda","noDate":"Sem data","selectTeam":"Selecione uma equipe","liveNow":"🔴 A partida está ao vivo","liveStopped":"Transmissão encerrada","saveScore":"Salvar placar","cancel":"Cancelar","against":"vs","penHome":"Pênaltis (mandante)","penAway":"Pênaltis (visitante)","eventsTitle":"Eventos: {home} vs {away}","noEvents":"Ainda não há eventos","team":"Equipe...","minute":"Minuto","playerName":"Nome do jogador...","record":"Registrar","live":"Ao vivo","notStarted":"Não iniciada","stopLive":"Encerrar ao vivo","startLive":"Iniciar ao vivo","editScore":"Editar placar","enterScore":"Inserir placar","eventsButton":"Eventos","tbd":"A definir" }
 }

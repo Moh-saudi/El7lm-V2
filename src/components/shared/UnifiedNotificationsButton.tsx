@@ -9,12 +9,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
-import { ar } from 'date-fns/locale';
+import { ar, enUS, es, ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { normalizeNotificationMetadata, resolveAvatarUrl, SenderContext } from '@/lib/notifications/sender-utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '@/lib/i18n';
 
 interface NotificationItem {
   id: string;
@@ -30,6 +31,7 @@ interface NotificationItem {
 }
 
 export default function UnifiedNotificationsButton() {
+  const { t, locale } = useTranslation();
   const { user, userData } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -74,11 +76,13 @@ export default function UnifiedNotificationsButton() {
 
     const broadcastItems = (d3 || []).map((row: any) => ({
       id: `bc_${row.id}`,
-      title: 'فرصة جديدة 🎯',
-      message: `${row.organizerName} نشر: ${row.opportunityTitle}`,
+      title: t('sharedComponents.notifications.newOpportunity'),
+      message: t('sharedComponents.notifications.publishedOpportunity')
+        .replace('{{organizer}}', row.organizerName || t('sharedComponents.notifications.system'))
+        .replace('{{title}}', row.opportunityTitle || ''),
       isRead: isBroadcastSeen(row.id),
       createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
-      senderName: row.organizerName || 'النظام',
+      senderName: row.organizerName || t('sharedComponents.notifications.system'),
       senderAvatar: undefined,
       type: 'opportunity',
       category: 'system' as const,
@@ -221,13 +225,13 @@ export default function UnifiedNotificationsButton() {
             <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
               <Bell className="w-4 h-4 text-blue-600" />
             </div>
-            <h3 className="font-bold text-sm text-slate-900 dark:text-white">الإشعارات</h3>
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white">{t('sharedComponents.notifications.title')}</h3>
           </div>
           <div className="flex gap-2">
             {unreadCount > 0 && (
               <Button onClick={markAllRead} variant="ghost" size="sm" className="h-6 gap-1 text-[10px] font-bold text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md px-2">
                 <CheckCheck className="w-3 h-3" />
-                قراءة الكل
+                {t('sharedComponents.notifications.markAllRead')}
               </Button>
             )}
             <Button
@@ -250,7 +254,7 @@ export default function UnifiedNotificationsButton() {
                 : "text-slate-500 hover:text-slate-700"
             )}
           >
-            All
+            {t('sharedComponents.notifications.all')}
           </button>
           <button
             onClick={() => setActiveTab('unread')}
@@ -261,7 +265,7 @@ export default function UnifiedNotificationsButton() {
                 : "text-slate-500 hover:text-slate-700"
             )}
           >
-            Unread ({unreadCount})
+            {t('sharedComponents.notifications.unread')} ({unreadCount})
           </button>
         </div>
 
@@ -287,9 +291,9 @@ export default function UnifiedNotificationsButton() {
               >
                 <Sparkles className="w-10 h-10 text-blue-300 dark:text-blue-800" />
               </motion.div>
-              <h4 className="text-slate-900 dark:text-white font-black text-xl mb-2">No notifications</h4>
+              <h4 className="text-slate-900 dark:text-white font-black text-xl mb-2">{t('sharedComponents.notifications.emptyTitle')}</h4>
               <p className="text-sm text-slate-500 max-w-[220px] leading-relaxed font-medium">
-                {activeTab === 'unread' ? "You're all caught up!" : "New updates will appear here."}
+                {activeTab === 'unread' ? t('sharedComponents.notifications.allCaughtUp') : t('sharedComponents.notifications.emptyDescription')}
               </p>
             </div>
           ) : (
@@ -322,7 +326,7 @@ export default function UnifiedNotificationsButton() {
                       <div className="flex justify-between items-center mb-0.5">
                         <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate pr-1">{notif.title}</span>
                         <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 flex-shrink-0">
-                          {formatDistanceToNow(notif.createdAt, { locale: ar, addSuffix: true })}
+                          {formatDistanceToNow(notif.createdAt, { locale: { ar, en: enUS, es, pt: ptBR }[locale], addSuffix: true })}
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug line-clamp-2 mb-2">{notif.message}</p>
@@ -330,12 +334,12 @@ export default function UnifiedNotificationsButton() {
                       <div className="flex items-center gap-2">
                         {notif.actionUrl && (
                           <Link href={notif.actionUrl} onClick={() => { setIsOpen(false); markRead(notif.id, notif.category); }} className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md transition-colors">
-                            عرض التفاصيل
+                            {t('sharedComponents.notifications.viewDetails')}
                           </Link>
                         )}
                         {!notif.isRead && (
                           <button onClick={() => markRead(notif.id, notif.category)} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 px-1.5 py-1 transition-colors">
-                            تحديد كمقروء
+                            {t('sharedComponents.notifications.markRead')}
                           </button>
                         )}
                       </div>
@@ -347,7 +351,7 @@ export default function UnifiedNotificationsButton() {
                           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><MoreHorizontal className="w-4 h-4 text-slate-400" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="rounded-xl border-slate-100 dark:border-white/10 shadow-premium">
-                          <DropdownMenuItem className="text-xs font-bold text-red-600 focus:text-red-700"><Trash2 className="w-3.5 h-3.5 mr-2" /> Delete Notification</DropdownMenuItem>
+                          <DropdownMenuItem className="text-xs font-bold text-red-600 focus:text-red-700"><Trash2 className="w-3.5 h-3.5 mr-2" /> {t('sharedComponents.notifications.delete')}</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -361,7 +365,7 @@ export default function UnifiedNotificationsButton() {
         <div className="p-4 bg-gradient-to-t from-slate-50/50 to-transparent dark:from-slate-900/50">
           <Link href={`${dashboardPath}/notifications`} onClick={() => setIsOpen(false)}>
             <Button variant="outline" className="w-full flex items-center justify-between px-6 h-12 rounded-2xl font-black text-sm border-slate-200 dark:border-white/10 hover:bg-white dark:hover:bg-slate-900 shadow-sm transition-all group">
-              <span>عرض جميع التنبيهات</span>
+              <span>{t('sharedComponents.notifications.viewAll')}</span>
               <Bell className="w-4 h-4 group-hover:scale-110 transition-transform" />
             </Button>
           </Link>

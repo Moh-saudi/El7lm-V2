@@ -1464,7 +1464,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
               </div>
               <div>
                 <DialogTitle className="text-2xl font-black text-slate-900 leading-none mb-2">{t('payment.supportTicket')}</DialogTitle>
-                <DialogDescription className="text-slate-500 font-bold text-xs uppercase tracking-wider">Help & Support</DialogDescription>
+                <DialogDescription className="text-slate-500 font-bold text-xs uppercase tracking-wider">{t('sharedComponents.supportLabel')}</DialogDescription>
               </div>
             </div>
 

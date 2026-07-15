@@ -38,93 +38,6 @@ const accountTypes = [
   { value: 'marketer', labelKey: 'auth.roleMarketer',   emoji: '📢', descKey: 'auth.roleMarketerDesc' },
 ];
 
-const TERMS_TEXT: Record<string, string> = {
-  ar: `شروط وأحكام منصة الحلم
-
-1. الأهلية والتسجيل
-يجب أن لا يقل عمر المستخدم عن 18 عاماً، أو بموافقة ولي الأمر إن كان أصغر. تتعهد بأن جميع البيانات المدخلة صحيحة.
-
-2. طبيعة الخدمات
-منصة "الحلم" توفر أدوات تحليلية وفرص عرض أمام الأندية، لكنها لا تضمن الاحتراف أو تحقيق دخل مالي للاعب.
-
-3. الاشتراكات والمدفوعات
-تقبل المنصة المدفوعات الإلكترونية فقط. رسوم الاشتراكات غير قابلة للاسترداد بعد تفعيل الخدمة.
-
-4. الملكية الفكرية
-جميع الخوارزميات والشعارات هي ملكية حصرية لشركة ميسك. بمجرد رفع أي فيديو، تمنح المنصة ترخيصاً لاستخدامه في التحليل والتسويق.
-
-5. الخصوصية
-نجمع بيانات شخصية (الاسم، الهاتف) وبيانات رياضية لتقديم الخدمة. يحق لك طلب حذف حسابك عبر info@el7lm.com.
-
-6. القانون الواجب التطبيق
-تخضع هذه الشروط لقوانين دولة قطر، ويتم الفصل في النزاعات عبر التحكيم في الدوحة.
-
-بضغطك على "إرسال رمز التحقق" فإنك توافق على جميع البنود أعلاه.`,
-  en: `El7lm Platform Terms & Conditions
-
-1. Eligibility and Registration
-User must be at least 18 years old, or have guardian consent if younger. You warrant that all entered data is correct.
-
-2. Nature of Services
-"El7lm" platform provides analytical tools and display opportunities before clubs, but does not guarantee professionalism or income for the player.
-
-3. Subscriptions and Payments
-The platform accepts electronic payments only. Subscription fees are non-refundable after service activation.
-
-4. Intellectual Property
-All algorithms and logos are the exclusive property of Misk Company. Once you upload any video, you grant the platform a license to use it for analysis and marketing.
-
-5. Privacy
-We collect personal data (name, phone) and sports data to provide the service. You have the right to request deletion of your account via info@el7lm.com.
-
-6. Applicable Law
-These terms are governed by the laws of the State of Qatar, and disputes shall be resolved through arbitration in Doha.
-
-By clicking "Send Verification Code", you agree to all the terms above.`,
-  es: `Términos y condiciones de la plataforma El7lm
-
-1. Elegibilidad y registro
-El usuario debe tener al menos 18 años, o contar con el consentimiento de su tutor si es menor. Usted garantiza que todos los datos ingresados son correctos.
-
-2. Naturaleza de los servicios
-La plataforma "El7lm" proporciona herramientas analíticas y oportunidades de exhibición ante clubes, pero no garantiza el profesionalismo ni ingresos para el jugador.
-
-3. Suscripciones y pagos
-La plataforma solo acepta pagos electrónicos. Las tarifas de suscripción no son reembolsables después de la activación del servicio.
-
-4. Propiedad intelectual
-Todos los algoritmos y logotipos son propiedad exclusiva de Misk Company. Una vez que sube cualquier video, otorga a la plataforma una licencia para usarlo con fines de análisis y marketing.
-
-5. Privacidad
-Recopilamos datos personales (nombre, teléfono) y datos deportivos para proporcionar el servicio. Tiene derecho a solicitar la eliminación de su cuenta a través de info@el7lm.com.
-
-6. Ley aplicable
-Estos términos se rigen por las leyes del Estado de Qatar, y las disputas se resolverán mediante arbitraje en Doha.
-
-Al hacer clic en "Enviar código de verificación", acepta todos los términos anteriores.`,
-  pt: `Termos e Condições da Plataforma El7lm
-
-1. Elegibilidade e Registro
-O usuário deve ter pelo menos 18 anos de idade, ou consentimento do responsável se for menor. Você garante que todos os dados inseridos estão corretos.
-
-2. Natureza dos Serviços
-A plataforma "El7lm" fornece ferramentas analíticas e oportunidades de exibição perante clubes, mas não garante profissionalismo ou renda para o jogador.
-
-3. Assinaturas e Pagamentos
-A plataforma aceita apenas pagamentos eletrônicos. As taxas de assinatura não são reembolsáveis após a ativação do serviço.
-
-4. Propriedade Intelectual
-Todos os algoritmos e logotipos são de propriedade exclusiva da Misk Company. Depois de enviar qualquer vídeo, você concede à plataforma uma licença para usá-lo para análise e marketing.
-
-5. Privacidade
-Coletamos dados pessoais (nome, telefone) e dados esportivos para fornecer o serviço. Você tem o direito de solicitar a exclusão de sua conta via info@el7lm.com.
-
-6. Lei Aplicável
-Estes termos são regidos pelas leis do Estado do Catar, e as disputas serão resolvidas por meio de arbitragem em Doha.
-
-Ao clicar em "Enviar Código de Verificação", você concorda com todos os termos acima.`
-};
-
 export default function RegisterPage() {
   const router = useRouter();
   const { signInWithGoogle, user, userData, loading: authLoading } = useAuth();
@@ -551,7 +464,7 @@ export default function RegisterPage() {
               </button>
             </div>
             <div className="px-5 py-4 max-h-[55vh] overflow-y-auto">
-              <pre className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap font-cairo">{TERMS_TEXT[locale] || TERMS_TEXT.ar}</pre>
+              <pre className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap font-cairo">{t('auth.registrationTermsText')}</pre>
             </div>
             <div className="px-5 py-4 border-t border-slate-100">
               <button

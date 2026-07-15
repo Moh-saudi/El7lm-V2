@@ -14,6 +14,7 @@ interface TranslationContextProps {
   locale: Locale;
   isRTL: boolean;
   t: (key: string) => string;
+  getTranslations: <T = unknown>(key: string) => T;
   changeLanguage: (locale: Locale) => void;
 }
 
@@ -46,6 +47,23 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
     document.documentElement.lang = locale;
   }, [locale, mounted]);
+
+  const getTranslations = <T = unknown,>(key: string): T => {
+    const keys = key.split('.');
+    const readValue = (source: Record<string, any>) => {
+      let result: any = source;
+      for (const part of keys) {
+        if (result?.[part] === undefined) return undefined;
+        result = result[part];
+      }
+      return result;
+    };
+
+    return (readValue(translations[locale])
+      ?? readValue(translations.en)
+      ?? readValue(translations.ar)
+      ?? key) as T;
+  };
 
   const t = (key: string): string => {
     const keys = key.split('.');
@@ -95,6 +113,7 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     locale,
     isRTL: locale === 'ar',
     t,
+    getTranslations,
     changeLanguage,
   };
 

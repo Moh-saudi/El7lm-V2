@@ -8,6 +8,7 @@ import { createPortalClient } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { TeamLogo } from '../../_components/TeamLogo';
 import { resolveImg } from '../../_utils/img';
+import { useTranslation } from '@/lib/i18n';
 
 type Team = {
   id: string; name: string; status: string; logo_url: string | null;
@@ -22,12 +23,12 @@ type Category = { id: string; name: string };
 type PResult = { platform_user_id?: string; platform_player_id?: string; type: string; name: string; email?: string; phone?: string; city?: string; position?: string; date_of_birth?: string; logo_url?: string; account_type?: string };
 
 const STATUS_DOT: Record<string,string> = { pending:'#f59e0b', approved:'#16a34a', rejected:'#ef4444', withdrawn:'#94a3b8' };
-const STATUS_LBL: Record<string,string> = { pending:'معلق', approved:'مقبول', rejected:'مرفوض', withdrawn:'انسحب' };
 const PAY_COLOR:  Record<string,string> = { pending:'#f59e0b', paid:'#16a34a', partial:'#3b82f6', free:'#94a3b8', refunded:'#8b5cf6' };
-const PAY_LBL:   Record<string,string> = { pending:'لم يدفع', paid:'مدفوع', partial:'جزئي', free:'مجاني', refunded:'مُسترد' };
-const POSITIONS = ['حارس مرمى','مدافع','لاعب وسط','مهاجم','بديل'];
 
 export default function RegistrationsPage() {
+  const { locale, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('tournamentRegistrations');
+  const POSITIONS = ['goalkeeper','defender','midfielder','forward','substitute'];
   const { id }     = useParams<{ id: string }>();
   const { isDark } = usePortalTheme();
   const S = isDark ? D : L;
@@ -87,21 +88,19 @@ export default function RegistrationsPage() {
     // WhatsApp auto-notification
     if (team?.contact_phone) {
       const phone = team.contact_phone.replace(/\D/g, '');
-      const msg = status === 'approved'
-        ? `مرحباً ${team.name} 🎉\nيسعدنا إعلامكم بقبول فريقكم في البطولة.\nبالتوفيق للجميع! 🏆`
-        : `مرحباً ${team.name}\nنأسف لإعلامكم بأنه لم يتم قبول طلب تسجيل فريقكم في البطولة هذه المرة.\nشكراً لاهتمامكم.`;
+      const msg = (status === 'approved' ? copy.acceptedMessage : copy.rejectedMessage).replace('{team}',team.name);
       const waLink = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
       toast.success(
         <span>
-          {status === 'approved' ? '✅ تم القبول' : '❌ تم الرفض'}
+          {status === 'approved' ? `✅ ${copy.accepted}` : `❌ ${copy.rejected}`}
           {' — '}
           <a href={waLink} target="_blank" rel="noopener noreferrer" style={{ color:'#25d366', fontWeight:700, textDecoration:'underline' }}>
-            أرسل واتساب →
+            {copy.sendWhatsapp}
           </a>
         </span>
       );
     } else {
-      toast.success(status === 'approved' ? 'تم القبول' : status === 'rejected' ? 'تم الرفض' : 'تم التحديث');
+      toast.success(status === 'approved' ? copy.accepted : status === 'rejected' ? copy.rejected : copy.updated);
     }
     setActing(null);
   };
@@ -109,7 +108,7 @@ export default function RegistrationsPage() {
   const updatePay = async (teamId: string, v: string) => {
     await supabase.from('tournament_team_regs').upsert({ tournament_id: id, team_id: teamId, payment_status: v }, { onConflict: 'team_id' });
     setTeams(p => p.map(t => t.id === teamId ? { ...t, registration: { ...t.registration, payment_status: v } as any } : t));
-    toast.success('تم تحديث الدفع');
+    toast.success(copy.paymentUpdated);
   };
 
   const loadPlayers = async (teamId: string) => {
@@ -122,19 +121,19 @@ export default function RegistrationsPage() {
   };
 
   const addPlayer = async (teamId: string) => {
-    if (!newPlayer.name.trim()) { toast.error('اسم اللاعب مطلوب'); return; }
+    if (!newPlayer.name.trim()) { toast.error(copy.playerRequired); return; }
     setActing('pl_' + teamId);
     const res = await fetch('/api/tournament-portal/team-players', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ team_id:teamId, tournament_id:id, player_name:newPlayer.name, position:newPlayer.position||null, jersey_number:newPlayer.number?+newPlayer.number:null, phone:newPlayer.phone||null }) });
     const d = await res.json();
     if (!res.ok) toast.error(d.error);
-    else { setPlayerMap(p => ({ ...p, [teamId]:[...(p[teamId]||[]), d.player] })); setNewPlayer({ name:'', position:'', number:'', phone:'' }); toast.success('تمت الإضافة'); }
+    else { setPlayerMap(p => ({ ...p, [teamId]:[...(p[teamId]||[]), d.player] })); setNewPlayer({ name:'', position:'', number:'', phone:'' }); toast.success(copy.added); }
     setActing(null);
   };
 
   const deletePlayer = async (teamId: string, playerId: string) => {
     await fetch(`/api/tournament-portal/team-players?player_id=${playerId}`, { method:'DELETE' });
     setPlayerMap(p => ({ ...p, [teamId]: p[teamId].filter(x => x.id !== playerId) }));
-    toast.success('تم الحذف');
+    toast.success(copy.deleted);
   };
 
   const searchImport = async () => {
@@ -147,10 +146,10 @@ export default function RegistrationsPage() {
   };
 
   const importAsTeam = async (r: PResult) => {
-    const res = await fetch('/api/tournament-portal/import-team', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tournament_id:id, name:r.name, city:r.city||null, contact_phone:r.phone||null, logo_url:r.logo_url||null, notes:`مستورد (${r.account_type||r.type})` }) });
+    const res = await fetch('/api/tournament-portal/import-team', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tournament_id:id, name:r.name, city:r.city||null, contact_phone:r.phone||null, logo_url:r.logo_url||null, notes:copy.importNote.replace('{type}',r.account_type||r.type) }) });
     const d = await res.json();
     if (!res.ok) { toast.error(d.error); return; }
-    toast.success(`تم استيراد "${r.name}"`);
+    toast.success(copy.imported.replace('{name}',r.name));
     setImportRes(p => p.filter(x => x.name !== r.name));
     fetchData();
   };
@@ -161,7 +160,7 @@ export default function RegistrationsPage() {
     const res = await fetch('/api/tournament-portal/team-players', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ team_id:teamId, tournament_id:id, player_name:r.name, position:r.position||null, date_of_birth:r.date_of_birth||null, phone:r.phone||null, platform_player_id:r.platform_player_id||null }) });
     const d = await res.json();
     if (!res.ok) toast.error(d.error);
-    else { setPlayerMap(p => ({ ...p, [teamId]:[...(p[teamId]||[]), d.player||{id:Date.now().toString(),player_name:r.name}] })); toast.success(`تم إضافة "${r.name}"`); setImportRes(p=>p.filter(x=>x.name!==r.name)); }
+    else { setPlayerMap(p => ({ ...p, [teamId]:[...(p[teamId]||[]), d.player||{id:Date.now().toString(),player_name:r.name}] })); toast.success(copy.playerAdded.replace('{name}',r.name)); setImportRes(p=>p.filter(x=>x.name!==r.name)); }
     setImportingId(null);
   };
 
@@ -175,20 +174,20 @@ export default function RegistrationsPage() {
   };
 
   const importGlobal = async (r: PResult) => {
-    const res = await fetch('/api/tournament-portal/import-team', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tournament_id:id, name:r.name, city:r.city||null, contact_phone:r.phone||null, logo_url:r.logo_url||null, category_id:selCatId||null, notes:`مستورد (${r.account_type||r.type})` }) });
+    const res = await fetch('/api/tournament-portal/import-team', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tournament_id:id, name:r.name, city:r.city||null, contact_phone:r.phone||null, logo_url:r.logo_url||null, category_id:selCatId||null, notes:copy.importNote.replace('{type}',r.account_type||r.type) }) });
     const d = await res.json();
     if (!res.ok) { toast.error(d.error); return; }
-    toast.success(`تم استيراد "${r.name}"`);
+    toast.success(copy.imported.replace('{name}',r.name));
     setGlobalRes(p=>p.filter(x=>x.name!==r.name));
     fetchData();
   };
 
   const addManual = async () => {
-    if (!manual.name.trim()) { toast.error('اسم الفريق مطلوب'); return; }
+    if (!manual.name.trim()) { toast.error(copy.teamRequired); return; }
     setActing('new');
     const { error } = await supabase.from('tournament_teams').insert({ tournament_id:id, name:manual.name, contact_phone:manual.phone||null, city:manual.city||null, category_id:manual.category_id||null, status:'approved' });
     if (error) toast.error(error.message);
-    else { toast.success('تمت الإضافة'); setShowAdd(false); setManual({ name:'', phone:'', city:'', category_id:'' }); fetchData(); }
+    else { toast.success(copy.added); setShowAdd(false); setManual({ name:'', phone:'', city:'', category_id:'' }); fetchData(); }
     setActing(null);
   };
 
@@ -222,26 +221,26 @@ export default function RegistrationsPage() {
       <div style={{ background:S.surface, border:`1px solid ${S.border}`, borderRadius:14, padding:'14px 18px', display:'flex', alignItems:'center', flexWrap:'wrap', gap:12 }}>
         {/* Search */}
         <div style={{ position:'relative', flex:1, minWidth:180 }}>
-          <span style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', color:S.text2, fontSize:13 }}>🔍</span>
-          <input className="sp-input" style={{ paddingRight:32 }} placeholder="بحث بالاسم..." value={search} onChange={e=>setSearch(e.target.value)} />
+          <span style={{ position:'absolute', insetInlineStart:10, top:'50%', transform:'translateY(-50%)', color:S.text2, fontSize:13 }}>🔍</span>
+          <input className="sp-input" style={{ paddingInlineStart:32 }} placeholder={copy.search} value={search} onChange={e=>setSearch(e.target.value)} />
         </div>
         {cats.length > 1 && (
           <select className="sp-select" style={{ width:140 }} value={catF} onChange={e=>setCatF(e.target.value)}>
-            <option value="all">كل الفئات</option>
+            <option value="all">{copy.allCategories}</option>
             {cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         )}
-        <button onClick={()=>{ setShowAdd(true); setAddMode('choose'); }} className="sp-btn sp-btn-primary sp-btn-sm">+ إضافة فريق</button>
+        <button onClick={()=>{ setShowAdd(true); setAddMode('choose'); }} className="sp-btn sp-btn-primary sp-btn-sm">+ {copy.addTeam}</button>
         <button onClick={fetchData} style={{ width:32, height:32, borderRadius:8, background:'transparent', border:`1px solid ${S.border}`, color:S.text2, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>↻</button>
       </div>
 
       {/* ── Status filters ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }} className="sp-grid-4col">
         {[
-          { lbl:'الكل',     val:'all',      n:stats.total,    color:'#3b82f6',  bg:'rgba(59,130,246,0.1)'  },
-          { lbl:'معلق',     val:'pending',  n:stats.pending,  color:'#f59e0b',  bg:'rgba(245,158,11,0.1)'  },
-          { lbl:'مقبول',    val:'approved', n:stats.approved, color:'#16a34a',  bg:'rgba(22,163,74,0.1)'   },
-          { lbl:'مرفوض',   val:'rejected', n:stats.rejected, color:'#ef4444',  bg:'rgba(220,38,38,0.1)'   },
+          { lbl:copy.filters[0], val:'all',      n:stats.total,    color:'#3b82f6', bg:'rgba(59,130,246,0.1)' },
+          { lbl:copy.filters[1], val:'pending',  n:stats.pending,  color:'#f59e0b', bg:'rgba(245,158,11,0.1)' },
+          { lbl:copy.filters[2], val:'approved', n:stats.approved, color:'#16a34a', bg:'rgba(22,163,74,0.1)' },
+          { lbl:copy.filters[3], val:'rejected', n:stats.rejected, color:'#ef4444', bg:'rgba(220,38,38,0.1)' },
         ].map(s=>(
           <button key={s.val} onClick={()=>setStatusF(s.val)} style={{
             padding:'12px 8px', borderRadius:12, cursor:'pointer', textAlign:'center',
@@ -259,11 +258,11 @@ export default function RegistrationsPage() {
       {filtered.length === 0 ? (
         <div style={{ background:S.surface, border:`2px dashed ${S.border}`, borderRadius:16, padding:'48px 24px', textAlign:'center' }}>
           <div style={{ fontSize:36, marginBottom:12 }}>👥</div>
-          <div style={{ fontSize:15, fontWeight:700, color:S.text, marginBottom:8 }}>لا توجد فرق</div>
+          <div style={{ fontSize:15, fontWeight:700, color:S.text, marginBottom:8 }}>{copy.noTeams}</div>
           <div style={{ fontSize:13, color:S.text2, marginBottom:20 }}>
-            {statusF === 'all' ? 'أضف فريقاً أو انتظر طلبات التسجيل' : 'لا توجد فرق بهذا الفلتر'}
+            {statusF === 'all' ? copy.noTeamsAll : copy.noTeamsFilter}
           </div>
-          <button onClick={()=>{ setShowAdd(true); setAddMode('choose'); }} className="sp-btn sp-btn-primary">+ إضافة فريق</button>
+          <button onClick={()=>{ setShowAdd(true); setAddMode('choose'); }} className="sp-btn sp-btn-primary">+ {copy.addTeam}</button>
         </div>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
@@ -294,14 +293,14 @@ export default function RegistrationsPage() {
                         </span>
                       )}
                       <span style={{ fontSize:10, fontWeight:700, color:dotColor, background:`${dotColor}15`, padding:'2px 8px', borderRadius:6 }}>
-                        {STATUS_LBL[t.status] || t.status}
+                        {copy.statuses[t.status] || t.status}
                       </span>
                     </div>
                     <div style={{ display:'flex', gap:14, marginTop:3, flexWrap:'wrap' }}>
                       {(t.contact_name||t.club_name) && <span style={{ fontSize:11, color:S.text2 }}>👤 {t.contact_name||t.club_name}</span>}
                       {t.city && <span style={{ fontSize:11, color:S.text2 }}>📍 {t.city}</span>}
                       {t.contact_phone && <span style={{ fontSize:11, color:S.text2, fontFamily:'monospace' }}>{t.contact_phone}</span>}
-                      <span style={{ fontSize:11, color:S.text2 }}>📅 {new Date(t.registered_at).toLocaleDateString('ar-SA',{month:'short',day:'numeric'})}</span>
+                      <span style={{ fontSize:11, color:S.text2 }}>📅 {new Date(t.registered_at).toLocaleDateString(locale,{month:'short',day:'numeric'})}</span>
                     </div>
                   </div>
 
@@ -314,7 +313,7 @@ export default function RegistrationsPage() {
 
                     {/* Pay badge */}
                     <span style={{ fontSize:10, fontWeight:700, color:PAY_COLOR[payStatus]||'#94a3b8', background:`${PAY_COLOR[payStatus]||'#94a3b8'}18`, padding:'3px 8px', borderRadius:6 }}>
-                      {PAY_LBL[payStatus]||payStatus}
+                      {copy.payments[payStatus]||payStatus}
                     </span>
 
                     {/* Quick approve/reject */}
@@ -341,7 +340,7 @@ export default function RegistrationsPage() {
                           background:'transparent', border:'none', borderBottom:`2px solid ${expandTab===tab?'#d97706':'transparent'}`,
                           color:expandTab===tab?'#d97706':S.text2, transition:'all 0.15s', fontFamily:'inherit',
                         }}>
-                          {tab==='info'?'ℹ️ معلومات':tab==='players'?`👥 اللاعبون (${(playerMap[t.id]||[]).length})`: '🔍 استيراد من المنصة'}
+                          {tab==='info'?`ℹ️ ${copy.tabs[0]}`:tab==='players'?`👥 ${copy.tabs[1].replace('{count}',(playerMap[t.id]||[]).length)}`:`🔍 ${copy.tabs[2]}`}
                         </button>
                       ))}
                     </div>
@@ -356,28 +355,28 @@ export default function RegistrationsPage() {
                             {t.contact_email && <InfoRow icon="✉️" v={t.contact_email} S={S} />}
                             {t.city && <InfoRow icon="📍" v={`${t.city}${t.country?', '+t.country:''}`} S={S} />}
                             {t.notes && <InfoRow icon="📝" v={t.notes} S={S} />}
-                            {t.seed && <InfoRow icon="🌱" v={`البذرة ${t.seed}`} S={S} />}
+                            {t.seed && <InfoRow icon="🌱" v={copy.seed.replace('{number}',t.seed)} S={S} />}
                           </div>
                           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                             {/* Status actions */}
                             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                              {t.status !== 'approved' && <button onClick={()=>act(t.id,'approved')} disabled={acting===t.id} className="sp-btn sp-btn-success sp-btn-sm">✓ قبول</button>}
-                              {t.status !== 'rejected' && <button onClick={()=>act(t.id,'rejected')} disabled={acting===t.id} className="sp-btn sp-btn-danger sp-btn-sm">✕ رفض</button>}
-                              {t.status === 'rejected' && <button onClick={()=>act(t.id,'pending')} disabled={acting===t.id} className="sp-btn sp-btn-ghost sp-btn-sm">↩ استعادة</button>}
+                              {t.status !== 'approved' && <button onClick={()=>act(t.id,'approved')} disabled={acting===t.id} className="sp-btn sp-btn-success sp-btn-sm">✓ {copy.approve}</button>}
+                              {t.status !== 'rejected' && <button onClick={()=>act(t.id,'rejected')} disabled={acting===t.id} className="sp-btn sp-btn-danger sp-btn-sm">✕ {copy.reject}</button>}
+                              {t.status === 'rejected' && <button onClick={()=>act(t.id,'pending')} disabled={acting===t.id} className="sp-btn sp-btn-ghost sp-btn-sm">↩ {copy.restore}</button>}
                             </div>
                             {/* Payment */}
                             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                              <span style={{ fontSize:12, color:S.text2, flexShrink:0 }}>الدفع:</span>
+                              <span style={{ fontSize:12, color:S.text2, flexShrink:0 }}>{copy.payment}</span>
                               <select className="sp-select sp-input-sm" style={{ flex:1 }} value={payStatus} onChange={e=>updatePay(t.id,e.target.value)}>
-                                {Object.entries(PAY_LBL).map(([v,l])=><option key={v} value={v}>{l}</option>)}
+                                {Object.entries(copy.payments).map(([v,l])=><option key={v} value={v}>{l as string}</option>)}
                               </select>
                             </div>
                             {/* Delete */}
                             <a href={`/tournament-portal/${id}/team-view?team=${t.id}`} target="_blank" rel="noopener noreferrer" className="sp-btn sp-btn-ghost sp-btn-sm" style={{ textDecoration:'none' }}>
-                              🔗 بوابة الفريق
+                              🔗 {copy.teamPortal}
                             </a>
-                            <Popconfirm title="حذف الفريق نهائياً؟" onConfirm={async()=>{ await supabase.from('tournament_teams').delete().eq('id',t.id); setTeams(p=>p.filter(x=>x.id!==t.id)); toast.success('تم الحذف'); }} okText="حذف" cancelText="لا" okButtonProps={{ danger:true }}>
-                              <button className="sp-btn sp-btn-ghost sp-btn-sm" style={{ color:'#ef4444', borderColor:'rgba(220,38,38,0.3)' }}>🗑 حذف الفريق</button>
+                            <Popconfirm title={copy.deleteTeamQuestion} onConfirm={async()=>{ await supabase.from('tournament_teams').delete().eq('id',t.id); setTeams(p=>p.filter(x=>x.id!==t.id)); toast.success(copy.deleted); }} okText={copy.deleted} cancelText={copy.no} okButtonProps={{ danger:true }}>
+                              <button className="sp-btn sp-btn-ghost sp-btn-sm" style={{ color:'#ef4444', borderColor:'rgba(220,38,38,0.3)' }}>🗑 {copy.deleteTeam}</button>
                             </Popconfirm>
                           </div>
                         </div>
@@ -387,23 +386,23 @@ export default function RegistrationsPage() {
                       {expandTab === 'players' && (
                         <div>
                           {loadingPl === t.id
-                            ? <div style={{ textAlign:'center', padding:20, color:S.text2 }}>جاري التحميل...</div>
+                            ? <div style={{ textAlign:'center', padding:20, color:S.text2 }}>{copy.loading}</div>
                             : <>
                                 {(playerMap[t.id]||[]).length > 0 && (
                                   <div style={{ display:'flex', flexDirection:'column', gap:4, marginBottom:12 }}>
                                     <div style={{ display:'grid', gridTemplateColumns:'32px 1fr 90px 100px 32px', padding:'6px 12px', background:S.surface2, borderRadius:8, fontSize:10, fontWeight:700, color:S.text2 }}>
-                                      <div>#</div><div>اللاعب</div><div>المركز</div><div>الجوال</div><div></div>
+                                      <div>#</div><div>{copy.player}</div><div>{copy.position}</div><div>{copy.phone}</div><div></div>
                                     </div>
                                     {(playerMap[t.id]||[]).map((p,i)=>(
                                       <div key={p.id} style={{ display:'grid', gridTemplateColumns:'32px 1fr 90px 100px 32px', padding:'8px 12px', background:S.surface2, borderRadius:8, alignItems:'center' }}>
                                         <div style={{ fontSize:12, color:S.text2, fontWeight:700 }}>{p.jersey_number||i+1}</div>
                                         <div>
                                           <div style={{ fontSize:13, fontWeight:600, color:S.text }}>{p.player_name}</div>
-                                          {p.platform_player_id && <span style={{ fontSize:9, background:'rgba(59,130,246,0.15)', color:'#60a5fa', padding:'1px 6px', borderRadius:4 }}>منصة</span>}
+                                          {p.platform_player_id && <span style={{ fontSize:9, background:'rgba(59,130,246,0.15)', color:'#60a5fa', padding:'1px 6px', borderRadius:4 }}>{copy.platform}</span>}
                                         </div>
                                         <div style={{ fontSize:11, color:S.text2 }}>{p.position||'—'}</div>
                                         <div style={{ fontSize:11, color:S.text2, fontFamily:'monospace' }}>{p.phone||'—'}</div>
-                                        <Popconfirm title="حذف اللاعب؟" onConfirm={()=>deletePlayer(t.id,p.id)} okText="حذف" cancelText="لا" okButtonProps={{danger:true}}>
+                                        <Popconfirm title={copy.deletePlayer} onConfirm={()=>deletePlayer(t.id,p.id)} okText={copy.deleted} cancelText={copy.no} okButtonProps={{danger:true}}>
                                           <button style={{ width:24, height:24, borderRadius:6, background:'transparent', border:`1px solid ${S.border}`, color:'#ef4444', cursor:'pointer', fontSize:11, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
                                         </Popconfirm>
                                       </div>
@@ -412,14 +411,14 @@ export default function RegistrationsPage() {
                                 )}
                                 {/* Add player form */}
                                 <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', background:S.surface2, borderRadius:10, padding:'10px 12px', border:`1px solid ${S.border}` }}>
-                                  <input className="sp-input sp-input-sm" style={{ width:150 }} placeholder="اسم اللاعب *" value={newPlayer.name} onChange={e=>setNewPlayer(p=>({...p,name:e.target.value}))} />
+                                  <input className="sp-input sp-input-sm" style={{ width:150 }} placeholder={copy.playerName} value={newPlayer.name} onChange={e=>setNewPlayer(p=>({...p,name:e.target.value}))} />
                                   <select className="sp-select" style={{ width:100, padding:'5px 8px', fontSize:12 }} value={newPlayer.position} onChange={e=>setNewPlayer(p=>({...p,position:e.target.value}))}>
-                                    <option value="">المركز</option>
-                                    {POSITIONS.map(pos=><option key={pos} value={pos}>{pos}</option>)}
+                                    <option value="">{copy.position}</option>
+                                    {POSITIONS.map((pos,index)=><option key={pos} value={pos}>{copy.positions[index]}</option>)}
                                   </select>
                                   <input className="sp-input sp-input-sm" style={{ width:60 }} placeholder="#" type="number" value={newPlayer.number} onChange={e=>setNewPlayer(p=>({...p,number:e.target.value}))} />
-                                  <input className="sp-input sp-input-sm" style={{ width:120 }} placeholder="الجوال" value={newPlayer.phone} onChange={e=>setNewPlayer(p=>({...p,phone:e.target.value}))} dir="ltr" />
-                                  <button onClick={()=>addPlayer(t.id)} disabled={acting===`pl_${t.id}`} className="sp-btn sp-btn-primary sp-btn-sm">+ إضافة</button>
+                                  <input className="sp-input sp-input-sm" style={{ width:120 }} placeholder={copy.phone} value={newPlayer.phone} onChange={e=>setNewPlayer(p=>({...p,phone:e.target.value}))} dir="ltr" />
+                                  <button onClick={()=>addPlayer(t.id)} disabled={acting===`pl_${t.id}`} className="sp-btn sp-btn-primary sp-btn-sm">+ {copy.add}</button>
                                 </div>
                               </>
                           }
@@ -431,13 +430,13 @@ export default function RegistrationsPage() {
                         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                           <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                             <select className="sp-select" style={{ width:160, padding:'7px 10px', fontSize:12 }} value={importType} onChange={e=>setImportType(e.target.value)}>
-                              <option value="all">الكل</option>
-                              <option value="club">أندية / أكاديميات</option>
-                              <option value="player">لاعبون</option>
+                              <option value="all">{copy.importTypes[0]}</option>
+                              <option value="club">{copy.importTypes[1]}</option>
+                              <option value="player">{copy.importTypes[2]}</option>
                             </select>
-                            <input className="sp-input sp-input-sm" style={{ flex:1, minWidth:180 }} placeholder="اسم أو جوال..." value={importQ} onChange={e=>setImportQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&searchImport()} />
+                            <input className="sp-input sp-input-sm" style={{ flex:1, minWidth:180 }} placeholder={copy.nameOrPhone} value={importQ} onChange={e=>setImportQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&searchImport()} />
                             <button onClick={searchImport} disabled={searching} className="sp-btn sp-btn-sm" style={{ background:'#4f46e5', color:'#fff', border:'none' }}>
-                              {searching?'...':'🔍 بحث'}
+                              {searching?'...':`🔍 ${copy.searchButton}`}
                             </button>
                           </div>
                           {importRes.map((r,i)=>(
@@ -446,20 +445,20 @@ export default function RegistrationsPage() {
                               <div style={{ flex:1, minWidth:0 }}>
                                 <div style={{ fontSize:13, fontWeight:700, color:S.text }}>{r.name}</div>
                                 <div style={{ fontSize:11, color:S.text2 }}>
-                                  {r.type==='player'?`لاعب · ${r.position||'—'}`:r.account_type==='academy'?'أكاديمية':'نادي'}
+                                  {r.type==='player'?`${copy.resultTypes[0]} · ${r.position||'—'}`:r.account_type==='academy'?copy.resultTypes[1]:copy.resultTypes[2]}
                                   {r.city?` · ${r.city}`:''}
                                 </div>
                               </div>
                               <div style={{ display:'flex', gap:6, flexShrink:0 }}>
                                 <button onClick={()=>importAsPlayer(r,t.id)} disabled={importingId===(r.platform_player_id||r.name)} className="sp-btn sp-btn-sm" style={{ background:'#2563eb', color:'#fff', border:'none' }}>
-                                  + لاعب
+                                  + {copy.addPlayer}
                                 </button>
-                                <button onClick={()=>importAsTeam(r)} className="sp-btn sp-btn-ghost sp-btn-sm">فريق</button>
+                                <button onClick={()=>importAsTeam(r)} className="sp-btn sp-btn-ghost sp-btn-sm">{copy.team}</button>
                               </div>
                             </div>
                           ))}
                           {importQ.length>=2 && !searching && importRes.length===0 && (
-                            <div style={{ textAlign:'center', color:S.text2, fontSize:13, padding:12 }}>لا توجد نتائج</div>
+                            <div style={{ textAlign:'center', color:S.text2, fontSize:13, padding:12 }}>{copy.noResults}</div>
                           )}
                         </div>
                       )}
@@ -474,19 +473,19 @@ export default function RegistrationsPage() {
 
       {/* ── Add Team Modal ── */}
       <Modal open={showAdd} onCancel={()=>{setShowAdd(false);setAddMode('choose');setGlobalRes([]);}} footer={null} width={520}
-        title={<span style={{ fontWeight:700 }}>إضافة فريق</span>}>
+        title={<span style={{ fontWeight:700 }}>{copy.addTeam}</span>}>
         <div style={{ marginTop:16 }}>
           {addMode === 'choose' && (
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
               <button onClick={()=>setAddMode('import')} style={{ padding:'24px 16px', borderRadius:14, border:`2px solid ${L.border}`, background:L.surface2, cursor:'pointer', textAlign:'center' }}>
                 <div style={{ fontSize:28, marginBottom:8 }}>🔍</div>
-                <div style={{ fontSize:14, fontWeight:700 }}>استيراد من المنصة</div>
-                <div style={{ fontSize:12, color:L.text2, marginTop:4 }}>نادي، أكاديمية أو لاعب</div>
+                <div style={{ fontSize:14, fontWeight:700 }}>{copy.importFromPlatform}</div>
+                <div style={{ fontSize:12, color:L.text2, marginTop:4 }}>{copy.importHelp}</div>
               </button>
               <button onClick={()=>setAddMode('manual')} style={{ padding:'24px 16px', borderRadius:14, border:`2px solid ${L.border}`, background:L.surface2, cursor:'pointer', textAlign:'center' }}>
                 <div style={{ fontSize:28, marginBottom:8 }}>✍️</div>
-                <div style={{ fontSize:14, fontWeight:700 }}>إضافة يدوية</div>
-                <div style={{ fontSize:12, color:L.text2, marginTop:4 }}>أدخل بيانات الفريق مباشرة</div>
+                <div style={{ fontSize:14, fontWeight:700 }}>{copy.manual}</div>
+                <div style={{ fontSize:12, color:L.text2, marginTop:4 }}>{copy.manualHelp}</div>
               </button>
             </div>
           )}
@@ -494,20 +493,20 @@ export default function RegistrationsPage() {
           {addMode === 'import' && (
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               <div style={{ display:'flex', gap:8 }}>
-                <button onClick={()=>setAddMode('choose')} style={{ fontSize:12, color:'#94a3b8', background:'transparent', border:'none', cursor:'pointer', padding:0 }}>← رجوع</button>
+                <button onClick={()=>setAddMode('choose')} style={{ fontSize:12, color:'#94a3b8', background:'transparent', border:'none', cursor:'pointer', padding:0 }}>← {copy.back}</button>
               </div>
               <div style={{ display:'flex', gap:8 }}>
                 <select className="sp-select" style={{ width:150, padding:'8px 10px' }} value={globalType} onChange={e=>setGlobalType(e.target.value)}>
-                  <option value="club">أندية / أكاديميات</option>
-                  <option value="player">لاعبون</option>
-                  <option value="all">الكل</option>
+                  <option value="club">{copy.importTypes[1]}</option>
+                  <option value="player">{copy.importTypes[2]}</option>
+                  <option value="all">{copy.importTypes[0]}</option>
                 </select>
-                <input className="sp-input" style={{ flex:1 }} placeholder="ابحث بالاسم أو الجوال..." value={globalQ} onChange={e=>setGlobalQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&searchGlobal()} />
-                <button onClick={searchGlobal} disabled={globalSearch} className="sp-btn sp-btn-primary sp-btn-sm">{globalSearch?'...':'بحث'}</button>
+                <input className="sp-input" style={{ flex:1 }} placeholder={copy.searchNamePhone} value={globalQ} onChange={e=>setGlobalQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&searchGlobal()} />
+                <button onClick={searchGlobal} disabled={globalSearch} className="sp-btn sp-btn-primary sp-btn-sm">{globalSearch?'...':copy.searchButton}</button>
               </div>
               {cats.length > 1 && (
                 <select className="sp-select" style={{ padding:'8px 10px' }} value={selCatId} onChange={e=>setSelCatId(e.target.value)}>
-                  <option value="">بدون فئة</option>
+                  <option value="">{copy.noCategory}</option>
                   {cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               )}
@@ -517,44 +516,44 @@ export default function RegistrationsPage() {
                     <img src={resolveImg(r.logo_url, r.account_type as any)||''} alt="" style={{ width:36, height:36, borderRadius:9, objectFit:'cover', flexShrink:0 }} onError={e=>{(e.target as HTMLImageElement).style.display='none'}} />
                     <div style={{ flex:1 }}>
                       <div style={{ fontSize:13, fontWeight:700, color:'#0f172a' }}>{r.name}</div>
-                      <div style={{ fontSize:11, color:'#94a3b8' }}>{r.account_type==='academy'?'أكاديمية':r.type==='player'?`لاعب · ${r.position||'—'}`:'نادي'}{r.city?` · ${r.city}`:''}</div>
+                      <div style={{ fontSize:11, color:'#94a3b8' }}>{r.account_type==='academy'?copy.resultTypes[1]:r.type==='player'?`${copy.resultTypes[0]} · ${r.position||'—'}`:copy.resultTypes[2]}{r.city?` · ${r.city}`:''}</div>
                     </div>
-                    <button onClick={()=>importGlobal(r)} className="sp-btn sp-btn-primary sp-btn-sm">+ استيراد</button>
+                    <button onClick={()=>importGlobal(r)} className="sp-btn sp-btn-primary sp-btn-sm">+ {copy.import}</button>
                   </div>
                 ))}
-                {globalQ.length>=2 && !globalSearch && globalRes.length===0 && <div style={{ textAlign:'center', color:'#94a3b8', fontSize:13, padding:20 }}>لا توجد نتائج</div>}
+                {globalQ.length>=2 && !globalSearch && globalRes.length===0 && <div style={{ textAlign:'center', color:'#94a3b8', fontSize:13, padding:20 }}>{copy.noResults}</div>}
               </div>
             </div>
           )}
 
           {addMode === 'manual' && (
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-              <button onClick={()=>setAddMode('choose')} style={{ fontSize:12, color:'#94a3b8', background:'transparent', border:'none', cursor:'pointer', padding:0, alignSelf:'flex-start' }}>← رجوع</button>
+              <button onClick={()=>setAddMode('choose')} style={{ fontSize:12, color:'#94a3b8', background:'transparent', border:'none', cursor:'pointer', padding:0, alignSelf:'flex-start' }}>← {copy.back}</button>
               <div>
-                <label className="sp-label">اسم الفريق *</label>
-                <input className="sp-input" placeholder="مثال: نادي النصر" value={manual.name} onChange={e=>setManual(p=>({...p,name:e.target.value}))} />
+                <label className="sp-label">{copy.teamName}</label>
+                <input className="sp-input" placeholder={copy.teamPlaceholder} value={manual.name} onChange={e=>setManual(p=>({...p,name:e.target.value}))} />
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                 <div>
-                  <label className="sp-label">رقم الجوال</label>
+                  <label className="sp-label">{copy.phone}</label>
                   <input className="sp-input" placeholder="+966..." value={manual.phone} onChange={e=>setManual(p=>({...p,phone:e.target.value}))} dir="ltr" />
                 </div>
                 <div>
-                  <label className="sp-label">المدينة</label>
-                  <input className="sp-input" placeholder="الرياض" value={manual.city} onChange={e=>setManual(p=>({...p,city:e.target.value}))} />
+                  <label className="sp-label">{copy.city}</label>
+                  <input className="sp-input" placeholder={copy.cityPlaceholder} value={manual.city} onChange={e=>setManual(p=>({...p,city:e.target.value}))} />
                 </div>
               </div>
               {cats.length > 1 && (
                 <div>
-                  <label className="sp-label">الفئة</label>
+                  <label className="sp-label">{copy.category}</label>
                   <select className="sp-select" value={manual.category_id} onChange={e=>setManual(p=>({...p,category_id:e.target.value}))}>
-                    <option value="">بدون فئة</option>
+                    <option value="">{copy.noCategory}</option>
                     {cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
               )}
               <button onClick={addManual} disabled={acting==='new'} className="sp-btn sp-btn-primary" style={{ marginTop:4 }}>
-                {acting==='new'?'جاري الإضافة...':'+ إضافة الفريق'}
+                {acting==='new'?copy.adding:`+ ${copy.addTeam}`}
               </button>
             </div>
           )}

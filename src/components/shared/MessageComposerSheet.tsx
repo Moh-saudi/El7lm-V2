@@ -9,6 +9,7 @@ import { getPlayerAvatarUrl } from '@/lib/supabase/image-utils';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle2, MessageSquare, Send, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@/lib/i18n';
 
 interface MessageComposerSheetProps {
   playerId: string;
@@ -31,6 +32,9 @@ export default function MessageComposerSheet({
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { user, userData } = useAuth();
+  const { t, isRTL } = useTranslation();
+  const textValue = (key: string) => t(`sharedComponents.messageComposer.${key}`);
+  const format = (key: string, value: string) => textValue(key).replace('{{name}}', value);
 
   useEffect(() => {
     if (isOpen && !sent) {
@@ -42,7 +46,7 @@ export default function MessageComposerSheet({
   }, [isOpen, sent]);
 
   const getSenderInfo = useCallback(async () => {
-    let name = user?.user_metadata?.full_name || 'مستخدم';
+    let name = user?.user_metadata?.full_name || textValue('user');
     let avatar = user?.user_metadata?.avatar_url || '';
 
     if (userData) {
@@ -52,7 +56,7 @@ export default function MessageComposerSheet({
     }
 
     // fallback: try players collection
-    if (!name || name === 'مستخدم') {
+    if (!name || name === textValue('user')) {
       try {
         const { data } = await supabase.from('players').select('*').eq('id', user!.id).maybeSingle();
         if (data) {
@@ -103,7 +107,7 @@ export default function MessageComposerSheet({
       setSent(true);
     } catch (err) {
       console.error('MessageComposer error:', err);
-      setError('تعذّر إرسال الرسالة، حاول مجدداً');
+      setError(textValue('sendFailed'));
     } finally {
       setSending(false);
     }
@@ -112,7 +116,7 @@ export default function MessageComposerSheet({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="absolute inset-0 z-[110] flex flex-col justify-end" dir="rtl">
+        <div className="absolute inset-0 z-[110] flex flex-col justify-end" dir={isRTL ? 'rtl' : 'ltr'}>
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -147,16 +151,16 @@ export default function MessageComposerSheet({
                   <CheckCircle2 className="w-8 h-8 text-green-400" />
                 </motion.div>
                 <div className="text-center">
-                  <p className="font-black text-lg">تم الإرسال بنجاح!</p>
+                  <p className="font-black text-lg">{textValue('sent')}</p>
                   <p className="text-white/50 text-sm mt-1">
-                    سيتلقى {playerName} إشعاراً برسالتك
+                    {format('willNotify', playerName)}
                   </p>
                 </div>
                 <button
                   onClick={onClose}
                   className="mt-2 px-8 py-3 bg-white/10 border border-white/15 rounded-full font-bold text-sm active:scale-95 transition-transform"
                 >
-                  إغلاق
+                  {textValue('close')}
                 </button>
               </div>
             ) : (
@@ -187,14 +191,14 @@ export default function MessageComposerSheet({
                 <div className="px-5 pt-4 pb-2">
                   <div className="flex items-center gap-2 mb-1">
                     <MessageSquare className="w-4 h-4 text-blue-400 shrink-0" />
-                    <p className="text-white/60 text-xs font-bold">رسالة جديدة</p>
+                    <p className="text-white/60 text-xs font-bold">{textValue('newMessage')}</p>
                   </div>
                   <textarea
                     ref={inputRef}
                     value={text}
                     onChange={(e) => { setText(e.target.value); setError(''); }}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                    placeholder={`اكتب رسالتك لـ ${playerName}...`}
+                    placeholder={format('placeholder', playerName)}
                     rows={3}
                     maxLength={500}
                     className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-white/25
@@ -222,12 +226,12 @@ export default function MessageComposerSheet({
                     ) : (
                       <>
                         <Send className="w-4 h-4" />
-                        إرسال الرسالة
+                        {textValue('send')}
                       </>
                     )}
                   </button>
                   {!user && (
-                    <p className="text-center text-white/30 text-xs mt-2">يجب تسجيل الدخول للإرسال</p>
+                    <p className="text-center text-white/30 text-xs mt-2">{textValue('loginRequired')}</p>
                   )}
                 </div>
               </>

@@ -34,90 +34,7 @@ import { toast } from 'react-hot-toast';
 import { normalizeNotificationMetadata, resolveAvatarUrl, SenderContext } from '@/lib/notifications/sender-utils';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Locale, useTranslation } from '@/lib/i18n';
-
-const ADMIN_NOTIFICATIONS_COPY: Record<Locale, {
-  userFallback: string;
-  deleted: string;
-  newNotifications: string;
-  title: string;
-  tabs: Record<'all' | 'mentions' | 'system', string>;
-  emptyTitle: string;
-  emptyDescription: string;
-  others: string;
-  delete: string;
-  reply: string;
-  follow: string;
-}> = {
-  ar: {
-    userFallback: 'مستخدم',
-    deleted: 'تم الحذف',
-    newNotifications: 'إشعارات جديدة',
-    title: 'الإشعارات',
-    tabs: {
-      all: 'الكل',
-      mentions: 'التفاعلات',
-      system: 'النظام',
-    },
-    emptyTitle: 'كل شيء هادئ هنا',
-    emptyDescription: 'لم تتلق أي إشعارات جديدة مؤخراً. سنخبرك بمجرد حدوث شيء ما.',
-    others: '{{count}} آخرين',
-    delete: 'حذف',
-    reply: 'رد',
-    follow: 'متابعة',
-  },
-  en: {
-    userFallback: 'User',
-    deleted: 'Deleted',
-    newNotifications: 'New notifications',
-    title: 'Notifications',
-    tabs: {
-      all: 'All',
-      mentions: 'Interactions',
-      system: 'System',
-    },
-    emptyTitle: 'Everything is quiet here',
-    emptyDescription: 'You have not received any new notifications recently. We will let you know when something happens.',
-    others: '{{count}} others',
-    delete: 'Delete',
-    reply: 'Reply',
-    follow: 'Follow up',
-  },
-  es: {
-    userFallback: 'Usuario',
-    deleted: 'Eliminado',
-    newNotifications: 'Nuevas notificaciones',
-    title: 'Notificaciones',
-    tabs: {
-      all: 'Todo',
-      mentions: 'Interacciones',
-      system: 'Sistema',
-    },
-    emptyTitle: 'Todo está tranquilo aquí',
-    emptyDescription: 'No has recibido notificaciones nuevas recientemente. Te avisaremos cuando ocurra algo.',
-    others: '{{count}} más',
-    delete: 'Eliminar',
-    reply: 'Responder',
-    follow: 'Seguimiento',
-  },
-  pt: {
-    userFallback: 'Usuário',
-    deleted: 'Excluído',
-    newNotifications: 'Novas notificações',
-    title: 'Notificações',
-    tabs: {
-      all: 'Tudo',
-      mentions: 'Interações',
-      system: 'Sistema',
-    },
-    emptyTitle: 'Tudo está tranquilo por aqui',
-    emptyDescription: 'Você não recebeu novas notificações recentemente. Avisaremos quando algo acontecer.',
-    others: '{{count}} outros',
-    delete: 'Excluir',
-    reply: 'Responder',
-    follow: 'Acompanhar',
-  },
-};
+import { useTranslation } from '@/lib/i18n';
 
 const notificationDateLocales = {
   ar,
@@ -163,8 +80,8 @@ const NotificationSkeleton = () => (
 // --- Reusable Notification Feed Component ---
 export function NotificationFeed() {
   const { user } = useAuth();
-  const { locale, isRTL } = useTranslation();
-  const copy = ADMIN_NOTIFICATIONS_COPY[locale] || ADMIN_NOTIFICATIONS_COPY.en;
+  const { locale, isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('adminNotifications');
   const dateLocale = notificationDateLocales[locale] || enUS;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);

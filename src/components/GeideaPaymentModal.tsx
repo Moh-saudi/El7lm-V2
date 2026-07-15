@@ -2,6 +2,7 @@
 
 import { analyzeGeideaError, handleGeideaError } from '@/lib/geidea-error-handler';
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@/lib/i18n';
 
 declare global {
   interface Window {
@@ -39,14 +40,18 @@ export default function GeideaPaymentModal({
   onPaymentFailure,
   amount,
   currency,
-  title = "الدفع الإلكتروني",
-  description = "أكمل عملية الدفع عبر البطاقة الإلكترونية",
+  title,
+  description,
   callbackUrl,
   returnUrl,
   customerEmail,
   merchantReferenceId,
   skipRedirect = false
 }: GeideaPaymentModalProps) {
+  const { t, isRTL } = useTranslation();
+  const paymentText = (key: string) => t(`sharedComponents.geideaPayment.${key}`);
+  const modalTitle = title || paymentText('title');
+  const modalDescription = description || paymentText('description');
   const [state, setState] = useState<PaymentModalState>({
     loading: false,
     error: null,
@@ -513,6 +518,7 @@ export default function GeideaPaymentModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      dir={isRTL ? 'rtl' : 'ltr'}
       onClick={() => {
         // حذف بيانات الدفع عند النقر خارج المودال
         localStorage.removeItem('geidea_session_id');
@@ -533,8 +539,8 @@ export default function GeideaPaymentModal({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">{title}</h2>
-          <p className="text-sm text-gray-600">{description}</p>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{modalTitle}</h2>
+          <p className="text-sm text-gray-600">{modalDescription}</p>
         </div>
 
         {/* Content */}
@@ -542,14 +548,14 @@ export default function GeideaPaymentModal({
           {state.loading ? (
             <div>
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600 mb-4">جاري تجهيز صفحة الدفع...</p>
-              <p className="text-xs text-gray-500">سيتم توجيهك لصفحة الدفع الآمنة خلال لحظات</p>
+              <p className="text-gray-600 mb-4">{paymentText('preparing')}</p>
+              <p className="text-xs text-gray-500">{paymentText('redirectSoon')}</p>
             </div>
           ) : state.error ? (
             <div>
               <div className="text-red-500 text-6xl mb-4">❌</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">خطأ في الدفع</h3>
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-right">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{paymentText('paymentError')}</h3>
+              <div className={`bg-red-50 border border-red-200 rounded-lg p-4 mb-4 ${isRTL ? 'text-right' : 'text-left'}`}>
                 <p className="text-gray-800 text-sm whitespace-pre-line">{state.error}</p>
               </div>
               <div className="flex gap-3 justify-center">
@@ -565,7 +571,7 @@ export default function GeideaPaymentModal({
                   }}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  إعادة المحاولة
+                  {paymentText('retry')}
                 </button>
                 <button
                   onClick={() => {
@@ -578,15 +584,15 @@ export default function GeideaPaymentModal({
                   }}
                   className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
                 >
-                  إلغاء
+                  {paymentText('cancel')}
                 </button>
               </div>
             </div>
           ) : state.sessionCreated ? (
             <div>
               <div className="text-green-500 text-6xl mb-4">✅</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">تم إنشاء جلسة الدفع</h3>
-              <p className="text-gray-600 mb-4 text-sm">تم إنشاء جلسة الدفع بنجاح. إذا لم تفتح صفحة الدفع تلقائياً، يمكنك النقر على الزر أدناه.</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{paymentText('sessionCreated')}</h3>
+              <p className="text-gray-600 mb-4 text-sm">{paymentText('sessionCreatedHelp')}</p>
 
               <button
                 onClick={() => {
@@ -601,11 +607,11 @@ export default function GeideaPaymentModal({
                 }}
                 className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors font-semibold mb-3"
               >
-                💳 فتح صفحة الدفع
+                💳 {paymentText('openPaymentPage')}
               </button>
 
               <div className="text-center mb-3">
-                <p className="text-xs text-gray-500 mb-2">أو انسخ الرابط التالي:</p>
+                <p className="text-xs text-gray-500 mb-2">{paymentText('copyLinkPrompt')}:</p>
                 <div className="bg-gray-100 p-2 rounded text-xs break-all mb-2">
                   {`https://www.merchant.geidea.net/hpp/checkout/?${localStorage.getItem('geidea_session_id') || ''}`}
                 </div>
@@ -626,7 +632,7 @@ export default function GeideaPaymentModal({
                   }}
                   className="text-xs bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300 transition-colors"
                 >
-                  📋 نسخ الرابط
+                  📋 {paymentText('copyLink')}
                 </button>
               </div>
 
@@ -641,17 +647,17 @@ export default function GeideaPaymentModal({
                 }}
                 className="w-full bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors"
               >
-                إغلاق
+                {paymentText('close')}
               </button>
             </div>
           ) : state.isTestMode ? (
             <div>
               <div className="text-yellow-500 text-6xl mb-4">🧪</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">وضع الاختبار</h3>
-              <p className="text-gray-600 mb-4 text-sm">تم إنشاء جلسة دفع تجريبية. في الإنتاج، سيتم توجيهك لصفحة الدفع الفعلية.</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{paymentText('testMode')}</h3>
+              <p className="text-gray-600 mb-4 text-sm">{paymentText('testModeHelp')}</p>
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                 <p className="text-sm text-yellow-800">
-                  💡 <strong>ملاحظة:</strong> هذا وضع اختبار. لإعداد الدفع الفعلي، أضف بيانات Geidea في ملف .env.local
+                  💡 <strong>{paymentText('note')}:</strong> {paymentText('testModeSetup')}
                 </p>
               </div>
 
@@ -666,23 +672,23 @@ export default function GeideaPaymentModal({
                 }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                إغلاق
+                {paymentText('close')}
               </button>
             </div>
           ) : (
             <div>
               <div className="text-green-500 text-6xl mb-4">💳</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">🚀 جاري توجيهك للدفع</h3>
-              <p className="text-gray-600 mb-4 text-sm">سيتم فتح نافذة دفع جيديا الآمنة خلال لحظات...</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">🚀 {paymentText('redirecting')}</h3>
+              <p className="text-gray-600 mb-4 text-sm">{paymentText('geideaWindowSoon')}</p>
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
                 <p className="text-sm text-green-800">
-                  🔒 <strong>دفع آمن:</strong> ستنتقل لبوابة جيديا الرسمية لإدخال بيانات البطاقة بأمان تام
+                  🔒 <strong>{paymentText('securePayment')}:</strong> {paymentText('securePaymentHelp')}
                 </p>
               </div>
               <div className="animate-pulse">
                 <div className="w-12 h-12 bg-green-100 rounded-full mx-auto mb-4"></div>
               </div>
-              <p className="text-gray-600">جاري تحضير صفحة الدفع...</p>
+              <p className="text-gray-600">{paymentText('preparing')}</p>
             </div>
           )}
         </div>
@@ -692,11 +698,11 @@ export default function GeideaPaymentModal({
           <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
             <div className="flex items-center gap-1">
               <span>🔒</span>
-              <span>مدفوعات آمنة</span>
+              <span>{paymentText('securePayments')}</span>
             </div>
             <div className="flex items-center gap-1">
               <span>💳</span>
-              <span>بطاقات ائتمان ومدى</span>
+              <span>{paymentText('cards')}</span>
             </div>
           </div>
         </div>
@@ -713,8 +719,8 @@ export default function GeideaPaymentModal({
               onRequestClose();
             }}
             className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="إغلاق"
-            title="إغلاق"
+            aria-label={paymentText('close')}
+            title={paymentText('close')}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

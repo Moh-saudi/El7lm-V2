@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getOTPMethod, getCountryName, getOTPMessage, type OTPMethod } from '@/lib/utils/otp-service-selector';
 import SMSOTPVerification from './SMSOTPVerification';
 import WhatsAppOTPVerification from './WhatsAppOTPVerification';
+import { useTranslation } from '@/lib/i18n';
 
 interface UnifiedOTPVerificationProps {
   phoneNumber: string;
@@ -34,8 +35,10 @@ export default function UnifiedOTPVerification({
   maxAttempts = 3,
   forceMethod,
   language,
-  t
+  t: suppliedT
 }: UnifiedOTPVerificationProps) {
+  const { t: contextT } = useTranslation();
+  const translate = suppliedT || contextT;
 
   const [selectedMethod, setSelectedMethod] = useState<OTPMethod>('sms');
   const [countryName, setCountryName] = useState('');
@@ -65,11 +68,11 @@ export default function UnifiedOTPVerification({
       const countryCode = phoneNumber.match(/^\+\d{1,4}/)?.[0] || '';
       const country = getCountryName(countryCode);
       setCountryName(country);
-      setSelectedMethod(otpConfig.method);
+      setSelectedMethod(forceMethod || otpConfig.method);
       
       console.log('🔧 UnifiedOTP: Method selected:', otpConfig.method, 'for country:', country);
     }
-  }, [isOpen, phoneNumber]);
+  }, [isOpen, phoneNumber, forceMethod]);
 
   // إعادة تعيين عند الإغلاق
   useEffect(() => {
@@ -115,12 +118,12 @@ export default function UnifiedOTPVerification({
         onVerificationSuccess={handleVerificationSuccess}
         onVerificationFailed={handleVerificationFailed}
         onClose={handleClose}
-        title={t ? t('otp.title') : (title || 'التحقق من رقم الهاتف')}
-        subtitle={t ? t('otp.subtitle_sms') : (subtitle || getOTPMessage('sms', countryName))}
+        title={title || translate('sharedComponents.otp.title')}
+        subtitle={subtitle || translate('sharedComponents.otp.subtitleSms') || getOTPMessage('sms', countryName)}
         otpExpirySeconds={otpExpirySeconds}
         maxAttempts={maxAttempts}
         language={language}
-        t={t}
+        t={translate}
       />
     );
   } else {
@@ -132,12 +135,12 @@ export default function UnifiedOTPVerification({
         onVerificationSuccess={handleVerificationSuccess}
         onVerificationFailed={handleVerificationFailed}
         onClose={handleClose}
-        title={t ? t('otp.title') : (title || 'التحقق من رقم الهاتف')}
-        subtitle={t ? t('otp.subtitle_whatsapp') : (subtitle || getOTPMessage('whatsapp', countryName))}
+        title={title || translate('sharedComponents.otp.title')}
+        subtitle={subtitle || translate('sharedComponents.otp.subtitleWhatsapp') || getOTPMessage('whatsapp', countryName)}
         otpExpirySeconds={otpExpirySeconds}
         maxAttempts={maxAttempts}
         language={language}
-        t={t}
+        t={translate}
       />
     );
   }

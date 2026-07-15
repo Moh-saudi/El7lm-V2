@@ -37,6 +37,8 @@ import { notifyNewApplication } from '@/lib/opportunities/notifications';
 import { getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 import { OPPORTUNITY_TYPES } from '@/lib/opportunities/config';
 import { Opportunity, OpportunityType } from '@/types/opportunities';
+import { useTranslation } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -44,19 +46,19 @@ function getTypeConfig(type: OpportunityType) {
   return OPPORTUNITY_TYPES[type] ?? { label: type, emoji: '📌', color: '#6B7280' };
 }
 
-function statusLabel(status: string) {
+function statusLabel(status: string, labels: Record<string, string>) {
   const map: Record<string, { text: string; bg: string; text2: string }> = {
-    active:    { text: 'نشط',    bg: 'bg-green-100',  text2: 'text-green-700'  },
-    draft:     { text: 'مسودة',  bg: 'bg-yellow-100', text2: 'text-yellow-700' },
-    closed:    { text: 'مغلق',   bg: 'bg-gray-100',   text2: 'text-gray-600'   },
-    cancelled: { text: 'ملغى',   bg: 'bg-red-100',    text2: 'text-red-700'    },
+    active:    { text: labels.active,    bg: 'bg-green-100',  text2: 'text-green-700'  },
+    draft:     { text: labels.draft,  bg: 'bg-yellow-100', text2: 'text-yellow-700' },
+    closed:    { text: labels.closed,   bg: 'bg-gray-100',   text2: 'text-gray-600'   },
+    cancelled: { text: labels.cancelled,   bg: 'bg-red-100',    text2: 'text-red-700'    },
   };
   return map[status] ?? { text: status, bg: 'bg-gray-100', text2: 'text-gray-600' };
 }
 
-function formatDate(iso: string) {
+function formatDate(iso: string, locale: string) {
   try {
-    return new Date(iso).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' });
+    return new Date(iso).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
   } catch {
     return iso;
   }
@@ -106,11 +108,13 @@ function OpportunityMediaPreview({
 // ─── Loading Spinner ───────────────────────────────────────────────────────────
 
 function LoadingSpinner() {
+  const { isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('opportunitiesPage');
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50" dir="rtl">
+    <div className="flex items-center justify-center min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="flex flex-col items-center gap-3">
         <Loader2 className="w-10 h-10 text-green-500 animate-spin" />
-        <p className="text-gray-500 text-sm">جارٍ التحميل...</p>
+        <p className="text-gray-500 text-sm">{copy.loading}</p>
       </div>
     </div>
   );
@@ -145,6 +149,10 @@ function PublisherView({
   userData: any;
 }) {
   const router = useRouter();
+  const { locale, isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('opportunitiesPage');
+  const typeLabels = getTranslations<any>('opportunityTypes');
+  const dateLocale = ({ ar: 'ar-EG', en: 'en-US', es: 'es-ES', pt: 'pt-BR' } as const)[locale];
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'active' | 'draft' | 'closed'>('active');
@@ -156,7 +164,7 @@ function PublisherView({
       const data = await getMyOpportunities(user.id);
       setOpportunities(data);
     } catch (err) {
-      toast.error('حدث خطأ أثناء تحميل الفرص');
+      toast.error(copy.loadError);
     } finally {
       setLoading(false);
     }
@@ -174,42 +182,42 @@ function PublisherView({
   const filtered = opportunities.filter(o => o.status === activeTab);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف هذه الفرصة؟')) return;
+    if (!confirm(copy.confirmDelete)) return;
     try {
       setDeletingId(id);
       await deleteOpportunity(id);
-      toast.success('تم حذف الفرصة');
+      toast.success(copy.deleted);
       await loadOpportunities();
     } catch {
-      toast.error('فشل حذف الفرصة');
+      toast.error(copy.deleteFailed);
     } finally {
       setDeletingId(null);
     }
   };
 
   const tabs: { key: 'active' | 'draft' | 'closed'; label: string }[] = [
-    { key: 'active', label: 'نشطة' },
-    { key: 'draft',  label: 'مسودة' },
-    { key: 'closed', label: 'مغلقة' },
+    { key: 'active', label: copy.tabs.active },
+    { key: 'draft',  label: copy.tabs.draft },
+    { key: 'closed', label: copy.tabs.closed },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-10" dir="rtl">
+    <div className="min-h-screen bg-gray-50 pb-10" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* ── Header ── */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-lg font-bold text-gray-900 truncate">مركز الفرص</h1>
-            <p className="text-xs text-gray-400 hidden sm:block">إدارة فرصك وتتبع المتقدمين</p>
+            <h1 className="text-lg font-bold text-gray-900 truncate">{copy.manageTitle}</h1>
+            <p className="text-xs text-gray-400 hidden sm:block">{copy.manageSubtitle}</p>
           </div>
           <button
             onClick={() => router.push('/dashboard/opportunities/create')}
             className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 bg-green-500 hover:bg-green-600 active:scale-95 text-white rounded-xl text-sm font-semibold transition-all shadow-sm"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">نشر فرصة جديدة</span>
-            <span className="sm:hidden">فرصة جديدة</span>
+            <span className="hidden sm:inline">{copy.publishNew}</span>
+            <span className="sm:hidden">{copy.newShort}</span>
           </button>
         </div>
       </div>
@@ -219,10 +227,10 @@ function PublisherView({
         {/* ── Stats ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           {[
-            { value: activeCount,     label: 'نشطة',             color: 'text-green-600',  bg: 'bg-green-50',  border: 'border-green-100' },
-            { value: totalApplicants, label: 'المتقدمون',        color: 'text-blue-600',   bg: 'bg-blue-50',   border: 'border-blue-100'  },
-            { value: totalViews,      label: 'المشاهدات',        color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100'},
-            { value: draftCount,      label: 'المسودات',         color: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-100'},
+            { value: activeCount,     label: copy.stats.active, color: 'text-green-600',  bg: 'bg-green-50',  border: 'border-green-100' },
+            { value: totalApplicants, label: copy.stats.applicants, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+            { value: totalViews, label: copy.stats.views, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100'},
+            { value: draftCount, label: copy.stats.drafts, color: 'text-yellow-600', bg: 'bg-yellow-50', border: 'border-yellow-100'},
           ].map(s => (
             <div key={s.label} className={`${s.bg} border ${s.border} rounded-xl p-3 sm:p-4 flex flex-col gap-0.5`}>
               <span className={`text-xl sm:text-2xl font-bold ${s.color}`}>{s.value}</span>
@@ -261,20 +269,20 @@ function PublisherView({
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <Target className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="font-medium text-sm">لا توجد فرص في هذه الحالة</p>
+            <p className="font-medium text-sm">{copy.emptyStatus}</p>
             <button
               onClick={() => router.push('/dashboard/opportunities/create')}
               className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-medium hover:bg-green-600 transition-colors"
             >
               <Plus className="w-4 h-4" />
-              نشر فرصة جديدة
+              {copy.publishNew}
             </button>
           </div>
         ) : (
           <div className="space-y-3">
             {filtered.map(opp => {
               const cfg    = getTypeConfig(opp.opportunityType);
-              const status = statusLabel(opp.status);
+              const status = statusLabel(opp.status, copy.statuses);
               const pct    = opp.maxApplicants > 0
                 ? Math.min(100, Math.round((opp.currentApplicants / opp.maxApplicants) * 100))
                 : 0;
@@ -294,7 +302,7 @@ function PublisherView({
                         style={{ backgroundColor: cfg.color }}
                       >
                         <span>{cfg.emoji}</span>
-                        <span>{cfg.label}</span>
+                        <span>{typeLabels[opp.opportunityType]}</span>
                       </span>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${status.bg} ${status.text2}`}>
                         {status.text}
@@ -314,7 +322,7 @@ function PublisherView({
                     {/* Row 3: progress */}
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs text-gray-500">
-                        <span>المتقدمون</span>
+                        <span>{copy.applicants}</span>
                         <span className="font-medium">{opp.currentApplicants} / {opp.maxApplicants}</span>
                       </div>
                       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -329,7 +337,7 @@ function PublisherView({
                     <div className="flex flex-wrap gap-2 text-xs text-gray-500">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3 flex-shrink-0" />
-                        {formatDate(opp.applicationDeadline)}
+                        {formatDate(opp.applicationDeadline, dateLocale)}
                       </span>
                       <span className="flex items-center gap-1">
                         <Eye className="w-3 h-3 flex-shrink-0" />
@@ -350,7 +358,7 @@ function PublisherView({
                         className="col-span-1 flex items-center justify-center gap-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors"
                       >
                         <Users className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="hidden sm:inline">الطلبات </span>
+                        <span className="hidden sm:inline">{copy.applications} </span>
                         <span>({opp.currentApplicants})</span>
                       </button>
                       <button
@@ -358,7 +366,7 @@ function PublisherView({
                         className="flex items-center justify-center gap-1 py-2 bg-gray-50 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-100 transition-colors"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">تعديل</span>
+                        <span className="hidden sm:inline">{copy.edit}</span>
                       </button>
                       <button
                         onClick={() => handleDelete(opp.id)}
@@ -367,7 +375,7 @@ function PublisherView({
                       >
                         {deletingId === opp.id
                           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          : <><Trash2 className="w-3.5 h-3.5" /><span className="hidden sm:inline">حذف</span></>
+                          : <><Trash2 className="w-3.5 h-3.5" /><span className="hidden sm:inline">{copy.delete}</span></>
                         }
                       </button>
                     </div>
@@ -392,6 +400,10 @@ function ExploreView({
   user: any;
   userData: any;
 }) {
+  const { locale, isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('opportunitiesPage');
+  const typeLabels = getTranslations<any>('opportunityTypes');
+  const dateLocale = ({ ar: 'ar-EG', en: 'en-US', es: 'es-ES', pt: 'pt-BR' } as const)[locale];
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading]             = useState(true);
   const [selectedType, setSelectedType]   = useState<'all' | OpportunityType>('all');
@@ -408,7 +420,7 @@ function ExploreView({
         const data = await getExploreOpportunities();
         setOpportunities(data);
       } catch {
-        toast.error('حدث خطأ أثناء تحميل الفرص');
+        toast.error(copy.loadError);
       } finally {
         setLoading(false);
       }
@@ -464,7 +476,7 @@ function ExploreView({
       const avatarUrl = rawAvatar ? getSupabaseImageUrl(rawAvatar, 'avatars') : undefined;
 
       await applyToOpportunity(selectedOpp.id, user.id, {
-        playerName:          p.name || p.full_name || userData?.full_name || userData?.displayName || 'لاعب',
+        playerName:          p.name || p.full_name || userData?.full_name || userData?.displayName || copy.defaultPlayer,
         playerPhone:         p.phone || p.whatsapp || userData?.phone || undefined,
         playerPosition:      applyPosition || p.position || undefined,
         playerCountry:       p.country || userData?.country || undefined,
@@ -492,11 +504,11 @@ function ExploreView({
       await notifyNewApplication(
         selectedOpp.organizerId,
         selectedOpp.organizerType,
-        p.name || p.full_name || userData?.full_name || 'لاعب',
+        p.name || p.full_name || userData?.full_name || copy.defaultPlayer,
         selectedOpp.title,
         selectedOpp.id
       );
-      toast.success('تم تقديم طلبك بنجاح!');
+      toast.success(copy.applySuccess);
       setShowApplyModal(false);
       // Optimistically increment local count
       setOpportunities(prev =>
@@ -507,19 +519,18 @@ function ExploreView({
         )
       );
     } catch (err: any) {
-      toast.error(err?.message || 'حدث خطأ أثناء التقديم');
+      toast.error(err?.message || copy.applyError);
     } finally {
       setApplying(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-10" dir="rtl">
+    <div className="min-h-screen bg-gray-50 pb-10" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-3">
-          <h1 className="text-lg font-bold text-gray-900">استكشاف الفرص</h1>
-          <p className="text-xs text-gray-400 hidden sm:block">اكتشف الفرص المتاحة وقدم الآن</p>
+          <div className="flex items-center justify-between gap-4"><div><h1 className="text-lg font-bold text-gray-900">{copy.exploreTitle}</h1><p className="text-xs text-gray-400 hidden sm:block">{copy.exploreSubtitle}</p></div><LanguageSwitcher /></div>
         </div>
       </div>
 
@@ -531,7 +542,7 @@ function ExploreView({
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="ابحث عن فرصة أو منظم..."
+            placeholder={copy.searchPlaceholder}
             className="w-full pr-9 pl-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
           />
           {search && (
@@ -554,7 +565,7 @@ function ExploreView({
                 : 'bg-white text-gray-600 border-gray-200 hover:border-green-300'
             }`}
           >
-            الكل
+            {copy.all}
           </button>
           {typeKeys.map(k => {
             const cfg = OPPORTUNITY_TYPES[k];
@@ -569,7 +580,7 @@ function ExploreView({
                 style={active ? { backgroundColor: cfg.color, borderColor: cfg.color } : {}}
               >
                 <span>{cfg.emoji}</span>
-                <span>{cfg.label}</span>
+                <span>{typeLabels[k]}</span>
               </button>
             );
           })}
@@ -583,8 +594,8 @@ function ExploreView({
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <Target className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">لا توجد فرص متاحة حالياً</p>
-            <p className="text-sm mt-1">جرب تغيير الفلتر أو ابحث بكلمة مختلفة</p>
+            <p className="font-medium">{copy.emptyExplore}</p>
+            <p className="text-sm mt-1">{copy.emptyHint}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -612,7 +623,7 @@ function ExploreView({
                       </span>
                       {opp.isFeatured && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-yellow-50 text-yellow-700 border border-yellow-200">
-                          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" /> مميزة
+                          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" /> {copy.featured}
                         </span>
                       )}
                       <button
@@ -624,7 +635,7 @@ function ExploreView({
                           window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
                         }}
                         className="mr-auto p-1 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
-                        title="مشاركة الفرصة"
+                        title={copy.share}
                       >
                         <Share2 className="w-3.5 h-3.5" />
                       </button>
@@ -638,22 +649,22 @@ function ExploreView({
                     {/* Dates */}
                     <div className="flex items-center gap-1.5 text-xs text-gray-500">
                       <Calendar className="w-3.5 h-3.5" />
-                      <span>{formatDate(opp.startDate)}</span>
+                      <span>{formatDate(opp.startDate, dateLocale)}</span>
                       <ChevronLeft className="w-3 h-3" />
-                      <span>{formatDate(opp.endDate)}</span>
+                      <span>{formatDate(opp.endDate, dateLocale)}</span>
                     </div>
 
                     {/* Benefits */}
                     {(opp.providesAccommodation || opp.providesMeals || opp.providesTransport) && (
                       <div className="flex flex-wrap gap-1.5">
                         {opp.providesAccommodation && (
-                          <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">🏠 إقامة</span>
+                          <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">{copy.benefits.accommodation}</span>
                         )}
                         {opp.providesMeals && (
-                          <span className="text-xs px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full">🍽️ وجبات</span>
+                          <span className="text-xs px-2 py-0.5 bg-orange-50 text-orange-700 rounded-full">{copy.benefits.meals}</span>
                         )}
                         {opp.providesTransport && (
-                          <span className="text-xs px-2 py-0.5 bg-green-50 text-green-700 rounded-full">🚌 مواصلات</span>
+                          <span className="text-xs px-2 py-0.5 bg-green-50 text-green-700 rounded-full">{copy.benefits.transport}</span>
                         )}
                       </div>
                     )}
@@ -667,10 +678,10 @@ function ExploreView({
                             : 'bg-gray-100 text-gray-600'
                         }`}
                       >
-                        آخر تقديم: {formatDate(opp.applicationDeadline)}
+                        {copy.deadline.replace('{{date}}', formatDate(opp.applicationDeadline, dateLocale))}
                       </span>
                       <span className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full">
-                        {slotsLeft > 0 ? `${slotsLeft} مقعد متاح` : 'مكتمل'}
+                        {slotsLeft > 0 ? copy.slotsAvailable.replace('{{count}}', String(slotsLeft)) : copy.full}
                       </span>
                       {opp.isPaid ? (
                         <span className="text-xs px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded-full">
@@ -678,7 +689,7 @@ function ExploreView({
                         </span>
                       ) : (
                         <span className="text-xs px-2 py-0.5 bg-green-50 text-green-700 rounded-full">
-                          مجاني
+                          {copy.free}
                         </span>
                       )}
                     </div>
@@ -689,7 +700,7 @@ function ExploreView({
                       disabled={slotsLeft <= 0}
                       className="w-full py-2.5 bg-green-500 text-white rounded-xl text-sm font-semibold hover:bg-green-600 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {slotsLeft <= 0 ? 'المقاعد مكتملة' : 'تقدم الآن'}
+                      {slotsLeft <= 0 ? copy.seatsFull : copy.applyNow}
                     </button>
                   </div>
                 </div>
@@ -701,7 +712,7 @@ function ExploreView({
 
       {/* Apply Modal — bottom sheet */}
       {showApplyModal && selectedOpp && (
-        <div className="fixed inset-0 z-50 flex items-end" dir="rtl">
+        <div className="fixed inset-0 z-50 flex items-end" dir={isRTL ? 'rtl' : 'ltr'}>
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/50"
@@ -714,7 +725,7 @@ function ExploreView({
 
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-gray-900">
-                التقديم على: {selectedOpp.title}
+                {copy.applyTitle.replace('{{title}}', selectedOpp.title)}
               </h2>
               <button
                 onClick={() => setShowApplyModal(false)}
@@ -728,13 +739,13 @@ function ExploreView({
               {/* Position */}
               <div>
                 <label className="text-xs text-gray-600 font-medium mb-1 block">
-                  مركز اللعب (اختياري)
+                  {copy.positionLabel}
                 </label>
                 <input
                   type="text"
                   value={applyPosition}
                   onChange={e => setApplyPosition(e.target.value)}
-                  placeholder="مثال: ST أو GK"
+                  placeholder={copy.positionPlaceholder}
                   className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
                 />
               </div>
@@ -742,12 +753,12 @@ function ExploreView({
               {/* Message */}
               <div>
                 <label className="text-xs text-gray-600 font-medium mb-1 block">
-                  رسالة إضافية (اختياري، بحد أقصى 500 حرف)
+                  {copy.messageLabel}
                 </label>
                 <textarea
                   value={applyMessage}
                   onChange={e => setApplyMessage(e.target.value.slice(0, 500))}
-                  placeholder="اكتب أي معلومات إضافية تريد مشاركتها..."
+                  placeholder={copy.messagePlaceholder}
                   rows={3}
                   className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none"
                 />
@@ -760,7 +771,7 @@ function ExploreView({
                 onClick={() => setShowApplyModal(false)}
                 className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50"
               >
-                إلغاء
+                {copy.cancel}
               </button>
               <button
                 onClick={handleApply}
@@ -770,10 +781,10 @@ function ExploreView({
                 {applying ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    جارٍ التقديم...
+                    {copy.applying}
                   </>
                 ) : (
-                  'تأكيد التقديم'
+                  copy.confirmApply
                 )}
               </button>
             </div>

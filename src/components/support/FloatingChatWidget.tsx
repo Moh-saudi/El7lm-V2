@@ -20,8 +20,9 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
-import { ar } from 'date-fns/locale/ar';
+import { ar, enUS, es, ptBR } from 'date-fns/locale';
 import { buildSenderInfo, normalizeNotificationPayload } from '@/lib/notifications/sender-utils';
+import { useTranslation } from '@/lib/i18n';
 
 interface SupportMessage {
   id: string;
@@ -54,6 +55,7 @@ interface SupportConversation {
 const FloatingChatWidget: React.FC = () => {
   const { user, userData } = useAuth();
   const pathname = usePathname();
+  const { t, locale, isRTL } = useTranslation();
 
   const [hasLogged, setHasLogged] = useState(false);
 
@@ -200,7 +202,7 @@ const FloatingChatWidget: React.FC = () => {
 
   const createNewConversation = async () => {
     if (!user || !userData) {
-      toast.error('يرجى تسجيل الدخول أولاً');
+      toast.error(t('sharedComponents.supportWidget.loginRequired'));
       return;
     }
 
@@ -211,7 +213,7 @@ const FloatingChatWidget: React.FC = () => {
       const newConversation = {
         id: newId,
         userId: user.id,
-        userName: userData.name || userData.displayName || userData.full_name || 'مستخدم',
+        userName: userData.name || userData.displayName || userData.full_name || t('sharedComponents.messages.defaultUser'),
         userType: userData.accountType || 'player',
         status: 'open',
         priority,
@@ -227,10 +229,10 @@ const FloatingChatWidget: React.FC = () => {
 
       setConversation(newConversation as SupportConversation);
       await sendWelcomeMessage(newId);
-      toast.success('تم إنشاء محادثة دعم فني جديدة');
+      toast.success(t('sharedComponents.supportWidget.created'));
     } catch (error) {
       console.error('❌ خطأ في إنشاء المحادثة:', error);
-      toast.error('فشل في إنشاء محادثة الدعم');
+      toast.error(t('sharedComponents.supportWidget.createFailed'));
     } finally {
       setLoading(false);
     }
@@ -242,9 +244,9 @@ const FloatingChatWidget: React.FC = () => {
         id: crypto.randomUUID(),
         conversationId,
         senderId: 'system',
-        senderName: 'نظام الدعم الفني',
+        senderName: t('sharedComponents.supportWidget.supportSystem'),
         senderType: 'system',
-        message: 'مرحباً بك في الدعم الفني لـ الحلم el7lm! 👋\n\nكيف يمكننا مساعدتك اليوم؟ فريق الدعم سيرد عليك في أقرب وقت ممكن.',
+        message: t('sharedComponents.supportWidget.welcomeMessage'),
         timestamp: new Date().toISOString(),
         isRead: true
       });
@@ -269,7 +271,7 @@ const FloatingChatWidget: React.FC = () => {
         id: crypto.randomUUID(),
         conversationId: conversation.id,
         senderId: user.id,
-        senderName: userData.name || userData.displayName || userData.full_name || 'مستخدم',
+        senderName: userData.name || userData.displayName || userData.full_name || t('sharedComponents.messages.defaultUser'),
         senderType: userData.accountType || 'player',
         message: message.trim(),
         timestamp: now,
@@ -288,10 +290,10 @@ const FloatingChatWidget: React.FC = () => {
       await sendAdminNotification(newMessage);
 
       setMessage('');
-      toast.success('تم إرسال الرسالة');
+      toast.success(t('sharedComponents.supportWidget.sent'));
     } catch (error) {
       console.error('❌ خطأ في إرسال الرسالة:', error);
-      toast.error('فشل في إرسال الرسالة');
+      toast.error(t('sharedComponents.supportWidget.sendFailed'));
     } finally {
       setLoading(false);
     }
@@ -308,7 +310,7 @@ const FloatingChatWidget: React.FC = () => {
 
       const notificationData = {
         userId: 'system',
-        title: 'رسالة دعم فني جديدة',
+        title: t('sharedComponents.supportWidget.newSupportMessage'),
         body: `${messageData.senderName}: ${messageData.message.substring(0, 50)}${messageData.message.length > 50 ? '...' : ''}`,
         type: 'support',
         senderName: messageData.senderName,
@@ -365,7 +367,7 @@ const FloatingChatWidget: React.FC = () => {
             <Button
               onClick={() => setIsOpen(!isOpen)}
               className="relative w-16 h-16 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-full shadow-2xl transition-all duration-500 ease-out hover:from-green-600 hover:to-emerald-700 hover:shadow-3xl hover:scale-[1.02] border-2 border-white"
-              aria-label="فتح الدعم الفني"
+              aria-label={t('sharedComponents.supportWidget.open')}
             >
               <MessageCircle className="w-7 h-7" />
               {unreadCount > 0 && (
@@ -379,19 +381,19 @@ const FloatingChatWidget: React.FC = () => {
             </Button>
 
             <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-sm rounded-lg opacity-0 hover:opacity-100 transition-opacity duration-500 whitespace-nowrap">
-              الدعم الفني
+              {t('sharedComponents.supportWidget.title')}
             </div>
           </div>
         </div>
       )}
 
       {isOpen && !shouldHideWidget() && (
-        <div className="fixed bottom-6 left-6 z-[9999] w-96 max-h-[600px] bg-white rounded-lg shadow-2xl border border-gray-200">
+        <div className="fixed bottom-6 left-6 z-[9999] w-96 max-h-[600px] bg-white rounded-lg shadow-2xl border border-gray-200" dir={isRTL ? 'rtl' : 'ltr'}>
           <div className="p-4 text-white bg-gradient-to-r from-green-500 to-emerald-600 rounded-t-lg">
             <div className="flex justify-between items-center">
             <div className="flex gap-2 items-center">
                 <Headphones className="w-5 h-5" />
-                <h3 className="font-semibold">الدعم الفني</h3>
+                <h3 className="font-semibold">{t('sharedComponents.supportWidget.title')}</h3>
             </div>
               <div className="flex gap-2 items-center">
               <Button
@@ -399,7 +401,7 @@ const FloatingChatWidget: React.FC = () => {
                   size="sm"
                   onClick={() => window.open('/support', '_blank')}
                   className="text-white hover:bg-white/20"
-                  title="فتح صفحة الدعم الفني الكاملة"
+                  title={t('sharedComponents.supportWidget.openFullPage')}
               >
                   <HelpCircle className="w-4 h-4" />
               </Button>
@@ -433,8 +435,8 @@ const FloatingChatWidget: React.FC = () => {
                 ) : messages.length === 0 ? (
                   <div className="py-8 text-center text-gray-500">
                     <MessageCircle className="mx-auto mb-4 w-12 h-12 text-gray-300" />
-                    <h3 className="mb-2 text-lg font-semibold">مرحباً بك في الدعم الفني</h3>
-                    <p className="text-sm">كيف يمكننا مساعدتك اليوم؟</p>
+                    <h3 className="mb-2 text-lg font-semibold">{t('sharedComponents.supportWidget.welcomeTitle')}</h3>
+                    <p className="text-sm">{t('sharedComponents.supportWidget.welcomeQuestion')}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -463,9 +465,9 @@ const FloatingChatWidget: React.FC = () => {
                               {msg.timestamp ?
                                 formatDistanceToNow(new Date(msg.timestamp), {
                                   addSuffix: true,
-                                  locale: ar
+                                  locale: { ar, en: enUS, es, pt: ptBR }[locale]
                                 }) :
-                                'الآن'
+                                t('sharedComponents.supportWidget.now')
                               }
                               </span>
                             {msg.senderId === user?.id && (
@@ -484,7 +486,7 @@ const FloatingChatWidget: React.FC = () => {
                 <div className="flex gap-2 items-center">
                     <Input
                     type="text"
-                    placeholder="اكتب رسالتك..."
+                    placeholder={t('sharedComponents.supportWidget.placeholder')}
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       onKeyPress={handleKeyPress}

@@ -45,7 +45,7 @@ import {
   getPlayersManagementAccountName,
   getPlayersManagementCopy,
   interpolate
-} from '@/lib/i18n/page-copy/players-management';
+} from '@/lib/i18n/players-management-copy';
 
 export default function AcademyPlayersPage() {
   const { user, userData } = useAuth();

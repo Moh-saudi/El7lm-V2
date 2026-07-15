@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { organizationReferralService } from '@/lib/organization/organization-referral-service';
 import { PlayerJoinRequest } from '@/types/organization-referral';
+import { useTranslation } from '@/lib/i18n';
 
 interface PlayerOrganizationCardProps {
     playerId: string;
@@ -39,34 +40,36 @@ const getOrganizationIcon = (type: string) => {
 const getOrganizationTypeLabel = (type: string) => {
     switch (type) {
         case 'academy':
-            return 'أكاديمية';
+            return 'academy';
         case 'club':
-            return 'نادي';
+            return 'club';
         case 'agent':
-            return 'وكيل';
+            return 'agent';
         case 'trainer':
-            return 'مدرب';
+            return 'trainer';
         default:
-            return 'منظمة';
+            return 'organization';
     }
 };
 
 // Helper to safely format dates
-const formatDate = (date: any) => {
+const formatDate = (date: any, locale: string) => {
     if (!date) return '';
     try {
         // Handle Firestore Timestamp
         if (date && typeof date.toDate === 'function') {
-            return date.toDate().toLocaleDateString('ar');
+            return date.toDate().toLocaleDateString(locale);
         }
         // Handle String or Date object
-        return new Date(date).toLocaleDateString('ar');
+        return new Date(date).toLocaleDateString(locale);
     } catch (e) {
         return '';
     }
 };
 
 export default function PlayerOrganizationCard({ playerId }: PlayerOrganizationCardProps) {
+    const { t, locale, isRTL } = useTranslation();
+    const rt = (key: string) => t(`sharedComponents.referrals.${key}`);
     const [joinRequests, setJoinRequests] = useState<PlayerJoinRequest[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -106,11 +109,11 @@ export default function PlayerOrganizationCard({ playerId }: PlayerOrganizationC
     // إذا لم يكن هناك أي طلبات
     if (joinRequests.length === 0) {
         return (
-            <Card className="border-2 border-dashed border-gray-300 bg-gray-50/50">
+            <Card className="border-2 border-dashed border-gray-300 bg-gray-50/50" dir={isRTL ? 'rtl' : 'ltr'}>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg">
                         <Users className="h-5 w-5 text-gray-400" />
-                        الانضمام لمنظمة
+                        {rt('joinOrganization')}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -120,16 +123,16 @@ export default function PlayerOrganizationCard({ playerId }: PlayerOrganizationC
                                 <Plus className="h-8 w-8 text-emerald-600" />
                             </div>
                             <p className="text-gray-600 mb-2">
-                                لست منضماً لأي أكاديمية أو نادي بعد
+                                {rt('notJoined')}
                             </p>
                             <p className="text-sm text-gray-500">
-                                انضم إلى أكاديمية للحصول على تدريب احترافي وفرص أفضل
+                                {rt('joinBenefit')}
                             </p>
                         </div>
                         <Link href="/dashboard/player/referrals">
                             <Button className="bg-emerald-600 hover:bg-emerald-700">
                                 <Plus className="h-4 w-4 mr-2" />
-                                انضم الآن
+                                {rt('joinNow')}
                             </Button>
                         </Link>
                     </div>
@@ -139,16 +142,16 @@ export default function PlayerOrganizationCard({ playerId }: PlayerOrganizationC
     }
 
     return (
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden" dir={isRTL ? 'rtl' : 'ltr'}>
             <CardHeader className="bg-gradient-to-r from-emerald-500 to-green-600 text-white">
                 <CardTitle className="flex items-center justify-between">
                     <span className="flex items-center gap-2">
                         <Users className="h-5 w-5" />
-                        ارتباطاتي
+                        {rt('affiliations')}
                     </span>
                     <Link href="/dashboard/player/referrals">
                         <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
-                            عرض الكل
+                            {rt('viewAll')}
                             <ArrowRight className="h-4 w-4 mr-2" />
                         </Button>
                     </Link>
@@ -174,15 +177,15 @@ export default function PlayerOrganizationCard({ playerId }: PlayerOrganizationC
                                         </h4>
                                         <Badge className="bg-emerald-100 text-emerald-700 border-emerald-300">
                                             <CheckCircle2 className="h-3 w-3 mr-1" />
-                                            مُقبول
+                                            {rt('accepted')}
                                         </Badge>
                                     </div>
                                     <p className="text-sm text-gray-600">
-                                        {getOrganizationTypeLabel(request.organizationType)}
+                                        {rt(`orgTypes.${getOrganizationTypeLabel(request.organizationType)}`)}
                                     </p>
                                     {request.approvedAt && (
                                         <p className="text-xs text-gray-500 mt-1">
-                                            ✅ تم القبول: {formatDate(request.approvedAt)}
+                                            ✅ {rt('acceptedAt')}: {formatDate(request.approvedAt, locale)}
                                         </p>
                                     )}
                                 </div>
@@ -208,14 +211,14 @@ export default function PlayerOrganizationCard({ playerId }: PlayerOrganizationC
                                         </h4>
                                         <Badge className="bg-amber-100 text-amber-700 border-amber-300">
                                             <Clock className="h-3 w-3 mr-1" />
-                                            في الانتظار
+                                            {rt('pending')}
                                         </Badge>
                                     </div>
                                     <p className="text-sm text-gray-600">
-                                        {getOrganizationTypeLabel(request.organizationType)}
+                                        {rt(`orgTypes.${getOrganizationTypeLabel(request.organizationType)}`)}
                                     </p>
                                     <p className="text-xs text-gray-500 mt-1">
-                                        📅 تم الإرسال: {formatDate(request.requestedAt)}
+                                        📅 {rt('sentAt')}: {formatDate(request.requestedAt, locale)}
                                     </p>
                                 </div>
                             </div>
@@ -235,15 +238,15 @@ export default function PlayerOrganizationCard({ playerId }: PlayerOrganizationC
                                     </h4>
                                     <Badge className="bg-red-100 text-red-700 border-red-300">
                                         <XCircle className="h-3 w-3 mr-1" />
-                                        مرفوض
+                                        {rt('rejected')}
                                     </Badge>
                                 </div>
                                 <p className="text-sm text-gray-600">
-                                    {getOrganizationTypeLabel(rejectedRequests[0].organizationType)}
+                                    {rt(`orgTypes.${getOrganizationTypeLabel(rejectedRequests[0].organizationType)}`)}
                                 </p>
                                 {rejectedRequests[0].rejectionReason && (
                                     <p className="text-xs text-red-600 mt-1">
-                                        💬 السبب: {rejectedRequests[0].rejectionReason}
+                                        💬 {rt('reason')}: {rejectedRequests[0].rejectionReason}
                                     </p>
                                 )}
                             </div>
@@ -254,7 +257,7 @@ export default function PlayerOrganizationCard({ playerId }: PlayerOrganizationC
                     <Link href="/dashboard/player/referrals">
                         <Button variant="outline" className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-50">
                             <Plus className="h-4 w-4 mr-2" />
-                            انضم لمنظمة جديدة
+                            {rt('joinNewOrganization')}
                         </Button>
                     </Link>
                 </div>

@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/firebase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
 import { Heart, MessageCircle, Share2, Music } from 'lucide-react';
 import Comments from '@/components/video/Comments';
+import { useTranslation } from '@/lib/i18n';
 
 interface Video {
   id: string;
@@ -21,6 +22,8 @@ interface Video {
 }
 
 export default function VideosPage() {
+  const { getTranslations } = useTranslation();
+  const copy = getTranslations<any>('publicVideos');
   const [videos, setVideos] = useState<Video[]>([]);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -57,13 +60,13 @@ export default function VideosPage() {
             const videoData = {
               id: `${playerDoc.id}_${index}`,
               url: video.url,
-              playerName: playerData.name || 'لاعب',
+              playerName: playerData.name || copy.player,
               playerImage: playerData.profile_image?.url || '/default-avatar.png',
               description: video.description || '',
               likes: video.likes || 0,
               comments: video.comments || 0,
               shares: video.shares || 0,
-              music: video.music || 'بدون موسيقى',
+              music: video.music || copy.noMusic,
               playerId: playerDoc.id,
               createdAt
             };
@@ -170,7 +173,7 @@ export default function VideosPage() {
         }
       }
 
-      alert('تم نسخ رابط الفيديو إلى الحافظة');
+      alert(copy.linkCopied);
     } catch (error) {
       console.error('Error sharing video:', error);
     }

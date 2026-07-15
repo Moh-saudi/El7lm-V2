@@ -3,10 +3,17 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { useTranslation } from '@/lib/i18n';
 
 type PrintType = 'schedule' | 'standings' | 'teams';
 
 export default function PrintPage() {
+  const { locale, isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('tournamentPrint');
+  const groupsCopy = getTranslations<any>('tournamentGroups');
+  const analytics = getTranslations<any>('tournamentAnalytics');
+  const bracket = getTranslations<any>('tournamentBracket');
+  const portal = getTranslations<any>('tournamentPortal');
   const { id }   = useParams<{ id: string }>();
   const params   = useSearchParams();
   const type     = (params.get('type') || 'schedule') as PrintType;
@@ -57,32 +64,25 @@ export default function PrintPage() {
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', fontFamily: 'Tajawal, sans-serif' }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid #e2e8f0', borderTopColor: '#d97706', animation: 'spin 0.7s linear infinite', margin: '0 auto 12px' }} />
-        <p style={{ color: '#64748b' }}>جاري التحضير للطباعة...</p>
+        <p style={{ color: '#64748b' }}>{copy.preparing}</p>
       </div>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 
-  const ROUND_LBL: Record<string,string> = {
-    league:'الدوري', group_stage:'دور المجموعات', R16:'دور الـ16',
-    QF:'ربع النهائي', SF:'نصف النهائي', F:'النهائي', '3rd':'المركز الثالث',
-  };
-
-  const STATUS_LBL: Record<string,string> = {
-    scheduled:'مجدولة', live:'مباشر', completed:'منتهية', postponed:'مؤجلة',
-  };
+  const roundLabels = { ...analytics.rounds, ...bracket.rounds, league: portal.dashboard.types.league };
 
   // Group standings by group
   const byGroup: Record<string, any[]> = {};
   if (type === 'standings') {
     for (const s of data) {
-      const key = s.group?.name || 'الترتيب العام';
+      const key = s.group?.name || copy.general;
       (byGroup[key] = byGroup[key] || []).push(s);
     }
   }
 
   return (
-    <div dir="rtl" style={{ fontFamily: 'Tajawal, sans-serif', padding: '24px', maxWidth: 900, margin: '0 auto', color: '#0f172a' }}>
+    <div dir={isRTL ? 'rtl' : 'ltr'} style={{ fontFamily: 'Tajawal, sans-serif', padding: '24px', maxWidth: 900, margin: '0 auto', color: '#0f172a' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
         @media print {
@@ -96,10 +96,10 @@ export default function PrintPage() {
       {/* Print controls */}
       <div className="no-print" style={{ display: 'flex', gap: 10, marginBottom: 20, justifyContent: 'center' }}>
         <button onClick={() => window.print()} style={{ padding: '10px 24px', background: '#d97706', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: 14, fontFamily: 'Tajawal, sans-serif' }}>
-          🖨️ طباعة
+          🖨️ {copy.print}
         </button>
         <button onClick={() => window.close()} style={{ padding: '10px 18px', background: '#f1f5f9', color: '#0f172a', border: '1px solid #e2e8f0', borderRadius: 10, fontWeight: 600, cursor: 'pointer', fontSize: 14, fontFamily: 'Tajawal, sans-serif' }}>
-          إغلاق
+          {copy.close}
         </button>
       </div>
 
@@ -111,13 +111,13 @@ export default function PrintPage() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>{tournament.name}</h1>
           <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
-            {type === 'schedule' ? 'جدول المباريات' : type === 'standings' ? 'جدول الترتيب' : 'قائمة الفرق'}
-            {tournament.start_date && ` · ${new Date(tournament.start_date).toLocaleDateString('ar-SA', { dateStyle: 'long' })}`}
+            {copy.titles[type]}
+            {tournament.start_date && ` · ${new Date(tournament.start_date).toLocaleDateString(locale, { dateStyle: 'long' })}`}
             {tournament.city && ` · ${tournament.city}`}
           </p>
         </div>
         <div style={{ marginRight: 'auto', textAlign: 'left', fontSize: 11, color: '#94a3b8' }}>
-          طُبع: {new Date().toLocaleDateString('ar-SA')}
+          {copy.printed}: {new Date().toLocaleDateString(locale)}
         </div>
       </div>
 
@@ -127,32 +127,32 @@ export default function PrintPage() {
           <thead>
             <tr style={{ background: '#0f172a', color: '#fff' }}>
               <th style={{ padding: '9px 10px', textAlign: 'center', width: 40 }}>#</th>
-              <th style={{ padding: '9px 10px', textAlign: 'right' }}>الجولة</th>
-              <th style={{ padding: '9px 10px', textAlign: 'right' }}>الفريق المضيف</th>
-              <th style={{ padding: '9px 10px', textAlign: 'center', width: 70 }}>النتيجة</th>
-              <th style={{ padding: '9px 10px', textAlign: 'right' }}>الفريق الضيف</th>
-              <th style={{ padding: '9px 10px', textAlign: 'right' }}>التاريخ والوقت</th>
-              <th style={{ padding: '9px 10px', textAlign: 'right' }}>الملعب</th>
-              <th style={{ padding: '9px 10px', textAlign: 'center', width: 70 }}>الحالة</th>
+              <th style={{ padding: '9px 10px', textAlign: 'right' }}>{copy.round}</th>
+              <th style={{ padding: '9px 10px', textAlign: 'right' }}>{copy.home}</th>
+              <th style={{ padding: '9px 10px', textAlign: 'center', width: 70 }}>{copy.score}</th>
+              <th style={{ padding: '9px 10px', textAlign: 'right' }}>{copy.away}</th>
+              <th style={{ padding: '9px 10px', textAlign: 'right' }}>{copy.date}</th>
+              <th style={{ padding: '9px 10px', textAlign: 'right' }}>{copy.venue}</th>
+              <th style={{ padding: '9px 10px', textAlign: 'center', width: 70 }}>{copy.status}</th>
             </tr>
           </thead>
           <tbody>
             {data.map((m: any, i: number) => (
               <tr key={m.id} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                 <td style={{ padding: '8px 10px', textAlign: 'center', color: '#94a3b8', fontWeight: 700 }}>{m.match_number || i + 1}</td>
-                <td style={{ padding: '8px 10px', fontSize: 12, color: '#64748b' }}>{ROUND_LBL[m.round] || m.round}</td>
+                <td style={{ padding: '8px 10px', fontSize: 12, color: '#64748b' }}>{roundLabels[m.round] || m.round}</td>
                 <td style={{ padding: '8px 10px', fontWeight: 700 }}>{m.home_team?.name || 'TBD'}</td>
                 <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 900, fontFamily: 'monospace', fontSize: 15 }}>
                   {m.status === 'completed' ? `${m.home_score ?? 0} - ${m.away_score ?? 0}` : '—'}
                 </td>
                 <td style={{ padding: '8px 10px', fontWeight: 700 }}>{m.away_team?.name || 'TBD'}</td>
                 <td style={{ padding: '8px 10px', fontSize: 12, color: '#475569' }}>
-                  {m.match_date ? new Date(m.match_date).toLocaleString('ar-SA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                  {m.match_date ? new Date(m.match_date).toLocaleString(locale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                 </td>
                 <td style={{ padding: '8px 10px', fontSize: 12, color: '#475569' }}>{m.venue || '—'}</td>
                 <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                   <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 8, background: m.status === 'completed' ? '#dcfce7' : m.status === 'live' ? '#fee2e2' : '#f1f5f9', color: m.status === 'completed' ? '#16a34a' : m.status === 'live' ? '#ef4444' : '#64748b' }}>
-                    {STATUS_LBL[m.status] || m.status}
+                    {portal.dashboard.statuses[m.status] || m.status}
                   </span>
                 </td>
               </tr>
@@ -168,8 +168,8 @@ export default function PrintPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#0f172a', color: '#fff' }}>
-                {['#','الفريق','لعب','فاز','تع','خسر','ل:ع','فارق','نقاط'].map(h => (
-                  <th key={h} style={{ padding: '8px 10px', textAlign: h === 'الفريق' ? 'right' : 'center' }}>{h}</th>
+                {['#',groupsCopy.team,groupsCopy.played,groupsCopy.won,groupsCopy.draw,groupsCopy.lost,groupsCopy.goals,groupsCopy.difference,groupsCopy.points].map(h => (
+                  <th key={h} style={{ padding: '8px 10px', textAlign: h === groupsCopy.team ? 'right' : 'center' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -197,7 +197,7 @@ export default function PrintPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
             <tr style={{ background: '#0f172a', color: '#fff' }}>
-              {['#','اسم الفريق','المدينة','المسؤول','الجوال','الفئة','حالة الدفع'].map(h => (
+              {['#',copy.teamName,copy.city,copy.manager,copy.phone,copy.category,copy.payment].map(h => (
                 <th key={h} style={{ padding: '9px 10px', textAlign: h === '#' ? 'center' : 'right' }}>{h}</th>
               ))}
             </tr>
@@ -224,7 +224,7 @@ export default function PrintPage() {
 
       {/* Footer */}
       <div style={{ marginTop: 32, paddingTop: 14, borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8' }}>
-        <span>منصة الحلم — إدارة البطولات</span>
+        <span>{copy.brand}</span>
         <span>el7lm.com</span>
       </div>
     </div>

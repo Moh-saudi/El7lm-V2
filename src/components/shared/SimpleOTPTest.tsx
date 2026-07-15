@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from '@/lib/i18n';
 
 interface SimpleOTPTestProps {
   phoneNumber: string;
@@ -9,6 +10,7 @@ interface SimpleOTPTestProps {
 }
 
 export default function SimpleOTPTest({ phoneNumber, isOpen, onClose }: SimpleOTPTestProps) {
+  const { t, isRTL } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -43,10 +45,10 @@ export default function SimpleOTPTest({ phoneNumber, isOpen, onClose }: SimpleOT
           await new Promise(resolve => setTimeout(resolve, 1000));
           
           console.log('✅ [SIMPLE] OTP sent successfully');
-          setMessage('تم إرسال OTP بنجاح!');
+          setMessage(t('sharedComponents.otp.testSent'));
         } catch (error) {
           console.error('❌ [SIMPLE] Error sending OTP:', error);
-          setError('فشل في إرسال OTP');
+          setError(t('sharedComponents.otp.testSendFailed'));
           hasSentRef.current = false;
         }
         
@@ -55,7 +57,7 @@ export default function SimpleOTPTest({ phoneNumber, isOpen, onClose }: SimpleOT
       
       sendOTP();
     }
-  }, [isOpen]); // إزالة phoneNumber من dependencies
+  }, [isOpen, phoneNumber, t]);
 
   // إعادة تعيين عند الإغلاق
   useEffect(() => {
@@ -70,14 +72,14 @@ export default function SimpleOTPTest({ phoneNumber, isOpen, onClose }: SimpleOT
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-xl" dir="rtl">
-        <h2 className="text-2xl font-bold mb-4 text-center">اختبار OTP مبسط</h2>
+      <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-xl" dir={isRTL ? 'rtl' : 'ltr'}>
+        <h2 className="text-2xl font-bold mb-4 text-center">{t('sharedComponents.otp.testTitle')}</h2>
         
         <div className="space-y-4">
-          <p className="text-center">رقم الهاتف: {phoneNumber}</p>
+          <p className="text-center">{t('sharedComponents.otp.phoneNumber').replace('{{phone}}', phoneNumber)}</p>
           
           {loading && (
-            <p className="text-center text-blue-600">جاري الإرسال...</p>
+            <p className="text-center text-blue-600">{t('sharedComponents.otp.sending')}</p>
           )}
           
           {message && (
@@ -92,7 +94,7 @@ export default function SimpleOTPTest({ phoneNumber, isOpen, onClose }: SimpleOT
             onClick={onClose}
             className="w-full bg-gray-600 text-white py-3 rounded-lg hover:bg-gray-700"
           >
-            إغلاق
+            {t('sharedComponents.otp.close')}
           </button>
         </div>
       </div>

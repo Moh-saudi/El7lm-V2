@@ -6,6 +6,10 @@ export interface OppsSectionData {
   subAr: string;
   titleEn: string;
   subEn: string;
+  titleEs: string;
+  subEs: string;
+  titlePt: string;
+  subPt: string;
   selectedOpportunityIds?: string[];
 }
 
@@ -17,6 +21,10 @@ const DEFAULT_DATA: OppsSectionData = {
   subAr: 'تصفح الان احدث الفرص المتاحة التي يقدمها الحلم لجميع الاعبين لفرص الاحتراف الخارجي',
   titleEn: 'Browse and Increase Your Opportunities',
   subEn: 'Browse now the latest opportunities offered by El7lm for all players to play professionally abroad',
+  titleEs: 'Oportunidades disponibles',
+  subEs: 'Últimas oportunidades de los mejores clubes y agentes',
+  titlePt: 'Oportunidades disponíveis',
+  subPt: 'Oportunidades recentes dos melhores clubes e agentes',
   selectedOpportunityIds: []
 };
 
@@ -29,7 +37,7 @@ export async function getOppsSection(): Promise<OppsSectionData> {
       .maybeSingle();
     
     if (error || !data) return DEFAULT_DATA;
-    return (data.items as OppsSectionData) || DEFAULT_DATA;
+    return { ...DEFAULT_DATA, ...((data.items as Partial<OppsSectionData>) || {}) };
   } catch (error) {
     console.error('Error fetching Opportunities Section params:', error);
     return DEFAULT_DATA;

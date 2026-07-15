@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Loader2, UserPlus, Users, Building2, Sparkles } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '@/lib/i18n';
 
 interface SearchResult {
     id: string;
@@ -37,6 +38,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
     onStartChat
 }) => {
     const { user } = useAuth();
+    const { t, locale, isRTL } = useTranslation();
     const [queryText, setQueryText] = useState('');
     const [results, setResults] = useState<SearchResult[]>([]);
     const [loading, setLoading] = useState(false);
@@ -128,7 +130,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                                             row.academy_name ||
                                             row.trainer_name ||
                                             row.agent_name ||
-                                            'مستخدم',
+                                            t('sharedComponents.newChat.defaultUser'),
                                         avatar: avatarUrl,
                                         type,
                                         email: row.email || '',
@@ -143,7 +145,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                 }
 
                 // Sort by name
-                combinedResults.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+                combinedResults.sort((a, b) => a.name.localeCompare(b.name, locale));
 
                 setResults(combinedResults);
                 console.log('✅ Search results:', combinedResults.length, 'accounts found');
@@ -155,28 +157,28 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
         }, 500);
 
         return () => clearTimeout(delayDebounce);
-    }, [queryText, isOpen, user]);
+    }, [queryText, isOpen, user, locale, t]);
 
     const getTypeLabel = (type: string) => {
         switch (type) {
-            case 'player': return { label: 'لاعب', icon: Users, color: 'bg-blue-100 text-blue-700' };
-            case 'club': return { label: 'نادي', icon: Building2, color: 'bg-orange-100 text-orange-700' };
-            case 'academy': return { label: 'أكاديمية', icon: Building2, color: 'bg-purple-100 text-purple-700' };
-            case 'trainer': return { label: 'مدرب', icon: Users, color: 'bg-green-100 text-green-700' };
-            case 'agent': return { label: 'وكيل', icon: Users, color: 'bg-yellow-100 text-yellow-700' };
-            default: return { label: 'مستخدم', icon: Users, color: 'bg-gray-100 text-gray-700' };
+            case 'player': return { label: t('sharedComponents.newChat.types.player'), icon: Users, color: 'bg-blue-100 text-blue-700' };
+            case 'club': return { label: t('sharedComponents.newChat.types.club'), icon: Building2, color: 'bg-orange-100 text-orange-700' };
+            case 'academy': return { label: t('sharedComponents.newChat.types.academy'), icon: Building2, color: 'bg-purple-100 text-purple-700' };
+            case 'trainer': return { label: t('sharedComponents.newChat.types.trainer'), icon: Users, color: 'bg-green-100 text-green-700' };
+            case 'agent': return { label: t('sharedComponents.newChat.types.agent'), icon: Users, color: 'bg-yellow-100 text-yellow-700' };
+            default: return { label: t('sharedComponents.newChat.defaultUser'), icon: Users, color: 'bg-gray-100 text-gray-700' };
         }
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden">
+            <DialogContent className="sm:max-w-2xl p-0 gap-0 overflow-hidden" dir={isRTL ? 'rtl' : 'ltr'}>
                 {/* Beautiful Header */}
                 <div className="relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 opacity-90" />
                     <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
 
-                    <div className="relative px-6 pt-6 pb-5" dir="rtl">
+                    <div className="relative px-6 pt-6 pb-5">
                         <DialogHeader className="space-y-3">
                             <div className="flex items-center gap-2">
                                 <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -184,20 +186,20 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                                 </div>
                                 <div>
                                     <DialogTitle className="text-xl font-bold text-white">
-                                        محادثة جديدة
+                                        {t('sharedComponents.newChat.title')}
                                     </DialogTitle>
                                     <DialogDescription className="text-white/80 text-sm">
-                                        ابحث عن مستخدم، لاعب، نادي، أكاديمية، مدرب أو وكيل
+                                        {t('sharedComponents.newChat.subtitle')}
                                     </DialogDescription>
                                 </div>
                             </div>
 
                             {/* Search Input */}
                             <div className="relative">
-                                <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <Search className={`absolute top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 ${isRTL ? 'right-4' : 'left-4'}`} />
                                 <input
                                     type="text"
-                                    placeholder="ابحث باسم، بريد إلكتروني أو رقم هاتف..."
+                                    placeholder={t('sharedComponents.newChat.placeholder')}
                                     value={queryText}
                                     onChange={(e) => setQueryText(e.target.value)}
                                     className="w-full h-12 pr-12 pl-4 rounded-xl bg-white/95 backdrop-blur-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-white/50 shadow-lg text-sm"
@@ -209,7 +211,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                 </div>
 
                 {/* Results Area */}
-                <ScrollArea className="h-[450px]" dir="rtl">
+                <ScrollArea className="h-[450px]" dir={isRTL ? 'rtl' : 'ltr'}>
                     <div className="p-4">
                         {loading ? (
                             <motion.div
@@ -218,7 +220,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                                 className="flex flex-col items-center gap-3 py-20"
                             >
                                 <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                                <p className="text-sm text-gray-500 font-medium">جاري البحث في جميع الحسابات...</p>
+                                <p className="text-sm text-gray-500 font-medium">{t('sharedComponents.newChat.searching')}</p>
                             </motion.div>
                         ) : results.length === 0 && queryText ? (
                             <motion.div
@@ -229,8 +231,8 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                                 <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center">
                                     <Search className="h-8 w-8 text-gray-400" />
                                 </div>
-                                <p className="text-sm text-gray-600 font-medium">لا توجد نتائج</p>
-                                <p className="text-xs text-gray-400">جرب البحث بكلمات مختلفة</p>
+                                <p className="text-sm text-gray-600 font-medium">{t('sharedComponents.newChat.noResults')}</p>
+                                <p className="text-xs text-gray-400">{t('sharedComponents.newChat.tryDifferent')}</p>
                             </motion.div>
                         ) : results.length === 0 ? (
                             <motion.div
@@ -241,8 +243,8 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                                 <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
                                     <UserPlus className="h-8 w-8 text-blue-500" />
                                 </div>
-                                <p className="text-sm text-gray-600 font-medium">ابدأ البحث</p>
-                                <p className="text-xs text-gray-400">ابحث في المستخدمين، اللاعبين، الأندية، الأكاديميات، المدربين والوكلاء</p>
+                                <p className="text-sm text-gray-600 font-medium">{t('sharedComponents.newChat.startSearch')}</p>
+                                <p className="text-xs text-gray-400">{t('sharedComponents.newChat.searchScope')}</p>
                             </motion.div>
                         ) : (
                             <div className="space-y-2">
@@ -284,7 +286,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                                                         </Badge>
                                                     </div>
                                                     <p className="text-xs text-gray-500 truncate">
-                                                        {res.email || res.phone || 'لا يوجد بريد'}
+                                                        {res.email || res.phone || t('sharedComponents.newChat.noEmail')}
                                                     </p>
                                                 </div>
 
@@ -308,11 +310,11 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="px-5 py-3 border-t bg-gradient-to-r from-gray-50 to-blue-50/50"
-                        dir="rtl"
+                        dir={isRTL ? 'rtl' : 'ltr'}
                     >
                         <p className="text-xs text-gray-600 flex items-center gap-2">
                             <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                            تم العثور على <span className="font-semibold text-blue-600">{results.length}</span> حساب
+                            {t('sharedComponents.newChat.foundPrefix')} <span className="font-semibold text-blue-600">{results.length}</span> {t('sharedComponents.newChat.account')}
                         </p>
                     </motion.div>
                 )}

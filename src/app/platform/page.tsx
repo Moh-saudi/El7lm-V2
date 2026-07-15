@@ -1,247 +1,114 @@
 'use client';
 
-import React from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Users, 
-  Trophy, 
-  Target,
-  BarChart3,
-  Shield,
-  Globe,
-  CheckCircle,
+import {
   ArrowRight,
-  Star,
-  Award,
-  TrendingUp,
-  Heart,
-  MessageSquare,
+  BarChart3,
+  CheckCircle,
+  DollarSign,
   GraduationCap,
-  DollarSign
+  MessageSquare,
+  Star,
+  Target,
+  Trophy,
+  Users,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
+import { useTranslation } from '@/lib/i18n';
+
+const featureIcons = [Users, BarChart3, Target, MessageSquare, GraduationCap, DollarSign];
+const featureColors = ['text-blue-500', 'text-green-500', 'text-purple-500', 'text-orange-500', 'text-indigo-500', 'text-emerald-500'];
+const audienceStyles = [
+  { icon: '⚽', color: 'from-blue-500 to-blue-600' },
+  { icon: '🏆', color: 'from-green-500 to-green-600' },
+  { icon: '🧑‍🏫', color: 'from-purple-500 to-purple-600' },
+  { icon: '💼', color: 'from-orange-500 to-orange-600' },
+];
+const stepIcons = [Users, Trophy, BarChart3, Target];
+
+type Feature = { title: string; description: string; details: string[] };
+type Audience = { title: string; benefits: string[] };
+type Step = { title: string; description: string };
 
 export default function PlatformGuidePage() {
-  const platformFeatures = [
-    {
-      icon: <Users className="w-8 h-8 text-blue-500" />,
-      title: 'إدارة الملف الشخصي',
-      description: 'إنشاء ملف شخصي شامل يعرض مهاراتك وإنجازاتك الرياضية',
-      details: [
-        'رفع الصور والفيديوهات',
-        'تسجيل الإحصائيات والإنجازات',
-        'عرض المهارات التقنية والبدنية',
-        'تحديث البيانات الشخصية'
-      ]
-    },
-    {
-      icon: <BarChart3 className="w-8 h-8 text-green-500" />,
-      title: 'تحليل الأداء',
-      description: 'تحليل متقدم لأدائك الرياضي باستخدام الذكاء الاصطناعي',
-      details: [
-        'تحليل الفيديوهات تلقائياً',
-        'إحصائيات مفصلة عن الأداء',
-        'مقارنات مع اللاعبين الآخرين',
-        'توصيات للتحسين'
-      ]
-    },
-    {
-      icon: <Target className="w-8 h-8 text-purple-500" />,
-      title: 'البحث عن الفرص',
-      description: 'اكتشف الفرص الرياضية المناسبة لمستواك وطموحاتك',
-      details: [
-        'بحث ذكي عن الأندية',
-        'فرص التجارب والاختبارات',
-        'برامج التدريب المتخصصة',
-        'المنح الرياضية'
-      ]
-    },
-    {
-      icon: <MessageSquare className="w-8 h-8 text-orange-500" />,
-      title: 'التواصل المباشر',
-      description: 'تواصل مباشرة مع الأندية والمدربين والوكلاء',
-      details: [
-        'نظام رسائل آمن',
-        'إشعارات فورية',
-        'مشاركة الملفات والفيديوهات',
-        'جدولة المقابلات'
-      ]
-    },
-    {
-      icon: <GraduationCap className="w-8 h-8 text-indigo-500" />,
-      title: 'مدرسة منصة الحلم',
-      description: 'تعليم شامل للغات والعلوم والمهارات الحياتية',
-      details: [
-        'تعلم اللغات المختلفة',
-        'العلوم والمناهج التعليمية',
-        'المهارات الحياتية والـ Life Coach',
-        'الإعداد البدني والتكتيكات الكروية'
-      ]
-    },
-    {
-      icon: <DollarSign className="w-8 h-8 text-emerald-500" />,
-      title: 'نظام الإحالات',
-      description: 'اربح المال من خلال دعوة الأصدقاء للمنصة',
-      details: [
-        'دولار واحد لكل إحالة ناجحة',
-        'تتبع الإحالات والأرباح',
-        'سحب الأموال بسهولة',
-        'رابط إحالة شخصي'
-      ]
-    }
-  ];
-
-  const userTypes = [
-    {
-      type: 'اللاعبون',
-      icon: '⚽',
-      color: 'from-blue-500 to-blue-600',
-      benefits: [
-        'عرض مواهبك للعالم',
-        'تحليل أدائك بدقة',
-        'التواصل مع الأندية',
-        'تطوير مهاراتك في مدرسة الحلم'
-      ]
-    },
-    {
-      type: 'الأندية',
-      icon: '🏆',
-      color: 'from-green-500 to-green-600',
-      benefits: [
-        'اكتشاف المواهب الجديدة',
-        'تقييم اللاعبين بدقة',
-        'إدارة قاعدة بيانات اللاعبين',
-        'تحليل الأداء الجماعي'
-      ]
-    },
-    {
-      type: 'المدربون',
-      icon: '👨‍🏫',
-      color: 'from-purple-500 to-purple-600',
-      benefits: [
-        'متابعة تطور اللاعبين',
-        'وضع خطط تدريبية',
-        'تحليل نقاط القوة والضعف',
-        'تقييم الأداء المستمر'
-      ]
-    },
-    {
-      type: 'الوكلاء',
-      icon: '💼',
-      color: 'from-orange-500 to-orange-600',
-      benefits: [
-        'إدارة محفظة اللاعبين',
-        'البحث عن الفرص',
-        'التفاوض مع الأندية',
-        'متابعة تطور المواهب'
-      ]
-    }
-  ];
-
-  const steps = [
-    {
-      number: '01',
-      title: 'إنشاء الحساب',
-      description: 'سجل حساباً جديداً واختر نوع المستخدم المناسب',
-      icon: <Users className="w-6 h-6" />
-    },
-    {
-      number: '02',
-      title: 'إكمال الملف الشخصي',
-      description: 'أضف معلوماتك الشخصية والرياضية وارفع الصور والفيديوهات',
-      icon: <Trophy className="w-6 h-6" />
-    },
-    {
-      number: '03',
-      title: 'تحليل الأداء',
-      description: 'احصل على تحليل شامل لأدائك من خلال الذكاء الاصطناعي',
-      icon: <BarChart3 className="w-6 h-6" />
-    },
-    {
-      number: '04',
-      title: 'التواصل والفرص',
-      description: 'ابدأ التواصل مع الأندية واكتشف الفرص المناسبة لك',
-      icon: <Target className="w-6 h-6" />
-    }
-  ];
+  const { isRTL, getTranslations } = useTranslation();
+  const t = getTranslations<any>('platformGuide');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      {/* Header */}
-      <motion.section 
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className={`fixed top-4 z-50 ${isRTL ? 'left-4' : 'right-4'}`}>
+        <LanguageSwitcher />
+      </div>
+
+      <motion.section
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="py-20 px-4 text-center relative overflow-hidden"
+        className="relative overflow-hidden px-4 py-20 text-center"
       >
-        <div className="max-w-4xl mx-auto relative z-10">
-          <motion.h1 
+        <div className="relative z-10 mx-auto max-w-4xl">
+          <motion.h1
             initial={{ scale: 0.5 }}
             animate={{ scale: 1 }}
-            transition={{ duration: 0.8, type: "spring" }}
-            className="text-5xl md:text-6xl font-bold text-gray-900 mb-6"
+            transition={{ duration: 0.8, type: 'spring' }}
+            className="mb-6 text-5xl font-bold text-gray-900 md:text-6xl"
           >
-            شرح
+            {t.hero.prefix}{' '}
             <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              {' '}المنصة
+              {t.hero.accent}
             </span>
           </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-xl text-gray-600 mb-8"
-          >
-            اكتشف كيف تعمل منصة الحلم وكيف يمكنها مساعدتك في تحقيق أهدافك الرياضية
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mb-8 text-xl text-gray-600">
+            {t.hero.subtitle}
           </motion.p>
         </div>
       </motion.section>
 
-      {/* Platform Features */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              مميزات المنصة
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              أدوات متقدمة وشاملة لتطوير مسيرتك الرياضية
-            </p>
-          </motion.div>
+      <section className="bg-white py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <SectionTitle title={t.features.title} subtitle={t.features.subtitle} />
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {t.features.items.map((feature: Feature, index: number) => {
+              const Icon = featureIcons[index];
+              return (
+                <motion.div key={feature.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} whileHover={{ scale: 1.05, y: -5 }}>
+                  <Card className="h-full transition-all duration-300 hover:shadow-xl">
+                    <CardContent className="p-8">
+                      <div className="mb-6 flex justify-center"><Icon className={`h-8 w-8 ${featureColors[index]}`} /></div>
+                      <h3 className="mb-4 text-center text-xl font-bold text-gray-900">{feature.title}</h3>
+                      <p className="mb-6 text-center leading-relaxed text-gray-600">{feature.description}</p>
+                      <ul className="space-y-2">
+                        {feature.details.map((detail) => (
+                          <li key={detail} className="flex items-center gap-2 text-sm text-gray-600">
+                            <CheckCircle className="h-4 w-4 flex-shrink-0 text-green-500" /><span>{detail}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {platformFeatures.map((feature, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ scale: 1.05, y: -5 }}
-              >
-                <Card className="h-full hover:shadow-xl transition-all duration-300">
-                  <CardContent className="p-8">
-                    <div className="mb-6 flex justify-center">
-                      {feature.icon}
+      <section className="bg-gray-50 py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <SectionTitle title={t.audiences.title} subtitle={t.audiences.subtitle} />
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+            {t.audiences.items.map((audience: Audience, index: number) => (
+              <motion.div key={audience.title} initial={{ opacity: 0, scale: 0.8 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} whileHover={{ scale: 1.05, y: -10 }}>
+                <Card className="h-full overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className={`bg-gradient-to-br p-6 text-center text-white ${audienceStyles[index].color}`}>
+                      <div className="mb-3 text-4xl">{audienceStyles[index].icon}</div><h3 className="text-xl font-bold">{audience.title}</h3>
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">
-                      {feature.title}
-                    </h3>
-                    <p className="text-gray-600 mb-6 text-center leading-relaxed">
-                      {feature.description}
-                    </p>
-                    <ul className="space-y-2">
-                      {feature.details.map((detail, detailIndex) => (
-                        <li key={detailIndex} className="flex items-center space-x-2 space-x-reverse text-sm text-gray-600">
-                          <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                          <span>{detail}</span>
-                        </li>
+                    <ul className="space-y-3 p-6">
+                      {audience.benefits.map((benefit) => (
+                        <li key={benefit} className="flex items-center gap-2 text-sm text-gray-600"><Star className="h-4 w-4 flex-shrink-0 text-yellow-500" /><span>{benefit}</span></li>
                       ))}
                     </ul>
                   </CardContent>
@@ -252,139 +119,49 @@ export default function PlatformGuidePage() {
         </div>
       </section>
 
-      {/* User Types */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              لكل نوع مستخدم
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              المنصة مصممة لتلبي احتياجات جميع أطراف المجتمع الرياضي
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {userTypes.map((user, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, scale: 0.8 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ scale: 1.05, y: -10 }}
-              >
-                <Card className="h-full overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className={`bg-gradient-to-br ${user.color} p-6 text-white text-center`}>
-                      <div className="text-4xl mb-3">{user.icon}</div>
-                      <h3 className="text-xl font-bold">{user.type}</h3>
-                    </div>
-                    <div className="p-6">
-                      <ul className="space-y-3">
-                        {user.benefits.map((benefit, benefitIndex) => (
-                          <li key={benefitIndex} className="flex items-center space-x-2 space-x-reverse text-sm text-gray-600">
-                            <Star className="w-4 h-4 text-yellow-500 flex-shrink-0" />
-                            <span>{benefit}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+      <section className="bg-gradient-to-r from-blue-600 to-indigo-700 py-16 text-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <SectionTitle title={t.steps.title} subtitle={t.steps.subtitle} light />
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+            {t.steps.items.map((step: Step, index: number) => {
+              const Icon = stepIcons[index];
+              return (
+                <motion.div key={step.title} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.2 }} className="text-center">
+                  <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white/20"><span className="text-2xl font-bold">{String(index + 1).padStart(2, '0')}</span></div>
+                  <div className="rounded-lg bg-white/10 p-6 backdrop-blur-sm">
+                    <div className="mb-4 flex justify-center text-white/80"><Icon className="h-6 w-6" /></div>
+                    <h3 className="mb-3 text-xl font-bold">{step.title}</h3><p className="leading-relaxed text-white/80">{step.description}</p>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* How it Works */}
-      <section className="py-16 bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              كيف تعمل المنصة؟
-            </h2>
-            <p className="text-xl opacity-90 max-w-3xl mx-auto">
-              أربع خطوات بسيطة للبدء في رحلتك الرياضية
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {steps.map((step, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.2 }}
-                className="text-center relative"
-              >
-                <div className="relative mb-6">
-                  <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl font-bold">{step.number}</span>
-                  </div>
-                </div>
-
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
-                  <div className="mb-4 flex justify-center text-white/80">
-                    {step.icon}
-                  </div>
-                  <h3 className="text-xl font-bold mb-3">{step.title}</h3>
-                  <p className="text-white/80 leading-relaxed">{step.description}</p>
-                </div>
-              </motion.div>
-            ))}
+      <section className="bg-gray-50 py-16">
+        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mx-auto max-w-4xl px-4 text-center">
+          <h2 className="mb-6 text-4xl font-bold text-gray-900 md:text-5xl">{t.cta.title}</h2>
+          <p className="mb-8 text-xl text-gray-600">{t.cta.subtitle}</p>
+          <div className="flex flex-col justify-center gap-4 sm:flex-row">
+            <Button onClick={() => { window.location.href = '/auth/register'; }} className="inline-flex rounded-full bg-blue-600 px-8 py-4 text-lg font-semibold text-white hover:bg-blue-700">
+              <span>{t.cta.start}</span><ArrowRight className={`h-5 w-5 ${isRTL ? 'rotate-180' : ''}`} />
+            </Button>
+            <Button onClick={() => { window.location.href = '/contact'; }} variant="outline" className="rounded-full border-2 border-gray-300 px-8 py-4 text-lg font-semibold text-gray-700 hover:bg-gray-100">
+              {t.cta.contact}
+            </Button>
           </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              جاهز للبدء؟
-            </h2>
-            <p className="text-xl text-gray-600 mb-8">
-              انضم إلى آلاف المستخدمين الذين يطورون مسيرتهم الرياضية معنا
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                onClick={() => window.location.href = '/auth/register'}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-full text-lg font-semibold inline-flex items-center space-x-2 space-x-reverse"
-              >
-                <span>ابدأ مجاناً الآن</span>
-                <ArrowRight className="w-5 h-5" />
-              </Button>
-              <Button 
-                onClick={() => window.location.href = '/contact'}
-                variant="outline" 
-                className="border-2 border-gray-300 text-gray-700 hover:bg-gray-100 px-8 py-4 rounded-full text-lg font-semibold"
-              >
-                تحدث مع فريقنا
-              </Button>
-            </div>
-          </motion.div>
-        </div>
+        </motion.div>
       </section>
     </div>
   );
 }
 
-
-
+function SectionTitle({ title, subtitle, light = false }: { title: string; subtitle: string; light?: boolean }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-16 text-center">
+      <h2 className={`mb-6 text-4xl font-bold md:text-5xl ${light ? 'text-white' : 'text-gray-900'}`}>{title}</h2>
+      <p className={`mx-auto max-w-3xl text-xl ${light ? 'text-white/90' : 'text-gray-600'}`}>{subtitle}</p>
+    </motion.div>
+  );
+}

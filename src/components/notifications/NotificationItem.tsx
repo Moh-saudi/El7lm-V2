@@ -24,7 +24,9 @@ import {
   Shield
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { ar, enUS, es, pt } from 'date-fns/locale';
 import { resolveAvatarUrl } from '@/lib/notifications/sender-utils';
+import { useTranslation } from '@/lib/i18n';
 
 interface Notification {
   id: string;
@@ -61,6 +63,8 @@ export default function NotificationItem({
   onNavigateToAction,
   showSenderInfo = true
 }: NotificationItemProps) {
+  const { t, locale, isRTL } = useTranslation();
+  const nt = (key: string) => t(`sharedComponents.notifications.${key}`);
   const metadata = notification.metadata || {};
   const primarySenderId =
     notification.senderId ||
@@ -77,7 +81,7 @@ export default function NotificationItem({
     metadata.profileOwnerName ||
     metadata.userName ||
     metadata.title ||
-    'مستخدم';
+    nt('user');
 
   const derivedSenderAvatar =
     notification.senderAvatar ||
@@ -163,9 +167,10 @@ export default function NotificationItem({
   const formatNotificationTime = (timestamp: any) => {
     try {
       const date = timestamp?.toDate?.() || new Date(timestamp);
-              return formatDistanceToNow(date, { addSuffix: true });
+      const dateLocale = locale === 'ar' ? ar : locale === 'es' ? es : locale === 'pt' ? pt : enUS;
+      return formatDistanceToNow(date, { addSuffix: true, locale: dateLocale });
     } catch {
-      return 'الآن';
+      return nt('now');
     }
   };
 
@@ -174,32 +179,32 @@ export default function NotificationItem({
     if (actionType) {
       switch (actionType) {
         case 'profile_view':
-          return 'مشاهدة الملف الشخصي';
+          return nt('profileView');
         case 'message_sent':
-          return 'رسالة جديدة';
+          return nt('newMessage');
         case 'connection_request':
-          return 'طلب اتصال';
+          return nt('connectionRequest');
         case 'follow':
-          return 'متابعة';
+          return nt('follow');
         case 'like':
-          return 'إعجاب';
+          return nt('like');
         case 'comment':
-          return 'تعليق';
+          return nt('comment');
         default:
-          return 'تفاعل';
+          return nt('interaction');
       }
     }
 
     switch (type) {
       case 'success':
-        return 'نجح';
+        return nt('success');
       case 'warning':
-        return 'تحذير';
+        return nt('warning');
       case 'error':
-        return 'خطأ';
+        return nt('error');
       case 'info':
       default:
-        return 'معلومات';
+        return nt('information');
     }
   };
 
@@ -227,19 +232,19 @@ export default function NotificationItem({
   const getAccountTypeLabel = (accountType?: string) => {
     switch (accountType) {
       case 'club':
-        return 'نادي';
+        return nt('club');
       case 'academy':
-        return 'أكاديمية';
+        return nt('academy');
       case 'agent':
-        return 'وكيل';
+        return nt('agent');
       case 'trainer':
-        return 'مدرب';
+        return nt('trainer');
       case 'player':
-        return 'لاعب';
+        return nt('player');
       case 'admin':
-        return 'مدير';
+        return nt('admin');
       default:
-        return 'مستخدم';
+        return nt('user');
     }
   };
 
@@ -256,6 +261,7 @@ export default function NotificationItem({
 
   return (
     <Card 
+      dir={isRTL ? 'rtl' : 'ltr'}
       className={`border-l-4 ${getTypeColor(notification.type)} ${
         !notification.isRead ? 'bg-blue-50 border-blue-300 shadow-md' : 'hover:bg-gray-50'
       } transition-all duration-200`}
@@ -295,7 +301,7 @@ export default function NotificationItem({
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
                     {notification.actionType === 'profile_view' ? (
                       <>
-                        <span className="text-sm text-gray-600">شاهد ملفك:</span>
+                        <span className="text-sm text-gray-600">{nt('viewedYourProfile')}:</span>
                         <span 
                           className="font-medium text-blue-600 cursor-pointer hover:underline"
                           onClick={() => {
@@ -351,7 +357,7 @@ export default function NotificationItem({
             <div className="flex items-center gap-2 mb-3">
               {!notification.isRead && (
                 <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs">
-                  جديد
+                  {nt('new')}
                 </Badge>
               )}
               <Badge variant="outline" className="text-xs">
@@ -374,7 +380,7 @@ export default function NotificationItem({
                     className="flex items-center gap-1 text-xs"
                   >
                     <Check className="w-3 h-3" />
-                    تحديد كمقروء
+                    {nt('markAsRead')}
                   </Button>
                 )}
                 
@@ -389,7 +395,7 @@ export default function NotificationItem({
                     className="flex items-center gap-1 text-xs bg-blue-600 hover:bg-blue-700 text-white"
                   >
                     <Eye className="w-3 h-3" />
-                    عرض الملف الشخصي
+                    {nt('viewProfile')}
                   </Button>
                 )}
                 
@@ -404,7 +410,7 @@ export default function NotificationItem({
                     className="flex items-center gap-1 text-xs"
                   >
                     <User className="w-3 h-3" />
-                    عرض ملف المرسل
+                    {nt('viewSenderProfile')}
                   </Button>
                 )}
 
@@ -415,7 +421,7 @@ export default function NotificationItem({
                   className="flex items-center gap-1 text-xs"
                 >
                   <Eye className="w-3 h-3" />
-                  عرض التفاصيل
+                  {nt('viewDetails')}
                 </Button>
               </div>
             </div>

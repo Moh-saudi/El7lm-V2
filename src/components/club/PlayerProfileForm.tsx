@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -7,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/lib/supabase/config';
 import { PlayerFormData } from '@/types/player';
+import { useTranslation } from '@/lib/i18n';
 // ... import other needed UI components and types
 
 interface PlayerProfileFormProps {
@@ -92,7 +95,8 @@ const defaultData: PlayerFormData = {
 };
 
 export default function PlayerProfileForm({ clubId = '', onSuccess, initialData }: PlayerProfileFormProps) {
-  if (!clubId) return <div className="text-red-500">لا يوجد معرف النادي</div>;
+  const { t, isRTL } = useTranslation();
+  const ft = (key: string) => t(`sharedComponents.clubPlayerForm.${key}`);
   const [data, setData] = useState<PlayerFormData>({ ...defaultData, ...initialData });
   const [tab, setTab] = useState('personal');
   const [loading, setLoading] = useState(false);
@@ -102,15 +106,15 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
     const newErrors: Record<string, string> = {};
 
     if (!data.full_name) {
-      newErrors.full_name = 'الاسم الكامل مطلوب';
+      newErrors.full_name = ft('fullNameRequired');
     }
     if (!data.email) {
-      newErrors.email = 'البريد الإلكتروني مطلوب';
+      newErrors.email = ft('emailRequired');
     } else if (!/\S+@\S+\.\S+/.test(data.email)) {
-      newErrors.email = 'البريد الإلكتروني غير صالح';
+      newErrors.email = ft('emailInvalid');
     }
     if (!data.phone) {
-      newErrors.phone = 'رقم الهاتف مطلوب';
+      newErrors.phone = ft('phoneRequired');
     }
 
     setErrors(newErrors);
@@ -138,24 +142,26 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
     }
   };
 
+  if (!clubId) return <div className="text-red-500">{ft('clubIdMissing')}</div>;
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
       <Tabs value={tab} onValueChange={setTab} className="mb-4">
         <TabsList className="grid w-full grid-cols-4 gap-2">
-          <TabsTrigger value="personal">المعلومات الشخصية</TabsTrigger>
-          <TabsTrigger value="sports">المعلومات الرياضية</TabsTrigger>
-          <TabsTrigger value="education">التعليم</TabsTrigger>
-          <TabsTrigger value="medical">السجل الطبي</TabsTrigger>
-          <TabsTrigger value="skills">المهارات</TabsTrigger>
-          <TabsTrigger value="objectives">الأهداف</TabsTrigger>
-          <TabsTrigger value="media">الوسائط</TabsTrigger>
-          <TabsTrigger value="contracts">العقود</TabsTrigger>
+          <TabsTrigger value="personal">{ft('personal')}</TabsTrigger>
+          <TabsTrigger value="sports">{ft('sports')}</TabsTrigger>
+          <TabsTrigger value="education">{ft('education')}</TabsTrigger>
+          <TabsTrigger value="medical">{ft('medical')}</TabsTrigger>
+          <TabsTrigger value="skills">{ft('skills')}</TabsTrigger>
+          <TabsTrigger value="objectives">{ft('objectives')}</TabsTrigger>
+          <TabsTrigger value="media">{ft('media')}</TabsTrigger>
+          <TabsTrigger value="contracts">{ft('contracts')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="personal" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="full_name">الاسم الكامل</Label>
+              <Label htmlFor="full_name">{ft('fullName')}</Label>
               <Input
                 id="full_name"
                 value={data.full_name}
@@ -166,7 +172,7 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">البريد الإلكتروني</Label>
+              <Label htmlFor="email">{ft('email')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -178,7 +184,7 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">رقم الهاتف</Label>
+              <Label htmlFor="phone">{ft('phone')}</Label>
               <Input
                 id="phone"
                 type="tel"
@@ -190,7 +196,7 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="whatsapp">واتساب</Label>
+              <Label htmlFor="whatsapp">{ft('whatsapp')}</Label>
               <Input
                 id="whatsapp"
                 type="tel"
@@ -200,7 +206,7 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="birth_date">تاريخ الميلاد</Label>
+              <Label htmlFor="birth_date">{ft('birthDate')}</Label>
               <Input
                 id="birth_date"
                 type="date"
@@ -210,7 +216,7 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="nationality">الجنسية</Label>
+              <Label htmlFor="nationality">{ft('nationality')}</Label>
               <Input
                 id="nationality"
                 value={data.nationality}
@@ -223,7 +229,7 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
         <TabsContent value="sports" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="primary_position">المركز الأساسي</Label>
+              <Label htmlFor="primary_position">{ft('primaryPosition')}</Label>
               <Input
                 id="primary_position"
                 value={data.primary_position}
@@ -232,7 +238,7 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="secondary_position">المركز الثانوي</Label>
+              <Label htmlFor="secondary_position">{ft('secondaryPosition')}</Label>
               <Input
                 id="secondary_position"
                 value={data.secondary_position}
@@ -241,18 +247,18 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="preferred_foot">القدم المفضلة</Label>
+              <Label htmlFor="preferred_foot">{ft('preferredFoot')}</Label>
               <Select
                 value={data.preferred_foot}
                 onValueChange={value => setData(d => ({ ...d, preferred_foot: value }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="اختر القدم المفضلة" />
+                  <SelectValue placeholder={ft('selectPreferredFoot')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="right">يمين</SelectItem>
-                  <SelectItem value="left">يسار</SelectItem>
-                  <SelectItem value="both">كلاهما</SelectItem>
+                  <SelectItem value="right">{ft('right')}</SelectItem>
+                  <SelectItem value="left">{ft('left')}</SelectItem>
+                  <SelectItem value="both">{ft('both')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -268,7 +274,7 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
           disabled={loading}
           className="bg-blue-600 text-white hover:bg-blue-700"
         >
-          {loading ? 'جاري الحفظ...' : 'حفظ'}
+          {loading ? ft('saving') : ft('save')}
         </Button>
         <Button
           type="button"
@@ -276,7 +282,7 @@ export default function PlayerProfileForm({ clubId = '', onSuccess, initialData 
           onClick={onSuccess}
           disabled={loading}
         >
-          إلغاء
+          {ft('cancel')}
         </Button>
       </div>
     </form>

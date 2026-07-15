@@ -7,14 +7,12 @@ import { Trophy, Mail, Lock, User, Building2, Phone, Globe, Eye, EyeOff, Loader2
 // @ts-ignore
 // @ts-ignore
 import { signUpClient } from '@/lib/tournament-portal/auth';
-
-const COUNTRIES = [
-    'السعودية','الإمارات','قطر','الكويت','البحرين','عُمان',
-    'مصر','الأردن','العراق','لبنان','سوريا','اليمن','ليبيا',
-    'تونس','الجزائر','المغرب','السودان','فلسطين','موريتانيا',
-];
+import { useTranslation } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 export default function TournamentPortalRegister() {
+    const { isRTL, getTranslations } = useTranslation();
+    const t = getTranslations<any>('tournamentPortalRegister');
     const router = useRouter();
 
     const [form, setForm] = useState({
@@ -36,13 +34,13 @@ export default function TournamentPortalRegister() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.name || !form.email || !form.password) {
-            setError('يرجى تعبئة الحقول المطلوبة'); return;
+            setError(t.required); return;
         }
         if (form.password.length < 8) {
-            setError('كلمة المرور يجب أن تكون 8 أحرف على الأقل'); return;
+            setError(t.shortPassword); return;
         }
         if (form.password !== form.confirmPassword) {
-            setError('كلمتا المرور غير متطابقتين'); return;
+            setError(t.passwordMismatch); return;
         }
         setLoading(true);
         setError('');
@@ -57,7 +55,7 @@ export default function TournamentPortalRegister() {
             });
             router.push('/tournament-portal');
         } catch (err: any) {
-            setError(err.message || 'فشل إنشاء الحساب');
+            setError(err.message || t.failed);
         } finally {
             setLoading(false);
         }
@@ -77,7 +75,8 @@ export default function TournamentPortalRegister() {
     );
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 py-10" dir="rtl">
+        <div className="relative min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 py-10" dir={isRTL ? 'rtl' : 'ltr'}>
+            <div className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'}`}><LanguageSwitcher /></div>
             <div className="w-full max-w-lg bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
 
                 {/* Header */}
@@ -85,23 +84,23 @@ export default function TournamentPortalRegister() {
                     <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg mb-4">
                         <Trophy className="w-8 h-8 text-white" />
                     </div>
-                    <h1 className="text-2xl font-black text-white">إنشاء حساب جديد</h1>
-                    <p className="text-slate-400 text-sm mt-1">انضم وأدر بطولاتك باحترافية</p>
+                    <h1 className="text-2xl font-black text-white">{t.title}</h1>
+                    <p className="text-slate-400 text-sm mt-1">{t.subtitle}</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
 
                     <div className="grid grid-cols-2 gap-4">
-                        <Field label="الاسم الكامل *" icon={User} value={form.name} onChange={set('name')} placeholder="محمد أحمد" />
-                        <Field label="اسم المؤسسة" icon={Building2} value={form.organizationName} onChange={set('organizationName')} placeholder="نادي / أكاديمية" />
+                        <Field label={t.name} icon={User} value={form.name} onChange={set('name')} placeholder={t.namePlaceholder} />
+                        <Field label={t.organization} icon={Building2} value={form.organizationName} onChange={set('organizationName')} placeholder={t.organizationPlaceholder} />
                     </div>
 
-                    <Field label="البريد الإلكتروني *" icon={Mail} type="email" value={form.email} onChange={set('email')} placeholder="example@domain.com" dir="ltr" autoComplete="email" />
+                    <Field label={t.email} icon={Mail} type="email" value={form.email} onChange={set('email')} placeholder="example@domain.com" dir="ltr" autoComplete="email" />
 
                     <div className="grid grid-cols-2 gap-4">
-                        <Field label="رقم الجوال" icon={Phone} type="tel" value={form.phone} onChange={set('phone')} placeholder="+966 5xx xxx xxx" dir="ltr" />
+                        <Field label={t.phone} icon={Phone} type="tel" value={form.phone} onChange={set('phone')} placeholder="+966 5xx xxx xxx" dir="ltr" />
                         <div>
-                            <label className="text-slate-300 text-sm font-medium mb-1.5 block">الدولة</label>
+                            <label className="text-slate-300 text-sm font-medium mb-1.5 block">{t.country}</label>
                             <div className="relative">
                                 <Globe className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <select
@@ -109,8 +108,8 @@ export default function TournamentPortalRegister() {
                                     onChange={set('country')}
                                     className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 pr-10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/50 appearance-none"
                                 >
-                                    <option value="" className="bg-slate-800">اختر الدولة</option>
-                                    {COUNTRIES.map(c => <option key={c} value={c} className="bg-slate-800">{c}</option>)}
+                                    <option value="" className="bg-slate-800">{t.selectCountry}</option>
+                                    {t.countries.map((c: string) => <option key={c} value={c} className="bg-slate-800">{c}</option>)}
                                 </select>
                             </div>
                         </div>
@@ -118,7 +117,7 @@ export default function TournamentPortalRegister() {
 
                     {/* Password */}
                     <div>
-                        <label className="text-slate-300 text-sm font-medium mb-1.5 block">كلمة المرور * (8 أحرف على الأقل)</label>
+                        <label className="text-slate-300 text-sm font-medium mb-1.5 block">{t.password}</label>
                         <div className="relative">
                             <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <input
@@ -136,7 +135,7 @@ export default function TournamentPortalRegister() {
                     </div>
 
                     <div>
-                        <label className="text-slate-300 text-sm font-medium mb-1.5 block">تأكيد كلمة المرور *</label>
+                        <label className="text-slate-300 text-sm font-medium mb-1.5 block">{t.confirmPassword}</label>
                         <div className="relative">
                             <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <input
@@ -162,14 +161,14 @@ export default function TournamentPortalRegister() {
                         className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-yellow-500/20 flex items-center justify-center gap-2 mt-2"
                     >
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trophy className="w-4 h-4" />}
-                        {loading ? 'جاري إنشاء الحساب...' : 'إنشاء الحساب'}
+                        {loading ? t.submitting : t.submit}
                     </button>
                 </form>
 
                 <p className="text-center text-slate-400 text-sm mt-6">
-                    لديك حساب بالفعل؟{' '}
+                    {t.hasAccount}{' '}
                     <Link href="/tournament-portal/login" className="text-yellow-400 hover:text-yellow-300 font-semibold transition-colors">
-                        تسجيل الدخول
+                        {t.login}
                     </Link>
                 </p>
             </div>

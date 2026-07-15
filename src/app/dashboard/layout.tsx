@@ -10,6 +10,7 @@ import { Toaster } from 'sonner';
 import dynamic from 'next/dynamic';
 import { CampaignProvider } from '@/lib/campaign/campaign-context';
 import { CampaignProgressFloat } from '@/components/campaign/CampaignProgressFloat';
+import { useTranslation } from '@/lib/i18n';
 
 const ProfessionalAdPopup = dynamic(() => import('@/components/ads/ProfessionalAdPopup'), { ssr: false });
 const ProfileCompletionReminder = dynamic(() => import('@/components/profile/ProfileCompletionReminder'), { ssr: false });
@@ -22,6 +23,9 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { user, userData: authUserData, loading: authLoading } = useAuth();
+  const { getTranslations } = useTranslation();
+  const commonCopy = getTranslations<any>('common');
+  const redirectCopy = getTranslations<any>('dashboardRedirect');
 
   // استخراج نوع الحساب من URL — يُستخدم فقط كـ fallback أول تحميل
   // لا يُفعَّل إذا كانت userData محملة (منعاً لـ sidebar خاطئ عند التنقل لصفحات مشتركة)
@@ -45,7 +49,7 @@ export default function DashboardLayout({
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin" />
-          <p className="text-gray-600 font-medium">جار التحميل...</p>
+          <p className="text-gray-600 font-medium">{commonCopy.loading}</p>
         </div>
       </div>
     );
@@ -67,7 +71,7 @@ export default function DashboardLayout({
       <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="animate-pulse flex flex-col items-center">
           <div className="h-4 w-4 bg-blue-500 rounded-full mb-2" />
-          <span className="text-xs text-slate-400">جار التوجيه...</span>
+          <span className="text-xs text-slate-400">{redirectCopy.redirecting}</span>
         </div>
       </div>
     );

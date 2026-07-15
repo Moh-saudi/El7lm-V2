@@ -14,61 +14,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Video, Upload, Play, Clock, Eye, DollarSign, Award, CheckCircle, XCircle, FileVideo } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Locale, useTranslation } from '@/lib/i18n';
+import { useTranslation } from '@/lib/i18n';
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024;
 const CATEGORY_VALUES: VideoCategory[] = ['skills', 'match', 'training', 'attack', 'midfield', 'defense', 'goalkeeper', 'other'];
-
-const PLAYER_VIDEO_UPLOAD_COPY: Record<Locale, any> = {
-  ar: {
-    categories: { skills: 'مهارات', match: 'مباراة', training: 'تدريب', attack: 'هجوم', midfield: 'وسط', defense: 'دفاع', goalkeeper: 'حراسة مرمى', other: 'أخرى' },
-    status: { approved: 'تمت الموافقة', rejected: 'مرفوض', pending: 'قيد المراجعة' },
-    toast: { invalidFile: 'يرجى اختيار ملف فيديو صحيح', sizeError: 'حجم الملف ({{size}} MB) يتجاوز الحد الأقصى 500 MB', uploadSuccess: 'تم رفع الفيديو بنجاح! سيتم مراجعته قريبًا', uploadError: 'حدث خطأ أثناء رفع الفيديو' },
-    loading: 'جاري التحميل...', title: 'رفع الفيديوهات', earnPoints: 'كسب النقاط', availablePoints: 'النقاط المتوفرة',
-    howToEarn: 'كيف تكسب النقاط من الفيديوهات؟',
-    steps: [{ step: '1', title: 'ارفع فيديو', desc: 'ارفع فيديو يظهر مهاراتك في كرة القدم (حتى 500 MB)' }, { step: '2', title: 'انتظر المراجعة', desc: 'سيقوم فريقنا بمراجعة الفيديو خلال 24 ساعة' }, { step: '3', title: 'احصل على النقاط', desc: '1,000 نقطة لكل فيديو تمت الموافقة عليه' }],
-    uploadNew: 'رفع فيديو جديد', reward: 'احصل على 1,000 نقطة لكل فيديو تمت الموافقة عليه', uploadedVideos: 'الفيديوهات المرفوعة ({{count}})', noVideos: 'لم تقم برفع أي فيديوهات بعد', uploadFirst: 'رفع أول فيديو',
-    analyzed: 'تم التحليل', analysisQueued: 'في طابور التحليل', point: 'نقطة', modalTitle: 'رفع فيديو جديد', chooseFile: 'اختر ملف الفيديو', clickToChoose: 'انقر لاختيار ملف فيديو', supportedFormats: 'MP4, WebM, MOV — حتى 500 MB',
-    videoTitle: 'عنوان الفيديو *', videoTitlePlaceholder: 'أدخل عنوان الفيديو', videoCategory: 'تصنيف الفيديو', videoDescription: 'وصف الفيديو', videoDescriptionPlaceholder: 'وصف مختصر للفيديو...', uploading: 'جاري الرفع...',
-    tipsTitle: 'نصائح للحصول على الموافقة:', tips: ['تأكد من جودة الفيديو والإضاءة الجيدة', 'اظهر مهاراتك بوضوح في الفيديو', 'اختر التصنيف المناسب ليسهّل التحليل الذكي', 'تجنب المحتوى المسيء'], uploadVideo: 'رفع الفيديو', cancel: 'إلغاء',
-  },
-  en: {
-    categories: { skills: 'Skills', match: 'Match', training: 'Training', attack: 'Attack', midfield: 'Midfield', defense: 'Defense', goalkeeper: 'Goalkeeper', other: 'Other' },
-    status: { approved: 'Approved', rejected: 'Rejected', pending: 'Under review' },
-    toast: { invalidFile: 'Please choose a valid video file', sizeError: 'File size ({{size}} MB) exceeds the 500 MB limit', uploadSuccess: 'Video uploaded successfully! It will be reviewed soon', uploadError: 'An error occurred while uploading the video' },
-    loading: 'Loading...', title: 'Upload videos', earnPoints: 'Earn points', availablePoints: 'Available points',
-    howToEarn: 'How do you earn points from videos?',
-    steps: [{ step: '1', title: 'Upload a video', desc: 'Upload a video showing your football skills (up to 500 MB)' }, { step: '2', title: 'Wait for review', desc: 'Our team will review the video within 24 hours' }, { step: '3', title: 'Earn points', desc: '1,000 points for every approved video' }],
-    uploadNew: 'Upload new video', reward: 'Earn 1,000 points for every approved video', uploadedVideos: 'Uploaded videos ({{count}})', noVideos: 'You have not uploaded any videos yet', uploadFirst: 'Upload first video',
-    analyzed: 'Analyzed', analysisQueued: 'Queued for analysis', point: 'point', modalTitle: 'Upload new video', chooseFile: 'Choose video file', clickToChoose: 'Click to choose a video file', supportedFormats: 'MP4, WebM, MOV — up to 500 MB',
-    videoTitle: 'Video title *', videoTitlePlaceholder: 'Enter video title', videoCategory: 'Video category', videoDescription: 'Video description', videoDescriptionPlaceholder: 'Short video description...', uploading: 'Uploading...',
-    tipsTitle: 'Tips to get approved:', tips: ['Make sure the video quality and lighting are good', 'Show your skills clearly in the video', 'Choose the right category to help smart analysis', 'Avoid offensive content'], uploadVideo: 'Upload video', cancel: 'Cancel',
-  },
-  es: {
-    categories: { skills: 'Habilidades', match: 'Partido', training: 'Entrenamiento', attack: 'Ataque', midfield: 'Mediocampo', defense: 'Defensa', goalkeeper: 'Portero', other: 'Otro' },
-    status: { approved: 'Aprobado', rejected: 'Rechazado', pending: 'En revisión' },
-    toast: { invalidFile: 'Elige un archivo de video válido', sizeError: 'El tamaño del archivo ({{size}} MB) supera el límite de 500 MB', uploadSuccess: '¡Video subido con éxito! Será revisado pronto', uploadError: 'Ocurrió un error al subir el video' },
-    loading: 'Cargando...', title: 'Subir videos', earnPoints: 'Ganar puntos', availablePoints: 'Puntos disponibles',
-    howToEarn: '¿Cómo ganar puntos con videos?',
-    steps: [{ step: '1', title: 'Sube un video', desc: 'Sube un video que muestre tus habilidades de fútbol (hasta 500 MB)' }, { step: '2', title: 'Espera la revisión', desc: 'Nuestro equipo revisará el video en 24 horas' }, { step: '3', title: 'Gana puntos', desc: '1.000 puntos por cada video aprobado' }],
-    uploadNew: 'Subir nuevo video', reward: 'Gana 1.000 puntos por cada video aprobado', uploadedVideos: 'Videos subidos ({{count}})', noVideos: 'Aún no has subido videos', uploadFirst: 'Subir primer video',
-    analyzed: 'Analizado', analysisQueued: 'En cola de análisis', point: 'punto', modalTitle: 'Subir nuevo video', chooseFile: 'Elegir archivo de video', clickToChoose: 'Haz clic para elegir un video', supportedFormats: 'MP4, WebM, MOV — hasta 500 MB',
-    videoTitle: 'Título del video *', videoTitlePlaceholder: 'Introduce el título del video', videoCategory: 'Categoría del video', videoDescription: 'Descripción del video', videoDescriptionPlaceholder: 'Breve descripción del video...', uploading: 'Subiendo...',
-    tipsTitle: 'Consejos para obtener aprobación:', tips: ['Asegúrate de que la calidad y la iluminación sean buenas', 'Muestra tus habilidades claramente', 'Elige la categoría adecuada para facilitar el análisis', 'Evita contenido ofensivo'], uploadVideo: 'Subir video', cancel: 'Cancelar',
-  },
-  pt: {
-    categories: { skills: 'Habilidades', match: 'Jogo', training: 'Treino', attack: 'Ataque', midfield: 'Meio-campo', defense: 'Defesa', goalkeeper: 'Goleiro', other: 'Outro' },
-    status: { approved: 'Aprovado', rejected: 'Rejeitado', pending: 'Em análise' },
-    toast: { invalidFile: 'Escolha um arquivo de vídeo válido', sizeError: 'O tamanho do arquivo ({{size}} MB) excede o limite de 500 MB', uploadSuccess: 'Vídeo enviado com sucesso! Será revisado em breve', uploadError: 'Ocorreu um erro ao enviar o vídeo' },
-    loading: 'Carregando...', title: 'Enviar vídeos', earnPoints: 'Ganhar pontos', availablePoints: 'Pontos disponíveis',
-    howToEarn: 'Como ganhar pontos com vídeos?',
-    steps: [{ step: '1', title: 'Envie um vídeo', desc: 'Envie um vídeo mostrando suas habilidades no futebol (até 500 MB)' }, { step: '2', title: 'Aguarde a análise', desc: 'Nossa equipe analisará o vídeo em até 24 horas' }, { step: '3', title: 'Ganhe pontos', desc: '1.000 pontos por cada vídeo aprovado' }],
-    uploadNew: 'Enviar novo vídeo', reward: 'Ganhe 1.000 pontos por cada vídeo aprovado', uploadedVideos: 'Vídeos enviados ({{count}})', noVideos: 'Você ainda não enviou vídeos', uploadFirst: 'Enviar primeiro vídeo',
-    analyzed: 'Analisado', analysisQueued: 'Na fila de análise', point: 'ponto', modalTitle: 'Enviar novo vídeo', chooseFile: 'Escolher arquivo de vídeo', clickToChoose: 'Clique para escolher um vídeo', supportedFormats: 'MP4, WebM, MOV — até 500 MB',
-    videoTitle: 'Título do vídeo *', videoTitlePlaceholder: 'Digite o título do vídeo', videoCategory: 'Categoria do vídeo', videoDescription: 'Descrição do vídeo', videoDescriptionPlaceholder: 'Breve descrição do vídeo...', uploading: 'Enviando...',
-    tipsTitle: 'Dicas para aprovação:', tips: ['Garanta boa qualidade e iluminação', 'Mostre suas habilidades claramente', 'Escolha a categoria correta para facilitar a análise', 'Evite conteúdo ofensivo'], uploadVideo: 'Enviar vídeo', cancel: 'Cancelar',
-  },
-};
 
 const interpolateUploadCopy = (template: string, values: Record<string, string | number>) =>
   template.replace(/\{\{(\w+)\}\}/g, (_, key) => `${values[key] ?? ''}`);
@@ -80,8 +29,67 @@ interface PlayerRewards {
 
 export default function VideoUploadPage() {
   const { user } = useAuth();
-  const { locale, isRTL } = useTranslation();
-  const copy = PLAYER_VIDEO_UPLOAD_COPY[locale] || PLAYER_VIDEO_UPLOAD_COPY.en;
+  const { t, isRTL } = useTranslation();
+  const copy = {
+    categories: {
+      skills: t('playerVideoUpload.categories.skills'),
+      match: t('playerVideoUpload.categories.match'),
+      training: t('playerVideoUpload.categories.training'),
+      attack: t('playerVideoUpload.categories.attack'),
+      midfield: t('playerVideoUpload.categories.midfield'),
+      defense: t('playerVideoUpload.categories.defense'),
+      goalkeeper: t('playerVideoUpload.categories.goalkeeper'),
+      other: t('playerVideoUpload.categories.other'),
+    },
+    status: {
+      approved: t('playerVideoUpload.status.approved'),
+      rejected: t('playerVideoUpload.status.rejected'),
+      pending: t('playerVideoUpload.status.pending'),
+    },
+    toast: {
+      invalidFile: t('playerVideoUpload.toast.invalidFile'),
+      sizeError: t('playerVideoUpload.toast.sizeError'),
+      uploadSuccess: t('playerVideoUpload.toast.uploadSuccess'),
+      uploadError: t('playerVideoUpload.toast.uploadError'),
+    },
+    loading: t('playerVideoUpload.loading'),
+    title: t('playerVideoUpload.title'),
+    earnPoints: t('playerVideoUpload.earnPoints'),
+    availablePoints: t('playerVideoUpload.availablePoints'),
+    howToEarn: t('playerVideoUpload.howToEarn'),
+    steps: [
+      { step: '1', title: t('playerVideoUpload.steps.upload.title'), desc: t('playerVideoUpload.steps.upload.description') },
+      { step: '2', title: t('playerVideoUpload.steps.review.title'), desc: t('playerVideoUpload.steps.review.description') },
+      { step: '3', title: t('playerVideoUpload.steps.reward.title'), desc: t('playerVideoUpload.steps.reward.description') },
+    ],
+    uploadNew: t('playerVideoUpload.uploadNew'),
+    reward: t('playerVideoUpload.reward'),
+    uploadedVideos: t('playerVideoUpload.uploadedVideos'),
+    noVideos: t('playerVideoUpload.noVideos'),
+    uploadFirst: t('playerVideoUpload.uploadFirst'),
+    analyzed: t('playerVideoUpload.analyzed'),
+    analysisQueued: t('playerVideoUpload.analysisQueued'),
+    point: t('playerVideoUpload.point'),
+    modalTitle: t('playerVideoUpload.modalTitle'),
+    chooseFile: t('playerVideoUpload.chooseFile'),
+    clickToChoose: t('playerVideoUpload.clickToChoose'),
+    supportedFormats: t('playerVideoUpload.supportedFormats'),
+    videoTitle: t('playerVideoUpload.videoTitle'),
+    videoTitlePlaceholder: t('playerVideoUpload.videoTitlePlaceholder'),
+    videoCategory: t('playerVideoUpload.videoCategory'),
+    videoDescription: t('playerVideoUpload.videoDescription'),
+    videoDescriptionPlaceholder: t('playerVideoUpload.videoDescriptionPlaceholder'),
+    uploading: t('playerVideoUpload.uploading'),
+    tipsTitle: t('playerVideoUpload.tipsTitle'),
+    tips: [
+      t('playerVideoUpload.tips.quality'),
+      t('playerVideoUpload.tips.skills'),
+      t('playerVideoUpload.tips.category'),
+      t('playerVideoUpload.tips.safeContent'),
+    ],
+    uploadVideo: t('playerVideoUpload.uploadVideo'),
+    cancel: t('playerVideoUpload.cancel'),
+  };
 
   const [loading, setLoading] = useState(true);
   const [playerRewards, setPlayerRewards] = useState<PlayerRewards | null>(null);

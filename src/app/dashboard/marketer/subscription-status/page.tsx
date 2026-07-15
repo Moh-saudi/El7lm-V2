@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useTranslation } from '@/lib/i18n';
 
 /**
  * إعادة توجيه إلى صفحة حالة الاشتراك المشتركة
@@ -9,16 +10,17 @@ import { useEffect } from 'react';
  */
 export default function MarketerSubscriptionStatusPage() {
   const router = useRouter();
+  const { t, isRTL } = useTranslation();
 
   useEffect(() => {
     router.replace('/dashboard/shared/subscription-status');
   }, [router]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
+    <div className="flex items-center justify-center min-h-screen" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Redirecting...</p>
+        <p className="text-gray-600">{t('sharedComponents.redirects.subscription')}</p>
       </div>
     </div>
   );

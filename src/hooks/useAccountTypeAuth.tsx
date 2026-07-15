@@ -4,6 +4,7 @@ import React from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@/lib/i18n';
 
 /**
  * خيارات Hook التحقق من نوع الحساب
@@ -205,6 +206,7 @@ export const AccountTypeProtection: React.FC<AccountTypeProtectionProps> = ({
   redirectTo = '/',
   loadingComponent
 }) => {
+  const { t, isRTL } = useTranslation();
   const { isAuthorized, isCheckingAuth } = useAccountTypeAuth({ allowedTypes, redirectTo });
 
   if (isCheckingAuth) {
@@ -212,10 +214,10 @@ export const AccountTypeProtection: React.FC<AccountTypeProtectionProps> = ({
       return <>{loadingComponent}</>;
     }
     return (
-      <div className="flex items-center justify-center min-h-screen" dir="rtl">
+      <div className="flex items-center justify-center min-h-screen" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin"></div>
-          <p className="text-gray-600">جاري التحقق من صلاحيات الوصول...</p>
+          <p className="text-gray-600">{t('sharedComponents.checkingAccess')}</p>
         </div>
       </div>
     );

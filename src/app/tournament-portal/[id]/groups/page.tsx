@@ -6,15 +6,17 @@ import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
+import { useTranslation } from '@/lib/i18n';
 
 type Standing = { id:string; team_id:string; group_id:string|null; category_id:string; played:number; won:number; drawn:number; lost:number; goals_for:number; goals_against:number; goal_diff:number; points:number; team?:{ name:string; logo_url:string|null } };
 type Group    = { id:string; name:string; sort_order:number };
 type Category = { id:string; name:string; type:string; group_count:number|null };
 
-const GROUP_NAMES = ['أ','ب','ج','د','هـ','و','ز','ح','ط','ي'];
 const API = '/api/tournament-portal/groups';
 
 export default function GroupsPage() {
+  const { getTranslations } = useTranslation();
+  const copy = getTranslations<any>('tournamentGroups');
   const { id } = useParams<{ id:string }>();
   const { isDark } = usePortalTheme();
   const S = isDark ? D : L;
@@ -60,37 +62,37 @@ export default function GroupsPage() {
     setCreating(true);
     const res = await fetch(API,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ tournament_id:id, category_id:selCat, count }) });
     const d = await res.json();
-    if (!res.ok) toast.error(d.error); else { setGroups(d.groups||[]); toast.success(`تم إنشاء ${count} مجموعات`); }
+    if (!res.ok) toast.error(d.error); else { setGroups(d.groups||[]); toast.success(copy.created.replace('{count}', count)); }
     setCreating(false);
   };
 
   const addGroup = async () => {
-    const name = newName.trim() || `المجموعة ${GROUP_NAMES[groups.length]||(groups.length+1)}`;
+    const name = newName.trim() || `${copy.group} ${groups.length + 1}`;
     setAdding(true);
     const res = await fetch(API,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ tournament_id:id, category_id:selCat, name }) });
     const d = await res.json();
-    if (!res.ok) toast.error(d.error); else { setNewName(''); setGroups(p=>[...p,d.group]); toast.success('تمت الإضافة'); }
+    if (!res.ok) toast.error(d.error); else { setNewName(''); setGroups(p=>[...p,d.group]); toast.success(copy.added); }
     setAdding(false);
   };
 
   const deleteGroup = async (gid:string) => {
     const res = await fetch(`${API}?id=${gid}`,{ method:'DELETE' });
     if (!res.ok) { const d=await res.json(); toast.error(d.error); return; }
-    setGroups(p=>p.filter(g=>g.id!==gid)); toast.success('تم الحذف');
+    setGroups(p=>p.filter(g=>g.id!==gid)); toast.success(copy.deleted);
   };
 
   const saveGroupName = async (gid:string) => {
     if (!editName.trim()) return;
     const res = await fetch(API,{ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ id:gid, name:editName.trim() }) });
     if (!res.ok) { const d=await res.json(); toast.error(d.error); return; }
-    setGroups(p=>p.map(g=>g.id===gid?{...g,name:editName.trim()}:g)); setEditId(null); toast.success('تم التحديث');
+    setGroups(p=>p.map(g=>g.id===gid?{...g,name:editName.trim()}:g)); setEditId(null); toast.success(copy.updated);
   };
 
   const recalculate = async () => {
     setRecalc(true);
     try {
       const { data:ms } = await supabase.from('tournament_matches').select('id,home_team_id,away_team_id,home_score,away_score,group_id').eq('tournament_id',id).eq('category_id',selCat).eq('status','completed');
-      if (!ms?.length) { toast.info('لا توجد مباريات منتهية'); setRecalc(false); return; }
+      if (!ms?.length) { toast.info(copy.noFinished); setRecalc(false); return; }
       const { data:ts } = await supabase.from('tournament_teams').select('id,group_id').eq('tournament_id',id).eq('category_id',selCat).eq('status','approved');
       const map: Record<string,any> = {};
       for (const t of ts||[]) map[t.id]={ team_id:t.id, group_id:t.group_id, played:0, won:0, drawn:0, lost:0, goals_for:0, goals_against:0 };
@@ -101,7 +103,7 @@ export default function GroupsPage() {
       }
       for (const s of Object.values(map))
         await supabase.from('tournament_standings').upsert({ tournament_id:id, category_id:selCat, team_id:s.team_id, group_id:s.group_id, played:s.played, won:s.won, drawn:s.drawn, lost:s.lost, goals_for:s.goals_for, goals_against:s.goals_against, goal_diff:s.goals_for-s.goals_against, points:s.won*3+s.drawn },{ onConflict:'tournament_id,category_id,team_id' });
-      await loadData(); toast.success('تم تحديث الترتيب');
+      await loadData(); toast.success(copy.standingsUpdated);
     } catch (e:any) { toast.error(e.message); }
     setRecalc(false);
   };
@@ -123,7 +125,7 @@ export default function GroupsPage() {
           ))}
         </div>
         <button onClick={recalculate} disabled={recalc} className="sp-btn sp-btn-sm" style={{ background:'#4f46e5', color:'#fff', border:'none' }}>
-          {recalc?'جاري الحساب...':'↻ تحديث الترتيب'}
+          {recalc?copy.calculating:`↻ ${copy.refresh}`}
         </button>
         <button onClick={()=>window.open(`/tournament-portal/${id}/print?type=standings`,'_blank')} className="sp-btn sp-btn-ghost sp-btn-sm">🖨️</button>
       </div>
@@ -131,22 +133,22 @@ export default function GroupsPage() {
       {/* Group management */}
       <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
         <div className="sp-section-header">
-          <span style={{ fontSize:14, fontWeight:700, color:'#fff', flex:1 }}>⚙️ إدارة المجموعات</span>
-          <span style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>{groups.length} مجموعة</span>
+          <span style={{ fontSize:14, fontWeight:700, color:'#fff', flex:1 }}>⚙️ {copy.manage}</span>
+          <span style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>{copy.groupCount.replace('{count}', groups.length)}</span>
         </div>
         <div style={{ padding:'14px 16px', display:'flex', flexDirection:'column', gap:10 }}>
           {/* Batch */}
           <div style={{ display:'flex', alignItems:'center', gap:10, background:S.surface2, borderRadius:10, padding:'10px 14px', border:`1px solid ${S.border}` }}>
-            <span style={{ fontSize:12, color:S.text2, fontWeight:600 }}>إنشاء دفعة:</span>
+            <span style={{ fontSize:12, color:S.text2, fontWeight:600 }}>{copy.batch}</span>
             <input type="number" min={2} max={16} className="sp-input sp-input-sm" style={{ width:70 }} value={count} onChange={e=>setCount(+e.target.value||4)} />
             <button onClick={createGroups} disabled={creating} className="sp-btn sp-btn-primary sp-btn-sm">
-              {creating?'...':groups.length>0?'إعادة إنشاء':'+ إنشاء'}
+              {creating?'...':groups.length>0?copy.recreate:`+ ${copy.create}`}
             </button>
           </div>
           {/* Add single */}
           <div style={{ display:'flex', gap:8 }}>
-            <input className="sp-input sp-input-sm" style={{ flex:1 }} value={newName} onChange={e=>setNewName(e.target.value)} placeholder={`المجموعة ${GROUP_NAMES[groups.length]||(groups.length+1)}`} onKeyDown={e=>e.key==='Enter'&&addGroup()} />
-            <button onClick={addGroup} disabled={adding} className="sp-btn sp-btn-ghost sp-btn-sm">+ إضافة</button>
+            <input className="sp-input sp-input-sm" style={{ flex:1 }} value={newName} onChange={e=>setNewName(e.target.value)} placeholder={`${copy.group} ${groups.length + 1}`} onKeyDown={e=>e.key==='Enter'&&addGroup()} />
+            <button onClick={addGroup} disabled={adding} className="sp-btn sp-btn-ghost sp-btn-sm">+ {copy.add}</button>
           </div>
           {/* List */}
           {groups.map(g=>(
@@ -170,7 +172,7 @@ export default function GroupsPage() {
 
       {/* Standings */}
       {curCat?.type==='league'
-        ? <StandingsTable title="ترتيب الدوري" rows={allLeague} S={S} isDark={isDark} />
+        ? <StandingsTable title={copy.league} rows={allLeague} S={S} isDark={isDark} />
         : groups.map(g => byGroup(g.id).length>0 && (
             <StandingsTable key={g.id} title={g.name} rows={byGroup(g.id)} S={S} isDark={isDark} />
           ))
@@ -180,22 +182,24 @@ export default function GroupsPage() {
 }
 
 function StandingsTable({ title, rows, S, isDark }: { title:string; rows:Standing[]; S:any; isDark:boolean }) {
+  const { getTranslations } = useTranslation();
+  const copy = getTranslations<any>('tournamentGroups');
   return (
     <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
       <div className="sp-section-header">
         <span style={{ fontSize:14, fontWeight:800, color:'#fff' }}>📊 {title}</span>
-        <span style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginRight:'auto' }}>{rows.length} فريق</span>
+        <span style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginRight:'auto' }}>{copy.teamCount.replace('{count}', rows.length)}</span>
       </div>
       {rows.length===0
-        ? <div style={{ padding:'32px', textAlign:'center', color:S.text2, fontSize:13 }}>لا يوجد ترتيب — أدخل نتائج المباريات ثم اضغط «تحديث الترتيب»</div>
+        ? <div style={{ padding:'32px', textAlign:'center', color:S.text2, fontSize:13 }}>{copy.empty}</div>
         : <table className="sp-table" style={{ width:'100%' }}>
             <thead className="sp-table-head">
               <tr>
                 <th style={{ width:36 }}>#</th>
-                <th className="text-start" style={{ minWidth:150 }}>الفريق</th>
-                <th>لعب</th><th>فاز</th><th>تع</th><th>خسر</th>
-                <th>ل:ع</th><th>فارق</th>
-                <th style={{ fontSize:12 }}>نقاط</th>
+                <th className="text-start" style={{ minWidth:150 }}>{copy.team}</th>
+                <th>{copy.played}</th><th>{copy.won}</th><th>{copy.draw}</th><th>{copy.lost}</th>
+                <th>{copy.goals}</th><th>{copy.difference}</th>
+                <th style={{ fontSize:12 }}>{copy.points}</th>
               </tr>
             </thead>
             <tbody>

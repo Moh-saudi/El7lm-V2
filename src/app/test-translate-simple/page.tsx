@@ -6,10 +6,9 @@ import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 import DynamicTranslator from '@/components/shared/DynamicTranslator';
 
 export default function TestTranslatePage() {
-  const { t, locale, isRTL } = useTranslation();
+  const { t, isRTL } = useTranslation();
 
-  const sampleUserBio = 
-    "أنا لاعب كرة قدم موهوب، ألعب في مركز المهاجم الصريح (رقم 9). أسعى دائماً لتطوير مهاراتي واللعب في دوري احترافي في أوروبا. أتميز بالسرعة والتسديد القوي بالقدم اليمنى.";
+  const sampleUserBio = t('translationTest.sampleUserBio');
 
   return (
     <div 
@@ -25,7 +24,7 @@ export default function TestTranslatePage() {
               {t('common.welcome')}
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              {locale === 'ar' ? 'نظام الترجمة الجديد' : 'New Translation System'}
+              {t('translationTest.subtitle')}
             </p>
           </div>
           <LanguageSwitcher />
@@ -34,7 +33,7 @@ export default function TestTranslatePage() {
         {/* Static Translation Test */}
         <div className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold text-emerald-400">
-            {locale === 'ar' ? '1. تجربة الترجمة الثابتة (JSON):' : '1. Static Translation Test (JSON):'}
+            {t('translationTest.staticTitle')}
           </h2>
           <div className="grid grid-cols-2 gap-3 bg-slate-950/50 p-4 rounded-xl border border-slate-850">
             <div className="flex flex-col gap-0.5">
@@ -59,7 +58,7 @@ export default function TestTranslatePage() {
         {/* Dynamic Translation Test */}
         <div className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold text-emerald-400">
-            {locale === 'ar' ? '2. تجربة ترجمة محتوى المستخدم المتغير:' : '2. Dynamic User Content Translation Test:'}
+            {t('translationTest.dynamicTitle')}
           </h2>
           <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-850 flex flex-col gap-3">
             <div className="flex items-center gap-3">
@@ -68,11 +67,9 @@ export default function TestTranslatePage() {
               </div>
               <div className="flex flex-col">
                 <span className="text-xs font-semibold text-slate-200">
-                  {locale === 'ar' ? 'أحمد علي (لاعب مهاجم)' : 
-                   locale === 'es' ? 'Ahmed Ali (Delantero)' : 
-                   locale === 'pt' ? 'Ahmed Ali (Atacante)' : 'Ahmed Ali (Striker)'}
+                  {t('translationTest.playerName')}
                 </span>
-                <span className="text-[10px] text-slate-500">{locale === 'ar' ? 'السيرة الذاتية الكروية' : 'Football Biography'}</span>
+                <span className="text-[10px] text-slate-500">{t('translationTest.bioLabel')}</span>
               </div>
             </div>
             <DynamicTranslator 
@@ -84,9 +81,7 @@ export default function TestTranslatePage() {
 
         {/* Info Box */}
         <div className="text-center text-[11px] text-slate-500 border-t border-slate-850 pt-4">
-          {locale === 'ar' 
-            ? 'تتحول الاتجاهات واللغات والخطوط تلقائياً بناءً على اختيارك.' 
-            : 'Layout direction, fonts, and locales adapt automatically on change.'}
+          {t('translationTest.footer')}
         </div>
 
       </div>

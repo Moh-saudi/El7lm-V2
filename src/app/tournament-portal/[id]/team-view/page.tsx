@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { resolveImg } from '../../_utils/img';
+import { useTranslation } from '@/lib/i18n';
 
 /**
  * بوابة الفريق — صفحة عامة يرى فيها مسؤول الفريق:
@@ -15,16 +16,9 @@ import { resolveImg } from '../../_utils/img';
  * الوصول: /tournament-portal/[id]/team-view?team=TEAM_ID
  */
 
-const STATUS_LBL: Record<string,string> = {
-  scheduled:'مجدولة', completed:'منتهية', live:'🔴 مباشر', postponed:'مؤجلة',
-};
-
-const ROUND_LBL: Record<string,string> = {
-  league:'الدوري', group_stage:'دور المجموعات',
-  QF:'ربع النهائي', SF:'نصف النهائي', F:'النهائي', '3rd':'المركز الثالث',
-};
-
 export default function TeamViewPage() {
+  const { locale, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('tournamentTeamView');
   const { id }   = useParams<{ id: string }>();
   const params   = useSearchParams();
   const teamId   = params.get('team');
@@ -100,7 +94,7 @@ export default function TeamViewPage() {
   if (!teamId || !team) return (
     <div style={{ textAlign:'center', padding:60 }}>
       <div style={{ fontSize:40, marginBottom:12 }}>⚠️</div>
-      <div style={{ fontSize:16, color:'#64748b' }}>معرّف الفريق غير صحيح. تأكد من الرابط.</div>
+      <div style={{ fontSize:16, color:'#64748b' }}>{copy.invalidTeam}</div>
     </div>
   );
 
@@ -111,9 +105,9 @@ export default function TeamViewPage() {
   const goalsA = matches.reduce((s,m) => s + (m.status==='completed'?(m.home_team_id===teamId?(m.away_score??0):(m.home_score??0)):0), 0);
 
   const TABS = [
-    { key:'matches',   emoji:'⚽', label:'المباريات'  },
-    { key:'players',   emoji:'👥', label:`اللاعبون (${players.length})` },
-    { key:'standings', emoji:'📊', label:'الترتيب'    },
+    { key:'matches',   emoji:'⚽', label:copy.tabs[0]  },
+    { key:'players',   emoji:'👥', label:copy.tabs[1].replace('{count}',players.length) },
+    { key:'standings', emoji:'📊', label:copy.tabs[2]    },
   ] as const;
 
   return (
@@ -138,10 +132,10 @@ export default function TeamViewPage() {
         {/* Quick stats */}
         <div style={{ display:'flex', gap:20, flexShrink:0 }}>
           {[
-            { lbl:'فاز',    v:won,    color:'#4ade80' },
-            { lbl:'تعادل', v:drew,   color:'#fbbf24' },
-            { lbl:'خسر',   v:lost,   color:'#f87171' },
-            { lbl:'أهداف', v:goalsF, color:'#60a5fa' },
+            { lbl:copy.stats[0], v:won,    color:'#4ade80' },
+            { lbl:copy.stats[1], v:drew,   color:'#fbbf24' },
+            { lbl:copy.stats[2], v:lost,   color:'#f87171' },
+            { lbl:copy.stats[3], v:goalsF, color:'#60a5fa' },
           ].map(s=>(
             <div key={s.lbl} style={{ textAlign:'center' }}>
               <div style={{ fontSize:20, fontWeight:900, color:s.color, lineHeight:1 }}>{s.v}</div>
@@ -164,7 +158,7 @@ export default function TeamViewPage() {
         {/* MATCHES */}
         {tab === 'matches' && (
           matches.length === 0
-            ? <div style={{ padding:'40px', textAlign:'center', color:'#64748b' }}>لا توجد مباريات بعد</div>
+            ? <div style={{ padding:'40px', textAlign:'center', color:'#64748b' }}>{copy.noMatches}</div>
             : matches.map(m => {
                 const isHome = m.home_team_id === teamId;
                 const opp    = isHome ? m.away_team : m.home_team;
@@ -194,13 +188,13 @@ export default function TeamViewPage() {
                               </span>
                             </div>
                             <div style={{ fontSize:10, color:resultColor||'#64748b', fontWeight:700, marginTop:3 }}>
-                              {result==='win'?'فوز':result==='loss'?'خسارة':'تعادل'}
+                              {result==='win'?copy.results[0]:result==='loss'?copy.results[1]:copy.results[2]}
                             </div>
                           </div>
                         : m.match_date
                           ? <div>
-                              <div style={{ fontSize:15, fontWeight:800, color:'#e2e8f0' }}>{new Date(m.match_date).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})}</div>
-                              <div style={{ fontSize:10, color:'#64748b' }}>{new Date(m.match_date).toLocaleDateString('ar-SA',{month:'short',day:'numeric'})}</div>
+                              <div style={{ fontSize:15, fontWeight:800, color:'#e2e8f0' }}>{new Date(m.match_date).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'})}</div>
+                              <div style={{ fontSize:10, color:'#64748b' }}>{new Date(m.match_date).toLocaleDateString(locale,{month:'short',day:'numeric'})}</div>
                             </div>
                           : <span style={{ fontSize:13, color:'#64748b', fontWeight:700 }}>vs</span>
                       }
@@ -211,7 +205,7 @@ export default function TeamViewPage() {
                       <div style={{ width:32, height:32, borderRadius:8, flexShrink:0, overflow:'hidden', background:'linear-gradient(135deg,#1e3a5f,#1d4ed8)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:13 }}>
                         {opp?.logo_url ? <img src={resolveImg(opp.logo_url)||''} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : opp?.name?.charAt(0) || '?'}
                       </div>
-                      <span style={{ fontSize:14, fontWeight:700, color:'#e2e8f0' }}>{opp?.name || 'TBD'}</span>
+                      <span style={{ fontSize:14, fontWeight:700, color:'#e2e8f0' }}>{opp?.name || copy.tbd}</span>
                     </div>
                   </div>
                 );
@@ -221,17 +215,17 @@ export default function TeamViewPage() {
         {/* PLAYERS */}
         {tab === 'players' && (
           players.length === 0
-            ? <div style={{ padding:'40px', textAlign:'center', color:'#64748b' }}>لا يوجد لاعبون مسجلون</div>
+            ? <div style={{ padding:'40px', textAlign:'center', color:'#64748b' }}>{copy.noPlayers}</div>
             : <div>
                 <div style={{ display:'grid', gridTemplateColumns:'40px 1fr 100px 80px', padding:'8px 16px', background:'#1a2235', fontSize:12, fontWeight:700, color:'#64748b' }}>
-                  <div style={{ textAlign:'center' }}>#</div><div>اللاعب</div><div>المركز</div><div>الجوال</div>
+                  <div style={{ textAlign:'center' }}>#</div><div>{copy.player}</div><div>{copy.position}</div><div>{copy.phone}</div>
                 </div>
                 {players.map((p,i) => (
                   <div key={p.id} style={{ display:'grid', gridTemplateColumns:'40px 1fr 100px 80px', padding:'11px 16px', borderBottom:'1px solid rgba(255,255,255,0.04)', alignItems:'center' }}>
                     <div style={{ textAlign:'center', fontSize:14, fontWeight:800, color:'#d97706' }}>{p.jersey_number || i+1}</div>
                     <div>
                       <div style={{ fontSize:14, fontWeight:700, color:'#e2e8f0' }}>{p.player_name}</div>
-                      {p.platform_player_id && <span style={{ fontSize:10, background:'rgba(59,130,246,0.15)', color:'#60a5fa', padding:'1px 6px', borderRadius:4 }}>منصة</span>}
+                      {p.platform_player_id && <span style={{ fontSize:10, background:'rgba(59,130,246,0.15)', color:'#60a5fa', padding:'1px 6px', borderRadius:4 }}>{copy.platform}</span>}
                     </div>
                     <div style={{ fontSize:13, color:'#64748b' }}>{p.position || '—'}</div>
                     <div style={{ fontSize:12, color:'#64748b', fontFamily:'monospace' }}>{p.phone || '—'}</div>
@@ -243,16 +237,16 @@ export default function TeamViewPage() {
         {/* STANDINGS */}
         {tab === 'standings' && (
           groupMates.length === 0
-            ? <div style={{ padding:'40px', textAlign:'center', color:'#64748b' }}>لا يوجد ترتيب بعد</div>
+            ? <div style={{ padding:'40px', textAlign:'center', color:'#64748b' }}>{copy.noStandings}</div>
             : <div>
                 <div style={{ display:'grid', gridTemplateColumns:'36px 1fr 40px 40px 40px 40px 56px 48px 48px', padding:'8px 14px', background:'#1a2235', fontSize:11, fontWeight:700, color:'#64748b', textAlign:'center' }}>
-                  <div>#</div><div style={{ textAlign:'right' }}>الفريق</div>
-                  <div>لعب</div><div>فاز</div><div>تع</div><div>خسر</div><div>ل:ع</div><div>فارق</div><div>نقاط</div>
+                  <div>#</div><div style={{ textAlign:'start' }}>{copy.team}</div>
+                  <div>{copy.played}</div><div>{copy.won}</div><div>{copy.drawn}</div><div>{copy.lost}</div><div>{copy.goals}</div><div>{copy.difference}</div><div>{copy.points}</div>
                 </div>
                 {[...groupMates].sort((a,b)=>b.points-a.points||b.goal_diff-a.goal_diff).map((s,i) => (
                   <div key={s.id} style={{ display:'grid', gridTemplateColumns:'36px 1fr 40px 40px 40px 40px 56px 48px 48px', padding:'11px 14px', borderBottom:'1px solid rgba(255,255,255,0.04)', alignItems:'center', fontSize:13, textAlign:'center', background:s.team_id===teamId?'rgba(217,119,6,0.07)':'transparent', borderRight:s.team_id===teamId?'3px solid #d97706':'none' }}>
                     <div style={{ fontWeight:800, color:['#f59e0b','#94a3b8','#cd7f32'][i]||'#64748b' }}>{i+1}</div>
-                    <div style={{ display:'flex', alignItems:'center', gap:8, textAlign:'right' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, textAlign:'start' }}>
                       <div style={{ width:26, height:26, borderRadius:7, overflow:'hidden', flexShrink:0, background:'linear-gradient(135deg,#1e3a5f,#1d4ed8)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:11 }}>
                         {s.team?.logo_url ? <img src={resolveImg(s.team.logo_url)||''} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : s.team?.name?.charAt(0)||'?'}
                       </div>
@@ -275,13 +269,13 @@ export default function TeamViewPage() {
       <div style={{ background:'rgba(217,119,6,0.06)', border:'1px solid rgba(217,119,6,0.2)', borderRadius:12, padding:'12px 16px', display:'flex', alignItems:'center', gap:10 }}>
         <span style={{ fontSize:16 }}>🔗</span>
         <div style={{ flex:1 }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'#d97706' }}>رابط الفريق</div>
+          <div style={{ fontSize:13, fontWeight:700, color:'#d97706' }}>{copy.teamLink}</div>
           <div style={{ fontSize:12, color:'#64748b', fontFamily:'monospace', wordBreak:'break-all' }}>{typeof window !== 'undefined' ? window.location.href : ''}</div>
         </div>
         <button
-          onClick={() => { typeof window !== 'undefined' && navigator.clipboard?.writeText(window.location.href); toast('تم نسخ الرابط'); }}
+          onClick={() => { typeof window !== 'undefined' && navigator.clipboard?.writeText(window.location.href); toast(copy.copied); }}
           style={{ padding:'6px 12px', background:'#d97706', border:'none', borderRadius:8, color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-          نسخ
+          {copy.copy}
         </button>
       </div>
     </div>

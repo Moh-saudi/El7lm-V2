@@ -2,24 +2,21 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { usePortalTheme } from '../../_components/PortalShell';
+import { useTranslation } from '@/lib/i18n';
 
 const NAV_ITEMS = [
-  { href: 'overview',      emoji: '🏠', label: 'الرئيسية'  },
-  { href: 'setup',         emoji: '⚙️', label: 'الإعداد'   },
-  { href: 'registrations', emoji: '👥', label: 'الفرق'     },
-  { href: 'draw',          emoji: '🎲', label: 'القرعة'    },
-  { href: 'schedule',      emoji: '📅', label: 'الجدول'    },
-  { href: 'matches',       emoji: '⚽', label: 'النتائج'   },
-  { href: 'groups',        emoji: '📊', label: 'الترتيب'   },
-  { href: 'bracket',       emoji: '🏆', label: 'الكأس'     },
-  { href: 'stats',         emoji: '📈', label: 'الإحصاء'  },
-  { href: 'notifications', emoji: '🔔', label: 'الإشعارات' },
-  { href: 'analytics',     emoji: '📉', label: 'التحليلات' },
-  { href: 'certificates',  emoji: '🎖️', label: 'الشهادات'  },
-  { href: 'gallery',       emoji: '🖼️', label: 'المعرض'    },
+  { href: 'overview', emoji: '🏠' }, { href: 'setup', emoji: '⚙️' },
+  { href: 'registrations', emoji: '👥' }, { href: 'draw', emoji: '🎲' },
+  { href: 'schedule', emoji: '📅' }, { href: 'matches', emoji: '⚽' },
+  { href: 'groups', emoji: '📊' }, { href: 'bracket', emoji: '🏆' },
+  { href: 'stats', emoji: '📈' }, { href: 'notifications', emoji: '🔔' },
+  { href: 'analytics', emoji: '📉' }, { href: 'certificates', emoji: '🎖️' },
+  { href: 'gallery', emoji: '🖼️' },
 ];
 
 export function TournamentNav({ tournamentId }: { tournamentId: string }) {
+  const { isRTL, getTranslations } = useTranslation();
+  const t = getTranslations<any>('tournamentPortalSection');
   const pathname = usePathname();
   const router   = useRouter();
   const base     = `/tournament-portal/${tournamentId}`;
@@ -54,12 +51,12 @@ export function TournamentNav({ tournamentId }: { tournamentId: string }) {
           borderBottom: `1px solid ${border}`,
           position: 'sticky', top: 60, zIndex: 50,
           overflowX: 'auto', scrollbarWidth: 'none',
-          direction: 'rtl', transition: 'background 0.3s',
+          direction: isRTL ? 'rtl' : 'ltr', transition: 'background 0.3s',
           WebkitOverflowScrolling: 'touch',
         }}
       >
         <div style={{ display: 'flex', padding: '0 4px', minWidth: 'max-content' }}>
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.map((item, index) => {
             const href     = `${base}/${item.href}`;
             const isActive = pathname === href;
 
@@ -80,7 +77,7 @@ export function TournamentNav({ tournamentId }: { tournamentId: string }) {
                 }}
               >
                 <span className="portal-nav-emoji" style={{ fontSize: 15 }}>{item.emoji}</span>
-                <span className="portal-nav-label">{item.label}</span>
+                <span className="portal-nav-label">{t.nav[index]}</span>
               </button>
             );
           })}

@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/firebase/auth-provider';
 import { AlertCircle, Download, Printer } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import { Locale, useTranslation } from '@/lib/i18n';
+import { useTranslation } from '@/lib/i18n';
 
 interface SubscriptionStatus {
   plan_name: string;
@@ -28,235 +28,18 @@ interface SubscriptionStatus {
   payment_date: string;
 }
 
-const PAYMENT_STATUS_COPY: Record<Locale, {
-  loading: string;
-  notFoundError: string;
-  fetchError: string;
-  genericError: string;
-  backToPayment: string;
-  noSubscription: string;
-  noActiveSubscription: string;
-  title: string;
-  subtitle: string;
-  status: Record<string, string>;
-  invoice: string;
-  printInvoice: string;
-  downloadInvoice: string;
-  downloadSoon: string;
-  customerInfo: string;
-  subscriptionInfo: string;
-  invoiceNumber: string;
-  issueDate: string;
-  customerName: string;
-  email: string;
-  phone: string;
-  address: string;
-  taxNumber: string;
-  plan: string;
-  amount: string;
-  paymentMethod: string;
-  bankTransfer: string;
-  cardOrOther: string;
-  transactionId: string;
-  paymentDate: string;
-  startDate: string;
-  endDate: string;
-  autoRenew: string;
-  yes: string;
-  no: string;
-  unavailable: string;
-  supportNote: string;
-  thankYou: string;
-  footer: string;
-  electronicInvoice: string;
-  print: string;
-}> = {
-  ar: {
-    loading: 'جاري تحميل البيانات...',
-    notFoundError: 'لم يتم العثور على بيانات الاشتراك',
-    fetchError: 'حدث خطأ أثناء جلب بيانات الاشتراك',
-    genericError: 'حدث خطأ',
-    backToPayment: 'العودة إلى صفحة الدفع',
-    noSubscription: 'لا يوجد اشتراك',
-    noActiveSubscription: 'لم يتم العثور على أي اشتراك نشط',
-    title: 'حالة الدفع والاشتراك',
-    subtitle: 'راجع حالة اشتراكك وتفاصيل الفاتورة',
-    status: { pending: 'في انتظار التأكيد', active: 'نشط', expired: 'منتهي', cancelled: 'ملغي' },
-    invoice: 'فاتورة اشتراك',
-    printInvoice: 'طباعة الفاتورة',
-    downloadInvoice: 'تحميل الفاتورة',
-    downloadSoon: 'سيتم إضافة هذه الميزة قريبًا',
-    customerInfo: 'معلومات العميل',
-    subscriptionInfo: 'تفاصيل الاشتراك',
-    invoiceNumber: 'رقم الفاتورة',
-    issueDate: 'تاريخ الإصدار',
-    customerName: 'الاسم',
-    email: 'البريد الإلكتروني',
-    phone: 'رقم الهاتف',
-    address: 'العنوان',
-    taxNumber: 'الرقم الضريبي',
-    plan: 'الباقة',
-    amount: 'المبلغ',
-    paymentMethod: 'طريقة الدفع',
-    bankTransfer: 'تحويل بنكي',
-    cardOrOther: 'بطاقة ائتمان/أخرى',
-    transactionId: 'رقم العملية',
-    paymentDate: 'تاريخ الدفع',
-    startDate: 'تاريخ بداية الاشتراك',
-    endDate: 'تاريخ نهاية الاشتراك',
-    autoRenew: 'تجديد تلقائي',
-    yes: 'نعم',
-    no: 'لا',
-    unavailable: 'غير متوفر',
-    supportNote: 'نحن هنا دائمًا لدعمك. لأي استفسار أو مساعدة لا تتردد في التواصل معنا عبر البريد أو الهاتف.',
-    thankYou: 'شكرًا لاختيارك منصتنا لتحقيق طموحاتك الرياضية!',
-    footer: 'منصة mesk llc & El7lm - جميع الحقوق محفوظة',
-    electronicInvoice: 'تم إصدار هذه الفاتورة إلكترونيًا ولا تحتاج إلى توقيع.',
-    print: 'طباعة الفاتورة',
-  },
-  en: {
-    loading: 'Loading data...',
-    notFoundError: 'Subscription data was not found',
-    fetchError: 'An error occurred while loading subscription data',
-    genericError: 'An error occurred',
-    backToPayment: 'Back to payment page',
-    noSubscription: 'No subscription',
-    noActiveSubscription: 'No active subscription was found',
-    title: 'Payment and subscription status',
-    subtitle: 'Review your subscription status and invoice details',
-    status: { pending: 'Pending confirmation', active: 'Active', expired: 'Expired', cancelled: 'Cancelled' },
-    invoice: 'Subscription invoice',
-    printInvoice: 'Print invoice',
-    downloadInvoice: 'Download invoice',
-    downloadSoon: 'This feature will be added soon',
-    customerInfo: 'Customer information',
-    subscriptionInfo: 'Subscription details',
-    invoiceNumber: 'Invoice number',
-    issueDate: 'Issue date',
-    customerName: 'Name',
-    email: 'Email',
-    phone: 'Phone',
-    address: 'Address',
-    taxNumber: 'Tax number',
-    plan: 'Plan',
-    amount: 'Amount',
-    paymentMethod: 'Payment method',
-    bankTransfer: 'Bank transfer',
-    cardOrOther: 'Credit card/other',
-    transactionId: 'Transaction ID',
-    paymentDate: 'Payment date',
-    startDate: 'Subscription start date',
-    endDate: 'Subscription end date',
-    autoRenew: 'Auto renew',
-    yes: 'Yes',
-    no: 'No',
-    unavailable: 'Unavailable',
-    supportNote: 'We are always here to support you. For any questions or help, contact us by email or phone.',
-    thankYou: 'Thank you for choosing our platform to pursue your sports ambitions!',
-    footer: 'mesk llc & El7lm platform - All rights reserved',
-    electronicInvoice: 'This invoice was issued electronically and does not require a signature.',
-    print: 'Print invoice',
-  },
-  es: {
-    loading: 'Cargando datos...',
-    notFoundError: 'No se encontraron datos de suscripción',
-    fetchError: 'Ocurrió un error al cargar los datos de suscripción',
-    genericError: 'Ocurrió un error',
-    backToPayment: 'Volver a la página de pago',
-    noSubscription: 'No hay suscripción',
-    noActiveSubscription: 'No se encontró ninguna suscripción activa',
-    title: 'Estado de pago y suscripción',
-    subtitle: 'Revisa el estado de tu suscripción y los detalles de la factura',
-    status: { pending: 'Pendiente de confirmación', active: 'Activo', expired: 'Vencido', cancelled: 'Cancelado' },
-    invoice: 'Factura de suscripción',
-    printInvoice: 'Imprimir factura',
-    downloadInvoice: 'Descargar factura',
-    downloadSoon: 'Esta función se añadirá pronto',
-    customerInfo: 'Información del cliente',
-    subscriptionInfo: 'Detalles de la suscripción',
-    invoiceNumber: 'Número de factura',
-    issueDate: 'Fecha de emisión',
-    customerName: 'Nombre',
-    email: 'Correo electrónico',
-    phone: 'Teléfono',
-    address: 'Dirección',
-    taxNumber: 'Número fiscal',
-    plan: 'Plan',
-    amount: 'Importe',
-    paymentMethod: 'Método de pago',
-    bankTransfer: 'Transferencia bancaria',
-    cardOrOther: 'Tarjeta de crédito/otro',
-    transactionId: 'ID de transacción',
-    paymentDate: 'Fecha de pago',
-    startDate: 'Fecha de inicio',
-    endDate: 'Fecha de finalización',
-    autoRenew: 'Renovación automática',
-    yes: 'Sí',
-    no: 'No',
-    unavailable: 'No disponible',
-    supportNote: 'Siempre estamos aquí para ayudarte. Para cualquier consulta, contáctanos por correo o teléfono.',
-    thankYou: '¡Gracias por elegir nuestra plataforma para lograr tus ambiciones deportivas!',
-    footer: 'Plataforma mesk llc & El7lm - Todos los derechos reservados',
-    electronicInvoice: 'Esta factura fue emitida electrónicamente y no requiere firma.',
-    print: 'Imprimir factura',
-  },
-  pt: {
-    loading: 'Carregando dados...',
-    notFoundError: 'Dados da assinatura não encontrados',
-    fetchError: 'Ocorreu um erro ao carregar os dados da assinatura',
-    genericError: 'Ocorreu um erro',
-    backToPayment: 'Voltar para a página de pagamento',
-    noSubscription: 'Nenhuma assinatura',
-    noActiveSubscription: 'Nenhuma assinatura ativa foi encontrada',
-    title: 'Status do pagamento e assinatura',
-    subtitle: 'Revise o status da assinatura e os detalhes da fatura',
-    status: { pending: 'Aguardando confirmação', active: 'Ativo', expired: 'Expirado', cancelled: 'Cancelado' },
-    invoice: 'Fatura da assinatura',
-    printInvoice: 'Imprimir fatura',
-    downloadInvoice: 'Baixar fatura',
-    downloadSoon: 'Este recurso será adicionado em breve',
-    customerInfo: 'Informações do cliente',
-    subscriptionInfo: 'Detalhes da assinatura',
-    invoiceNumber: 'Número da fatura',
-    issueDate: 'Data de emissão',
-    customerName: 'Nome',
-    email: 'E-mail',
-    phone: 'Telefone',
-    address: 'Endereço',
-    taxNumber: 'Número fiscal',
-    plan: 'Plano',
-    amount: 'Valor',
-    paymentMethod: 'Método de pagamento',
-    bankTransfer: 'Transferência bancária',
-    cardOrOther: 'Cartão de crédito/outro',
-    transactionId: 'ID da transação',
-    paymentDate: 'Data do pagamento',
-    startDate: 'Data de início',
-    endDate: 'Data de término',
-    autoRenew: 'Renovação automática',
-    yes: 'Sim',
-    no: 'Não',
-    unavailable: 'Indisponível',
-    supportNote: 'Estamos sempre aqui para ajudar. Para dúvidas ou suporte, entre em contato por e-mail ou telefone.',
-    thankYou: 'Obrigado por escolher nossa plataforma para realizar suas ambições esportivas!',
-    footer: 'Plataforma mesk llc & El7lm - Todos os direitos reservados',
-    electronicInvoice: 'Esta fatura foi emitida eletronicamente e não requer assinatura.',
-    print: 'Imprimir fatura',
-  },
-};
-
 const paymentStatusBrandName = 'mesk llc & El7lm';
 
 function SubscriptionStatusContent() {
   const router = useRouter();
   const { user } = useAuth();
-  const { locale, isRTL } = useTranslation();
-  const copy = PAYMENT_STATUS_COPY[locale] || PAYMENT_STATUS_COPY.en;
+  const { locale, isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('paymentStatus');
   const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const dateLocale = isRTL ? 'ar-EG' : 'en-US';
+  const dateLocale = { ar: 'ar-EG', en: 'en-US', es: 'es-ES', pt: 'pt-BR' }[locale];
   const formatDate = (value?: string) => value ? new Date(value).toLocaleDateString(dateLocale) : copy.unavailable;
 
   useEffect(() => {

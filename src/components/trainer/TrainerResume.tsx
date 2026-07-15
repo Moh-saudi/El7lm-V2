@@ -3,15 +3,12 @@
 import React, { useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import dayjs from 'dayjs';
-import 'dayjs/locale/ar';
+import { useTranslation } from '@/lib/i18n';
 import {
   Download, Printer, Phone, Mail, Globe, MapPin, Flag,
   Clock, Shield, Briefcase, Star, Trophy, Users, Target,
   Activity, GraduationCap, Video, X, CheckCircle
 } from 'lucide-react';
-
-dayjs.locale('ar');
 
 interface CertificationRecord {
   name: string;
@@ -69,6 +66,13 @@ interface TrainerResumeProps {
 }
 
 export default function TrainerResume({ trainerData, onClose }: TrainerResumeProps) {
+  const { t, locale, isRTL } = useTranslation();
+  const tr = (key: string) => t(`sharedComponents.trainerResume.${key}`);
+  const localeTag = locale === 'ar' ? 'ar-EG' : locale === 'es' ? 'es-ES' : locale === 'pt' ? 'pt-BR' : 'en-US';
+  const formatDate = (withTime = false) => new Intl.DateTimeFormat(localeTag, {
+    dateStyle: 'short',
+    ...(withTime ? { timeStyle: 'short' as const } : {}),
+  }).format(new Date());
   const resumeRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
 
@@ -82,14 +86,16 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
       background:rgba(0,0,0,0.8);color:white;padding:20px 30px;
       border-radius:12px;z-index:99999;font-family:Arial,sans-serif;font-size:16px;
     `;
-    loadingEl.textContent = 'جاري إنشاء PDF... يرجى الانتظار';
+    loadingEl.textContent = tr('creatingPdf');
     document.body.appendChild(loadingEl);
 
     try {
       await new Promise(r => setTimeout(r, 1000));
 
-      const images = resumeRef.current.querySelectorAll('img');
-      await Promise.all(Array.from(images).map(img =>
+      const images = Array.from(
+        resumeRef.current.querySelectorAll<HTMLImageElement>('img'),
+      ) as HTMLImageElement[];
+      await Promise.all(images.map(img =>
         new Promise(r => { if (img.complete) r(null); else { img.onload = () => r(null); img.onerror = () => r(null); } })
       ));
 
@@ -130,7 +136,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
       pdf.save(`${trainerData.full_name || 'trainer'}-resume.pdf`);
     } catch (err) {
       console.error('PDF error:', err);
-      alert('حدث خطأ أثناء إنشاء PDF. يرجى المحاولة مرة أخرى.');
+      alert(tr('pdfError'));
     } finally {
       document.body.removeChild(loadingEl);
       setDownloading(false);
@@ -142,7 +148,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
   const socialLinks = Object.entries(trainerData.social_media || {}).filter(([, v]) => v);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60" dir="rtl">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Toolbar */}
       <div className="sticky top-0 z-10 flex justify-between items-center px-6 py-3 shadow-lg bg-white/95 backdrop-blur print:hidden">
         <div className="flex gap-3">
@@ -152,17 +158,17 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
             className="flex gap-2 items-center px-5 py-2 text-white bg-cyan-600 rounded-lg transition hover:bg-cyan-700 disabled:opacity-60"
           >
             <Download className="w-4 h-4" />
-            {downloading ? 'جاري التحميل...' : 'تحميل PDF'}
+            {downloading ? tr('downloading') : tr('downloadPdf')}
           </button>
           <button
             onClick={handlePrint}
             className="flex gap-2 items-center px-5 py-2 text-gray-700 bg-gray-100 rounded-lg transition hover:bg-gray-200"
           >
             <Printer className="w-4 h-4" />
-            طباعة
+            {tr('print')}
           </button>
         </div>
-        <span className="text-sm font-medium text-gray-500">معاينة ملف المدرب</span>
+        <span className="text-sm font-medium text-gray-500">{tr('preview')}</span>
         <button onClick={onClose} className="p-2 text-gray-500 rounded-lg hover:text-red-500 hover:bg-red-50">
           <X className="w-5 h-5" />
         </button>
@@ -183,15 +189,15 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
               <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white/40 shadow-xl shrink-0">
                 <img
                   src={trainerData.profile_photo || '/images/user-avatar.svg'}
-                  alt="صورة المدرب"
+                  alt={tr('trainerPhoto')}
                   className="w-full h-full object-cover"
                   onError={e => { (e.target as HTMLImageElement).src = '/images/user-avatar.svg'; }}
                 />
               </div>
               {/* Info */}
               <div className="flex-1">
-                <h1 className="text-3xl font-bold mb-1">{trainerData.full_name || 'المدرب الرياضي'}</h1>
-                <p className="text-cyan-100 text-lg mb-3">{trainerData.specialization || 'مدرب رياضي'}</p>
+                <h1 className="text-3xl font-bold mb-1">{trainerData.full_name || tr('sportsTrainer')}</h1>
+                <p className="text-cyan-100 text-lg mb-3">{trainerData.specialization || tr('sportsTrainer')}</p>
                 <div className="flex flex-wrap gap-4 text-sm text-cyan-100">
                   {trainerData.nationality && (
                     <span className="flex gap-1 items-center"><Flag className="w-4 h-4" />{trainerData.nationality}</span>
@@ -200,10 +206,10 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
                     <span className="flex gap-1 items-center"><MapPin className="w-4 h-4" />{trainerData.current_location}</span>
                   )}
                   {trainerData.years_of_experience && (
-                    <span className="flex gap-1 items-center"><Clock className="w-4 h-4" />{trainerData.years_of_experience} سنوات خبرة</span>
+                    <span className="flex gap-1 items-center"><Clock className="w-4 h-4" />{tr('yearsExperience').replace('{count}', String(trainerData.years_of_experience))}</span>
                   )}
                   {trainerData.coaching_level && (
-                    <span className="flex gap-1 items-center"><Shield className="w-4 h-4" />مستوى {trainerData.coaching_level}</span>
+                    <span className="flex gap-1 items-center"><Shield className="w-4 h-4" />{tr('level').replace('{level}', String(trainerData.coaching_level))}</span>
                   )}
                 </div>
                 <div className="mt-3">
@@ -213,7 +219,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
                       : 'bg-white/10 text-cyan-100 border border-white/20'
                   }`}>
                     <Shield className="w-3 h-3" />
-                    {trainerData.is_certified ? 'مدرب معتمد' : 'مدرب رياضي'}
+                    {trainerData.is_certified ? tr('certifiedTrainer') : tr('sportsTrainer')}
                     {trainerData.is_certified && trainerData.license_number && ` — ${trainerData.license_number}`}
                   </span>
                 </div>
@@ -221,11 +227,11 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
             </div>
             {/* Platform footer */}
             <div className="mt-6 pt-4 border-t border-white/20 flex justify-between items-center text-xs text-cyan-100">
-              <span className="font-bold text-white">منصة الحلم لاكتشاف المواهب الكروية 2025</span>
-              <span>تاريخ الإصدار: {dayjs().format('DD/MM/YYYY')}</span>
+              <span className="font-bold text-white">{tr('platformName')}</span>
+              <span>{tr('issueDate').replace('{date}', formatDate())}</span>
             </div>
             <p className="mt-2 text-xs text-cyan-200 text-center">
-              هذه الوثيقة تم إنشاؤها بواسطة صاحب الحساب على منصة الحلم دون أي مسؤولية عليها
+              {tr('documentDisclaimer')}
             </p>
           </div>
 
@@ -234,10 +240,10 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
             {/* ===== STATS ===== */}
             <div className="grid grid-cols-4 gap-4">
               {[
-                { icon: <Users className="w-6 h-6" />, val: trainerData.stats?.players_trained ?? 0, label: 'لاعبون مدربون', color: 'bg-cyan-500' },
-                { icon: <Activity className="w-6 h-6" />, val: trainerData.stats?.training_sessions ?? 0, label: 'جلسات تدريبية', color: 'bg-green-500' },
-                { icon: <Target className="w-6 h-6" />, val: `${trainerData.stats?.success_rate ?? 0}%`, label: 'معدل النجاح', color: 'bg-yellow-500' },
-                { icon: <Trophy className="w-6 h-6" />, val: trainerData.stats?.years_experience ?? trainerData.years_of_experience ?? 0, label: 'سنوات الخبرة', color: 'bg-blue-500' },
+                { icon: <Users className="w-6 h-6" />, val: trainerData.stats?.players_trained ?? 0, label: tr('playersTrained'), color: 'bg-cyan-500' },
+                { icon: <Activity className="w-6 h-6" />, val: trainerData.stats?.training_sessions ?? 0, label: tr('trainingSessions'), color: 'bg-green-500' },
+                { icon: <Target className="w-6 h-6" />, val: `${trainerData.stats?.success_rate ?? 0}%`, label: tr('successRate'), color: 'bg-yellow-500' },
+                { icon: <Trophy className="w-6 h-6" />, val: trainerData.stats?.years_experience ?? trainerData.years_of_experience ?? 0, label: tr('experienceYears'), color: 'bg-blue-500' },
               ].map(({ icon, val, label, color }) => (
                 <div key={label} className={`${color} text-white rounded-xl p-4 flex flex-col items-center text-center`}>
                   {icon}
@@ -251,7 +257,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
             <div className="grid grid-cols-2 gap-6">
               <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                 <h2 className="text-base font-bold text-cyan-700 mb-4 flex gap-2 items-center border-b border-cyan-100 pb-2">
-                  <Phone className="w-4 h-4" /> بيانات التواصل
+                  <Phone className="w-4 h-4" /> {tr('contactInformation')}
                 </h2>
                 <div className="space-y-2 text-sm">
                   {trainerData.phone && (
@@ -263,7 +269,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
                   {trainerData.whatsapp && (
                     <div className="flex gap-2 items-center text-gray-700">
                       <Phone className="w-4 h-4 text-green-500 shrink-0" />
-                      <span dir="ltr">{trainerData.whatsapp} (واتساب)</span>
+                      <span dir="ltr">{trainerData.whatsapp} ({tr('whatsapp')})</span>
                     </div>
                   )}
                   {trainerData.email && (
@@ -283,7 +289,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
 
               <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                 <h2 className="text-base font-bold text-cyan-700 mb-4 flex gap-2 items-center border-b border-cyan-100 pb-2">
-                  <Star className="w-4 h-4" /> نبذة شخصية
+                  <Star className="w-4 h-4" /> {tr('bio')}
                 </h2>
                 <p className="text-sm leading-relaxed text-gray-700">
                   {trainerData.description || '—'}
@@ -295,16 +301,16 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
             <div className="grid grid-cols-2 gap-6">
               <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                 <h2 className="text-base font-bold text-cyan-700 mb-4 flex gap-2 items-center border-b border-cyan-100 pb-2">
-                  <Shield className="w-4 h-4" /> المعلومات المهنية
+                  <Shield className="w-4 h-4" /> {tr('professionalInformation')}
                 </h2>
                 <div className="space-y-2 text-sm">
                   {[
-                    { label: 'التخصص', val: trainerData.specialization },
-                    { label: 'مستوى التدريب', val: trainerData.coaching_level },
-                    { label: 'رقم الرخصة', val: trainerData.is_certified ? trainerData.license_number : null },
-                    { label: 'انتهاء الرخصة', val: trainerData.is_certified ? trainerData.license_expiry : null },
-                    { label: 'تاريخ الميلاد', val: trainerData.date_of_birth },
-                    { label: 'مدى التوفر', val: trainerData.availability },
+                    { label: tr('specialization'), val: trainerData.specialization },
+                    { label: tr('coachingLevel'), val: trainerData.coaching_level },
+                    { label: tr('licenseNumber'), val: trainerData.is_certified ? trainerData.license_number : null },
+                    { label: tr('licenseExpiry'), val: trainerData.is_certified ? trainerData.license_expiry : null },
+                    { label: tr('dateOfBirth'), val: trainerData.date_of_birth },
+                    { label: tr('availability'), val: trainerData.availability },
                   ].map(({ label, val }) => val ? (
                     <div key={label} className="flex gap-2">
                       <span className="text-gray-500 w-28 shrink-0">{label}:</span>
@@ -313,7 +319,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
                   ) : null)}
                   {trainerData.spoken_languages?.length > 0 && (
                     <div className="flex gap-2 items-start">
-                      <span className="text-gray-500 w-28 shrink-0">اللغات:</span>
+                      <span className="text-gray-500 w-28 shrink-0">{tr('languages')}:</span>
                       <div className="flex flex-wrap gap-1">
                         {trainerData.spoken_languages.map((l, i) => (
                           <span key={i} className="px-2 py-0.5 text-xs bg-cyan-100 text-cyan-700 rounded-full">{l}</span>
@@ -326,11 +332,11 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
 
               <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                 <h2 className="text-base font-bold text-cyan-700 mb-4 flex gap-2 items-center border-b border-cyan-100 pb-2">
-                  <CheckCircle className="w-4 h-4" /> الفئات والخدمات
+                  <CheckCircle className="w-4 h-4" /> {tr('categoriesAndServices')}
                 </h2>
                 {trainerData.age_groups?.length > 0 && (
                   <div className="mb-3">
-                    <p className="text-xs text-gray-500 mb-2">الفئات العمرية:</p>
+                    <p className="text-xs text-gray-500 mb-2">{tr('ageGroups')}:</p>
                     <div className="flex flex-wrap gap-1">
                       {trainerData.age_groups.map((g, i) => (
                         <span key={i} className="px-2 py-1 text-xs font-medium bg-cyan-50 border border-cyan-200 text-cyan-700 rounded-full">{g}</span>
@@ -340,7 +346,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
                 )}
                 {trainerData.service_type?.length > 0 && (
                   <div className="mb-3">
-                    <p className="text-xs text-gray-500 mb-2">نوع الخدمة:</p>
+                    <p className="text-xs text-gray-500 mb-2">{tr('serviceType')}:</p>
                     <div className="flex flex-wrap gap-1">
                       {trainerData.service_type.map((s, i) => (
                         <span key={i} className="px-2 py-1 text-xs font-medium bg-green-50 border border-green-200 text-green-700 rounded-full">{s}</span>
@@ -350,7 +356,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
                 )}
                 {trainerData.availability && (
                   <div>
-                    <p className="text-xs text-gray-500 mb-2">مدى التوفر:</p>
+                    <p className="text-xs text-gray-500 mb-2">{tr('availability')}:</p>
                     <span className="px-3 py-1 text-xs font-bold bg-blue-50 border border-blue-200 text-blue-700 rounded-full">
                       {trainerData.availability}
                     </span>
@@ -363,7 +369,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
             {trainerData.training_philosophy && (
               <div className="bg-cyan-50 rounded-xl p-5 border border-cyan-100">
                 <h2 className="text-base font-bold text-cyan-700 mb-3 flex gap-2 items-center">
-                  <Star className="w-4 h-4" /> الفلسفة التدريبية
+                  <Star className="w-4 h-4" /> {tr('trainingPhilosophy')}
                 </h2>
                 <p className="text-sm leading-relaxed text-gray-700">{trainerData.training_philosophy}</p>
               </div>
@@ -373,15 +379,15 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
             {trainerData.certifications?.length > 0 && (
               <div>
                 <h2 className="text-base font-bold text-cyan-700 mb-4 flex gap-2 items-center">
-                  <GraduationCap className="w-4 h-4" /> الشهادات والدورات
+                  <GraduationCap className="w-4 h-4" /> {tr('certificationsAndCourses')}
                 </h2>
                 <div className="overflow-hidden rounded-xl border border-gray-200">
                   <table className="w-full text-sm">
                     <thead className="bg-cyan-600 text-white">
                       <tr>
-                        <th className="px-4 py-2 text-right font-semibold">الشهادة / الدورة</th>
-                        <th className="px-4 py-2 text-right font-semibold">الجهة المانحة</th>
-                        <th className="px-4 py-2 text-center font-semibold w-20">السنة</th>
+                        <th className="px-4 py-2 text-start font-semibold">{tr('certificateOrCourse')}</th>
+                        <th className="px-4 py-2 text-start font-semibold">{tr('issuer')}</th>
+                        <th className="px-4 py-2 text-center font-semibold w-20">{tr('year')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -404,7 +410,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
                 {trainerData.previous_clubs?.length > 0 && (
                   <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                     <h2 className="text-base font-bold text-cyan-700 mb-3 flex gap-2 items-center border-b border-cyan-100 pb-2">
-                      <Briefcase className="w-4 h-4" /> الأندية السابقة
+                      <Briefcase className="w-4 h-4" /> {tr('previousClubs')}
                     </h2>
                     <ul className="space-y-1.5">
                       {trainerData.previous_clubs.map((club, i) => (
@@ -419,7 +425,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
                 {trainerData.notable_players?.length > 0 && (
                   <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                     <h2 className="text-base font-bold text-cyan-700 mb-3 flex gap-2 items-center border-b border-cyan-100 pb-2">
-                      <Users className="w-4 h-4" /> اللاعبون البارزون
+                      <Users className="w-4 h-4" /> {tr('notablePlayers')}
                     </h2>
                     <div className="flex flex-wrap gap-2">
                       {trainerData.notable_players.map((player, i) => (
@@ -437,7 +443,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
                 {trainerData.achievements && (
                   <div className="bg-yellow-50 rounded-xl p-5 border border-yellow-100">
                     <h2 className="text-base font-bold text-yellow-700 mb-3 flex gap-2 items-center">
-                      <Trophy className="w-4 h-4" /> الإنجازات والجوائز
+                      <Trophy className="w-4 h-4" /> {tr('achievementsAndAwards')}
                     </h2>
                     <p className="text-sm leading-relaxed text-gray-700">{trainerData.achievements}</p>
                   </div>
@@ -445,7 +451,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
                 {trainerData.references && (
                   <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                     <h2 className="text-base font-bold text-gray-700 mb-3 flex gap-2 items-center">
-                      <Users className="w-4 h-4" /> المراجع والتوصيات
+                      <Users className="w-4 h-4" /> {tr('referencesAndRecommendations')}
                     </h2>
                     <p className="text-sm leading-relaxed text-gray-700">{trainerData.references}</p>
                   </div>
@@ -457,7 +463,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
             {trainerData.video_links?.length > 0 && (
               <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                 <h2 className="text-base font-bold text-cyan-700 mb-3 flex gap-2 items-center">
-                  <Video className="w-4 h-4" /> روابط الفيديو التدريبي
+                  <Video className="w-4 h-4" /> {tr('trainingVideoLinks')}
                 </h2>
                 <ul className="space-y-1.5">
                   {trainerData.video_links.map((link, i) => (
@@ -474,7 +480,7 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
             {socialLinks.length > 0 && (
               <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                 <h2 className="text-base font-bold text-cyan-700 mb-3 flex gap-2 items-center">
-                  <Globe className="w-4 h-4" /> وسائل التواصل الاجتماعي
+                  <Globe className="w-4 h-4" /> {tr('socialMedia')}
                 </h2>
                 <div className="grid grid-cols-2 gap-2">
                   {socialLinks.map(([platform, url]) => (
@@ -491,12 +497,12 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
             {trainerData.gallery?.length > 0 && (
               <div>
                 <h2 className="text-base font-bold text-cyan-700 mb-4 flex gap-2 items-center">
-                  <Star className="w-4 h-4" /> معرض الصور
+                  <Star className="w-4 h-4" /> {tr('photoGallery')}
                 </h2>
                 <div className="grid grid-cols-4 gap-3">
                   {trainerData.gallery.slice(0, 8).map((img, i) => (
                     <div key={i} className="aspect-square rounded-lg overflow-hidden border border-gray-200">
-                      <img src={img} alt={`صورة ${i + 1}`} className="w-full h-full object-cover"
+                      <img src={img} alt={tr('photoNumber').replace('{number}', String(i + 1))} className="w-full h-full object-cover"
                         onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                     </div>
                   ))}
@@ -507,11 +513,11 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
             {/* ===== FOOTER ===== */}
             <div className="border-t-2 border-cyan-100 pt-6 mt-6">
               <div className="flex justify-between items-center text-xs text-gray-500">
-                <span className="font-bold text-cyan-600">منصة الحلم — el7lm.com</span>
-                <span>تم إنشاء هذا الملف بتاريخ {dayjs().format('DD/MM/YYYY HH:mm')}</span>
+                <span className="font-bold text-cyan-600">{tr('platformFooter')}</span>
+                <span>{tr('createdAt').replace('{date}', formatDate(true))}</span>
               </div>
               <p className="mt-2 text-xs text-center text-gray-400">
-                جميع المعلومات الواردة في هذا الملف تخضع لمسؤولية صاحبها وليس للمنصة أي مسؤولية عن صحتها
+                {tr('informationDisclaimer')}
               </p>
             </div>
 
@@ -519,13 +525,6 @@ export default function TrainerResume({ trainerData, onClose }: TrainerResumePro
         </div>
       </div>
 
-      <style jsx global>{`
-        @media print {
-          @page { margin: 0.5cm; size: A4; }
-          body { -webkit-print-color-adjust: exact; color-adjust: exact; }
-          .print\\:hidden { display: none !important; }
-        }
-      `}</style>
     </div>
   );
 }

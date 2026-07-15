@@ -6,6 +6,10 @@ export interface PlayersSectionData {
   subAr: string;
   titleEn: string;
   subEn: string;
+  titleEs: string;
+  subEs: string;
+  titlePt: string;
+  subPt: string;
   selectedPlayerIds?: string[];
 }
 
@@ -17,6 +21,10 @@ const DEFAULT_DATA: PlayersSectionData = {
   subAr: 'شاهد بعض من أفضل اللاعبين الذين انضموا لمنصة الحلم مؤخراً',
   titleEn: 'Top Registered Talents',
   subEn: 'See some of the best players who recently joined El7lm platform',
+  titleEs: 'Talentos emergentes',
+  subEs: 'Los jugadores más buscados por los clubes esta semana',
+  titlePt: 'Talentos emergentes',
+  subPt: 'Os jogadores mais procurados pelos clubes esta semana',
   selectedPlayerIds: []
 };
 

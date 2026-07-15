@@ -20,16 +20,18 @@ import {
 } from '@/lib/opportunities/notifications';
 import { OPPORTUNITY_TYPES } from '@/lib/opportunities/config';
 import { Opportunity, OpportunityApplication, ApplicationStatus, OpportunityType } from '@/types/opportunities';
+import { useTranslation } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatDate(iso: string) {
+function formatDate(iso: string, locale: string, relative: any) {
   try {
     const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-    if (diff === 0) return 'اليوم';
-    if (diff === 1) return 'أمس';
-    if (diff < 7) return `منذ ${diff} أيام`;
-    return new Date(iso).toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' });
+    if (diff === 0) return relative.today;
+    if (diff === 1) return relative.yesterday;
+    if (diff < 7) return relative.daysAgo.replace('{{count}}', String(diff));
+    return new Date(iso).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
   } catch { return iso; }
 }
 
@@ -44,12 +46,10 @@ function nameToColor(name: string) {
   return colors[Math.abs(hash) % colors.length];
 }
 
-const STATUS_CFG: Record<ApplicationStatus, { label: string; bg: string; text: string }> = {
-  pending:    { label: 'قيد المراجعة', bg: 'bg-yellow-100', text: 'text-yellow-700' },
-  reviewed:   { label: 'تمت المراجعة', bg: 'bg-blue-100',   text: 'text-blue-700'   },
-  accepted:   { label: 'مقبول ✓',      bg: 'bg-green-100',  text: 'text-green-700'  },
-  rejected:   { label: 'مرفوض',        bg: 'bg-red-100',    text: 'text-red-700'    },
-  waitlisted: { label: 'قائمة الانتظار', bg: 'bg-gray-100', text: 'text-gray-600'   },
+const STATUS_STYLE: Record<ApplicationStatus, { bg: string; text: string }> = {
+  pending: { bg: 'bg-yellow-100', text: 'text-yellow-700' }, reviewed: { bg: 'bg-blue-100', text: 'text-blue-700' },
+  accepted: { bg: 'bg-green-100', text: 'text-green-700' }, rejected: { bg: 'bg-red-100', text: 'text-red-700' },
+  waitlisted: { bg: 'bg-gray-100', text: 'text-gray-600' },
 };
 
 // ─── Application Card ─────────────────────────────────────────────────────────
@@ -71,9 +71,12 @@ function ApplicationCard({
   selected: boolean;
   onToggleSelect: () => void;
 }) {
+  const { locale, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('opportunityApplications');
+  const dateLocale = ({ ar: 'ar-EG', en: 'en-US', es: 'es-ES', pt: 'pt-BR' } as const)[locale];
   const [showReject, setShowReject] = useState(false);
   const [rejectNote, setRejectNote] = useState('');
-  const statusCfg = STATUS_CFG[app.status];
+  const statusCfg = STATUS_STYLE[app.status];
   const isPending = app.status === 'pending';
 
   const profileUrl = `/dashboard/shared/player-profile/${app.playerId}?returnPath=${encodeURIComponent(returnPath)}`;
@@ -122,7 +125,7 @@ function ApplicationCard({
                 </span>
               )}
               <span className={`mr-auto text-xs px-2 py-0.5 rounded-full font-semibold ${statusCfg.bg} ${statusCfg.text}`}>
-                {statusCfg.label}
+                {copy.statuses[app.status]}
               </span>
             </div>
             <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
@@ -132,10 +135,10 @@ function ApplicationCard({
                 </span>
               )}
               {app.playerAge && (
-                <span className="text-xs text-gray-500">{app.playerAge} سنة</span>
+                <span className="text-xs text-gray-500">{copy.ageYears.replace('{{age}}', String(app.playerAge))}</span>
               )}
               <span className="text-xs text-gray-400 flex items-center gap-0.5">
-                <Clock className="w-3 h-3" /> {formatDate(app.appliedAt)}
+                <Clock className="w-3 h-3" /> {formatDate(app.appliedAt, dateLocale, copy.relative)}
               </span>
             </div>
           </div>
@@ -145,7 +148,7 @@ function ApplicationCard({
         {app.message && (
           <div className="bg-gray-50 rounded-xl px-3 py-2">
             <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-              <MessageSquare className="w-3 h-3" /> رسالة اللاعب
+              <MessageSquare className="w-3 h-3" /> {copy.playerMessage}
             </p>
             <p className="text-sm text-gray-700 line-clamp-2">{app.message}</p>
           </div>
@@ -154,7 +157,7 @@ function ApplicationCard({
         {/* Review note */}
         {app.reviewNote && (
           <div className="bg-yellow-50 border border-yellow-100 rounded-xl px-3 py-2 text-xs text-yellow-700">
-            <span className="font-semibold">ملاحظة: </span>{app.reviewNote}
+            <span className="font-semibold">{copy.reviewNote} </span>{app.reviewNote}
           </div>
         )}
 
@@ -164,7 +167,7 @@ function ApplicationCard({
           className="flex items-center justify-center gap-1.5 w-full py-2.5 border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:bg-gray-50 hover:text-gray-800 transition-colors"
         >
           <ExternalLink className="w-3.5 h-3.5" />
-          عرض الملف الكامل (صورة — فيديوهات — إحصائيات)
+          {copy.fullProfile}
         </a>
 
         {/* Actions — pending only */}
@@ -174,7 +177,7 @@ function ApplicationCard({
               <textarea
                 value={rejectNote}
                 onChange={e => setRejectNote(e.target.value)}
-                placeholder="سبب الرفض (اختياري)..."
+                placeholder={copy.rejectPlaceholder}
                 rows={2}
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
               />
@@ -186,14 +189,14 @@ function ApplicationCard({
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-green-500 text-white rounded-xl text-xs font-bold hover:bg-green-600 disabled:opacity-50 transition-colors"
               >
                 {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                قبول
+                {copy.accept}
               </button>
               {!showReject ? (
                 <button
                   onClick={() => setShowReject(true)}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors"
                 >
-                  <XCircle className="w-3.5 h-3.5" /> رفض
+                  <XCircle className="w-3.5 h-3.5" /> {copy.reject}
                 </button>
               ) : (
                 <button
@@ -202,7 +205,7 @@ function ApplicationCard({
                   className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-red-500 text-white rounded-xl text-xs font-bold hover:bg-red-600 disabled:opacity-50 transition-colors"
                 >
                   {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
-                  تأكيد الرفض
+                  {copy.confirmReject}
                 </button>
               )}
             </div>
@@ -215,15 +218,15 @@ function ApplicationCard({
 
 // ─── CSV Export ────────────────────────────────────────────────────────────────
 
-function exportCSV(applications: OpportunityApplication[], title: string) {
-  const headers = ['الاسم', 'المركز', 'الدولة', 'العمر', 'تاريخ التقديم', 'الحالة', 'الرسالة'];
+function exportCSV(applications: OpportunityApplication[], title: string, copy: any, locale: string) {
+  const headers = copy.csvHeaders;
   const rows = applications.map(a => [
     a.playerName,
     a.playerPosition || '',
     a.playerCountry || '',
     a.playerAge?.toString() || '',
-    new Date(a.appliedAt).toLocaleDateString('ar-SA'),
-    STATUS_CFG[a.status]?.label || a.status,
+    new Date(a.appliedAt).toLocaleDateString(locale),
+    copy.statuses[a.status] || a.status,
     (a.message || '').replace(/,/g, ' ').replace(/\n/g, ' '),
   ]);
   const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
@@ -244,6 +247,10 @@ export default function ApplicationsPage() {
   const params  = useParams();
   const router  = useRouter();
   const { user } = useAuth();
+  const { locale, isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('opportunityApplications');
+  const typeLabels = getTranslations<any>('opportunityTypes');
+  const dateLocale = ({ ar: 'ar-EG', en: 'en-US', es: 'es-ES', pt: 'pt-BR' } as const)[locale];
   const id = params.id as string;
 
   const [opportunity, setOpportunity]   = useState<Opportunity | null>(null);
@@ -278,7 +285,7 @@ export default function ApplicationsPage() {
         setOpportunity(opp);
         setApplications(apps);
       } catch {
-        toast.error('حدث خطأ أثناء تحميل البيانات');
+        toast.error(copy.loadError);
       } finally {
         setLoading(false);
       }
@@ -291,9 +298,9 @@ export default function ApplicationsPage() {
       setProcessingId(app.id);
       await updateApplicationStatus(app.id, 'accepted', user.id);
       await notifyApplicationAccepted(app.playerId, opportunity.title, opportunity.organizerName);
-      toast.success('تم قبول الطلب');
+      toast.success(copy.accepted);
       setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'accepted' } : a));
-    } catch { toast.error('فشل تحديث الطلب'); }
+    } catch { toast.error(copy.updateFailed); }
     finally { setProcessingId(null); }
   };
 
@@ -303,9 +310,9 @@ export default function ApplicationsPage() {
       setProcessingId(app.id);
       await updateApplicationStatus(app.id, 'rejected', user.id, note || undefined);
       await notifyApplicationRejected(app.playerId, opportunity.title, opportunity.organizerName);
-      toast.success('تم رفض الطلب');
+      toast.success(copy.rejected);
       setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'rejected', reviewNote: note } : a));
-    } catch { toast.error('فشل تحديث الطلب'); }
+    } catch { toast.error(copy.updateFailed); }
     finally { setProcessingId(null); }
   };
 
@@ -322,9 +329,9 @@ export default function ApplicationsPage() {
       setApplications(prev => prev.map(a =>
         selectedIds.has(a.id) && a.status === 'pending' ? { ...a, status: 'accepted' } : a
       ));
-      toast.success(`تم قبول ${targets.length} طلب`);
+      toast.success(copy.bulkAccepted.replace('{{count}}', String(targets.length)));
       setSelectedIds(new Set());
-    } catch { toast.error('حدث خطأ أثناء المعالجة الجماعية'); }
+    } catch { toast.error(copy.bulkError); }
     finally { setBulkProcessing(false); }
   };
 
@@ -340,17 +347,15 @@ export default function ApplicationsPage() {
       setApplications(prev => prev.map(a =>
         selectedIds.has(a.id) && a.status === 'pending' ? { ...a, status: 'rejected' } : a
       ));
-      toast.success(`تم رفض ${targets.length} طلب`);
+      toast.success(copy.bulkRejected.replace('{{count}}', String(targets.length)));
       setSelectedIds(new Set());
-    } catch { toast.error('حدث خطأ أثناء المعالجة الجماعية'); }
+    } catch { toast.error(copy.bulkError); }
     finally { setBulkProcessing(false); }
   };
 
   const tabs: { key: FilterTab; label: string }[] = [
-    { key: 'all',      label: 'الكل'         },
-    { key: 'pending',  label: 'قيد المراجعة' },
-    { key: 'accepted', label: 'مقبول'         },
-    { key: 'rejected', label: 'مرفوض'         },
+    { key: 'all', label: copy.tabs.all }, { key: 'pending', label: copy.tabs.pending },
+    { key: 'accepted', label: copy.tabs.accepted }, { key: 'rejected', label: copy.tabs.rejected },
   ];
 
   // Unique positions and countries for filter selects
@@ -398,21 +403,21 @@ export default function ApplicationsPage() {
   };
 
   if (loading) return (
-    <div className="flex items-center justify-center min-h-screen" dir="rtl">
+    <div className="flex items-center justify-center min-h-screen" dir={isRTL ? 'rtl' : 'ltr'}>
       <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
     </div>
   );
 
   if (!opportunity) return (
-    <div className="flex items-center justify-center min-h-screen text-gray-500" dir="rtl">
-      <p>لم يتم العثور على الفرصة</p>
+    <div className="flex items-center justify-center min-h-screen text-gray-500" dir={isRTL ? 'rtl' : 'ltr'}>
+      <p>{copy.notFound}</p>
     </div>
   );
 
   const cfg = OPPORTUNITY_TYPES[opportunity.opportunityType] ?? { label: opportunity.opportunityType, emoji: '📌', color: '#6B7280' };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20" dir="rtl">
+    <div className="min-h-screen bg-gray-50 pb-20" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-10 shadow-sm">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
@@ -425,15 +430,16 @@ export default function ApplicationsPage() {
               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold text-white mt-0.5"
               style={{ backgroundColor: cfg.color }}
             >
-              {cfg.emoji} {cfg.label}
+              {cfg.emoji} {typeLabels[opportunity.opportunityType]}
             </span>
           </div>
+          <LanguageSwitcher />
           <button
-            onClick={() => exportCSV(applications, opportunity.title)}
+            onClick={() => exportCSV(applications, opportunity.title, copy, dateLocale)}
             className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
-            تصدير CSV
+            {copy.exportCsv}
           </button>
         </div>
       </div>
@@ -442,11 +448,11 @@ export default function ApplicationsPage() {
         {/* Stats */}
         <div className="grid grid-cols-5 gap-2">
           {[
-            { value: stats.total,       label: 'الكل',         color: 'text-gray-700'   },
-            { value: stats.pending,     label: 'معلق',         color: 'text-yellow-600' },
-            { value: stats.accepted,    label: 'مقبول',        color: 'text-green-600'  },
-            { value: stats.rejected,    label: 'مرفوض',        color: 'text-red-600'    },
-            { value: `${acceptanceRate}%`, label: 'نسبة القبول', color: 'text-blue-600' },
+            { value: stats.total, label: copy.stats.all, color: 'text-gray-700' },
+            { value: stats.pending, label: copy.stats.pending, color: 'text-yellow-600' },
+            { value: stats.accepted, label: copy.stats.accepted, color: 'text-green-600' },
+            { value: stats.rejected, label: copy.stats.rejected, color: 'text-red-600' },
+            { value: `${acceptanceRate}%`, label: copy.stats.rate, color: 'text-blue-600' },
           ].map(s => (
             <div key={s.label} className="bg-white rounded-xl p-3 text-center shadow-sm border border-gray-100">
               <div className={`text-lg font-bold ${s.color}`}>{s.value}</div>
@@ -477,19 +483,19 @@ export default function ApplicationsPage() {
             className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors"
           >
             <Filter className="w-3.5 h-3.5" />
-            تصفية المتقدمين
+            {copy.filterApplicants}
           </button>
           {filtered.length > 0 && (
             <button
               onClick={toggleSelectAll}
               className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 transition-colors"
             >
-              {selectedIds.size === filtered.length ? 'إلغاء التحديد' : 'تحديد الكل'}
+              {selectedIds.size === filtered.length ? copy.clearSelection : copy.selectAll}
             </button>
           )}
           {selectedIds.size > 0 && (
             <span className="text-xs text-blue-600 font-bold">
-              {selectedIds.size} محدد
+              {copy.selected.replace('{{count}}', String(selectedIds.size))}
             </span>
           )}
         </div>
@@ -503,7 +509,7 @@ export default function ApplicationsPage() {
                 type="text"
                 value={searchName}
                 onChange={e => setSearchName(e.target.value)}
-                placeholder="بحث بالاسم..."
+                placeholder={copy.searchPlaceholder}
                 className="w-full pr-9 pl-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-green-300"
               />
             </div>
@@ -513,7 +519,7 @@ export default function ApplicationsPage() {
                 onChange={e => setFilterPos(e.target.value)}
                 className="px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-green-300 bg-white"
               >
-                <option value="">كل المراكز</option>
+                <option value="">{copy.allPositions}</option>
                 {uniquePositions.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
               <select
@@ -521,7 +527,7 @@ export default function ApplicationsPage() {
                 onChange={e => setFilterCountry(e.target.value)}
                 className="px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-green-300 bg-white"
               >
-                <option value="">كل الدول</option>
+                <option value="">{copy.allCountries}</option>
                 {uniqueCountries.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -530,14 +536,14 @@ export default function ApplicationsPage() {
                 type="number"
                 value={filterAgeMin}
                 onChange={e => setFilterAgeMin(e.target.value)}
-                placeholder="العمر من"
+                placeholder={copy.ageFrom}
                 className="px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-green-300"
               />
               <input
                 type="number"
                 value={filterAgeMax}
                 onChange={e => setFilterAgeMax(e.target.value)}
-                placeholder="العمر إلى"
+                placeholder={copy.ageTo}
                 className="px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-green-300"
               />
             </div>
@@ -545,7 +551,7 @@ export default function ApplicationsPage() {
               onClick={() => { setSearchName(''); setFilterPos(''); setFilterCountry(''); setFilterAgeMin(''); setFilterAgeMax(''); }}
               className="text-xs text-gray-500 hover:text-red-500 transition-colors"
             >
-              مسح الفلاتر
+              {copy.clearFilters}
             </button>
           </div>
         )}
@@ -554,7 +560,7 @@ export default function ApplicationsPage() {
         {filtered.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">لا توجد طلبات في هذه الحالة</p>
+            <p className="text-sm">{copy.empty}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -576,10 +582,10 @@ export default function ApplicationsPage() {
 
       {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-0 right-0 left-0 z-20 bg-white border-t border-gray-200 shadow-lg px-4 py-3" dir="rtl">
+        <div className="fixed bottom-0 right-0 left-0 z-20 bg-white border-t border-gray-200 shadow-lg px-4 py-3" dir={isRTL ? 'rtl' : 'ltr'}>
           <div className="max-w-2xl mx-auto flex items-center gap-3">
             <span className="text-sm font-bold text-gray-700 flex-1">
-              {selectedIds.size} طلب محدد
+              {copy.selectedRequests.replace('{{count}}', String(selectedIds.size))}
             </span>
             <button
               onClick={handleBulkAccept}
@@ -587,7 +593,7 @@ export default function ApplicationsPage() {
               className="flex items-center gap-1.5 px-4 py-2.5 bg-green-500 text-white rounded-xl text-sm font-bold hover:bg-green-600 disabled:opacity-50 transition-colors"
             >
               {bulkProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-              قبول {selectedIds.size}
+              {copy.bulkAccept.replace('{{count}}', String(selectedIds.size))}
             </button>
             <button
               onClick={handleBulkReject}
@@ -595,13 +601,13 @@ export default function ApplicationsPage() {
               className="flex items-center gap-1.5 px-4 py-2.5 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 disabled:opacity-50 transition-colors"
             >
               {bulkProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-              رفض {selectedIds.size}
+              {copy.bulkReject.replace('{{count}}', String(selectedIds.size))}
             </button>
             <button
               onClick={() => setSelectedIds(new Set())}
               className="text-gray-400 hover:text-gray-600 p-2"
             >
-              &times;
+              ×
             </button>
           </div>
         </div>

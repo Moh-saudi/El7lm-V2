@@ -26,6 +26,7 @@ import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n';
 
 interface PhoneCollectionModalProps {
     isOpen: boolean;
@@ -34,6 +35,8 @@ interface PhoneCollectionModalProps {
 }
 
 export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true }: PhoneCollectionModalProps) {
+    const { t, isRTL } = useTranslation();
+    const pt = (key: string) => t(`sharedComponents.phoneCollection.${key}`);
     const { user, userData, refreshUserData } = useAuth();
     const [loading, setLoading] = useState(false);
     const router = useRouter();
@@ -76,7 +79,7 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
 
         if (!user) return;
         if (!selectedCountry) {
-            setError('يرجى اختيار الدولة');
+            setError(pt('countryRequired'));
             return;
         }
 
@@ -84,7 +87,7 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
         const cleanWhatsApp = whatsappNumber.replace(/\D/g, '');
 
         if (!cleanPhone) {
-            setError('يرجى إدخال رقم الهاتف');
+            setError(pt('phoneRequired'));
             return;
         }
 
@@ -92,25 +95,25 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
         const phonePattern = new RegExp(selectedCountry.phonePattern);
         if (!phonePattern.test(cleanPhone)) {
             if (cleanPhone.length !== selectedCountry.phoneLength) {
-                setError(`رقم الهاتف يجب أن يتكون من ${selectedCountry.phoneLength} أرقام (${selectedCountry.name})`);
+                setError(pt('phoneLength').replace('{{count}}', String(selectedCountry.phoneLength)).replace('{{country}}', selectedCountry.name));
                 return;
             }
         }
 
         if (hasDifferentWhatsapp) {
             if (!cleanWhatsApp) {
-                setError('يرجى إدخال رقم الواتساب');
+                setError(pt('whatsappRequired'));
                 return;
             }
             if (!whatsappCountry) {
-                setError('يرجى اختيار دولة الواتساب');
+                setError(pt('whatsappCountryRequired'));
                 return;
             }
 
             const waPattern = new RegExp(whatsappCountry.phonePattern);
             if (!waPattern.test(cleanWhatsApp)) {
                 if (cleanWhatsApp.length !== whatsappCountry.phoneLength) {
-                    setError(`رقم الواتساب يجب أن يتكون من ${whatsappCountry.phoneLength} أرقام (${whatsappCountry.name})`);
+                    setError(pt('whatsappLength').replace('{{count}}', String(whatsappCountry.phoneLength)).replace('{{country}}', whatsappCountry.name));
                     return;
                 }
             }
@@ -146,7 +149,7 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
                 }
             }
 
-            toast.success('تم حفظ بيانات التواصل بنجاح');
+            toast.success(pt('saved'));
             if (refreshUserData) {
                 await refreshUserData();
             }
@@ -155,7 +158,7 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
 
         } catch (err: any) {
             console.error('Error updating phone:', err);
-            setError('حدث خطأ أثناء حفظ البيانات');
+            setError(pt('saveFailed'));
         } finally {
             setLoading(false);
         }
@@ -211,7 +214,7 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
                             )}
 
                             {/* Content */}
-                            <div className="relative p-5 md:p-8">
+                            <div className="relative p-5 md:p-8" dir={isRTL ? 'rtl' : 'ltr'}>
                                 {/* Header */}
                                 <div className="text-center mb-6">
                                     <motion.div
@@ -229,7 +232,7 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
                                         transition={{ delay: 0.3 }}
                                         className="text-2xl md:text-3xl font-bold mb-2"
                                     >
-                                        تحديث التواصل
+                                        {pt('title')}
                                     </motion.h2>
 
                                     <motion.p
@@ -238,7 +241,7 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
                                         transition={{ delay: 0.4 }}
                                         className="text-white/90 text-sm md:text-lg"
                                     >
-                                        أضف رقم هاتفك لتصلك الإشعارات والعروض
+                                        {pt('description')}
                                     </motion.p>
                                 </div>
 
@@ -251,7 +254,7 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
                                 >
                                     {/* Country Searchable Select */}
                                     <div className="space-y-2">
-                                        <Label className="text-white/90">الدولة</Label>
+                                        <Label className="text-white/90">{pt('country')}</Label>
                                         <Popover open={openCountry} onOpenChange={setOpenCountry}>
                                             <PopoverTrigger asChild>
                                                 <Button
@@ -267,15 +270,15 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
                                                                 {selectedCountry.code}
                                                             </span>
                                                         </div>
-                                                    ) : "اختر الدولة..."}
+                                                    ) : pt('selectCountry')}
                                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
                                             </PopoverTrigger>
                                             <PopoverContent className="w-[300px] p-0" align="start">
                                                 <Command>
-                                                    <CommandInput placeholder="ابحث عن دولة..." className="h-9 text-right" />
+                                                    <CommandInput placeholder={pt('searchCountry')} className={isRTL ? 'h-9 text-right' : 'h-9 text-left'} />
                                                     <CommandList>
-                                                        <CommandEmpty>لا توجد دولة بهذا الاسم.</CommandEmpty>
+                                                        <CommandEmpty>{pt('countryNotFound')}</CommandEmpty>
                                                         <CommandGroup>
                                                             {COUNTRIES_FROM_REGISTER.map((country) => (
                                                                 <CommandItem
@@ -309,7 +312,7 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
 
                                     {/* Phone Number */}
                                     <div className="space-y-2">
-                                        <Label className="text-white/90">رقم الهاتف</Label>
+                                        <Label className="text-white/90">{pt('phone')}</Label>
                                         <div className="relative group">
                                             <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-white/70 bg-white/10 border-r border-white/10 px-3 rounded-l-xl z-20 backdrop-blur-sm font-mono">
                                                 {selectedCountry?.code || '+966'}
@@ -334,10 +337,10 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
                                                 </div>
                                                 <div>
                                                     <Label htmlFor="whatsapp-switch" className="text-sm font-semibold text-white cursor-pointer block">
-                                                        رقم واتساب مختلف؟
+                                                        {pt('differentWhatsapp')}
                                                     </Label>
                                                     <p className="text-[11px] text-white/50 mt-0.5">
-                                                        فعّل هذا الخيار إذا كان رقم الواتساب من دولة أخرى أو مختلف
+                                                        {pt('differentWhatsappDescription')}
                                                     </p>
                                                 </div>
                                             </div>
@@ -359,7 +362,7 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
                                                 >
                                                     {/* WhatsApp Country Searchable Select */}
                                                     <div className="space-y-1">
-                                                        <Label className="text-xs text-white/70">دولة الواتساب</Label>
+                                                        <Label className="text-xs text-white/70">{pt('whatsappCountry')}</Label>
                                                         <Popover open={openWaCountry} onOpenChange={setOpenWaCountry}>
                                                             <PopoverTrigger asChild>
                                                                 <Button
@@ -368,15 +371,15 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
                                                                     aria-expanded={openWaCountry}
                                                                     className="w-full justify-between h-10 bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm text-sm"
                                                                 >
-                                                                    {whatsappCountry?.name || "اختر الدولة..."}
+                                                                    {whatsappCountry?.name || pt('selectCountry')}
                                                                     <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
                                                                 </Button>
                                                             </PopoverTrigger>
                                                             <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                                                                 <Command>
-                                                                    <CommandInput placeholder="ابحث عن دولة..." className="h-9 text-right" />
+                                                                    <CommandInput placeholder={pt('searchCountry')} className={isRTL ? 'h-9 text-right' : 'h-9 text-left'} />
                                                                     <CommandList>
-                                                                        <CommandEmpty>لا توجد دولة بهذا الاسم.</CommandEmpty>
+                                                                        <CommandEmpty>{pt('countryNotFound')}</CommandEmpty>
                                                                         <CommandGroup>
                                                                             {COUNTRIES_FROM_REGISTER.map((country) => (
                                                                                 <CommandItem
@@ -441,7 +444,7 @@ export default function PhoneCollectionModal({ isOpen, onClose, forceOpen = true
                                         className="w-full h-12 bg-white text-purple-600 hover:bg-white/90 rounded-xl font-bold shadow-lg shadow-black/10 active:scale-[0.98] transition-all duration-200"
                                         disabled={loading}
                                     >
-                                        {loading ? 'جاري الحفظ...' : 'حفظ وتأكيد'}
+                                        {loading ? pt('saving') : pt('saveConfirm')}
                                     </Button>
 
                                 </motion.form>

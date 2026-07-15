@@ -24,6 +24,7 @@ import {
 import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from '@/lib/i18n';
 
 interface Ad {
   id: string;
@@ -80,6 +81,7 @@ export default function ProfessionalAdPopup({
     maxDisplaysPerDay: 3
   }
 }: ProfessionalAdPopupProps) {
+  const { t, isRTL } = useTranslation();
   const [ads, setAds] = useState<Ad[]>([]);
   const [currentAd, setCurrentAd] = useState<Ad | null>(null);
   const [showPopup, setShowPopup] = useState(false);
@@ -352,7 +354,7 @@ export default function ProfessionalAdPopup({
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
-            <Card className="relative max-w-md w-full mx-auto shadow-2xl border-0 overflow-hidden bg-gradient-to-br from-white via-blue-50 to-purple-50">
+            <Card className="relative max-w-md w-full mx-auto shadow-2xl border-0 overflow-hidden bg-gradient-to-br from-white via-blue-50 to-purple-50" dir={isRTL ? 'rtl' : 'ltr'}>
               {/* Animated Background */}
               <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 animate-pulse"></div>
               <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/50 to-transparent"></div>
@@ -375,6 +377,7 @@ export default function ProfessionalAdPopup({
                   size="sm"
                   className="absolute top-2 right-2 z-10 h-8 w-8 p-0 rounded-full bg-white/80 hover:bg-white shadow-lg"
                   onClick={handleClose}
+                  aria-label={t('sharedComponents.otp.close')}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -393,9 +396,9 @@ export default function ProfessionalAdPopup({
                   
                   {/* Urgency Badge */}
                   <Badge className={`${getUrgencyColor(currentAd.urgency || 'medium')} shadow-lg backdrop-blur-sm`}>
-                    {currentAd.urgency === 'critical' ? '🚨 عاجل' :
-                     currentAd.urgency === 'high' ? '⚡ مهم' :
-                     currentAd.urgency === 'medium' ? '📢 عادي' : '💡 منخفض'}
+                    {currentAd.urgency === 'critical' ? t('sharedComponents.ads.urgency.critical') :
+                     currentAd.urgency === 'high' ? t('sharedComponents.ads.urgency.high') :
+                     currentAd.urgency === 'medium' ? t('sharedComponents.ads.urgency.medium') : t('sharedComponents.ads.urgency.low')}
                   </Badge>
                 </div>
 
@@ -413,7 +416,7 @@ export default function ProfessionalAdPopup({
                 {currentAd.countdown && timeLeft > 0 && (
                   <div className="mt-3 flex items-center gap-2 text-sm text-gray-600 bg-white/50 backdrop-blur-sm p-2 rounded-lg">
                     <Clock className="h-4 w-4 text-red-500" />
-                    <span className="font-semibold">ينتهي خلال: {formatTimeLeft(timeLeft)}</span>
+                    <span className="font-semibold">{t('sharedComponents.ads.endsIn')}: {formatTimeLeft(timeLeft)}</span>
                   </div>
                 )}
               </CardHeader>
@@ -442,7 +445,7 @@ export default function ProfessionalAdPopup({
                     
                     {/* Type Badge */}
                     <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-semibold shadow-lg">
-                      {currentAd.type === 'video' ? '🎥 فيديو' : currentAd.type === 'image' ? '🖼️ صورة' : '📝 إعلان'}
+                      {currentAd.type === 'video' ? t('sharedComponents.ads.types.video') : currentAd.type === 'image' ? t('sharedComponents.ads.types.image') : t('sharedComponents.ads.types.ad')}
                     </div>
                   </div>
                 )}
@@ -467,7 +470,7 @@ export default function ProfessionalAdPopup({
                     
                     <div className="text-center text-sm text-gray-500">
                       <Clock className="h-4 w-4 inline mr-1" />
-                      <span>عرض محدود - لا تفوت الفرصة!</span>
+                      <span>{t('sharedComponents.ads.limitedOffer')}</span>
                     </div>
                   </div>
                 ) : null}
@@ -476,16 +479,16 @@ export default function ProfessionalAdPopup({
                 <div className="flex items-center justify-between text-sm text-gray-600 pt-4 border-t border-gray-200 bg-white/30 backdrop-blur-sm p-3 rounded-lg">
                   <div className="flex items-center gap-2">
                     <Eye className="h-4 w-4 text-blue-500" />
-                    <span className="font-semibold">{currentAd.views} مشاهدة</span>
+                    <span className="font-semibold">{currentAd.views} {t('sharedComponents.ads.views')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Target className="h-4 w-4 text-green-500" />
-                    <span className="font-semibold">{currentAd.clicks} نقرة</span>
+                    <span className="font-semibold">{currentAd.clicks} {t('sharedComponents.ads.clicks')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-purple-500" />
                     <span className="font-semibold">
-                      {currentAd.clicks > 0 && currentAd.views > 0 ? Math.round((currentAd.clicks / currentAd.views) * 100) : 0}% تحويل
+                      {currentAd.clicks > 0 && currentAd.views > 0 ? Math.round((currentAd.clicks / currentAd.views) * 100) : 0}% {t('sharedComponents.ads.conversion')}
                     </span>
                   </div>
                 </div>

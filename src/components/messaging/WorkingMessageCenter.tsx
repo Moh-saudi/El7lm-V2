@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useClarity } from '@/hooks/useClarity';
+import { useTranslation } from '@/lib/i18n';
 
 interface Conversation {
   id: string;
@@ -91,9 +92,7 @@ const USER_TYPES = {
 const WorkingMessageCenter: React.FC = () => {
   const { user, userData } = useAuth();
   const { trackEvent, setTag, upgradeSession } = useClarity();
-  const t = (key: string) => key;
-  const locale = 'ar';
-  const isRTL = true;
+  const { t, locale, isRTL } = useTranslation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
@@ -279,7 +278,7 @@ const WorkingMessageCenter: React.FC = () => {
   // دالة إنشاء محادثة جديدة
   const createNewConversation = async (contact: Contact) => {
     if (!user || !userData) {
-      toast.error('يرجى تسجيل الدخول');
+      toast.error(t('sharedComponents.messageCenter.loginRequired'));
       return;
     }
 
@@ -301,7 +300,7 @@ const WorkingMessageCenter: React.FC = () => {
 
       if (existingConversation) {
         console.log('✅ وجدت محادثة موجودة:', existingConversation.id);
-        toast.info('المحادثة موجودة بالفعل');
+        toast.info(t('sharedComponents.messageCenter.alreadyExists'));
         setNewChatModalOpen(false);
         return;
       }
@@ -372,7 +371,7 @@ const WorkingMessageCenter: React.FC = () => {
 
     } catch (error) {
       console.error('❌ خطأ في إنشاء المحادثة:', error);
-      toast.error('فشل في إنشاء المحادثة');
+      toast.error(t('sharedComponents.messageCenter.createFailed'));
     }
   };
 
@@ -542,7 +541,7 @@ const WorkingMessageCenter: React.FC = () => {
       console.log('🔍 تم تحديث حالة جهات الاتصال');
     } catch (error) {
       console.error('❌ خطأ في جلب جهات الاتصال:', error);
-      toast.error('حدث خطأ في جلب جهات الاتصال');
+      toast.error(t('sharedComponents.messageCenter.contactsFailed'));
     } finally {
       setContactsLoading(false);
       isFetchingContactsRef.current = false;
@@ -681,14 +680,14 @@ const WorkingMessageCenter: React.FC = () => {
       }).eq('id', selectedConversation.id);
 
       setNewMessage('');
-      toast.success('تم إرسال الرسالة');
+      toast.success(t('sharedComponents.messageCenter.sent'));
 
       // Track Clarity events
       trackEvent('message_sent');
       setTag('message_length', newMessage.length.toString());
     } catch (error) {
       console.error('❌ خطأ في إرسال الرسالة:', error);
-      toast.error('فشل في إرسال الرسالة');
+      toast.error(t('sharedComponents.messageCenter.sendFailed'));
     }
   };
 
@@ -762,7 +761,7 @@ const WorkingMessageCenter: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">جاري تحميل مركز الرسائل...</p>
+          <p className="text-gray-600">{t('sharedComponents.messageCenter.loading')}</p>
         </div>
       </div>
     );
@@ -773,7 +772,7 @@ const WorkingMessageCenter: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">جاري تحميل مركز الرسائل...</p>
+          <p className="text-gray-600">{t('sharedComponents.messageCenter.loading')}</p>
         </div>
       </div>
     );
@@ -785,7 +784,7 @@ const WorkingMessageCenter: React.FC = () => {
         <CardContent>
           <div className="text-center text-red-600">
             <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-400" />
-            <h3 className="text-lg font-semibold mb-2">خطأ في التحميل</h3>
+            <h3 className="text-lg font-semibold mb-2">{t('sharedComponents.messageCenter.loadError')}</h3>
             <p>{error}</p>
           </div>
         </CardContent>
@@ -799,8 +798,8 @@ const WorkingMessageCenter: React.FC = () => {
         <CardContent>
           <div className="text-center text-gray-600">
             <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-semibold mb-2">غير مسجل الدخول</h3>
-            <p>يرجى تسجيل الدخول للوصول إلى مركز الرسائل</p>
+            <h3 className="text-lg font-semibold mb-2">{t('sharedComponents.messageCenter.signedOut')}</h3>
+            <p>{t('sharedComponents.messageCenter.signInToAccess')}</p>
           </div>
         </CardContent>
       </Card>
@@ -814,17 +813,17 @@ const WorkingMessageCenter: React.FC = () => {
         <CardContent>
           <div className="text-center text-gray-600">
             <Users className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-semibold mb-2">{contactsLoading ? 'جاري تحميل جهات الاتصال...' : 'لا توجد جهات اتصال'}</h3>
+            <h3 className="text-lg font-semibold mb-2">{contactsLoading ? t('sharedComponents.messageCenter.loadingContacts') : t('sharedComponents.messageCenter.noContacts')}</h3>
             {!contactsLoading && (
               <>
-                <p>لم يتم العثور على جهات اتصال في النظام</p>
+                <p>{t('sharedComponents.messageCenter.noContactsDescription')}</p>
                 <Button
                   onClick={() => {
                     fetchContacts();
                   }}
                   className="mt-4"
                 >
-                  إعادة المحاولة
+                  {t('sharedComponents.messageCenter.retry')}
                 </Button>
               </>
             )}
@@ -837,7 +836,7 @@ const WorkingMessageCenter: React.FC = () => {
   const filteredConversations = conversations.filter(conversation => {
     if (!searchTerm) return true;
 
-    const participantNames = Object.values(conversation.participantNames || {});
+    const participantNames = Object.values(conversation.participantNames || {}) as string[];
     const subject = conversation.subject || '';
     const lastMessage = conversation.lastMessage || '';
 
@@ -852,7 +851,7 @@ const WorkingMessageCenter: React.FC = () => {
       {selectedConversation && (
         <div className="lg:hidden w-full bg-white border-b px-4 py-3 flex justify-between items-center gap-3">
           <div className="text-sm font-medium text-gray-700">
-            {selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.id) || ''] || 'مستخدم'}
+            {selectedConversation.participantNames[selectedConversation.participants.find(id => id !== user?.id) || ''] || t('sharedComponents.newChat.defaultUser')}
           </div>
           <Button
             onClick={closeConversation}
@@ -860,7 +859,7 @@ const WorkingMessageCenter: React.FC = () => {
             variant="outline"
           >
             <ArrowLeft className="h-4 w-4" />
-            العودة للرسائل
+              {t('sharedComponents.messageCenter.back')}
           </Button>
         </div>
       )}
@@ -874,9 +873,9 @@ const WorkingMessageCenter: React.FC = () => {
                 <MessageSquare className="h-6 w-6" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">الرسائل</h2>
+                <h2 className="text-xl font-bold">{t('sharedComponents.messages.title')}</h2>
                 <p className="text-sm text-blue-100 mt-1">
-                  {conversations.length} محادثة • {contacts.length} جهة اتصال
+                  {t('sharedComponents.messageCenter.counts').replace('{{conversations}}', String(conversations.length)).replace('{{contacts}}', String(contacts.length))}
                 </p>
               </div>
             </div>
@@ -897,7 +896,7 @@ const WorkingMessageCenter: React.FC = () => {
           <div className="relative">
             <Input
               type="text"
-              placeholder="البحث في المحادثات..."
+              placeholder={t('sharedComponents.messageCenter.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pr-12 pl-4 h-12 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl text-base"
@@ -912,7 +911,7 @@ const WorkingMessageCenter: React.FC = () => {
             <div className="space-y-1 p-2">
               {filteredConversations.map((conversation) => {
                 const otherParticipantId = conversation.participants.find(id => id !== user.id);
-                const otherParticipantName = conversation.participantNames[otherParticipantId || ''] || 'مستخدم';
+                const otherParticipantName = conversation.participantNames[otherParticipantId || ''] || t('sharedComponents.newChat.defaultUser');
                 const otherParticipantType = conversation.participantTypes[otherParticipantId || ''] || 'player';
                 const unreadCount = conversation.unreadCount[user.id] || 0;
                 const UserIcon = USER_TYPES[otherParticipantType as keyof typeof USER_TYPES]?.icon || Users;
@@ -962,7 +961,7 @@ const WorkingMessageCenter: React.FC = () => {
                                 } else if (diffInHours < 24) {
                                   return messageTime.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
                                 } else if (diffInHours < 48) {
-                                  return 'أمس';
+                                  return t('sharedComponents.messageCenter.yesterday');
                                 } else {
                                   return messageTime.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
                                 }
@@ -982,7 +981,7 @@ const WorkingMessageCenter: React.FC = () => {
                           {(() => {
                             const participantId = conversation.participants.find(id => id !== user?.id);
                             const participantType = conversation.participantTypes[participantId || ''];
-                            return USER_TYPES[participantType as keyof typeof USER_TYPES]?.name || 'مستخدم';
+                            return t(`sharedComponents.newChat.types.${participantType}`) || t('sharedComponents.newChat.defaultUser');
                           })()}
                         </Badge>
                       </div>
@@ -990,7 +989,7 @@ const WorkingMessageCenter: React.FC = () => {
                       {conversation.lastMessage && (
                         <p className="text-sm text-gray-600 truncate">
                           {conversation.lastSenderId === user?.id && (
-                            <span className="text-blue-600 font-medium ml-1">أنت:</span>
+                            <span className="text-blue-600 font-medium ml-1">{t('sharedComponents.messageCenter.you')}:</span>
                           )}
                           {conversation.lastMessage}
                         </p>
@@ -1005,13 +1004,10 @@ const WorkingMessageCenter: React.FC = () => {
               <div>
                 <MessageSquare className="h-16 w-16 mx-auto mb-4 text-gray-300" />
                 <h3 className="text-lg font-semibold mb-2">
-                  {searchTerm ? 'لا توجد نتائج' : 'لا توجد محادثات'}
+                  {searchTerm ? t('sharedComponents.newChat.noResults') : t('sharedComponents.messageCenter.noConversations')}
                 </h3>
                 <p className="text-sm mb-4">
-                  {searchTerm
-                    ? 'جرب البحث بكلمات مختلفة'
-                    : 'ابدأ محادثة جديدة مع جهات الاتصال'
-                  }
+                    {searchTerm ? t('sharedComponents.newChat.tryDifferent') : t('sharedComponents.messageCenter.startConversation')}
                 </p>
                 {!searchTerm && (
                   <Button
@@ -1019,7 +1015,7 @@ const WorkingMessageCenter: React.FC = () => {
                     onClick={() => setNewChatModalOpen(true)}
                   >
                     <Plus className="h-5 w-5 ml-2" />
-                    محادثة جديدة
+                    {t('sharedComponents.newChat.title')}
                   </Button>
                 )}
               </div>
@@ -1039,7 +1035,7 @@ const WorkingMessageCenter: React.FC = () => {
                   <Button
                     onClick={closeConversation}
                     className="lg:hidden text-white hover:bg-white/20 bg-transparent border-none p-2 rounded-full"
-                    title="العودة إلى الرسائل"
+                    title={t('sharedComponents.messageCenter.back')}
                   >
                     <ArrowLeft className="h-6 w-6" />
                   </Button>
@@ -1068,7 +1064,7 @@ const WorkingMessageCenter: React.FC = () => {
                       <Badge className="text-xs px-2 py-1 rounded-full bg-white/20 text-white border-0">
                         {USER_TYPES[selectedConversation.participantTypes[selectedConversation.participants.find(id => id !== user?.id) || ''] as keyof typeof USER_TYPES]?.name || 'مستخدم'}
                       </Badge>
-                      <span className="text-xs text-blue-100">متصل الآن</span>
+                      <span className="text-xs text-blue-100">{t('sharedComponents.messageCenter.online')}</span>
                     </div>
                   </div>
                 </div>
@@ -1077,7 +1073,7 @@ const WorkingMessageCenter: React.FC = () => {
                   className="hidden lg:inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full transition-all duration-200"
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  العودة إلى الرسائل
+                  {t('sharedComponents.messageCenter.back')}
                 </Button>
               </div>
             </div>
@@ -1113,7 +1109,7 @@ const WorkingMessageCenter: React.FC = () => {
                       >
                         <div className={`flex items-center gap-2 mb-2 ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'}`}>
                           <span className="text-sm font-semibold text-gray-800">
-                            {isCurrentUser ? 'أنت' : (message.senderName || 'مستخدم')}
+                              {isCurrentUser ? t('sharedComponents.messageCenter.you') : (message.senderName || t('sharedComponents.newChat.defaultUser'))}
                           </span>
                           <span className="text-xs text-gray-500">
                             {(message.timestamp instanceof Date ? message.timestamp : new Date(message.timestamp)).toLocaleTimeString('ar-EG', {
@@ -1150,7 +1146,7 @@ const WorkingMessageCenter: React.FC = () => {
                 <div className="relative flex-1">
                   <Input
                     type="text"
-                    placeholder="اكتب رسالتك هنا..."
+                    placeholder={t('sharedComponents.messageCenter.messagePlaceholder')}
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={(e) => {
@@ -1167,7 +1163,7 @@ const WorkingMessageCenter: React.FC = () => {
                       ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
                       : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
                       } bg-transparent border-none`}
-                    title="إضافة إيموجي"
+                    title={t('sharedComponents.messageCenterUi.addEmoji')}
                   >
                     <Smile className="h-5 w-5 lg:h-6 lg:w-6" />
                   </Button>
@@ -1190,7 +1186,7 @@ const WorkingMessageCenter: React.FC = () => {
                   <div className="bg-white border rounded-2xl shadow-2xl p-4">
                     {/* عنوان منتقي الإيموجي */}
                     <div className="text-center mb-4 pb-3 border-b">
-                      <h4 className="text-base font-bold text-gray-800">اختر الإيموجي</h4>
+                      <h4 className="text-base font-bold text-gray-800">{t('sharedComponents.messageCenterUi.chooseEmoji')}</h4>
                     </div>
 
                     <div className="grid grid-cols-8 gap-2 max-h-64 overflow-y-auto">
@@ -1221,13 +1217,13 @@ const WorkingMessageCenter: React.FC = () => {
                         onClick={() => setShowEmojiPicker(false)}
                         className="flex-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl py-2"
                       >
-                        إغلاق
+                        {t('sharedComponents.otp.close')}
                       </Button>
                       <Button
                         onClick={() => setNewMessage('')}
                         className="text-sm bg-red-100 hover:bg-red-200 text-red-700 px-4 rounded-xl py-2"
                       >
-                        مسح الكل
+                        {t('sharedComponents.messageCenterUi.clearAll')}
                       </Button>
                     </div>
                   </div>
@@ -1241,20 +1237,20 @@ const WorkingMessageCenter: React.FC = () => {
               <div className="w-24 h-24 lg:w-32 lg:h-32 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
                 <MessageSquare className="h-12 w-12 lg:h-16 lg:w-16 text-blue-500" />
               </div>
-              <h3 className="text-xl lg:text-2xl font-bold mb-3 text-gray-800">مرحباً بك في مركز الرسائل</h3>
-              <p className="text-base lg:text-lg text-gray-600 mb-6">اختر محادثة من القائمة أو ابدأ محادثة جديدة مع جهات الاتصال</p>
+              <h3 className="text-xl lg:text-2xl font-bold mb-3 text-gray-800">{t('sharedComponents.messageCenterUi.welcome')}</h3>
+              <p className="text-base lg:text-lg text-gray-600 mb-6">{t('sharedComponents.messageCenterUi.welcomeDescription')}</p>
 
               <div className="flex flex-col lg:flex-row items-center justify-center gap-4 text-sm text-gray-500">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  <span>جاهز للتواصل</span>
+                  <span>{t('sharedComponents.messageCenterUi.ready')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="h-5 w-5 text-blue-500" />
                   <span>
                     {contactsLoading
-                      ? 'جاري تحميل جهات الاتصال...'
-                      : `${contacts.length} جهة اتصال متاحة`}
+                      ? t('sharedComponents.messageCenter.loadingContacts')
+                      : t('sharedComponents.messageCenterUi.availableContacts').replace('{{count}}', String(contacts.length))}
                   </span>
                 </div>
               </div>
@@ -1264,7 +1260,7 @@ const WorkingMessageCenter: React.FC = () => {
                 onClick={() => setNewChatModalOpen(true)}
               >
                 <Plus className="h-5 w-5 ml-2" />
-                بدء محادثة جديدة
+                {t('sharedComponents.messageCenterUi.startNew')}
               </Button>
             </div>
           </div>
@@ -1282,7 +1278,7 @@ const WorkingMessageCenter: React.FC = () => {
                   <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                     <Plus className="h-5 w-5" />
                   </div>
-                  <h3 className="text-xl font-bold">محادثة جديدة</h3>
+                  <h3 className="text-xl font-bold">{t('sharedComponents.newChat.title')}</h3>
                 </div>
                 <Button
                   className="text-white hover:bg-white/20 bg-transparent border-none p-2 rounded-full"
@@ -1298,7 +1294,7 @@ const WorkingMessageCenter: React.FC = () => {
               <div className="relative">
                 <Input
                   type="text"
-                  placeholder="ابحث بالاسم أو اسم المنظمة..."
+                  placeholder={t('sharedComponents.messageCenterUi.contactSearch')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pr-12 pl-4 h-12 bg-gray-50 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl text-base"
@@ -1381,7 +1377,7 @@ const WorkingMessageCenter: React.FC = () => {
                                 </Badge>
                                 {contact.type === 'player' && contact.isDependent && (
                                   <Badge className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 border-0">
-                                    تابع
+                                  {t('sharedComponents.messageCenterUi.dependent')}
                                   </Badge>
                                 )}
                               </div>
@@ -1405,7 +1401,7 @@ const WorkingMessageCenter: React.FC = () => {
                     {contactsLoading ? 'جاري تحميل جهات الاتصال...' : 'لا توجد جهات اتصال'}
                   </h3>
                   {!contactsLoading && (
-                    <p className="text-sm text-gray-600">لا يمكن إنشاء محادثة جديدة في الوقت الحالي</p>
+                    <p className="text-sm text-gray-600">{t('sharedComponents.messageCenterUi.cannotCreate')}</p>
                   )}
                 </div>
               )}

@@ -1,34 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  BarChart3,
-  LineChart,
-  PieChart,
-  Activity,
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  Download,
-  Filter,
-  Search,
-  ArrowUp,
-  ArrowDown,
-  Minus,
-  ArrowLeft
-} from 'lucide-react';
-import { supabase } from '@/lib/supabase/config';
-import { useAuth } from '@/lib/firebase/auth-provider';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { Activity, ArrowDown, ArrowLeft, ArrowUp, BarChart3, DollarSign, Minus, Search, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { useAuth } from '@/lib/firebase/auth-provider';
+import { useTranslation } from '@/lib/i18n';
+import { supabase } from '@/lib/supabase/config';
 
 interface MarketValue {
   id: string;
@@ -38,60 +19,49 @@ interface MarketValue {
   previousValue: number;
   changePercentage: number;
   lastUpdate: string;
-  history: {
-    date: string;
-    value: number;
-  }[];
-  predictions: {
-    nextMonth: number;
-    nextSeason: number;
-  };
-  factors: {
-    performance: number;
-    age: number;
-    contract: number;
-    market: number;
-  };
+  history: { date: string; value: number }[];
+  predictions: { nextMonth: number; nextSeason: number };
+  factors: { performance: number; age: number; contract: number; market: number };
 }
 
 export default function MarketValuesPage() {
   const router = useRouter();
   const { user, userData } = useAuth();
+  const { isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('clubMarketValues');
   const [marketValues, setMarketValues] = useState<MarketValue[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user || !userData || !userData.clubId) {
+    if (!user || !userData?.clubId) {
       setLoading(false);
       return;
     }
 
-    fetchMarketValues();
-  }, [user, userData]);
+    const fetchMarketValues = async () => {
+      try {
+        setLoading(true);
+        const { data } = await supabase
+          .from('market_values')
+          .select('*')
+          .eq('clubId', userData.clubId);
+        setMarketValues((data || []) as MarketValue[]);
+      } catch (error) {
+        console.error('Error fetching market values:', error);
+        toast.error(copy.loadError);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const fetchMarketValues = async () => {
-    try {
-      setLoading(true);
-      const { data: marketValuesData } = await supabase
-        .from('market_values')
-        .select('*')
-        .eq('clubId', userData?.clubId);
-
-      setMarketValues((marketValuesData || []) as MarketValue[]);
-    } catch (error) {
-      console.error('Error fetching market values:', error);
-      toast.error('حدث خطأ أثناء جلب بيانات القيم السوقية');
-    } finally {
-      setLoading(false);
-    }
-  };
+    void fetchMarketValues();
+  }, [copy.loadError, user, userData?.clubId]);
 
   const getChangeIcon = (change: number) => {
-    if (change > 0) return <ArrowUp className="w-4 h-4 text-green-600" />;
-    if (change < 0) return <ArrowDown className="w-4 h-4 text-red-600" />;
-    return <Minus className="w-4 h-4 text-gray-600" />;
+    if (change > 0) return <ArrowUp className="h-4 w-4 text-green-600" />;
+    if (change < 0) return <ArrowDown className="h-4 w-4 text-red-600" />;
+    return <Minus className="h-4 w-4 text-gray-600" />;
   };
 
   const getChangeColor = (change: number) => {
@@ -101,137 +71,107 @@ export default function MarketValuesPage() {
   };
 
   const formatValue = (value: number) => {
-    if (value >= 1000000) {
-      return `$${(value / 1000000).toFixed(1)}M`;
-    }
-    if (value >= 1000) {
-      return `$${(value / 1000).toFixed(1)}K`;
-    }
+    if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
     return `$${value}`;
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex min-h-screen items-center justify-center" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin"></div>
-          <p className="text-gray-600">جاري تحميل القيم السوقية...</p>
+          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+          <p className="text-gray-600">{copy.loading}</p>
         </div>
       </div>
     );
   }
 
+  const stats = [
+    { label: copy.totalMarketValue, value: '$45.2M', icon: DollarSign, color: 'text-blue-600' },
+    { label: copy.averageChange, value: '+12.5%', icon: TrendingUp, color: 'text-green-600' },
+    { label: copy.highestValue, value: '$8.5M', icon: BarChart3, color: 'text-purple-600' },
+    { label: copy.dailyUpdates, value: '24', icon: Activity, color: 'text-yellow-600' },
+  ];
+  const filteredValues = marketValues.filter(
+    (item) => !searchTerm || item.playerName.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6" dir="rtl">
-      {/* Header */}
+    <div className="min-h-screen bg-gray-50 p-6" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="mb-8">
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-2 mb-4 text-gray-600 hover:text-gray-900"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          العودة للوحة التحكم
-        </button>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">حركة أسعار اللاعبين</h1>
-        <p className="text-gray-600">تتبع وتحليل قيم اللاعبين في السوق</p>
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
+            <ArrowLeft className={`h-5 w-5 ${isRTL ? 'rotate-180' : ''}`} />
+            {copy.back}
+          </button>
+          <LanguageSwitcher />
+        </div>
+        <h1 className="mb-2 text-3xl font-bold text-gray-900">{copy.title}</h1>
+        <p className="text-gray-600">{copy.subtitle}</p>
       </div>
 
-      {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">إجمالي القيمة السوقية</p>
-                <h3 className="text-2xl font-bold mt-1">$45.2M</h3>
+      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {stats.map(({ label, value, icon: Icon, color }) => (
+          <Card key={label}>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">{label}</p>
+                  <h3 className={`mt-1 text-2xl font-bold ${color === 'text-green-600' ? color : ''}`}>{value}</h3>
+                </div>
+                <Icon className={`h-8 w-8 ${color}`} />
               </div>
-              <DollarSign className="w-8 h-8 text-blue-600" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">متوسط التغير</p>
-                <h3 className="text-2xl font-bold mt-1 text-green-600">+12.5%</h3>
-              </div>
-              <TrendingUp className="w-8 h-8 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">أعلى قيمة</p>
-                <h3 className="text-2xl font-bold mt-1">$8.5M</h3>
-              </div>
-              <BarChart3 className="w-8 h-8 text-purple-600" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">التحديثات اليومية</p>
-                <h3 className="text-2xl font-bold mt-1">24</h3>
-              </div>
-              <Activity className="w-8 h-8 text-yellow-600" />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-8">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Search className={`absolute top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 ${isRTL ? 'right-3' : 'left-3'}`} />
           <Input
             type="text"
-            placeholder="ابحث عن لاعب..."
+            placeholder={copy.searchPlaceholder}
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pr-12"
+            onChange={(event) => setSearchTerm(event.target.value)}
+            className={isRTL ? 'w-full pr-12' : 'w-full pl-12'}
           />
         </div>
       </div>
 
-      {/* Market Values Table */}
       {marketValues.length === 0 ? (
-        <div className="bg-white rounded-xl p-12 text-center shadow">
-          <DollarSign className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-gray-700 mb-2">لا توجد بيانات قيم سوقية</h3>
-          <p className="text-gray-500">لم يتم إضافة قيم سوقية للاعبين بعد.</p>
+        <div className="rounded-xl bg-white p-12 text-center shadow">
+          <DollarSign className="mx-auto mb-4 h-16 w-16 text-gray-300" />
+          <h3 className="mb-2 text-xl font-bold text-gray-700">{copy.emptyTitle}</h3>
+          <p className="text-gray-500">{copy.emptyDescription}</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow overflow-hidden">
+        <div className="overflow-hidden rounded-xl bg-white shadow">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">اللاعب</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">القيمة الحالية</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">التغيير</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">آخر تحديث</th>
+                {Object.values(copy.columns).map((heading) => (
+                  <th key={String(heading)} className={`px-6 py-3 text-xs font-medium uppercase text-gray-500 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    {String(heading)}
+                  </th>
+                ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {marketValues
-                .filter(mv => !searchTerm || mv.playerName.toLowerCase().includes(searchTerm.toLowerCase()))
-                .map((mv) => (
-                  <tr key={mv.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{mv.playerName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatValue(mv.currentValue)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={`flex items-center gap-1 ${getChangeColor(mv.changePercentage)}`}>
-                        {getChangeIcon(mv.changePercentage)}
-                        {Math.abs(mv.changePercentage).toFixed(1)}%
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{mv.lastUpdate}</td>
-                  </tr>
-                ))}
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {filteredValues.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900">{item.playerName}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{formatValue(item.currentValue)}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm">
+                    <span className={`flex items-center gap-1 ${getChangeColor(item.changePercentage)}`}>
+                      {getChangeIcon(item.changePercentage)}
+                      {Math.abs(item.changePercentage).toFixed(1)}%
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{item.lastUpdate}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

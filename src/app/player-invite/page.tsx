@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserPlus, Search, CheckCircle, AlertTriangle, Mail, Phone, User, Building } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 interface PlayerResult extends PlayerLoginData {
   id: string;
@@ -21,15 +23,18 @@ interface PlayerResult extends PlayerLoginData {
 
 export default function PlayerInvitePage() {
   const router = useRouter();
+  const { isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('playerInvite');
+  const interpolate = (template: string, values: Record<string, string | number>) => Object.entries(values).reduce((result, [key, value]) => result.replace(`{{${key}}}`, String(value)), template);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<PlayerResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [creating, setCreating] = useState<string | null>(null);
 
-  // البحث عن اللاعب
+  // Search for the player.
   const searchForPlayer = async () => {
     if (!searchQuery.trim()) {
-      toast.error('يرجى إدخال اسم أو إيميل أو رقم هاتف للبحث');
+      toast.error(copy.searchRequired);
       return;
     }
 
@@ -37,7 +42,7 @@ export default function PlayerInvitePage() {
     try {
       const results: PlayerResult[] = [];
 
-      // البحث في مجموعتي players و player بالتوازي
+      // Search both legacy player tables in parallel.
       const [pByName, pByEmail, pByPhone, p2ByName, p2ByEmail, p2ByPhone] = await Promise.all([
         supabase.from('players').select('*').ilike('full_name', `%${searchQuery}%`),
         supabase.from('players').select('*').eq('email', searchQuery),
@@ -63,15 +68,15 @@ export default function PlayerInvitePage() {
           if (processedIds.has(data.id)) return;
           processedIds.add(data.id);
 
-          // التحقق من أن اللاعب تابع لمنظمة
+          // Only organization-affiliated players are eligible.
           const isDependent = !!(data.club_id || data.academy_id || data.trainer_id || data.agent_id);
           if (!isDependent) return;
 
           let organizationInfo = '';
-          if (data.club_id) organizationInfo = 'تابع لنادي';
-          else if (data.academy_id) organizationInfo = 'تابع لأكاديمية';
-          else if (data.trainer_id) organizationInfo = 'تابع لمدرب';
-          else if (data.agent_id) organizationInfo = 'تابع لوكيل';
+          if (data.club_id) organizationInfo = copy.organizations.club;
+          else if (data.academy_id) organizationInfo = copy.organizations.academy;
+          else if (data.trainer_id) organizationInfo = copy.organizations.trainer;
+          else if (data.agent_id) organizationInfo = copy.organizations.agent;
 
           results.push({
             id: data.id,
@@ -92,20 +97,20 @@ export default function PlayerInvitePage() {
       setSearchResults(results);
 
       if (results.length === 0) {
-        toast.error('لم يتم العثور على لاعبين تابعين بهذا الاسم أو الإيميل');
+        toast.error(copy.notFound);
       } else {
-        toast.success(`تم العثور على ${results.length} لاعب`);
+        toast.success(interpolate(copy.found, { count: results.length }));
       }
 
     } catch (error) {
-      console.error('خطأ في البحث:', error);
-      toast.error('حدث خطأ أثناء البحث');
+      console.error('Player search error:', error);
+      toast.error(copy.searchError);
     } finally {
       setSearching(false);
     }
   };
 
-  // إنشاء حساب للاعب
+  // Create a login account for the player.
   const createAccountForPlayer = async (player: PlayerResult) => {
     setCreating(player.id);
 
@@ -113,25 +118,23 @@ export default function PlayerInvitePage() {
       const result = await createPlayerLoginAccount(player.id, player, player.source);
 
       if (result.success) {
-        toast.success(`تم إنشاء حساب تسجيل الدخول بنجاح! 
-        كلمة المرور: ${result.tempPassword}
-        يمكنك الآن تسجيل الدخول بإيميلك وكلمة المرور هذه`);
+        toast.success(interpolate(copy.accountSuccess, { password: result.tempPassword || '' }));
 
-        // إزالة اللاعب من النتائج بعد إنشاء الحساب
+        // Remove the player from results after account creation.
         setSearchResults(prev => prev.filter(p => p.id !== player.id));
       } else {
-        toast.error(`فشل في إنشاء الحساب: ${result.message}`);
+        toast.error(interpolate(copy.accountFailed, { message: result.message || '' }));
       }
     } catch (error) {
-      console.error('خطأ في إنشاء الحساب:', error);
-      toast.error('حدث خطأ في إنشاء حساب تسجيل الدخول');
+      console.error('Player account creation error:', error);
+      toast.error(copy.createError);
     } finally {
       setCreating(null);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="max-w-4xl mx-auto">
 
         {/* Header */}
@@ -141,33 +144,30 @@ export default function PlayerInvitePage() {
               <UserPlus className="w-12 h-12 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            🔐 إنشاء حساب تسجيل دخول
-          </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            إذا كنت لاعباً تابعاً لنادي أو أكاديمية أو مدرب، يمكنك إنشاء حساب تسجيل دخول للوصول لملفك الشخصي والإشعارات
-          </p>
+          <div className="mb-4 flex justify-end"><LanguageSwitcher /></div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">{copy.title}</h1>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">{copy.subtitle}</p>
         </div>
 
-        {/* البحث */}
+        {/* Search */}
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Search className="w-5 h-5" />
-              البحث عن ملفك الشخصي
+              {copy.searchTitle}
             </CardTitle>
             <CardDescription>
-              ابحث عن ملفك باستخدام اسمك الكامل أو إيميلك أو رقم هاتفك
+              {copy.searchDescription}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex gap-4">
               <div className="flex-1">
-                <Label htmlFor="search">الاسم / الإيميل / رقم الهاتف</Label>
+                <Label htmlFor="search">{copy.searchLabel}</Label>
                 <Input
                   id="search"
                   type="text"
-                  placeholder="أدخل اسمك الكامل أو إيميلك أو رقم هاتفك"
+                  placeholder={copy.searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && searchForPlayer()}
@@ -183,12 +183,12 @@ export default function PlayerInvitePage() {
                   {searching ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      جاري البحث...
+                      {copy.searching}
                     </>
                   ) : (
                     <>
                       <Search className="w-4 h-4 mr-2" />
-                      بحث
+                      {copy.search}
                     </>
                   )}
                 </Button>
@@ -197,13 +197,13 @@ export default function PlayerInvitePage() {
           </CardContent>
         </Card>
 
-        {/* النتائج */}
+        {/* Results */}
         {searchResults.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>نتائج البحث ({searchResults.length})</CardTitle>
+              <CardTitle>{interpolate(copy.results, { count: searchResults.length })}</CardTitle>
               <CardDescription>
-                اللاعبين التابعين الذين تم العثور عليهم
+                {copy.resultsDescription}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -239,12 +239,12 @@ export default function PlayerInvitePage() {
                         {player.canCreateAccount ? (
                           <div className="flex items-center gap-2 text-green-600">
                             <CheckCircle className="w-4 h-4" />
-                            <span className="text-sm">يمكن إنشاء حساب تسجيل دخول</span>
+                            <span className="text-sm">{copy.canCreate}</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 text-red-600">
                             <AlertTriangle className="w-4 h-4" />
-                            <span className="text-sm">بيانات ناقصة (الإيميل والاسم مطلوبان)</span>
+                            <span className="text-sm">{copy.missingData}</span>
                           </div>
                         )}
                       </div>
@@ -258,17 +258,17 @@ export default function PlayerInvitePage() {
                           {creating === player.id ? (
                             <>
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              جاري الإنشاء...
+                              {copy.creating}
                             </>
                           ) : player.canCreateAccount ? (
                             <>
                               <UserPlus className="w-4 h-4 mr-2" />
-                              إنشاء حساب
+                              {copy.create}
                             </>
                           ) : (
                             <>
                               <AlertTriangle className="w-4 h-4 mr-2" />
-                              غير متاح
+                              {copy.unavailable}
                             </>
                           )}
                         </Button>
@@ -281,19 +281,16 @@ export default function PlayerInvitePage() {
           </Card>
         )}
 
-        {/* تعليمات */}
+        {/* Instructions */}
         <Card className="mt-8">
           <CardHeader>
-            <CardTitle>📋 كيفية استخدام الصفحة</CardTitle>
+            <CardTitle>{copy.instructionsTitle}</CardTitle>
           </CardHeader>
           <CardContent>
             <ol className="list-decimal list-inside space-y-2 text-sm">
-              <li><strong>ابحث عن ملفك:</strong> أدخل اسمك الكامل أو إيميلك أو رقم هاتفك</li>
-              <li><strong>تأكد من البيانات:</strong> تأكد أن الملف الظاهر هو ملفك الشخصي</li>
-              <li><strong>أنشئ حساب:</strong> اضغط على "إنشاء حساب" إذا كانت البيانات صحيحة</li>
-              <li><strong>احفظ كلمة المرور:</strong> ستظهر لك كلمة مرور مؤقتة - احفظها</li>
-              <li><strong>سجل دخول:</strong> يمكنك الآن تسجيل الدخول بإيميلك وكلمة المرور</li>
-              <li><strong>غير كلمة المرور:</strong> ستُطلب منك تغيير كلمة المرور عند الدخول الأول</li>
+              {copy.instructions.map((instruction: { title: string; description: string }) => (
+                <li key={instruction.title}><strong>{instruction.title}</strong> {instruction.description}</li>
+              ))}
             </ol>
 
             <div className="mt-6 flex justify-center">
@@ -302,7 +299,7 @@ export default function PlayerInvitePage() {
                 onClick={() => router.push('/auth/login')}
                 className="px-8"
               >
-                الذهاب لصفحة تسجيل الدخول
+                {copy.goToLogin}
               </Button>
             </div>
           </CardContent>

@@ -10,7 +10,7 @@ import {
   Zap, 
   TrendingUp 
 } from 'lucide-react';
-import { Locale, useTranslation } from '@/lib/i18n';
+import { useTranslation } from '@/lib/i18n';
 
 // Components
 import { StatsOverview } from './_components/StatsOverview';
@@ -18,61 +18,9 @@ import { LiveChatView } from './_components/LiveChatView';
 import { CampaignManager } from './_components/CampaignManager';
 import { NotificationSettings } from './_components/NotificationSettings';
 
-const AI_MESSENGER_COPY: Record<Locale, {
-  title: string;
-  badge: string;
-  description: string;
-  tabs: Record<'stats' | 'chat' | 'campaigns' | 'settings', string>;
-}> = {
-  ar: {
-    title: 'المركز الذكي للمراسلات',
-    badge: 'مدعوم بـ AI',
-    description: 'إدارة الذكاء الاصطناعي، الحملات الجماعية، وخدمة العملاء من مكان واحد',
-    tabs: {
-      stats: 'الإحصائيات',
-      chat: 'المحادثات المباشرة',
-      campaigns: 'الحملات الذكية',
-      settings: 'الإعدادات',
-    },
-  },
-  en: {
-    title: 'Smart messaging center',
-    badge: 'AI powered',
-    description: 'Manage AI, bulk campaigns, and customer support from one place',
-    tabs: {
-      stats: 'Stats',
-      chat: 'Live chats',
-      campaigns: 'Smart campaigns',
-      settings: 'Settings',
-    },
-  },
-  es: {
-    title: 'Centro inteligente de mensajería',
-    badge: 'Con IA',
-    description: 'Gestiona IA, campañas masivas y soporte al cliente desde un solo lugar',
-    tabs: {
-      stats: 'Estadísticas',
-      chat: 'Chats en vivo',
-      campaigns: 'Campañas inteligentes',
-      settings: 'Configuración',
-    },
-  },
-  pt: {
-    title: 'Central inteligente de mensagens',
-    badge: 'Com IA',
-    description: 'Gerencie IA, campanhas em massa e suporte ao cliente em um só lugar',
-    tabs: {
-      stats: 'Estatísticas',
-      chat: 'Chats ao vivo',
-      campaigns: 'Campanhas inteligentes',
-      settings: 'Configurações',
-    },
-  },
-};
-
 export default function AIMessengerDashboard() {
-  const { locale, isRTL } = useTranslation();
-  const copy = AI_MESSENGER_COPY[locale] || AI_MESSENGER_COPY.en;
+  const { isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('aiMessenger');
   const [activeTab, setActiveTab] = useState<'stats' | 'chat' | 'campaigns' | 'settings'>('stats');
 
   return (

@@ -31,6 +31,7 @@ import toast from 'react-hot-toast';
 import NotificationItem from './NotificationItem';
 import NotificationDetailsModal from './NotificationDetailsModal';
 import SoundSettingsModal from './SoundSettingsModal';
+import { useTranslation } from '@/lib/i18n';
 
 interface Notification {
   id: string;
@@ -87,12 +88,16 @@ export default function NotificationsList({
   onCreateTestNotifications,
   onCreateMultipleNotifications,
   showSenderInfo = true,
-  title = "الإشعارات",
-  description = "تابع جميع الإشعارات والتنبيهات المهمة",
+  title,
+  description,
   showStats = true,
   showFilters = true,
   showTestButtons = false
 }: NotificationsListProps) {
+  const { t, isRTL } = useTranslation();
+  const nt = (key: string) => t(`sharedComponents.notifications.${key}`);
+  const displayTitle = title || nt('title');
+  const displayDescription = description || nt('description');
   const [filteredNotifications, setFilteredNotifications] = useState<Notification[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
@@ -118,11 +123,11 @@ export default function NotificationsList({
   const archiveNotification = async (notificationId: string) => {
     try {
       // هنا يمكن إضافة منطق الأرشفة
-      toast.success('تم أرشفة الإشعار');
+      toast.success(nt('archived'));
       closeNotificationDetails();
     } catch (error) {
       console.error('خطأ في أرشفة الإشعار:', error);
-      toast.error('حدث خطأ في أرشفة الإشعار');
+      toast.error(nt('archiveFailed'));
     }
   };
 
@@ -130,25 +135,25 @@ export default function NotificationsList({
   const deleteNotification = async (notificationId: string) => {
     try {
       // هنا يمكن إضافة منطق الحذف
-      toast.success('تم حذف الإشعار');
+      toast.success(nt('deleted'));
       closeNotificationDetails();
     } catch (error) {
       console.error('خطأ في حذف الإشعار:', error);
-      toast.error('حدث خطأ في حذف الإشعار');
+      toast.error(nt('deleteFailed'));
     }
   };
 
   // الرد على الإشعار
   const replyToNotification = (notification: Notification) => {
     // هنا يمكن إضافة منطق الرد
-    toast.success('سيتم فتح صفحة الرد');
+    toast.success(nt('openingReply'));
     closeNotificationDetails();
   };
 
   // إعادة توجيه الإشعار
   const forwardNotification = (notification: Notification) => {
     // هنا يمكن إضافة منطق إعادة التوجيه
-    toast.success('سيتم فتح صفحة إعادة التوجيه');
+    toast.success(nt('openingForward'));
     closeNotificationDetails();
   };
 
@@ -205,12 +210,12 @@ export default function NotificationsList({
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="max-w-4xl mx-auto">
         {/* العنوان */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-blue-800 mb-2">{title}</h1>
-          <p className="text-gray-600">{description}</p>
+          <h1 className="text-3xl font-bold text-blue-800 mb-2">{displayTitle}</h1>
+          <p className="text-gray-600">{displayDescription}</p>
         </div>
 
         {/* إحصائيات سريعة */}
@@ -220,7 +225,7 @@ export default function NotificationsList({
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-blue-600">إجمالي</p>
+                    <p className="text-sm text-blue-600">{nt('total')}</p>
                     <p className="text-2xl font-bold text-blue-800">{stats.total}</p>
                   </div>
                   <Bell className="w-8 h-8 text-blue-600" />
@@ -232,7 +237,7 @@ export default function NotificationsList({
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-green-600">غير مقروءة</p>
+                    <p className="text-sm text-green-600">{nt('unread')}</p>
                     <p className="text-2xl font-bold text-green-800">{stats.unread}</p>
                   </div>
                   <Eye className="w-8 h-8 text-green-600" />
@@ -244,7 +249,7 @@ export default function NotificationsList({
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-orange-600">تحذيرات</p>
+                    <p className="text-sm text-orange-600">{nt('warnings')}</p>
                     <p className="text-2xl font-bold text-orange-800">{stats.warnings}</p>
                   </div>
                   <AlertTriangle className="w-8 h-8 text-orange-600" />
@@ -256,7 +261,7 @@ export default function NotificationsList({
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-red-600">أخطاء</p>
+                    <p className="text-sm text-red-600">{nt('errors')}</p>
                     <p className="text-2xl font-bold text-red-800">{stats.errors}</p>
                   </div>
                   <XCircle className="w-8 h-8 text-red-600" />
@@ -268,7 +273,7 @@ export default function NotificationsList({
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-purple-600">مشاهدات</p>
+                    <p className="text-sm text-purple-600">{nt('views')}</p>
                     <p className="text-2xl font-bold text-purple-800">{stats.profileViews}</p>
                   </div>
                   <Eye className="w-8 h-8 text-purple-600" />
@@ -280,7 +285,7 @@ export default function NotificationsList({
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-indigo-600">رسائل</p>
+                    <p className="text-sm text-indigo-600">{nt('messages')}</p>
                     <p className="text-2xl font-bold text-indigo-800">{stats.messages}</p>
                   </div>
                   <Check className="w-8 h-8 text-indigo-600" />
@@ -292,7 +297,7 @@ export default function NotificationsList({
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-pink-600">اتصالات</p>
+                    <p className="text-sm text-pink-600">{nt('connections')}</p>
                     <p className="text-2xl font-bold text-pink-800">{stats.connections}</p>
                   </div>
                   <Star className="w-8 h-8 text-pink-600" />
@@ -311,7 +316,7 @@ export default function NotificationsList({
                 <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
                   type="text"
-                  placeholder="ابحث في الإشعارات..."
+                  placeholder={nt('searchPlaceholder')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pr-12"
@@ -333,14 +338,14 @@ export default function NotificationsList({
             <div className="w-full lg:w-48">
               <Select value={filterType} onValueChange={setFilterType}>
                 <SelectTrigger>
-                  <SelectValue placeholder="نوع الإشعار" />
+                  <SelectValue placeholder={nt('notificationType')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">جميع الأنواع</SelectItem>
-                  <SelectItem value="info">معلومات</SelectItem>
-                  <SelectItem value="success">نجح</SelectItem>
-                  <SelectItem value="warning">تحذير</SelectItem>
-                  <SelectItem value="error">خطأ</SelectItem>
+                  <SelectItem value="all">{nt('allTypes')}</SelectItem>
+                  <SelectItem value="info">{nt('information')}</SelectItem>
+                  <SelectItem value="success">{nt('success')}</SelectItem>
+                  <SelectItem value="warning">{nt('warning')}</SelectItem>
+                  <SelectItem value="error">{nt('error')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -349,12 +354,12 @@ export default function NotificationsList({
             <div className="w-full lg:w-48">
               <Select value={filterRead} onValueChange={setFilterRead}>
                 <SelectTrigger>
-                  <SelectValue placeholder="حالة القراءة" />
+                  <SelectValue placeholder={nt('readStatus')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">جميع الإشعارات</SelectItem>
-                  <SelectItem value="unread">غير مقروءة</SelectItem>
-                  <SelectItem value="read">مقروءة</SelectItem>
+                  <SelectItem value="all">{nt('allNotifications')}</SelectItem>
+                  <SelectItem value="unread">{nt('unread')}</SelectItem>
+                  <SelectItem value="read">{nt('read')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -363,16 +368,16 @@ export default function NotificationsList({
             <div className="w-full lg:w-48">
               <Select value={filterActionType} onValueChange={setFilterActionType}>
                 <SelectTrigger>
-                  <SelectValue placeholder="نوع الإجراء" />
+                  <SelectValue placeholder={nt('actionType')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">جميع الإجراءات</SelectItem>
-                  <SelectItem value="profile_view">مشاهدة الملف</SelectItem>
-                  <SelectItem value="message_sent">رسالة</SelectItem>
-                  <SelectItem value="connection_request">طلب اتصال</SelectItem>
-                  <SelectItem value="follow">متابعة</SelectItem>
-                  <SelectItem value="like">إعجاب</SelectItem>
-                  <SelectItem value="comment">تعليق</SelectItem>
+                  <SelectItem value="all">{nt('allActions')}</SelectItem>
+                  <SelectItem value="profile_view">{nt('profileView')}</SelectItem>
+                  <SelectItem value="message_sent">{nt('message')}</SelectItem>
+                  <SelectItem value="connection_request">{nt('connectionRequest')}</SelectItem>
+                  <SelectItem value="follow">{nt('follow')}</SelectItem>
+                  <SelectItem value="like">{nt('like')}</SelectItem>
+                  <SelectItem value="comment">{nt('comment')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -385,7 +390,7 @@ export default function NotificationsList({
                 className="flex items-center gap-2"
               >
                 <Check className="w-4 h-4" />
-                تحديد الكل كمقروء
+                {nt('markAllRead')}
               </Button>
               
               <Button 
@@ -394,7 +399,7 @@ export default function NotificationsList({
                 className="flex items-center gap-2"
               >
                 <Settings className="w-4 h-4" />
-                إعدادات الصوت
+                {nt('soundSettings')}
               </Button>
 
               {showTestButtons && onCreateTestNotifications && (
@@ -404,7 +409,7 @@ export default function NotificationsList({
                   className="flex items-center gap-2 bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
                 >
                   <Zap className="w-4 h-4" />
-                  إنشاء إشعارات تجريبية
+                  {nt('createTestNotifications')}
                 </Button>
               )}
 
@@ -415,7 +420,7 @@ export default function NotificationsList({
                   className="flex items-center gap-2 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
                 >
                   <Star className="w-4 h-4" />
-                  إنشاء 10 إشعارات
+                  {nt('createTenNotifications')}
                 </Button>
               )}
             </div>
@@ -428,11 +433,11 @@ export default function NotificationsList({
             <Card className="bg-gray-50 border-gray-200">
               <CardContent className="p-12 text-center">
                 <Bell className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                <h3 className="text-xl font-semibold text-gray-600 mb-2">لا توجد إشعارات</h3>
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">{nt('empty')}</h3>
                 <p className="text-gray-500">
                   {searchTerm || filterType !== 'all' || filterRead !== 'all' || filterActionType !== 'all'
-                    ? 'لا توجد إشعارات تطابق الفلتر المحدد'
-                    : 'ستظهر هنا الإشعارات الجديدة عند حدوث أحداث مهمة'
+                    ? nt('emptyFiltered')
+                    : nt('emptyDescription')
                   }
                 </p>
                 {(searchTerm || filterType !== 'all' || filterRead !== 'all' || filterActionType !== 'all') && (
@@ -447,7 +452,7 @@ export default function NotificationsList({
                     className="mt-4"
                   >
                     <X className="w-4 h-4 ml-2" />
-                    مسح الفلاتر
+                    {nt('clearFilters')}
                   </Button>
                 )}
               </CardContent>
@@ -457,7 +462,7 @@ export default function NotificationsList({
               {/* عداد النتائج */}
               <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
                 <span>
-                  عرض {filteredNotifications.length} من {notifications.length} إشعار
+                  {nt('showing').replace('{{shown}}', String(filteredNotifications.length)).replace('{{total}}', String(notifications.length))}
                 </span>
                 {filteredNotifications.length !== notifications.length && (
                   <Button
@@ -472,7 +477,7 @@ export default function NotificationsList({
                     className="text-blue-600 hover:text-blue-700"
                   >
                     <X className="w-4 h-4 ml-1" />
-                    مسح الفلاتر
+                    {nt('clearFilters')}
                   </Button>
                 )}
               </div>

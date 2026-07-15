@@ -43,490 +43,6 @@ interface LandingStoreProduct {
 }
 
 
-const TR = {
-  ar: {
-    dir:'rtl', lang:'ar',
-    joinBtn: 'انضم الآن',
-    nav: ['الرئيسية', 'تطبيق حجز', 'الأكاديمية', 'الأندية', 'البطولات'],
-    badge: 'منصة الحلم بالتعاون مع V Lab Ai.',
-    motivation: [
-      { a: 'احجز مقعدك في البطولات الدولية،', b: 'وأثبت مهارتك أمام العالم.' },
-      { a: 'انضم للمعايشات الاحترافية،', b: 'وعش تجربة الأندية الأوروبية.' },
-      { a: 'فرصتك للاحتراف الحقيقي،', b: 'تبدأ من الملاعب العالمية.' },
-      { a: 'أفضل الكشافين والأندية،', b: 'في انتظار موهبتك القادمة.' },
-      { a: 'صمم مسيرتك الكروية،', b: 'مع أقوى معسكرات التدريب.' },
-      { a: 'لا تؤجل حلمك،', b: 'واجعل البداية اليوم.' },
-      { a: 'المستقبل يبدأ،', b: 'بقرار تأخذه الآن.' },
-      { a: 'طريق الألف ميل،', b: 'يبدأ بخطوة شجاعة.' },
-      { a: 'كُن بطل قصة،', b: 'نجاحك الخاصة.' },
-      { a: 'الإصرار يحول المستحيل،', b: 'إلى حقيقة مبهرة.' },
-      { a: 'كل دقيقة تدريب تقربك،', b: 'أكثر من حلمك الكبير.' },
-      { a: 'ثق بقدراتك دائماً،', b: 'فأنت تمتلك ما يلزم.' },
-      { a: 'الأبطال لا يولدون،', b: 'بل يصنعون بالعمل الجاد.' },
-      { a: 'العزيمة تجعل الحلم،', b: 'حقيقة ملموسة اليوم.' },
-      { a: 'النجاح يصنعه،', b: 'من يجرؤ على المحاولة.' },
-    ],
-    heroSub: 'أكبر منصة لاكتشاف المواهب الكروية في الشرق الأوسط. نستخدم الذكاء الاصطناعي لتحليل أدائك وربطك مباشرة مع أفضل الكشافين والأندية العالمية.',
-    startFree: 'ابدأ رحلتك مجاناً',
-    login: 'تسجيل الدخول',
-    partnerLabel: 'شركاء موثوقون من أفضل المؤسسات',
-    featuresTitle: 'أدوات النجاح الرقمية',
-    features: [
-      { icon: 'analytics', title: 'تحليل المهارات بالذكاء الاصطناعي', desc: 'نستخدم أحدث تقنيات الرؤية الحاسوبية لتحليل فيديوهات أدائك واستخراج إحصائيات دقيقة حول السرعة، التمرير، ودقة التسديد.' },
-      { icon: 'visibility', title: 'الظهور أمام الكشافين', desc: 'ملفك الشخصي يظهر مباشرة في لوحة تحكم الكشافين المعتمدين محلياً ودولياً، مما يزيد فرصك في الحصول على تجربة أداء.' },
-      { icon: 'hub', title: 'تواصل مباشر مع الأندية', desc: 'نظام مراسلة آمن يربطك بمدراء الأكاديميات والمدربين مباشرة عند اهتمامهم بمهاراتك المسجلة على المنصة.' },
-    ],
-    aiVideoTitle: 'تحليل الفيديو الذكي',
-    aiVideoBadge: 'تقنية الجيل القادم',
-    aiVideoDesc: 'حول لقطاتك إلى بيانات احترافية. تقنياتنا تحلل كل حركة، تمريرة، وتسديدة لتعطيك تقييماً دقيقاً مبنياً على معايير الأندية العالمية.',
-    aiVideoFeatures: [
-      { icon: 'label_important', color: '#84d993', title: 'وسم تلقائي للأهداف والمراوغات', desc: 'يقوم الذكاء الاصطناعي بتحديد أفضل لحظاتك وتقسيمها إلى مقاطع فيديو جاهزة للمشاركة مع الكشافين.' },
-      { icon: 'map', color: '#bdc4ef', title: 'خرائط حرارية لتحركاتك', desc: 'تتبع دقيق لموقعك في الملعب طوال المباراة لفهم توزيع مجهودك البدني وذكائك التكتيكي.' },
-      { icon: 'leaderboard', color: '#fdba45', title: 'مقاييس أداء متقدمة', desc: 'إحصائيات فورية عن سرعة الجري، دقة التمرير، وقوة التسديد مدمجة مباشرة فوق لقطات الفيديو الخاصة بك.' },
-    ],
-    tourTitle: 'البطولات والمنافسات',
-    tourSub: 'شارك في أقوى الفعاليات لرفع تقييمك الرقمي',
-    tournaments: [
-      { title: 'بطولة النخبة - القاهرة', desc: 'مباريات دولية وبطولات رسمية بحضور أفضل الكشافين في مصر.', btn: 'شاهد على إنستغرام' },
-      { title: 'بطولة العلمين الدولية', desc: 'بطولات رسمية ومباريات في مدينة العلمين الجديدة بمشاركة كبار الكشافين.', btn: 'شاهد على إنستغرام' },
-      { title: 'بطولة الحلم العربي - الدوحة', desc: 'اختبارات أداء فنية تحت إشراف مدربي الدوري القطري.', btn: 'شاهد على إنستغرام' },
-    ],
-    talentsTitle: 'مواهب صاعدة',
-    talentsSub: 'الأكثر بحثاً وتفاعلاً من قبل الأندية هذا الأسبوع',
-    viewAll: 'عرض جميع اللاعبين',
-    oppsTitle: 'الفرص المتاحة',
-    oppsSub: 'أحدث الفرص المقدمة من أقوى الأندية والوكلاء',
-    viewOpps: 'عرض جميع الفرص',
-    players: [
-      { name: 'أحمد كريم', pos: 'وسط • 19 سنة', badge: 'نخبة' },
-      { name: 'ياسين عمر', pos: 'مهاجم • 17 سنة', badge: null },
-      { name: 'مريم حسن', pos: 'مهاجمة • 18 سنة', badge: 'اختيار الكشاف' },
-      { name: 'زياد علي', pos: 'مدافع • 20 سنة', badge: null },
-    ],
-    contactTitle: 'تواصل معنا',
-    contactSub: 'فريق الدعم الفني وخدمة العملاء متاح للإجابة على جميع استفساراتكم حول المنصة والاشتراكات.',
-    contacts: [
-      { href: 'https://wa.me/97470542458', icon: 'chat', color: '#84d993', bg: 'rgba(132,217,147,.1)', hb: 'rgba(132,217,147,.5)', title: 'واتساب', sub: '+974 7054 2458' },
-      { href: 'tel:+97470542458', icon: 'call', color: '#bdc4ef', bg: 'rgba(189,196,239,.1)', hb: 'rgba(189,196,239,.5)', title: 'اتصل بنا', sub: '+974 7054 2458' },
-      { href: 'mailto:info@el7lm.com', icon: 'mail', color: '#fdba45', bg: 'rgba(253,186,69,.1)', hb: 'rgba(253,186,69,.5)', title: 'البريد الإلكتروني', sub: 'info@el7lm.com' },
-    ],
-    emailLbl: 'البريد الإلكتروني', nameLbl: 'الاسم الكامل', subjectLbl: 'الموضوع', msgLbl: 'الرسالة',
-    emailPh: 'example@mail.com', namePh: 'أدخل اسمك هنا', subjectPh: 'كيف يمكننا مساعدتك؟', msgPh: 'اكتب تفاصيل استفسارك هنا...',
-    sendBtn: 'إرسال الرسالة',
-    ctaTitle: 'جاهز لتكون النجم القادم؟',
-    ctaSub: 'انضم إلى آلاف اللاعبين الذين بدأوا مسيرتهم الاحترافية من خلال منصة الحلم بالتعاون مع V Lab Ai.',
-    ctaBtn: 'أنشئ ملفك المجاني الآن',
-    footerDesc: 'منصة رائدة تهدف إلى تمكين المواهب الكروية العربية باستخدام التكنولوجيا الحديثة والذكاء الاصطناعي للوصول إلى العالمية.',
-    footerCols: [
-      { title: 'روابط سريعة', links: [ { l: 'البحث عن المواهب', h: '#' }, { l: 'تقارير الأداء', h: '#' }, { l: 'الأكاديمية الرقمية', h: '#' }, { l: 'جدول المباريات', h: '#' }, { l: 'أخبار النجوم', h: '#' } ] },
-      { title: 'الشركة', links: [ { l: 'من نحن', h: '/about' }, { l: 'الوظائف', h: '/careers' }, { l: 'شركاء النجاح', h: '/success-stories' }, { l: 'اتصل بنا', h: '/contact' } ] },
-      { title: 'الدعم القانوني', links: [ { l: 'سياسة الخصوصية', h: '/privacy' }, { l: 'الشروط والأحكام', h: '/terms' }, { l: 'معايير الكشافة', h: '#' }, { l: 'الدعم الفني', h: '/support' } ] },
-    ],
-    copyright: '© 2024 منصة الحلم بالتعاون مع V Lab Ai. جميع الحقوق محفوظة.',
-    designedFor: 'صُمّم للأبطال',
-    all: 'الكل',
-    trials: 'المعايشات',
-    pro: 'تجارب الأداء',
-    camps: 'معسكرات تدريبية',
-    training: 'برامج تدريبية',
-    howTitle: 'كيف تستخدم المنصة؟',
-    howSub: 'أربع خطوات بسيطة تفصلك عن عالم الاحتراف الكروي',
-    howSteps: [
-      { num: '01', title: 'أنشئ حسابك مجاناً', desc: 'سجّل بياناتك الأساسية واختر نوع حسابك (لاعب، ناد، كشاف) في أقل من دقيقتين.', icon: 'person_add', color: '#84d993' },
-      { num: '02', title: 'أكمل ملفك الاحترافي', desc: 'أضف صورك، فيديوهات أدائك، إحصائياتك، وتفاصيل مسيرتك الكروية لتبرز أمام الكشافين.', icon: 'edit_note', color: '#bdc4ef' },
-      { num: '03', title: 'اكتشف الفرص المتاحة', desc: 'تصفح آلاف الفرص من الأندية والأكاديميات والبطولات المتاحة وتقدم بنقرة واحدة.', icon: 'explore', color: '#fdba45' },
-      { num: '04', title: 'تواصل مع الأندية', desc: 'استقبل عروض الأندية مباشرة، تواصل مع الكشافين، وابدأ مسيرتك الاحترافية.', icon: 'handshake', color: '#10b981' },
-    ],
-    forWhomTitle: 'حلول مصممة لكل فئة',
-    forWhomSub: 'تم بناء المنظومة لتخدم فئات متعددة داخل القطاع الرياضي، مع وضوح في الرسالة وملائمة في الاستخدام لكل طرف.',
-    forWhom: [
-      { num: '01', title: 'للرياضيين', desc: 'عرض المهارات والسجل الرياضي بصورة احترافية تدعم الحضور وتقرّب الرياضي من الفرص المناسبة.', btn: 'ابدأ كرياضي', href: '/auth/register?role=player', color: '#84d993' },
-      { num: '02', title: 'للأكاديميات', desc: 'إدارة أكثر تنظيماً للمواهب والخدمات والحجوزات ضمن تجربة رقمية أووضوح وأكثر كفاءة.', btn: 'اطلب نسخة للأكاديميات', href: '/auth/register?role=academy', color: '#bdc4ef' },
-      { num: '03', title: 'للأندية والكشافين', desc: 'الوصول إلى اللاعبين والفيديوهات والتحليلات بصورة أسرع بما يدعم كفاءة المراجعة واتخاذ القرار.', btn: 'ابدأ كنادٍ أو كشاف', href: '/auth/register?role=club', color: '#fdba45' },
-      { num: '04', title: 'للشركاء والجهات الرياضية', desc: 'واجهة مؤسسية حديثة تدعم الشراكات والعروض والفرص التجارية ضمن بيئة أكثر وضوحاً وتنظيماً.', btn: 'ناقش الشراكة', href: '/contact', color: '#10b981' },
-    ],
-    storeTitle: 'المتجر الرياضي',
-    storeSub: 'قسم مخصص لبيع المنتجات والخدمات الرياضية لكل أنواع الحسابات، مع إبراز خيارات الدفع المرنة والتقسيط.',
-    storeBadge: 'المتجر المشترك + تقسيط مرن',
-    storeCta: 'ادخل المتجر',
-    storeSecondary: 'اعرف خيارات الدفع',
-    storeHighlights: [
-      { title: 'متجر واحد للجميع', desc: 'اللاعبون والأندية والأكاديميات وبقية الحسابات يمكنها تصفح نفس المتجر وإرسال الطلبات.' },
-      { title: 'دفع مباشر واحترافي', desc: 'ادعم البطاقات والمحافظ الرقمية عبر Geidea و SkipCash والحلول المحلية.' },
-      { title: 'ميزة التقسيط', desc: 'أبرز عروضك مع خيارات تقسيط مثل Tamara و Tabby لتقليل الحاجز أمام الشراء.' },
-    ],
-    stats: [
-      { label: 'الأداء الحالي', value: 'نخبة 98.4' },
-      { label: 'تحليل السرعة', value: '34.5 KM/H' },
-      { label: 'دقة التمرير', value: 'نخبة 94%' },
-      { label: 'التقييم الفني', value: 'PRO 9.2/10' },
-      { label: 'اهتمام الكشافين', value: '8 أندية حالياً' },
-      { label: 'دقة التسديد', value: 'عالي 89%' },
-    ],
-  },
-  en: {
-    dir:'ltr', lang:'en',
-    joinBtn:'Join Now',
-    nav:['Home','Hagzz App','Academy','Clubs','Tournaments'],
-    badge:'EL7LM platform with V Lab Ai.',
-    motivation: [
-      { a: "Book your spot in global tournaments,", b: "And prove your skills to the world." },
-      { a: "Join professional football trials,", b: "And live the European club experience." },
-      { a: "Your chance for true professionalism,", b: "Starts in international stadiums." },
-      { a: "Top scouts and clubs,", b: "Are waiting for your talent." },
-      { a: "Shape your football career,", b: "With elite training camps." },
-      { a: "Don't delay your dream,", b: "Start today." },
-      { a: "The future starts,", b: "With a decision now." },
-      { a: "A thousand-mile journey,", b: "Starts with one step." },
-      { a: "Be the hero,", b: "Of your own success story." },
-      { a: "Persistence makes,", b: "The impossible real." },
-      { a: "Every training minute,", b: "Brings you closer." },
-      { a: "Trust your abilities,", b: "You have what it takes." },
-      { a: "Champions are made,", b: "Through hard work." },
-      { a: "Grit makes a dream,", b: "A tangible reality today." },
-      { a: "Success is made by,", b: "Those who dare to try." },
-    ],
-    stats: [
-      { label: 'Current Performance', value: 'ELITE 98.4' },
-      { label: 'Speed Analysis', value: '34.5 KM/H' },
-      { label: 'Passing Accuracy', value: 'ELITE 94%' },
-      { label: 'Technical Rating', value: 'PRO 9.2/10' },
-      { label: 'Scout Interest', value: '8 CLUBS NOW' },
-      { label: 'Shooting Power', value: 'HIGH 89%' },
-    ],
-    heroSub:'The largest football talent discovery platform in the Middle East. We use AI to analyze your performance and connect you directly with top scouts and international clubs.',
-    startFree:'Start for Free',
-    login:'Login',
-    partnerLabel:'Trusted By Professional Partners',
-    featuresTitle:'Digital Success Tools',
-    features:[
-      {icon:'analytics',title:'AI Skill Analysis',desc:'We use the latest computer vision technology to analyze your performance videos and extract precise statistics on speed, passing, and shooting accuracy.'},
-      {icon:'visibility',title:'Scout Visibility',desc:'Your profile appears directly on the dashboards of certified scouts locally and internationally, increasing your chances of getting a performance trial.'},
-      {icon:'hub',title:'Club Direct Contact',desc:'A secure messaging system that connects you with academy directors and coaches directly when they show interest in your recorded skills on the platform.'},
-    ],
-    aiVideoTitle:'AI Video Analysis',
-    aiVideoBadge:'Next-Gen Technology',
-    aiVideoDesc:'Transform your footage into professional data. Our technology analyzes every move, pass, and shot to give you an accurate assessment based on international club standards.',
-    aiVideoFeatures:[
-      {icon:'label_important',color:'#84d993',title:'Auto-tag Goals & Dribbles',desc:'AI identifies your best moments and splits them into video clips ready to share with scouts.'},
-      {icon:'map',color:'#bdc4ef',title:'Heat Maps of Your Movement',desc:'Precise tracking of your position on the pitch throughout the match to understand your physical effort and tactical intelligence.'},
-      {icon:'leaderboard',color:'#fdba45',title:'Advanced Performance Metrics',desc:'Real-time stats on running speed, passing accuracy, and shot power overlaid directly on your video footage.'},
-    ],
-    tourTitle:'Tournaments & Competitions',
-    tourSub:'Participate in the strongest events to boost your digital ranking',
-    tournaments:[
-      {title:'Elite Tournament - Cairo',desc:'International matches and official tournaments with Egypt\'s top scouts.',btn:'View on Instagram'},
-      {title:'Al Alamein International',desc:'Official tournaments in the new Al Alamein city with elite scouting.',btn:'View on Instagram'},
-      {title:'Arab Dream Cup - Doha',desc:'Technical performance tests under the supervision of Qatar League coaches.',btn:'View on Instagram'},
-    ],
-    talentsTitle:'Rising Talents',
-    talentsSub:'Most searched and engaged by clubs this week',
-    viewAll:'View All Players',
-    oppsTitle:'Available Opportunities',
-    oppsSub:'Latest opportunities from top clubs and agents',
-    viewOpps:'View All Opportunities',
-    players:[
-      {name:'Ahmed Kareem',pos:'Midfielder  19 yrs',badge:'Elite Rank'},
-      {name:'Yassine Omar',pos:'Forward  17 yrs',badge:null},
-      {name:'Mariam Hassan',pos:'Striker  18 yrs',badge:'Scout Choice'},
-      {name:'Ziad Ali',pos:'Defender  20 yrs',badge:null},
-    ],
-    contactTitle:'Contact Us',
-    contactSub:'Our technical support and customer service team is available to answer all your inquiries about the platform and subscriptions.',
-    contacts:[
-      {href:'https://wa.me/97470542458',icon:'chat',color:'#84d993',bg:'rgba(132,217,147,.1)',hb:'rgba(132,217,147,.5)',title:'WhatsApp',sub:'+974 7054 2458'},
-      {href:'tel:+97470542458',icon:'call',color:'#bdc4ef',bg:'rgba(189,196,239,.1)',hb:'rgba(189,196,239,.5)',title:'Call Us',sub:'+974 7054 2458'},
-      {href:'mailto:info@el7lm.com',icon:'mail',color:'#fdba45',bg:'rgba(253,186,69,.1)',hb:'rgba(253,186,69,.5)',title:'Email Us',sub:'info@el7lm.com'},
-    ],
-    emailLbl:'Email Address', nameLbl:'Full Name', subjectLbl:'Subject', msgLbl:'Message',
-    emailPh:'example@mail.com', namePh:'Enter your name', subjectPh:'How can we help you?', msgPh:'Write your inquiry details here...',
-    sendBtn:'Send Message',
-    ctaTitle:'Ready to be the next star?',
-    ctaSub:'Join thousands of players who started their professional journey through EL7LM platform with V Lab Ai.',
-    ctaBtn:'Create Your Free Profile Now',
-    footerDesc:'A leading platform aiming to empower Arab football talents using modern technology and artificial intelligence to reach global recognition.',
-    footerCols:[
-      {title:'Quick Links',links:[{l:'Talent Search',h:'#'},{l:'Performance Reports',h:'#'},{l:'Digital Academy',h:'#'},{l:'Match Schedule',h:'#'},{l:'Star News',h:'#'}]},
-      {title:'Company',links:[{l:'About Us',h:'/about'},{l:'Careers',h:'/careers'},{l:'Success Stories',h:'/success-stories'},{l:'Contact',h:'/contact'}]},
-      {title:'Legal',links:[{l:'Privacy Policy',h:'/privacy'},{l:'Terms & Conditions',h:'/terms'},{l:'Scouting Standards',h:'#'},{l:'Technical Support',h:'/support'}]},
-    ],
-    copyright:' 2024 EL7LM platform with V Lab Ai. ALL RIGHTS RESERVED.',
-    designedFor:'Designed for Champions',
-    all:'All',
-    trials:'Trials',
-    pro:'Professional',
-    camps:'Camps',
-    training:'Training',
-    howTitle:'How to Use the Platform?',
-    howSub:'Four simple steps separate you from the world of professional football',
-    howSteps:[
-      {num:'01',title:'Create Your Free Account',desc:'Register your basic info and choose your account type (Player, Club, Scout) in less than 2 minutes.',icon:'person_add',color:'#84d993'},
-      {num:'02',title:'Complete Your Pro Profile',desc:'Add your photos, performance videos, stats, and career details to stand out in front of scouts.',icon:'edit_note',color:'#bdc4ef'},
-      {num:'03',title:'Discover Available Opportunities',desc:'Browse thousands of opportunities from clubs, academies, and tournaments and apply with one click.',icon:'explore',color:'#fdba45'},
-      {num:'04',title:'Connect with Clubs',desc:'Receive club offers directly, communicate with scouts, and kick off your professional career.',icon:'handshake',color:'#10b981'},
-    ],
-    forWhomTitle:'Solutions Designed for Every Category',
-    forWhomSub:'The platform is built to serve multiple groups within the sports sector, with a clear message and tailored experience for each party.',
-    forWhom:[
-      {num:'01',title:'For Athletes',desc:'Showcase skills and sports records in a professional way that supports visibility and brings athletes closer to the right opportunities.',btn:'Start as an Athlete',href:'/auth/register?role=player',color:'#84d993'},
-      {num:'02',title:'For Academies',desc:'More organised management of talents, services, and bookings within a clearer and more efficient digital experience.',btn:'Request Academy Version',href:'/auth/register?role=academy',color:'#bdc4ef'},
-      {num:'03',title:'For Clubs & Scouts',desc:'Faster access to players, videos, and analytics to support efficient review and decision-making.',btn:'Start as a Club or Scout',href:'/auth/register?role=club',color:'#fdba45'},
-      {num:'04',title:'For Partners & Sports Organisations',desc:'A modern institutional interface that supports partnerships, offers, and commercial opportunities within a clearer and more organised environment.',btn:'Discuss Partnership',href:'/contact',color:'#10b981'},
-    ],
-    storeTitle:'Sports Store',
-    storeSub:'A dedicated section for selling sports products and services to all account types, with flexible payment choices and installment options highlighted as a key value proposition.',
-    storeBadge:'Shared Store + Flexible Installments',
-    storeCta:'Enter The Store',
-    storeSecondary:'Explore Payment Options',
-    storeHighlights:[
-      { title:'One Store For Everyone', desc:'Players, clubs, academies, and all other account types can browse the same store and submit purchase requests.' },
-      { title:'Professional Payment Methods', desc:'Support cards and digital wallets through Geidea, SkipCash, and other regional payment methods.' },
-      { title:'Installments As A Sales Advantage', desc:'Highlight installment options like Tamara and Tabby to lower purchase friction and increase conversion.' },
-    ],
-  },
-};
-
-// Spanish and Portuguese are being completed section-by-section. Keeping the
-// English object as a structural base prevents missing properties while each
-// visible section receives reviewed copy in both languages.
-const LOCALIZED_TR = {
-  ...TR,
-  es: {
-    ...TR.en,
-    lang: 'es',
-    joinBtn: 'Únete ahora',
-    nav: ['Inicio', 'Aplicación Hagzz', 'Academia', 'Clubes', 'Torneos'],
-    badge: 'Plataforma EL7LM con V Lab AI.',
-    motivation: [
-      { a: 'Reserva tu plaza en torneos internacionales,', b: 'y demuestra tu talento ante el mundo.' },
-      { a: 'Participa en pruebas profesionales,', b: 'y vive la experiencia de los clubes europeos.' },
-      { a: 'Tu oportunidad de llegar al profesionalismo,', b: 'comienza en los estadios internacionales.' },
-      { a: 'Los mejores ojeadores y clubes,', b: 'están esperando tu talento.' },
-      { a: 'Diseña tu carrera futbolística,', b: 'con campamentos de entrenamiento de élite.' },
-      { a: 'No retrases tu sueño,', b: 'empieza hoy.' },
-      { a: 'El futuro comienza,', b: 'con una decisión que tomas ahora.' },
-      { a: 'Un viaje de mil kilómetros,', b: 'comienza con un paso valiente.' },
-      { a: 'Sé el héroe,', b: 'de tu propia historia de éxito.' },
-      { a: 'La perseverancia convierte,', b: 'lo imposible en realidad.' },
-      { a: 'Cada minuto de entrenamiento,', b: 'te acerca más a tu sueño.' },
-      { a: 'Confía siempre en tus capacidades,', b: 'tienes lo necesario.' },
-      { a: 'Los campeones no nacen,', b: 'se forman con trabajo duro.' },
-      { a: 'La determinación convierte el sueño,', b: 'en una realidad tangible.' },
-      { a: 'El éxito pertenece,', b: 'a quienes se atreven a intentarlo.' },
-    ],
-    heroSub: 'La mayor plataforma de descubrimiento de talento futbolístico de Oriente Medio. Usamos inteligencia artificial para analizar tu rendimiento y conectarte con los mejores ojeadores y clubes internacionales.',
-    startFree: 'Empieza gratis',
-    login: 'Iniciar sesión',
-    partnerLabel: 'Con la confianza de socios profesionales',
-    featuresTitle: 'Herramientas digitales para el éxito',
-    features: [
-      { icon: 'analytics', title: 'Análisis de habilidades con IA', desc: 'Analizamos tus vídeos con visión artificial para obtener estadísticas precisas de velocidad, pases y disparos.' },
-      { icon: 'visibility', title: 'Visibilidad ante ojeadores', desc: 'Tu perfil aparece ante ojeadores certificados a nivel local e internacional para aumentar tus oportunidades.' },
-      { icon: 'hub', title: 'Contacto directo con clubes', desc: 'Un sistema seguro te conecta con directores de academias y entrenadores interesados en tus habilidades.' },
-    ],
-    aiVideoTitle: 'Análisis de vídeo con IA',
-    aiVideoBadge: 'Tecnología de nueva generación',
-    aiVideoDesc: 'Convierte tus jugadas en datos profesionales. Analizamos cada movimiento, pase y disparo según estándares internacionales.',
-    aiVideoFeatures: [
-      { ...TR.en.aiVideoFeatures[0], title: 'Etiquetado automático de goles y regates', desc: 'La IA identifica tus mejores momentos y crea clips listos para compartir con ojeadores.' },
-      { ...TR.en.aiVideoFeatures[1], title: 'Mapas de calor de tus movimientos', desc: 'Seguimiento preciso de tu posición para comprender tu esfuerzo físico e inteligencia táctica.' },
-      { ...TR.en.aiVideoFeatures[2], title: 'Métricas avanzadas de rendimiento', desc: 'Estadísticas inmediatas de velocidad, precisión de pase y potencia de disparo sobre el vídeo.' },
-    ],
-    tourTitle: 'Torneos y competiciones',
-    tourSub: 'Participa en los mejores eventos para mejorar tu clasificación digital',
-    tournaments: [
-      { title: 'Torneo Élite - El Cairo', desc: 'Partidos internacionales y torneos oficiales con los mejores ojeadores de Egipto.', btn: 'Ver en Instagram' },
-      { title: 'Internacional de Al Alamein', desc: 'Torneos oficiales en la nueva ciudad de Al Alamein con ojeadores de élite.', btn: 'Ver en Instagram' },
-      { title: 'Copa Sueño Árabe - Doha', desc: 'Pruebas técnicas bajo la supervisión de entrenadores de la liga catarí.', btn: 'Ver en Instagram' },
-    ],
-    talentsTitle: 'Talentos emergentes', talentsSub: 'Los más buscados por los clubes esta semana', viewAll: 'Ver todos los jugadores',
-    oppsTitle: 'Oportunidades disponibles', oppsSub: 'Últimas oportunidades de los mejores clubes y agentes', viewOpps: 'Ver todas las oportunidades',
-    contactTitle: 'Contáctanos', contactSub: 'Nuestro equipo de soporte está disponible para responder tus consultas sobre la plataforma y las suscripciones.',
-    emailLbl: 'Correo electrónico', nameLbl: 'Nombre completo', subjectLbl: 'Asunto', msgLbl: 'Mensaje',
-    namePh: 'Escribe tu nombre', subjectPh: '¿Cómo podemos ayudarte?', msgPh: 'Escribe los detalles de tu consulta...', sendBtn: 'Enviar mensaje',
-    ctaTitle: '¿Listo para ser la próxima estrella?', ctaSub: 'Únete a miles de jugadores que iniciaron su carrera profesional mediante EL7LM con V Lab AI.', ctaBtn: 'Crea ahora tu perfil gratuito',
-    stats: [
-      { label: 'Rendimiento actual', value: 'ÉLITE 98.4' }, { label: 'Análisis de velocidad', value: '34.5 KM/H' },
-      { label: 'Precisión de pase', value: 'ÉLITE 94%' }, { label: 'Valoración técnica', value: 'PRO 9.2/10' },
-      { label: 'Interés de ojeadores', value: '8 CLUBES AHORA' }, { label: 'Potencia de disparo', value: 'ALTA 89%' },
-    ],
-    players: [
-      { name: 'Ahmed Kareem', pos: 'Centrocampista • 19 años', badge: 'Élite' }, { name: 'Yassine Omar', pos: 'Delantero • 17 años', badge: null },
-      { name: 'Mariam Hassan', pos: 'Delantera • 18 años', badge: 'Elección del ojeador' }, { name: 'Ziad Ali', pos: 'Defensa • 20 años', badge: null },
-    ],
-    contacts: [
-      { ...TR.en.contacts[0], title: 'WhatsApp' }, { ...TR.en.contacts[1], title: 'Llámanos' }, { ...TR.en.contacts[2], title: 'Correo electrónico' },
-    ],
-    footerDesc: 'Una plataforma líder que impulsa el talento futbolístico árabe mediante tecnología moderna e inteligencia artificial.',
-    footerCols: [
-      { title: 'Enlaces rápidos', links: [{ l: 'Búsqueda de talentos', h: '#' }, { l: 'Informes de rendimiento', h: '#' }, { l: 'Academia digital', h: '#' }, { l: 'Calendario de partidos', h: '#' }, { l: 'Noticias de las estrellas', h: '#' }] },
-      { title: 'Empresa', links: [{ l: 'Quiénes somos', h: '/about' }, { l: 'Empleo', h: '/careers' }, { l: 'Casos de éxito', h: '/success-stories' }, { l: 'Contacto', h: '/contact' }] },
-      { title: 'Legal', links: [{ l: 'Privacidad', h: '/privacy' }, { l: 'Términos', h: '/terms' }, { l: 'Criterios de ojeadores', h: '#' }, { l: 'Soporte técnico', h: '/support' }] },
-    ],
-    copyright: '© 2026 EL7LM con V Lab AI. Todos los derechos reservados.', designedFor: 'Diseñado para campeones',
-    all: 'Todo', trials: 'Pruebas', pro: 'Profesional', camps: 'Campamentos', training: 'Entrenamiento',
-    howTitle: '¿Cómo usar la plataforma?', howSub: 'Cuatro sencillos pasos te separan del fútbol profesional',
-    howSteps: [
-      { ...TR.en.howSteps[0], title: 'Crea tu cuenta gratuita', desc: 'Registra tus datos básicos y elige el tipo de cuenta en menos de dos minutos.' },
-      { ...TR.en.howSteps[1], title: 'Completa tu perfil profesional', desc: 'Añade fotos, vídeos, estadísticas y trayectoria para destacar ante los ojeadores.' },
-      { ...TR.en.howSteps[2], title: 'Descubre oportunidades', desc: 'Explora oportunidades de clubes, academias y torneos y solicita con un clic.' },
-      { ...TR.en.howSteps[3], title: 'Conecta con clubes', desc: 'Recibe ofertas, habla con ojeadores e inicia tu carrera profesional.' },
-    ],
-    forWhomTitle: 'Soluciones para cada categoría', forWhomSub: 'Una experiencia específica para cada parte del sector deportivo.',
-    forWhom: [
-      { ...TR.en.forWhom[0], title: 'Para deportistas', desc: 'Presenta tus habilidades y registros de forma profesional.', btn: 'Empezar como deportista' },
-      { ...TR.en.forWhom[1], title: 'Para academias', desc: 'Gestiona talentos, servicios y reservas con mayor eficiencia.', btn: 'Solicitar versión para academias' },
-      { ...TR.en.forWhom[2], title: 'Para clubes y ojeadores', desc: 'Accede rápidamente a jugadores, vídeos y análisis.', btn: 'Empezar como club u ojeador' },
-      { ...TR.en.forWhom[3], title: 'Para socios y organizaciones', desc: 'Una interfaz moderna para alianzas y oportunidades comerciales.', btn: 'Hablar sobre una alianza' },
-    ],
-    storeTitle: 'Tienda deportiva', storeSub: 'Productos y servicios deportivos para todas las cuentas con pagos flexibles y opciones de financiación.',
-    storeBadge: 'Tienda compartida + financiación flexible', storeCta: 'Entrar en la tienda', storeSecondary: 'Explorar opciones de pago',
-    storeHighlights: [
-      { title: 'Una tienda para todos', desc: 'Jugadores, clubes y academias compran en una tienda compartida.' },
-      { title: 'Métodos de pago profesionales', desc: 'Tarjetas y monederos digitales mediante proveedores regionales.' },
-      { title: 'Financiación que facilita la compra', desc: 'Opciones como Tamara y Tabby reducen las barreras de compra.' },
-    ],
-  },
-  pt: {
-    ...TR.en,
-    lang: 'pt',
-    joinBtn: 'Junte-se agora',
-    nav: ['Início', 'Aplicação Hagzz', 'Academia', 'Clubes', 'Torneios'],
-    badge: 'Plataforma EL7LM com V Lab AI.',
-    motivation: [
-      { a: 'Reserve o seu lugar em torneios internacionais,', b: 'e prove o seu talento perante o mundo.' },
-      { a: 'Participe em testes profissionais,', b: 'e viva a experiência dos clubes europeus.' },
-      { a: 'A sua oportunidade de chegar ao profissionalismo,', b: 'começa nos estádios internacionais.' },
-      { a: 'Os melhores olheiros e clubes,', b: 'esperam pelo seu talento.' },
-      { a: 'Construa a sua carreira no futebol,', b: 'com campos de treino de elite.' },
-      { a: 'Não adie o seu sonho,', b: 'comece hoje.' },
-      { a: 'O futuro começa,', b: 'com uma decisão tomada agora.' },
-      { a: 'Uma viagem de mil quilómetros,', b: 'começa com um passo corajoso.' },
-      { a: 'Seja o herói,', b: 'da sua própria história de sucesso.' },
-      { a: 'A persistência transforma,', b: 'o impossível em realidade.' },
-      { a: 'Cada minuto de treino,', b: 'aproxima-o do seu sonho.' },
-      { a: 'Confie sempre nas suas capacidades,', b: 'tem tudo o que é necessário.' },
-      { a: 'Os campeões não nascem,', b: 'constroem-se com trabalho árduo.' },
-      { a: 'A determinação transforma o sonho,', b: 'numa realidade concreta.' },
-      { a: 'O sucesso pertence,', b: 'a quem se atreve a tentar.' },
-    ],
-    heroSub: 'A maior plataforma de descoberta de talentos de futebol do Médio Oriente. Usamos inteligência artificial para analisar o seu desempenho e ligá-lo aos melhores olheiros e clubes internacionais.',
-    startFree: 'Comece gratuitamente',
-    login: 'Iniciar sessão',
-    partnerLabel: 'Com a confiança de parceiros profissionais',
-    featuresTitle: 'Ferramentas digitais para o sucesso',
-    features: [
-      { icon: 'analytics', title: 'Análise de competências com IA', desc: 'Analisamos os seus vídeos com visão computacional para obter estatísticas rigorosas de velocidade, passes e remates.' },
-      { icon: 'visibility', title: 'Visibilidade perante olheiros', desc: 'O seu perfil chega a olheiros certificados a nível local e internacional, aumentando as suas oportunidades.' },
-      { icon: 'hub', title: 'Contacto direto com clubes', desc: 'Um sistema seguro liga-o a diretores de academias e treinadores interessados nas suas competências.' },
-    ],
-    aiVideoTitle: 'Análise de vídeo com IA',
-    aiVideoBadge: 'Tecnologia de nova geração',
-    aiVideoDesc: 'Transforme as suas jogadas em dados profissionais. Analisamos cada movimento, passe e remate segundo padrões internacionais.',
-    aiVideoFeatures: [
-      { ...TR.en.aiVideoFeatures[0], title: 'Marcação automática de golos e dribles', desc: 'A IA identifica os melhores momentos e cria clipes prontos para partilhar com olheiros.' },
-      { ...TR.en.aiVideoFeatures[1], title: 'Mapas de calor dos seus movimentos', desc: 'Acompanhamento rigoroso da sua posição para compreender o esforço físico e a inteligência tática.' },
-      { ...TR.en.aiVideoFeatures[2], title: 'Métricas avançadas de desempenho', desc: 'Estatísticas imediatas de velocidade, precisão de passe e potência de remate sobre o vídeo.' },
-    ],
-    tourTitle: 'Torneios e competições',
-    tourSub: 'Participe nos melhores eventos para melhorar a sua classificação digital',
-    tournaments: [
-      { title: 'Torneio Elite - Cairo', desc: 'Jogos internacionais e torneios oficiais com os melhores olheiros do Egito.', btn: 'Ver no Instagram' },
-      { title: 'Internacional de Al Alamein', desc: 'Torneios oficiais na nova cidade de Al Alamein com olheiros de elite.', btn: 'Ver no Instagram' },
-      { title: 'Taça Sonho Árabe - Doha', desc: 'Testes técnicos sob supervisão de treinadores da liga do Catar.', btn: 'Ver no Instagram' },
-    ],
-    talentsTitle: 'Talentos emergentes', talentsSub: 'Os mais procurados pelos clubes esta semana', viewAll: 'Ver todos os jogadores',
-    oppsTitle: 'Oportunidades disponíveis', oppsSub: 'Oportunidades recentes dos melhores clubes e agentes', viewOpps: 'Ver todas as oportunidades',
-    contactTitle: 'Contacte-nos', contactSub: 'A nossa equipa de apoio está disponível para responder às suas questões sobre a plataforma e as subscrições.',
-    emailLbl: 'Correio eletrónico', nameLbl: 'Nome completo', subjectLbl: 'Assunto', msgLbl: 'Mensagem',
-    namePh: 'Introduza o seu nome', subjectPh: 'Como podemos ajudar?', msgPh: 'Escreva os detalhes da sua questão...', sendBtn: 'Enviar mensagem',
-    ctaTitle: 'Pronto para ser a próxima estrela?', ctaSub: 'Junte-se a milhares de jogadores que iniciaram a carreira profissional através da EL7LM com V Lab AI.', ctaBtn: 'Crie agora o seu perfil gratuito',
-    stats: [
-      { label: 'Desempenho atual', value: 'ELITE 98.4' }, { label: 'Análise de velocidade', value: '34.5 KM/H' },
-      { label: 'Precisão de passe', value: 'ELITE 94%' }, { label: 'Avaliação técnica', value: 'PRO 9.2/10' },
-      { label: 'Interesse de olheiros', value: '8 CLUBES AGORA' }, { label: 'Potência de remate', value: 'ALTA 89%' },
-    ],
-    players: [
-      { name: 'Ahmed Kareem', pos: 'Médio • 19 anos', badge: 'Elite' }, { name: 'Yassine Omar', pos: 'Avançado • 17 anos', badge: null },
-      { name: 'Mariam Hassan', pos: 'Avançada • 18 anos', badge: 'Escolha do olheiro' }, { name: 'Ziad Ali', pos: 'Defesa • 20 anos', badge: null },
-    ],
-    contacts: [
-      { ...TR.en.contacts[0], title: 'WhatsApp' }, { ...TR.en.contacts[1], title: 'Ligue-nos' }, { ...TR.en.contacts[2], title: 'Correio eletrónico' },
-    ],
-    footerDesc: 'Uma plataforma líder que capacita o talento futebolístico árabe através de tecnologia moderna e inteligência artificial.',
-    footerCols: [
-      { title: 'Ligações rápidas', links: [{ l: 'Pesquisa de talentos', h: '#' }, { l: 'Relatórios de desempenho', h: '#' }, { l: 'Academia digital', h: '#' }, { l: 'Calendário de jogos', h: '#' }, { l: 'Notícias das estrelas', h: '#' }] },
-      { title: 'Empresa', links: [{ l: 'Sobre nós', h: '/about' }, { l: 'Carreiras', h: '/careers' }, { l: 'Casos de sucesso', h: '/success-stories' }, { l: 'Contacto', h: '/contact' }] },
-      { title: 'Legal', links: [{ l: 'Privacidade', h: '/privacy' }, { l: 'Termos', h: '/terms' }, { l: 'Critérios de observação', h: '#' }, { l: 'Apoio técnico', h: '/support' }] },
-    ],
-    copyright: '© 2026 EL7LM com V Lab AI. Todos os direitos reservados.', designedFor: 'Concebido para campeões',
-    all: 'Tudo', trials: 'Testes', pro: 'Profissional', camps: 'Estágios', training: 'Treino',
-    howTitle: 'Como utilizar a plataforma?', howSub: 'Quatro passos simples separam-no do futebol profissional',
-    howSteps: [
-      { ...TR.en.howSteps[0], title: 'Crie a sua conta gratuita', desc: 'Registe os dados básicos e escolha o tipo de conta em menos de dois minutos.' },
-      { ...TR.en.howSteps[1], title: 'Complete o perfil profissional', desc: 'Adicione fotos, vídeos, estatísticas e percurso para se destacar perante olheiros.' },
-      { ...TR.en.howSteps[2], title: 'Descubra oportunidades', desc: 'Explore oportunidades de clubes, academias e torneios e candidate-se com um clique.' },
-      { ...TR.en.howSteps[3], title: 'Ligue-se aos clubes', desc: 'Receba propostas, comunique com olheiros e inicie a carreira profissional.' },
-    ],
-    forWhomTitle: 'Soluções para cada categoria', forWhomSub: 'Uma experiência própria para cada interveniente do setor desportivo.',
-    forWhom: [
-      { ...TR.en.forWhom[0], title: 'Para atletas', desc: 'Apresente competências e registos de forma profissional.', btn: 'Começar como atleta' },
-      { ...TR.en.forWhom[1], title: 'Para academias', desc: 'Faça uma gestão mais eficiente de talentos, serviços e reservas.', btn: 'Pedir versão para academias' },
-      { ...TR.en.forWhom[2], title: 'Para clubes e olheiros', desc: 'Aceda rapidamente a jogadores, vídeos e análises.', btn: 'Começar como clube ou olheiro' },
-      { ...TR.en.forWhom[3], title: 'Para parceiros e organizações', desc: 'Uma interface moderna para parcerias e oportunidades comerciais.', btn: 'Falar sobre parceria' },
-    ],
-    storeTitle: 'Loja desportiva', storeSub: 'Produtos e serviços desportivos para todas as contas, com pagamentos flexíveis e prestações.',
-    storeBadge: 'Loja partilhada + prestações flexíveis', storeCta: 'Entrar na loja', storeSecondary: 'Explorar opções de pagamento',
-    storeHighlights: [
-      { title: 'Uma loja para todos', desc: 'Jogadores, clubes e academias compram na mesma loja.' },
-      { title: 'Métodos de pagamento profissionais', desc: 'Cartões e carteiras digitais através de fornecedores regionais.' },
-      { title: 'Prestações que facilitam a compra', desc: 'Opções como Tamara e Tabby reduzem as barreiras à compra.' },
-    ],
-  },
-};
-
-const HOME_UI = {
-  ar: { partners: 'الشركاء', partnersLead: 'شركاؤنا يقودونك إلى الفرص', featured: 'عروض مميزة', learnMore: 'لمعرفة المزيد', smartGuide: 'دليل البداية الذكي', discover: 'اكتشف الفرص المتاحة', discoverDesc: 'تصفح آلاف الفرص من الأندية والأكاديميات والبطولات وتقدم بضغطة واحدة.', startAthlete: 'ابدأ كلاعب الآن', audience: 'لمن هذه المنصة؟', selectedProducts: 'منتجات مختارة', managedProducts: 'منتجات المتجر من إدارة المحتوى', openStore: 'عرض المتجر الكامل', noProducts: 'لا توجد منتجات متاحة ضمن الاختيار الحالي.', installment: 'يدعم التقسيط', founder: 'بيان المؤسس', founderName: 'محمد سعودي', founderRole: 'المؤسس والمدير التنفيذي', tournaments: 'بطولات المنصة', upcoming: 'البطولات الجارية والقادمة', viewAll: 'عرض الكل', tournamentDesc: 'تصفح البطولات وسجّل فريقك أو تابع النتائج مباشرة', statuses: ['مفتوح للتسجيل','جارٍ الآن','مغلق','منتهي','ملغى'], dock: ['الرئيسية','آلية العمل','المميزات','تحليل AI','تواصل معنا'], productDesc: 'منتج معروض من المتجر الرياضي الموحد.', selectedNote: 'تُعرض المنتجات حسب الاختيار والترتيب في إدارة المحتوى.', autoNote: 'تُعرض المنتجات المميزة أو الأحدث تلقائياً عند عدم الاختيار اليدوي.' },
-  en: { partners: 'Partners', partnersLead: 'Partners Lead You To Opportunities', featured: 'Featured Offers', learnMore: 'Learn More', smartGuide: 'Smart Start Guide', discover: 'Discover Available Opportunities', discoverDesc: 'Browse thousands of opportunities from clubs, academies, and tournaments and apply with one click.', startAthlete: 'Start As Athlete Now', audience: 'Who Is It For?', selectedProducts: 'Selected Products', managedProducts: 'Store Products From Content Management', openStore: 'Open Full Store', noProducts: 'No products are available for the current selection.', installment: 'Installments Available', founder: "Founder’s Statement", founderName: 'Mohamed Saudi', founderRole: 'Founder & CEO', tournaments: 'Platform Tournaments', upcoming: 'Live & Upcoming Tournaments', viewAll: 'View All', tournamentDesc: 'Browse tournaments, register your team, or follow results live', statuses: ['Open','Ongoing','Closed','Completed','Cancelled'], dock: ['Home','Process','Features','AI Analysis','Contact'], productDesc: 'Featured product from the shared sports store.', selectedNote: 'Products follow the selection and order configured in content management.', autoNote: 'Featured or latest products are shown automatically when no manual selection is set.' },
-  es: { partners: 'Socios', partnersLead: 'Nuestros socios te acercan a las oportunidades', featured: 'Ofertas destacadas', learnMore: 'Más información', smartGuide: 'Guía de inicio inteligente', discover: 'Descubre oportunidades disponibles', discoverDesc: 'Explora oportunidades de clubes, academias y torneos y solicita con un clic.', startAthlete: 'Empezar como deportista', audience: '¿Para quién es?', selectedProducts: 'Productos seleccionados', managedProducts: 'Productos gestionados desde el contenido', openStore: 'Abrir tienda completa', noProducts: 'No hay productos disponibles en la selección actual.', installment: 'Financiación disponible', founder: 'Mensaje del fundador', founderName: 'Mohamed Saudi', founderRole: 'Fundador y director ejecutivo', tournaments: 'Torneos de la plataforma', upcoming: 'Torneos en curso y próximos', viewAll: 'Ver todo', tournamentDesc: 'Explora torneos, registra tu equipo o sigue los resultados en directo', statuses: ['Abierto','En curso','Cerrado','Finalizado','Cancelado'], dock: ['Inicio','Proceso','Funciones','Análisis IA','Contacto'], productDesc: 'Producto destacado de la tienda deportiva compartida.', selectedNote: 'Los productos siguen la selección y el orden configurados en la gestión de contenido.', autoNote: 'Si no hay selección manual, se muestran automáticamente productos destacados o recientes.' },
-  pt: { partners: 'Parceiros', partnersLead: 'Os nossos parceiros aproximam-no das oportunidades', featured: 'Ofertas em destaque', learnMore: 'Saber mais', smartGuide: 'Guia de início inteligente', discover: 'Descubra oportunidades disponíveis', discoverDesc: 'Explore oportunidades de clubes, academias e torneios e candidate-se com um clique.', startAthlete: 'Começar como atleta', audience: 'Para quem se destina?', selectedProducts: 'Produtos selecionados', managedProducts: 'Produtos geridos pelo conteúdo', openStore: 'Abrir loja completa', noProducts: 'Não existem produtos disponíveis na seleção atual.', installment: 'Prestações disponíveis', founder: 'Mensagem do fundador', founderName: 'Mohamed Saudi', founderRole: 'Fundador e diretor executivo', tournaments: 'Torneios da plataforma', upcoming: 'Torneios em curso e futuros', viewAll: 'Ver tudo', tournamentDesc: 'Explore torneios, registe a sua equipa ou acompanhe resultados em direto', statuses: ['Aberto','Em curso','Fechado','Concluído','Cancelado'], dock: ['Início','Processo','Funcionalidades','Análise IA','Contacto'], productDesc: 'Produto em destaque da loja desportiva partilhada.', selectedNote: 'Os produtos seguem a seleção e a ordem configuradas na gestão de conteúdos.', autoNote: 'Sem seleção manual, são mostrados automaticamente produtos em destaque ou recentes.' },
-};
-
-const HOME_EXTRA = {
-  ar: {
-    defaultProduct: 'منتج متاح حالياً من متجر الحلم.', categories: ['الكل','معدات','ملابس','إكسسوارات','تغذية','إلكترونيات','أخرى'],
-    nav: ['الرئيسية','المميزات','الشركاء','الفرص','المتجر','البطولات','تواصل معنا'],
-    founderQuote: 'بدأنا «الحلم» لأننا نؤمن بأن في كل شارع وكل أكاديمية موهبة تنتظر من يراها. هدفنا تزويد هذه المواهب بالعين الرقمية والفرصة التي تستحقها للوصول إلى العالم.',
-    tournamentTypes: ['كأس إقصائي','دوري','مجموعات'], register: 'سجّل الآن →', details: 'عرض التفاصيل →',
-    tracking: 'التتبع نشط', currentSpeed: 'السرعة الحالية', verified: 'موهبة موثقة', metrics: ['السرعة','التسديد','التمرير','المراوغة'],
-    ad: 'إعلان', team: 'فريق', inquiry: 'استفسار عن المنصة', emailOpening: 'سيتم فتح تطبيق البريد الافتراضي. تأكد من ضبط تطبيق بريد إذا لم يحدث شيء.',
-  },
-  en: {
-    defaultProduct: 'A currently available product from the El7lm store.', categories: ['All','Equipment','Clothing','Accessories','Nutrition','Electronics','Other'],
-    nav: ['Home','Features','Partners','Opportunities','Store','Tournaments','Contact'],
-    founderQuote: 'We started El7lm because we believe every street and academy holds undiscovered talent. Our goal is to give that talent the digital eye and opportunity it deserves to reach the world.',
-    tournamentTypes: ['Knockout','League','Groups'], register: 'Register →', details: 'View details →',
-    tracking: 'Tracking active', currentSpeed: 'Current speed', verified: 'Verified talent', metrics: ['Pace','Shooting','Passing','Dribbling'],
-    ad: 'Ad', team: 'teams', inquiry: 'Platform inquiry', emailOpening: 'Your default email app will open. If nothing happens, make sure a default email app is configured.',
-  },
-  es: {
-    defaultProduct: 'Producto disponible actualmente en la tienda El7lm.', categories: ['Todo','Equipamiento','Ropa','Accesorios','Nutrición','Electrónica','Otros'],
-    nav: ['Inicio','Funciones','Socios','Oportunidades','Tienda','Torneos','Contacto'],
-    founderQuote: 'Creamos El7lm porque creemos que en cada calle y academia hay un talento por descubrir. Nuestro objetivo es darle la mirada digital y la oportunidad que merece para llegar al mundo.',
-    tournamentTypes: ['Eliminatorias','Liga','Grupos'], register: 'Inscribirse →', details: 'Ver detalles →',
-    tracking: 'Seguimiento activo', currentSpeed: 'Velocidad actual', verified: 'Talento verificado', metrics: ['Ritmo','Disparo','Pase','Regate'],
-    ad: 'Anuncio', team: 'equipos', inquiry: 'Consulta sobre la plataforma', emailOpening: 'Se abrirá tu aplicación de correo predeterminada. Si no ocurre nada, comprueba su configuración.',
-  },
-  pt: {
-    defaultProduct: 'Produto atualmente disponível na loja El7lm.', categories: ['Tudo','Equipamento','Roupa','Acessórios','Nutrição','Eletrónica','Outros'],
-    nav: ['Início','Funcionalidades','Parceiros','Oportunidades','Loja','Torneios','Contacto'],
-    founderQuote: 'Criámos a El7lm porque acreditamos que cada rua e academia guarda um talento por descobrir. Queremos dar-lhe o olhar digital e a oportunidade que merece para chegar ao mundo.',
-    tournamentTypes: ['Eliminatórias','Liga','Grupos'], register: 'Inscrever →', details: 'Ver detalhes →',
-    tracking: 'Rastreio ativo', currentSpeed: 'Velocidade atual', verified: 'Talento verificado', metrics: ['Ritmo','Remate','Passe','Drible'],
-    ad: 'Anúncio', team: 'equipas', inquiry: 'Questão sobre a plataforma', emailOpening: 'A aplicação de correio predefinida será aberta. Se nada acontecer, verifique a configuração.',
-  },
-};
-
 const PLAYER_IMGS = [
   'https://lh3.googleusercontent.com/aida-public/AB6AXuBpCANwPXzcB4XNxsd5g0IzBXx85qulaAgiHB3VEV4mJ-HnKFpKiTNkRg_i5FhhltP7wmmW-xKSRcRyDAZ89f-Vla0pCdcidR6K-b8Py_4SOooyZsNK61gNzel3gnQVSJsn0hxHNjO8l8mozJm4KW-BIkOoJ5Jptaux-VEA85fEqu6AY50y215pz9GeY--ENImRv8l1pQJ_JR2ppU9lwdQpqvXyLqnQG4iF7ei90E-QbPczGapaiGskvBSJZmqG_QdAwnOn5iovOew',
   'https://lh3.googleusercontent.com/aida-public/AB6AXuAkI3L0Mpa8_973I0Ox0HL-j62lTN_3ov_unRBls1Z1jaol8ZvAWESi9wE6sDsKK2wFg7mTnrLeyXGrnLsXPh0YBDuxjsIFSB9PSbv9sdSB4hSwtWkF6Ajv2wIjX4ST4dhI8oP0Ox03xJIMnAvhb8lsGtRMukryUyWDsVhxAlyFhR-PfoM9b2L48_6DCy5hvI7tE_InVXgrKUQO5BQ7I89AHeDG_i5WpV--EEDYYfxBfBnvVUJQWTYZc6TgI-7eTUDV3zEWT_D2dds',
@@ -580,10 +96,8 @@ function AutoAdvance({ intervalMs, onTick }: { intervalMs: number; onTick: () =>
 }
 
 export default function Home() {
-  const { locale, isRTL } = useTranslation();
-  const t = LOCALIZED_TR[locale];
-  const ui = HOME_UI[locale];
-  const extra = HOME_EXTRA[locale];
+  const { locale, isRTL, getTranslations } = useTranslation();
+  const { copy: t, ui, extra } = getTranslations<any>('homePage');
   const [dark, setDark] = useState(false); 
   const [ads, setAds] = useState<AdItem[]>([]);
   const [homeImages, setHomeImages] = useState<HomeImagesData | null>(null);
@@ -756,15 +270,16 @@ export default function Home() {
   };
 
   const storeEnabled = storeSection?.isEnabled ?? true;
-  const contentLocaleSupported = locale === 'ar' || locale === 'en';
-  const storeBadge = storeSection && contentLocaleSupported ? (isRTL ? storeSection.badgeAr : storeSection.badgeEn) : t.storeBadge;
-  const storeTitle = storeSection && contentLocaleSupported ? (isRTL ? storeSection.titleAr : storeSection.titleEn) : t.storeTitle;
-  const storeSub = storeSection && contentLocaleSupported ? (isRTL ? storeSection.subAr : storeSection.subEn) : t.storeSub;
-  const storeCta = storeSection && contentLocaleSupported ? (isRTL ? storeSection.ctaAr : storeSection.ctaEn) : t.storeCta;
-  const storeSecondary = storeSection && contentLocaleSupported ? (isRTL ? storeSection.secondaryAr : storeSection.secondaryEn) : t.storeSecondary;
-  const storeHighlights = storeSection && contentLocaleSupported
-    ? (isRTL ? storeSection.highlightsAr : storeSection.highlightsEn)
-    : (t.storeHighlights as { title: string; desc: string }[]);
+  const localeSuffix = { ar: 'Ar', en: 'En', es: 'Es', pt: 'Pt' }[locale] as 'Ar' | 'En' | 'Es' | 'Pt';
+  const getLocalizedField = <T,>(source: Record<string, any> | null, field: string, fallback: T): T =>
+    (source?.[`${field}${localeSuffix}`] || fallback) as T;
+  const storeBadge = getLocalizedField(storeSection, 'badge', t.storeBadge);
+  const storeTitle = getLocalizedField(storeSection, 'title', t.storeTitle);
+  const storeSub = getLocalizedField(storeSection, 'sub', t.storeSub);
+  const storeCta = getLocalizedField(storeSection, 'cta', t.storeCta);
+  const storeSecondary = getLocalizedField(storeSection, 'secondary', t.storeSecondary);
+  const storeHighlights = getLocalizedField(storeSection, 'highlights', t.storeHighlights as { title: string; desc: string }[]);
+  const localizedAiSection = aiSection?.[locale];
   const configuredStoreProductIds = storeSection?.selectedProductIds || [];
   const storeItemsLimit = Math.max(1, Math.min(8, storeSection?.maxItems || 6));
   const storeCategoryLabels: Record<'all' | LandingStoreCategory, string> = {
@@ -1229,8 +744,8 @@ export default function Home() {
             return true;
           }) || [];
 
-          const sectionTitle = oppsSection && contentLocaleSupported ? (isRTL ? oppsSection.titleAr : oppsSection.titleEn) : t.oppsTitle;
-          const sectionSub = oppsSection && contentLocaleSupported ? (isRTL ? oppsSection.subAr : oppsSection.subEn) : t.oppsSub;
+          const sectionTitle = getLocalizedField(oppsSection, 'title', t.oppsTitle);
+          const sectionSub = getLocalizedField(oppsSection, 'sub', t.oppsSub);
 
           if (opportunities.length === 0 && oppsSection !== null) {
               return null; // hide completely if no opps selected and data has loaded
@@ -2300,12 +1815,12 @@ export default function Home() {
               <div style={{textAlign:isRTL?'right':'left',order:isRTL?1:2}}>
                 <div style={{display:'inline-flex',alignItems:'center',gap:'.5rem',background:'rgba(189,196,239,.1)',color:'#bdc4ef',padding:'.25rem 1rem',borderRadius:'9999px',fontSize:'.75rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:'1.5rem'}}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path><path d="M9 12H4s.5-1 1-4c2 0 3 .5 3 .5s.5 1 .5 3.5Z"></path><path d="M12 15v5s1 .5 4 1c0-2-.5-3-.5-3s-1-.5-3.5-.5Z"></path></svg>
-                  {aiSection ? aiSection.badge : t.aiVideoBadge}
+                  {localizedAiSection?.badge || t.aiVideoBadge}
                 </div>
-                <h2 className="hl" style={{fontSize:'3rem',fontWeight:900,letterSpacing:'-0.05em',marginBottom:'1.5rem', color: theme.text}}>{aiSection ? aiSection.title : t.aiVideoTitle}</h2>
-                <p style={{fontSize:'1.125rem',color: theme.subText,marginBottom:'3rem',lineHeight:1.625,maxWidth:'36rem',marginLeft:isRTL?'auto':'0'}}>{aiSection ? aiSection.desc : t.aiVideoDesc}</p>
+                <h2 className="hl" style={{fontSize:'3rem',fontWeight:900,letterSpacing:'-0.05em',marginBottom:'1.5rem', color: theme.text}}>{localizedAiSection?.title || t.aiVideoTitle}</h2>
+                <p style={{fontSize:'1.125rem',color: theme.subText,marginBottom:'3rem',lineHeight:1.625,maxWidth:'36rem',marginLeft:isRTL?'auto':'0'}}>{localizedAiSection?.desc || t.aiVideoDesc}</p>
                 <div style={{display:'flex',flexDirection:'column',gap:'2rem'}}>
-                  {(aiSection ? aiSection.features : t.aiVideoFeatures).map((f,i)=>(
+                  {(localizedAiSection?.features || t.aiVideoFeatures).map((f: any,i: number)=>(
                     <div key={i} style={{display:'flex',flexDirection:isRTL?'row-reverse':'row',alignItems:'flex-start',gap:'1.5rem'}}>
                       <div className="tc" style={{width:'3.5rem',height:'3.5rem',flexShrink:0,borderRadius:'12px',background: dark ? '#24293d' : '#ffffff',border:'1px solid rgba(70,70,78,.3)',display:'flex',alignItems:'center',justifyContent:'center'}}
                         onMouseEnter={e=>(e.currentTarget as HTMLDivElement).style.borderColor=f.color}
@@ -2595,8 +2110,8 @@ export default function Home() {
         {/* TALENTS */}
         {(playersSection === null || playersSection.isEnabled) && (() => {
           const displayedPlayers = featuredPlayers.length > 0 ? featuredPlayers : null;
-          const sectionTitle = playersSection && contentLocaleSupported ? (isRTL ? playersSection.titleAr : playersSection.titleEn) : t.talentsTitle;
-          const sectionSub = playersSection && contentLocaleSupported ? (isRTL ? playersSection.subAr : playersSection.subEn) : t.talentsSub;
+          const sectionTitle = getLocalizedField(playersSection, 'title', t.talentsTitle);
+          const sectionSub = getLocalizedField(playersSection, 'sub', t.talentsSub);
 
           if (!displayedPlayers && playersSection !== null) return null;
 
@@ -2700,7 +2215,7 @@ export default function Home() {
                   })()}
                 </div>
                 
-                <style jsx global>{`
+                <style>{`
                   .talentsTickerSwiper {
                     padding: 20px 0 40px 0 !important;
                   }

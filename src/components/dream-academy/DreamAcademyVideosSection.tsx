@@ -12,12 +12,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { getCurrencyRates, getCurrencyInfo, convertCurrency as convertCurrencyLib } from '@/lib/currency-rates';
 import { Play, Video as VideoIcon, Eye, Heart } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n';
 
 interface Props {
   categoryId: DreamAcademyCategoryId;
 }
 
 export default function DreamAcademyVideosSection({ categoryId }: Props) {
+  const { t, isRTL } = useTranslation();
+  const at = (key: string) => t(`sharedComponents.dreamAcademy.${key}`);
   const [sources, setSources] = useState<DreamAcademySource[]>([]);
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
@@ -95,7 +98,7 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
   }, [category, selectedCurrency, currencyRates]);
 
   return (
-    <div>
+    <div dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Top actions */}
       <div className="mb-4 flex items-center justify-between">
         <div></div>
@@ -103,7 +106,7 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
           onClick={() => setRequestModalOpen(true)}
           className="text-white px-5 py-3 text-base md:text-lg rounded-xl shadow-md bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 focus:ring-2 focus:ring-offset-2 focus:ring-sky-300"
         >
-          إضافة جلسة خاصة
+          {at('addPrivateSession')}
         </Button>
       </div>
 
@@ -134,11 +137,11 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
                   }}
                   className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
                 >
-                  إعادة المحاولة
+                  {at('retry')}
                 </button>
               </div>
               <div className="mt-2 text-sm text-red-600">
-                يمكنك المحاولة مرة أخرى أو اختيار فيديو آخر. إذا استمرت المشكلة، يمكنك مشاهدة الفيديو مباشرة على YouTube.
+                {at('videoErrorHelp')}
               </div>
               {(activeVideoId || activePlaylistId) && (
                 <div className="mt-3">
@@ -152,7 +155,7 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
                       <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                       <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                     </svg>
-                    مشاهدة على YouTube
+                    {at('watchYoutube')}
                   </a>
                 </div>
               )}
@@ -207,32 +210,32 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
                   }
 
                 console.warn('Video player error:', error);
-                let errorMessage = 'حدث خطأ في تحميل الفيديو. يرجى المحاولة مرة أخرى أو التحقق من اتصال الإنترنت.';
+                let errorMessage = at('videoLoadError');
 
                 if (error && typeof error === 'object') {
                   const errorStr = error.toString().toLowerCase();
                     const errorCode = (error as any)?.data || (error as any)?.code || (error as any)?.message || '';
 
                      if (errorCode === 150 || errorStr.includes('150')) {
-                       errorMessage = 'هذا الفيديو غير متاح للتشغيل المباشر. يرجى النقر على "مشاهدة على YouTube" للوصول إليه.';
+                       errorMessage = at('directPlaybackUnavailable');
                        setVideoError(errorMessage);
                        setIsVideoLoading(false);
                        console.log('YouTube error 150 (video not available for embedding):', error);
                        return;
                      } else if (errorStr.includes('postmessage') || errorStr.includes('origin') || errorStr.includes('target origin')) {
-                       errorMessage = 'مشكلة في الاتصال مع YouTube. يرجى المحاولة مرة أخرى أو استخدام الرابط المباشر.';
+                       errorMessage = at('youtubeConnectionIssue');
                        console.log('YouTube postMessage error (ignored):', error);
                        return;
                      } else if (errorStr.includes('connection_reset') || errorStr.includes('net::err_connection_reset')) {
-                    errorMessage = 'فشل الاتصال بخوادم YouTube. يرجى التحقق من اتصال الإنترنت والمحاولة مرة أخرى.';
+                    errorMessage = at('youtubeServerFailed');
                   } else if (errorStr.includes('network') || errorStr.includes('timeout')) {
-                    errorMessage = 'انقطع الاتصال بالشبكة. يرجى التحقق من اتصال الإنترنت والمحاولة مرة أخرى.';
+                    errorMessage = at('networkDisconnected');
                   } else if (errorStr.includes('blocked') || errorStr.includes('cors')) {
-                    errorMessage = 'تم حظر الاتصال بخوادم YouTube. يرجى المحاولة مرة أخرى أو استخدام الرابط المباشر.';
+                    errorMessage = at('youtubeBlocked');
                     } else if (errorStr.includes('embed') || errorStr.includes('embedding')) {
-                      errorMessage = 'هذا الفيديو لا يدعم التشغيل المباشر. يرجى النقر على "مشاهدة على YouTube".';
+                      errorMessage = at('directPlaybackUnsupported');
                     } else if (errorStr.includes('private') || errorStr.includes('unavailable')) {
-                      errorMessage = 'هذا الفيديو غير متاح أو خاص. يرجى النقر على "مشاهدة على YouTube" للتحقق من إمكانية الوصول.';
+                      errorMessage = at('videoPrivate');
                   }
                 }
 
@@ -260,11 +263,11 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
                     {isVideoLoading ? (
                       <>
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                        <div className="text-gray-500 mb-2">جاري تحميل الفيديو...</div>
+                        <div className="text-gray-500 mb-2">{at('loadingVideo')}</div>
                       </>
                      ) : videoError ? (
                        <>
-                         <div className="text-gray-500 mb-2">خطأ في تحميل الفيديو</div>
+                         <div className="text-gray-500 mb-2">{at('videoLoadErrorTitle')}</div>
                          <div className="text-sm text-gray-400 mb-4">{videoError}</div>
                          {(activeVideoId || activePlaylistId) && (
                            <a
@@ -277,14 +280,14 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
                                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                              </svg>
-                             مشاهدة على YouTube
+                             {at('watchYoutube')}
                            </a>
                          )}
                        </>
                     ) : (
                       <>
-                        <div className="text-gray-500 mb-2">لا يمكن تحميل الفيديو</div>
-                        <div className="text-sm text-gray-400 mb-4">يرجى التحقق من اتصال الإنترنت والمحاولة مرة أخرى</div>
+                        <div className="text-gray-500 mb-2">{at('cannotLoadVideo')}</div>
+                        <div className="text-sm text-gray-400 mb-4">{at('checkConnection')}</div>
                         {(activeVideoId || activePlaylistId) && (
                           <a
                             href={activePlaylistId ? `https://www.youtube.com/playlist?list=${activePlaylistId}` : `https://www.youtube.com/watch?v=${activeVideoId}`}
@@ -296,7 +299,7 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
                               <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                               <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                             </svg>
-                            مشاهدة على YouTube
+                            {at('watchYoutube')}
                           </a>
                         )}
                       </>
@@ -341,7 +344,7 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
                   // Set a timeout to show error if video doesn't load within 10 seconds
                   setTimeout(() => {
                     if (isVideoLoading) {
-                      setVideoError('استغرق تحميل الفيديو وقتاً طويلاً. قد تكون هناك مشكلة في الاتصال بالشبكة. يرجى المحاولة مرة أخرى أو استخدام الرابط المباشر.');
+                      setVideoError(at('videoTimeout'));
                       setIsVideoLoading(false);
                     }
                   }, 10000);
@@ -362,7 +365,7 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
                     // Set a timeout to show error if video doesn't load within 10 seconds
                     setTimeout(() => {
                       if (isVideoLoading) {
-                        setVideoError('استغرق تحميل الفيديو وقتاً طويلاً. قد تكون هناك مشكلة في الاتصال بالشبكة. يرجى المحاولة مرة أخرى أو استخدام الرابط المباشر.');
+                        setVideoError(at('videoTimeout'));
                         setIsVideoLoading(false);
                       }
                     }, 10000);
@@ -417,32 +420,32 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
       <Dialog open={requestModalOpen} onOpenChange={setRequestModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>طلب جلسة خاصة</DialogTitle>
+            <DialogTitle>{at('requestPrivateSession')}</DialogTitle>
             <DialogDescription>
-              أدخل بياناتك وسيتم تجهيز طلب الجلسة بعملة وطريقة الدفع التي تختارها
+              {at('requestDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
             <div>
-              <label className="text-sm">الاسم الكامل</label>
-              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="الاسم" />
+              <label className="text-sm">{at('fullName')}</label>
+              <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={at('namePlaceholder')} />
             </div>
             <div>
-              <label className="text-sm">واتساب</label>
-              <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="مثال: 2010xxxxxxx+" />
+              <label className="text-sm">{at('whatsapp')}</label>
+              <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder={at('whatsapp')} />
             </div>
             <div>
-              <label className="text-sm">المدة (دقيقة)</label>
+              <label className="text-sm">{at('durationMinutes')}</label>
               <Input type="number" value={duration} onChange={(e) => setDuration(Number(e.target.value))} />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3 items-end">
             <div>
-              <label className="text-sm">نوع الجلسة</label>
+              <label className="text-sm">{at('sessionType')}</label>
               <Select value={sessionCategory} onValueChange={(v) => setSessionCategory(v as DreamAcademyCategoryId)}>
-                <SelectTrigger><SelectValue placeholder="اختر النوع" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={at('selectType')} /></SelectTrigger>
                 <SelectContent>
                   {allCategories.map((c) => (
                      <SelectItem key={`session-${c.id}`} value={c.id as any}>
@@ -453,9 +456,9 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
               </Select>
             </div>
             <div>
-              <label className="text-sm">العملة</label>
+              <label className="text-sm">{at('currency')}</label>
               <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
-                <SelectTrigger><SelectValue placeholder="Currency" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={at('currency')} /></SelectTrigger>
                 <SelectContent>
                   {['USD','EGP','QAR','SAR','AED','EUR'].map(c => (
                     <SelectItem key={c} value={c}>{c}</SelectItem>
@@ -464,28 +467,28 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
               </Select>
             </div>
             <div>
-              <label className="text-sm">طريقة الدفع</label>
+              <label className="text-sm">{at('paymentMethod')}</label>
               <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as any)}>
-                <SelectTrigger><SelectValue placeholder="Payment" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={at('paymentMethod')} /></SelectTrigger>
                 <SelectContent>
                   {(category?.allowedPaymentMethods?.length ? category.allowedPaymentMethods : ['wallet','geidea']).map((m) => (
-                    <SelectItem key={m} value={m}>{m === 'wallet' ? 'المحفظة' : 'Geidea'}</SelectItem>
+                    <SelectItem key={m} value={m}>{m === 'wallet' ? at('wallet') : 'Geidea'}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <div className="text-sm">السعر</div>
+              <div className="text-sm">{at('price')}</div>
               <div className="text-lg font-semibold">
                 {(!category || Number(category.basePriceUSD || 0) === 0)
-                  ? 'مجاني'
+                  ? at('free')
                   : (<>{priceInSelected} {getCurrencyInfo(selectedCurrency, currencyRates)?.symbol || selectedCurrency}</>)}
               </div>
             </div>
           </div>
           <div>
-            <label className="text-sm">ملاحظات</label>
-            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="هدف الجلسة، المستوى، تفضيلات..." />
+            <label className="text-sm">{at('notes')}</label>
+            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={at('notesPlaceholder')} />
           </div>
 
           <div className="mt-2 flex justify-end">
@@ -508,7 +511,7 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
                     }),
                   });
                   const data = await res.json();
-                  if (!res.ok) throw new Error(data?.error || 'حدث خطأ');
+                  if (!res.ok) throw new Error(data?.error || at('genericError'));
                   setRequestModalOpen(false);
                   // تم إرسال الطلب بنجاح
                 } catch (e: any) {
@@ -517,7 +520,7 @@ export default function DreamAcademyVideosSection({ categoryId }: Props) {
               }}
             >
               <Play className="w-4 h-4 mr-2" />
-              إتمام الطلب
+              {at('completeRequest')}
             </Button>
           </div>
         </DialogContent>

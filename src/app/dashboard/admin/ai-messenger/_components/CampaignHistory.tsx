@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { History, Loader2, Send, Radio } from 'lucide-react';
 import { useCampaign } from '@/lib/campaign/campaign-context';
+import { useTranslation } from '@/lib/i18n';
 
 interface CampaignLog {
   id: string;
@@ -21,23 +22,27 @@ interface CampaignLog {
   finishedAt: any;
 }
 
-const formatDate = (ts: any): string => {
+const formatDate = (ts: any, locale: string): string => {
   if (!ts) return '—';
   const d = new Date(ts);
-  return d.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
+  const dateLocale = ({ ar: 'ar-EG', en: 'en-GB', es: 'es-ES', pt: 'pt-PT' } as Record<string, string>)[locale] || 'en-GB';
+  return d.toLocaleString(dateLocale, { dateStyle: 'short', timeStyle: 'short' });
 };
 
-const durationStr = (start: any, end: any): string => {
+const durationStr = (start: any, end: any, minuteShort: string, secondShort: string): string => {
   if (!start || !end) return '—';
   const s = new Date(start);
   const e = new Date(end);
   const diffMs = e.getTime() - s.getTime();
   const mins = Math.floor(diffMs / 60000);
   const secs = Math.floor((diffMs % 60000) / 1000);
-  return mins > 0 ? `${mins}د ${secs}ث` : `${secs}ث`;
+  return mins > 0 ? `${mins}${minuteShort} ${secs}${secondShort}` : `${secs}${secondShort}`;
 };
 
 export const CampaignHistory: React.FC = () => {
+  const { locale, isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('aiMessenger.campaignHistory');
+  const withCount = (template: string, count: number) => template.replace('{{count}}', String(count));
   const [logs, setLogs] = useState<CampaignLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +63,7 @@ export const CampaignHistory: React.FC = () => {
       if (fetchError) throw fetchError;
       setLogs((data || []) as CampaignLog[]);
     } catch (e: any) {
-      setError(e?.message || 'خطأ في تحميل السجلات');
+      setError(e?.message || copy.loadError);
     } finally {
       setLoading(false);
     }
@@ -73,32 +78,32 @@ export const CampaignHistory: React.FC = () => {
   );
 
   if (error) return (
-    <div className="flex flex-col items-center justify-center h-40 text-rose-400 text-xs gap-2 p-4 text-center" dir="rtl">
+    <div className="flex flex-col items-center justify-center h-40 text-rose-400 text-xs gap-2 p-4 text-center" dir={isRTL ? 'rtl' : 'ltr'}>
       <History className="w-8 h-8 opacity-30" />
-      <p className="font-bold text-sm">خطأ في تحميل السجلات</p>
+      <p className="font-bold text-sm">{copy.loadError}</p>
       <p className="text-[10px] text-slate-400 break-all max-w-xs">{error}</p>
-      <button onClick={load} className="mt-1 text-[10px] text-emerald-600 font-bold underline">إعادة المحاولة</button>
+      <button onClick={load} className="mt-1 text-[10px] text-emerald-600 font-bold underline">{copy.retry}</button>
     </div>
   );
 
   if (logs.length === 0 && !isActiveCampaign) return (
-    <div className="flex flex-col items-center justify-center h-40 text-slate-400 text-sm gap-2" dir="rtl">
+    <div className="flex flex-col items-center justify-center h-40 text-slate-400 text-sm gap-2" dir={isRTL ? 'rtl' : 'ltr'}>
       <History className="w-10 h-10 opacity-20" />
-      <p className="font-semibold">لا توجد حملات مسجّلة بعد</p>
-      <p className="text-[10px] text-slate-300">ستظهر الحملات هنا بعد إطلاق أول حملة</p>
-      <button onClick={load} className="mt-1 text-[10px] text-emerald-600 font-bold underline">تحديث</button>
+      <p className="font-semibold">{copy.emptyTitle}</p>
+      <p className="text-[10px] text-slate-300">{copy.emptyDescription}</p>
+      <button onClick={load} className="mt-1 text-[10px] text-emerald-600 font-bold underline">{copy.refresh}</button>
     </div>
   );
 
   return (
-    <div className="space-y-3 overflow-y-auto max-h-full custom-scrollbar" dir="rtl">
+    <div className="space-y-3 overflow-y-auto max-h-full custom-scrollbar" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* Header with count + refresh */}
       <div className="flex items-center justify-between px-1">
-        <span className="text-[10px] text-slate-400">{logs.length} حملة مسجّلة</span>
+        <span className="text-[10px] text-slate-400">{withCount(copy.registeredCampaigns, logs.length)}</span>
         <button onClick={load} className="text-[10px] text-emerald-600 font-bold hover:underline flex items-center gap-1">
           <Loader2 className={`w-3 h-3 ${loading ? 'animate-spin' : 'opacity-0'}`} />
-          تحديث
+          {copy.refresh}
         </button>
       </div>
 
@@ -112,7 +117,7 @@ export const CampaignHistory: React.FC = () => {
                   ? <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
                   : <Send className="w-3.5 h-3.5 text-emerald-500" />}
                 <span className="text-xs font-bold text-emerald-700">
-                  {campaign.status === 'running' ? '🔴 حملة جارية الآن' : '✅ اكتملت للتو'}
+                  {campaign.status === 'running' ? copy.runningNow : copy.justCompleted}
                 </span>
                 <Badge className="text-[9px] px-1.5 py-0 border-none bg-emerald-100 text-emerald-700">
                   {campaign.templateName}
@@ -130,9 +135,9 @@ export const CampaignHistory: React.FC = () => {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: 'الإجمالي', val: campaign.total,   cls: 'text-slate-700' },
-                { label: 'نجح',      val: campaign.success, cls: 'text-emerald-600' },
-                { label: 'فشل',      val: campaign.failed,  cls: 'text-rose-500'   },
+                { label: copy.total, val: campaign.total, cls: 'text-slate-700' },
+                { label: copy.success, val: campaign.success, cls: 'text-emerald-600' },
+                { label: copy.failed, val: campaign.failed, cls: 'text-rose-500' },
               ].map((s, i) => (
                 <div key={i} className="bg-white rounded-lg p-1.5 text-center border border-emerald-100">
                   <div className={`text-sm font-black ${s.cls}`}>{s.val}</div>
@@ -144,7 +149,7 @@ export const CampaignHistory: React.FC = () => {
             {campaign.failedEntries.length > 0 && (
               <details>
                 <summary className="text-[10px] text-rose-500 font-bold cursor-pointer">
-                  تفاصيل الفشل ({campaign.failedEntries.length})
+                  {withCount(copy.failureDetails, campaign.failedEntries.length)}
                 </summary>
                 <div className="mt-1 max-h-28 overflow-y-auto space-y-1">
                   {campaign.failedEntries.map((f, i) => (
@@ -178,10 +183,10 @@ export const CampaignHistory: React.FC = () => {
                   <Send className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                   <span className="text-xs font-bold text-slate-700 truncate">{log.templateName}</span>
                   <Badge className={`text-[9px] px-1.5 py-0 border-none shrink-0 ${log.status === 'completed' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                    {log.status === 'completed' ? 'مكتملة' : 'جارية'}
+                    {log.status === 'completed' ? copy.completed : copy.running}
                   </Badge>
                 </div>
-                <span className="text-[10px] text-slate-400 shrink-0">{formatDate(log.startedAt)}</span>
+                <span className="text-[10px] text-slate-400 shrink-0">{formatDate(log.startedAt, locale)}</span>
               </div>
             </CardHeader>
 
@@ -190,9 +195,9 @@ export const CampaignHistory: React.FC = () => {
                 {/* Stats row */}
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: 'الإجمالي', val: log.total, cls: 'text-slate-700' },
-                    { label: 'نجح',      val: log.success, cls: 'text-emerald-600' },
-                    { label: 'فشل',      val: log.failed,  cls: 'text-rose-500' },
+                    { label: copy.total, val: log.total, cls: 'text-slate-700' },
+                    { label: copy.success, val: log.success, cls: 'text-emerald-600' },
+                    { label: copy.failed, val: log.failed, cls: 'text-rose-500' },
                   ].map((s, i) => (
                     <div key={i} className="bg-slate-50 rounded-lg p-2 text-center">
                       <div className={`text-base font-black ${s.cls}`}>{s.val}</div>
@@ -204,7 +209,7 @@ export const CampaignHistory: React.FC = () => {
                 {/* Progress bar */}
                 <div>
                   <div className="flex justify-between text-[10px] text-slate-400 mb-1">
-                    <span>معدل النجاح</span>
+                    <span>{copy.successRate}</span>
                     <span className="font-bold text-emerald-600">{successRate}%</span>
                   </div>
                   <div className="w-full bg-slate-100 h-1.5 rounded-full">
@@ -214,10 +219,10 @@ export const CampaignHistory: React.FC = () => {
 
                 {/* Meta info */}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-slate-500">
-                  <span>الفئة: <span className="font-semibold text-slate-700">{log.segment === 'all' ? 'الكل' : log.segment}</span></span>
-                  <span>المدة: <span className="font-semibold text-slate-700">{durationStr(log.startedAt, log.finishedAt)}</span></span>
-                  <span>الدول: <span className="font-semibold text-slate-700">{log.countries?.length ? log.countries.join('، ') : 'الكل'}</span></span>
-                  <span>انتهت: <span className="font-semibold text-slate-700">{formatDate(log.finishedAt)}</span></span>
+                  <span>{copy.segment}: <span className="font-semibold text-slate-700">{log.segment === 'all' ? copy.all : log.segment}</span></span>
+                  <span>{copy.duration}: <span className="font-semibold text-slate-700">{durationStr(log.startedAt, log.finishedAt, copy.minuteShort, copy.secondShort)}</span></span>
+                  <span>{copy.countries}: <span className="font-semibold text-slate-700">{log.countries?.length ? log.countries.join(copy.listSeparator) : copy.all}</span></span>
+                  <span>{copy.finished}: <span className="font-semibold text-slate-700">{formatDate(log.finishedAt, locale)}</span></span>
                 </div>
 
                 {/* Template body */}
@@ -230,7 +235,7 @@ export const CampaignHistory: React.FC = () => {
                 {/* Failed entries */}
                 {log.failedEntries?.length > 0 && (
                   <div>
-                    <p className="text-[10px] font-bold text-rose-500 mb-1">الأرقام الفاشلة ({log.failedEntries.length})</p>
+                    <p className="text-[10px] font-bold text-rose-500 mb-1">{withCount(copy.failedNumbers, log.failedEntries.length)}</p>
                     <div className="max-h-28 overflow-y-auto space-y-1">
                       {log.failedEntries.map((f, i) => (
                         <div key={i} className="flex items-center justify-between bg-rose-50 rounded-lg px-2 py-1">

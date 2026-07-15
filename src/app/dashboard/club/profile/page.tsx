@@ -11,6 +11,8 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
 import { broadcastClubWhatsApp } from '@/lib/notifications/broadcast-dispatcher';
+import { useTranslation } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -88,20 +90,9 @@ interface ClubData {
 const emptyBoardMember = (): BoardMember => ({ role: '', name: '', phone: '', email: '', image: '' });
 const emptyPlayer = (): Player => ({ name: '', position: '', age: '', nationality: '' });
 
-const BOARD_ROLES = ['رئيس مجلس الإدارة', 'المدير التنفيذي', 'المدير الفني', 'مدير الانتقالات', 'رئيس قطاع الناشئين', 'المدير الإداري'];
-const POSITIONS = ['حارس مرمى', 'مدافع', 'وسط', 'جناح', 'مهاجم'];
-const CLUB_TYPES = ['دوري أول', 'دوري ثانٍ', 'دوري ثالث', 'هواة', 'ناشئين'];
+const CLUB_TYPES = ['\u062f\u0648\u0631\u064a \u0623\u0648\u0644', '\u062f\u0648\u0631\u064a \u062b\u0627\u0646\u064d', '\u062f\u0648\u0631\u064a \u062b\u0627\u0644\u062b', '\u0647\u0648\u0627\u0629', '\u0646\u0627\u0634\u0626\u064a\u0646'];
 
-const REQUIRED_FIELDS_CLUB: { key: keyof ClubData; label: string }[] = [
-  { key: 'name',        label: 'اسم النادي' },
-  { key: 'country',     label: 'الدولة' },
-  { key: 'city',        label: 'المدينة' },
-  { key: 'phone',       label: 'رقم الهاتف' },
-  { key: 'email',       label: 'البريد الإلكتروني' },
-  { key: 'description', label: 'نبذة عن النادي' },
-  { key: 'founded',     label: 'سنة التأسيس' },
-  { key: 'type',        label: 'نوع النادي' },
-];
+const REQUIRED_FIELD_KEYS: (keyof ClubData)[] = ['name', 'country', 'city', 'phone', 'email', 'description', 'founded', 'type'];
 
 const initialClubData: ClubData = {
   name: '', logo: '', coverImage: '', gallery: [],
@@ -115,8 +106,8 @@ const initialClubData: ClubData = {
   schools: { men: 0, women: 0, locations: [] },
   trophies: [], current_players: [], notable_alumni: [],
   board: [
-    { role: 'رئيس مجلس الإدارة', name: '', phone: '', email: '', image: '' },
-    { role: 'رئيس قطاع الناشئين', name: '', phone: '', email: '', image: '' },
+    { role: '\u0631\u0626\u064a\u0633 \u0645\u062c\u0644\u0633 \u0627\u0644\u0625\u062f\u0627\u0631\u0629', name: '', phone: '', email: '', image: '' },
+    { role: '\u0631\u0626\u064a\u0633 \u0642\u0637\u0627\u0639 \u0627\u0644\u0646\u0627\u0634\u0626\u064a\u0646', name: '', phone: '', email: '', image: '' },
   ]
 };
 
@@ -130,7 +121,7 @@ async function uploadToR2(file: File, uid: string, folder: string): Promise<stri
   formData.append('bucket', 'clubs');
   formData.append('path', `${uid}/${folder}/${filename}`);
   const res = await fetch('/api/storage/upload', { method: 'POST', body: formData });
-  if (!res.ok) throw new Error('فشل رفع الصورة');
+  if (!res.ok) throw new Error('Upload failed');
   const data = await res.json();
   return data.url as string;
 }
@@ -151,6 +142,13 @@ function calcCompletion(d: ClubData): number {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ClubProfilePage() {
+  const { isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('clubProfile');
+  const common = getTranslations<any>('common');
+  const profileCopy = getTranslations<any>('profile');
+  const imageCopy = getTranslations<any>('agentProfile');
+  const interpolate = (template: string, values: Record<string, string | number>) => template.replace(/\{\{(\w+)\}\}/g, (_, key) => String(values[key] ?? ''));
+  const requiredFields = REQUIRED_FIELD_KEYS.map(key => ({ key, label: copy.requiredLabels[key] }));
   const { userData, user, updateUserData } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -215,7 +213,7 @@ export default function ClubProfilePage() {
         await supabase.from('clubs').upsert(basic);
         data = basic;
       } else {
-        toast.error('النادي غير موجود');
+        toast.error(copy.clubNotFound);
         router.back();
         return;
       }
@@ -241,7 +239,7 @@ export default function ClubProfilePage() {
       setOriginal(merged);
     } catch (err) {
       console.error(err);
-      toast.error('حدث خطأ أثناء جلب البيانات');
+      toast.error(profileCopy.notifications.loadFailed);
     } finally {
       setLoading(false);
     }
@@ -254,7 +252,7 @@ export default function ClubProfilePage() {
   const BANNER_SNOOZE_KEY = `club_profile_banner_snoozed_${user?.id}`;
   const SNOOZE_DAYS = 3;
 
-  const missingFields = REQUIRED_FIELDS_CLUB.filter(({ key }) => {
+  const missingFields = requiredFields.filter(({ key }) => {
     const val = clubData[key];
     return !val || (typeof val === 'string' && !val.trim());
   });
@@ -272,15 +270,15 @@ export default function ClubProfilePage() {
 
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof ClubData, string>> = {};
-    REQUIRED_FIELDS_CLUB.forEach(({ key, label }) => {
+    requiredFields.forEach(({ key, label }) => {
       const val = clubData[key];
       if (!val || (typeof val === 'string' && !val.trim())) {
-        newErrors[key] = `${label} مطلوب`;
+        newErrors[key] = interpolate(copy.required, { field: label });
       }
     });
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) {
-      toast.error('يرجى استكمال البيانات الأساسية المطلوبة');
+      toast.error(copy.completeRequired);
       return false;
     }
     return true;
@@ -293,8 +291,8 @@ export default function ClubProfilePage() {
     type: 'logo' | 'cover' | 'gallery' | `board-${number}`
   ) => {
     if (!user?.id) return;
-    if (!file.type.startsWith('image/')) { toast.error('اختر صورة صالحة'); return; }
-    if (file.size > 5 * 1024 * 1024) { toast.error('حجم الصورة أكبر من 5 ميجابايت'); return; }
+    if (!file.type.startsWith('image/')) { toast.error(imageCopy.invalidImage); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error(imageCopy.imageTooLarge); return; }
 
     setUploadingField(type);
     try {
@@ -315,9 +313,9 @@ export default function ClubProfilePage() {
       } else {
         set('logo', url);
       }
-      toast.success('تم رفع الصورة');
+      toast.success(imageCopy.uploadSuccess);
     } catch {
-      toast.error('فشل رفع الصورة');
+      toast.error(imageCopy.uploadError);
     } finally {
       setUploadingField(null);
     }
@@ -387,10 +385,10 @@ export default function ClubProfilePage() {
         profile_image: clubData.logo,
       });
       setEditMode(false);
-      toast.success('تم حفظ بيانات النادي');
+      toast.success(profileCopy.notifications.saved);
     } catch (err) {
       console.error(err);
-      toast.error('حدث خطأ أثناء الحفظ');
+      toast.error(profileCopy.notifications.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -415,7 +413,7 @@ export default function ClubProfilePage() {
   const inpCls = 'w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm bg-white';
 
   return (
-    <div className="min-h-screen bg-gray-50" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* ── Sticky Header ──────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-50 border-b border-gray-200 shadow-sm bg-white/95 backdrop-blur-md">
@@ -423,34 +421,35 @@ export default function ClubProfilePage() {
           <div className="flex justify-between items-center">
             <button onClick={() => router.back()} className="flex gap-2 items-center text-gray-600 hover:text-gray-900">
               <ArrowLeft className="w-5 h-5" />
-              <span className="font-medium text-sm">رجوع</span>
+              <span className="font-medium text-sm">{copy.back}</span>
             </button>
             <div className="text-center">
-              <h1 className="text-lg font-bold text-gray-900">ملف النادي</h1>
+              <h1 className="text-lg font-bold text-gray-900">{copy.title}</h1>
               <p className="text-xs text-gray-500">{clubData.name}</p>
             </div>
             <div className="flex gap-2 items-center">
+              <LanguageSwitcher />
               {!isViewingOtherClub && (
                 <button onClick={() => setShowResume(true)}
                   className="flex gap-1 items-center px-3 py-2 text-sm text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">
-                  <FileDown className="w-4 h-4" /> PDF
+                  <FileDown className="w-4 h-4" /> {copy.pdf}
                 </button>
               )}
               {!isViewingOtherClub && (
                 editMode ? (
                   <div className="flex gap-2">
                     <button onClick={handleCancel} className="flex gap-1 items-center px-3 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">
-                      <X className="w-4 h-4" /> إلغاء
+                      <X className="w-4 h-4" /> {common.cancel}
                     </button>
                     <button onClick={handleSave} disabled={saving}
                       className="flex gap-1 items-center px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                      <Save className="w-4 h-4" /> {saving ? 'جاري الحفظ...' : 'حفظ'}
+                      <Save className="w-4 h-4" /> {saving ? profileCopy.savingBtn : common.save}
                     </button>
                   </div>
                 ) : (
                   <button onClick={() => setEditMode(true)}
                     className="flex gap-1 items-center px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">
-                    <Edit2 className="w-4 h-4" /> تعديل
+                    <Edit2 className="w-4 h-4" /> {common.edit}
                   </button>
                 )
               )}
@@ -469,9 +468,9 @@ export default function ClubProfilePage() {
               <Award className="w-5 h-5 text-amber-600" />
             </div>
             <div className="flex-1">
-              <p className="mb-1 text-sm font-bold text-amber-800">الملف الشخصي غير مكتمل</p>
+              <p className="mb-1 text-sm font-bold text-amber-800">{profileCopy.incompleteTitle}</p>
               <p className="mb-2 text-xs text-amber-700">
-                أكمل بياناتك الأساسية لتحسين ظهور ناديك وجذب اللاعبين. الحقول الناقصة:
+                {copy.incompleteDescription}
               </p>
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {missingFields.map(({ label }) => (
@@ -484,9 +483,9 @@ export default function ClubProfilePage() {
                 <button
                   onClick={() => setEditMode(true)}
                   className="px-4 py-1.5 text-xs font-semibold text-white bg-amber-500 rounded-lg transition hover:bg-amber-600">
-                  استكمال البيانات الآن
+                  {profileCopy.completeNowBtn}
                 </button>
-                <span className="text-xs text-amber-500">سيتم تذكيرك مجدداً بعد {SNOOZE_DAYS} أيام عند الإغلاق</span>
+                <span className="text-xs text-amber-500">{interpolate(profileCopy.snoozeTip, { days: SNOOZE_DAYS })}</span>
               </div>
             </div>
             <button
@@ -494,7 +493,7 @@ export default function ClubProfilePage() {
                 localStorage.setItem(BANNER_SNOOZE_KEY, String(Date.now()));
                 setShowCompletionBanner(false);
               }}
-              title={`تذكيري بعد ${SNOOZE_DAYS} أيام`}
+              title={interpolate(profileCopy.snoozeTip, { days: SNOOZE_DAYS })}
               className="text-amber-400 hover:text-amber-600">
               <X className="w-4 h-4" />
             </button>
@@ -505,7 +504,7 @@ export default function ClubProfilePage() {
         {!isViewingOtherClub && (
           <div className="p-4 bg-white rounded-xl shadow">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-700">اكتمال الملف الشخصي</span>
+              <span className="text-sm font-medium text-gray-700">{copy.completion}</span>
               <span className={`text-sm font-bold ${completion >= 80 ? 'text-green-600' : completion >= 50 ? 'text-yellow-600' : 'text-red-500'}`}>
                 {completion}%
               </span>
@@ -523,7 +522,7 @@ export default function ClubProfilePage() {
         <div className="overflow-hidden rounded-2xl shadow-md">
           <div className="relative h-52 bg-gradient-to-br from-blue-600 to-blue-800">
             {clubData.coverImage ? (
-              <img src={clubData.coverImage} alt="غلاف النادي" className="object-cover w-full h-full" />
+              <img src={clubData.coverImage} alt={copy.coverAlt} className="object-cover w-full h-full" />
             ) : (
               <div className="flex items-center justify-center w-full h-full">
                 <Building2 className="w-20 h-20 text-blue-400" />
@@ -535,7 +534,7 @@ export default function ClubProfilePage() {
                   onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'cover')} />
                 <div className="flex flex-col items-center gap-2 text-white">
                   <Layers className="w-8 h-8" />
-                  <span className="text-sm font-medium">تغيير صورة الغلاف</span>
+                  <span className="text-sm font-medium">{copy.changeCover}</span>
                 </div>
               </label>
             )}
@@ -546,7 +545,7 @@ export default function ClubProfilePage() {
               <div className="relative flex-shrink-0">
                 <div className="w-24 h-24 rounded-2xl overflow-hidden border-4 border-white shadow-lg bg-gray-100">
                   {clubData.logo
-                    ? <img src={clubData.logo} alt="شعار النادي" className="object-cover w-full h-full" />
+                    ? <img src={clubData.logo} alt={copy.logoAlt} className="object-cover w-full h-full" />
                     : <div className="flex items-center justify-center w-full h-full"><Trophy className="w-10 h-10 text-gray-400" /></div>
                   }
                 </div>
@@ -562,9 +561,9 @@ export default function ClubProfilePage() {
                 {editMode ? (
                   <input value={clubData.name} onChange={e => set('name', e.target.value)}
                     className={inpCls + (errors.name ? ' border-red-400' : '')}
-                    placeholder="اسم النادي *" />
+                    placeholder={copy.namePlaceholder} />
                 ) : (
-                  <h2 className="text-2xl font-bold text-gray-900">{clubData.name || 'اسم النادي'}</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">{clubData.name || copy.nameFallback}</h2>
                 )}
                 <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
                   <MapPin className="w-4 h-4" />
@@ -578,21 +577,21 @@ export default function ClubProfilePage() {
         {/* ── Basic Info ─────────────────────────────────────────────────── */}
         <div className="p-6 bg-white rounded-xl shadow">
           <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-blue-500" /> المعلومات الأساسية
+            <FileText className="w-5 h-5 text-blue-500" /> {copy.basicTitle}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { key: 'email', label: 'البريد الإلكتروني', type: 'email', icon: <Mail className="w-4 h-4" /> },
-              { key: 'phone', label: 'الهاتف', type: 'tel', icon: <Phone className="w-4 h-4" /> },
-              { key: 'whatsapp', label: 'واتساب', type: 'tel', icon: <Phone className="w-4 h-4" /> },
-              { key: 'website', label: 'الموقع الإلكتروني', type: 'url', icon: <Globe className="w-4 h-4" /> },
-              { key: 'founded', label: 'سنة التأسيس', type: 'text', icon: <Calendar className="w-4 h-4" /> },
-              { key: 'address', label: 'العنوان', type: 'text', icon: <MapPin className="w-4 h-4" /> },
-              { key: 'manager', label: 'المدير الفني', type: 'text', icon: <User className="w-4 h-4" /> },
-              { key: 'colors', label: 'الألوان الرسمية', type: 'text', icon: <Star className="w-4 h-4" /> },
-              { key: 'current_league', label: 'الدوري الحالي', type: 'text', icon: <Trophy className="w-4 h-4" /> },
-              { key: 'stadium_name', label: 'اسم الملعب', type: 'text', icon: <Building2 className="w-4 h-4" /> },
-              { key: 'stadium_capacity', label: 'سعة الملعب', type: 'text', icon: <Users className="w-4 h-4" /> },
+              { key: 'email', label: copy.fields.email, type: 'email', icon: <Mail className="w-4 h-4" /> },
+              { key: 'phone', label: copy.fields.phone, type: 'tel', icon: <Phone className="w-4 h-4" /> },
+              { key: 'whatsapp', label: copy.fields.whatsapp, type: 'tel', icon: <Phone className="w-4 h-4" /> },
+              { key: 'website', label: copy.fields.website, type: 'url', icon: <Globe className="w-4 h-4" /> },
+              { key: 'founded', label: copy.fields.founded, type: 'text', icon: <Calendar className="w-4 h-4" /> },
+              { key: 'address', label: copy.fields.address, type: 'text', icon: <MapPin className="w-4 h-4" /> },
+              { key: 'manager', label: copy.fields.manager, type: 'text', icon: <User className="w-4 h-4" /> },
+              { key: 'colors', label: copy.fields.colors, type: 'text', icon: <Star className="w-4 h-4" /> },
+              { key: 'current_league', label: copy.fields.league, type: 'text', icon: <Trophy className="w-4 h-4" /> },
+              { key: 'stadium_name', label: copy.fields.stadium, type: 'text', icon: <Building2 className="w-4 h-4" /> },
+              { key: 'stadium_capacity', label: copy.fields.capacity, type: 'text', icon: <Users className="w-4 h-4" /> },
             ].map(({ key, label, type, icon }) => (
               <div key={key}>
                 <label className="text-xs font-medium text-gray-500 flex items-center gap-1 mb-1">{icon} {label}</label>
@@ -607,19 +606,19 @@ export default function ClubProfilePage() {
 
             {/* Country & City */}
             <div>
-              <label className="text-xs font-medium text-gray-500 flex items-center gap-1 mb-1"><MapPin className="w-4 h-4" /> الدولة</label>
+              <label className="text-xs font-medium text-gray-500 flex items-center gap-1 mb-1"><MapPin className="w-4 h-4" /> {copy.country}</label>
               {editMode ? (
                 <input value={clubData.country} onChange={e => set('country', e.target.value)}
-                  className={inpCls + (errors.country ? ' border-red-400' : '')} placeholder="الدولة *" />
+                  className={inpCls + (errors.country ? ' border-red-400' : '')} placeholder={copy.countryPlaceholder} />
               ) : (
                 <p className="text-sm text-gray-800">{clubData.country || '—'}</p>
               )}
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 flex items-center gap-1 mb-1"><MapPin className="w-4 h-4" /> المدينة</label>
+              <label className="text-xs font-medium text-gray-500 flex items-center gap-1 mb-1"><MapPin className="w-4 h-4" /> {copy.city}</label>
               {editMode ? (
                 <input value={clubData.city} onChange={e => set('city', e.target.value)}
-                  className={inpCls + (errors.city ? ' border-red-400' : '')} placeholder="المدينة *" />
+                  className={inpCls + (errors.city ? ' border-red-400' : '')} placeholder={copy.cityPlaceholder} />
               ) : (
                 <p className="text-sm text-gray-800">{clubData.city || '—'}</p>
               )}
@@ -627,12 +626,12 @@ export default function ClubProfilePage() {
 
             {/* Type */}
             <div>
-              <label className="text-xs font-medium text-gray-500 mb-1 block">نوع النادي</label>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">{copy.clubType}</label>
               {editMode ? (
                 <select value={clubData.type} onChange={e => set('type', e.target.value)}
                   className={inpCls + (errors.type ? ' border-red-400' : '')}>
-                  <option value="">اختر النوع</option>
-                  {CLUB_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  <option value="">{copy.selectType}</option>
+                  {CLUB_TYPES.map((type, index) => <option key={type} value={type}>{copy.types[index]}</option>)}
                 </select>
               ) : (
                 <p className="text-sm text-gray-800">{clubData.type || '—'}</p>
@@ -641,10 +640,10 @@ export default function ClubProfilePage() {
 
             {/* Description */}
             <div className="sm:col-span-2">
-              <label className="text-xs font-medium text-gray-500 mb-1 block">نبذة عن النادي</label>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">{copy.description}</label>
               {editMode ? (
                 <textarea value={clubData.description} onChange={e => set('description', e.target.value)}
-                  rows={4} className={inpCls + (errors.description ? ' border-red-400' : '')} placeholder="نبذة عن النادي *" />
+                  rows={4} className={inpCls + (errors.description ? ' border-red-400' : '')} placeholder={copy.descriptionPlaceholder} />
               ) : (
                 <p className="text-sm text-gray-800 leading-relaxed">{clubData.description || '—'}</p>
               )}
@@ -655,7 +654,7 @@ export default function ClubProfilePage() {
         {/* ── Social Media ───────────────────────────────────────────────── */}
         <div className="p-6 bg-white rounded-xl shadow">
           <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Link className="w-5 h-5 text-blue-500" /> وسائل التواصل الاجتماعي
+            <Link className="w-5 h-5 text-blue-500" /> {copy.socialMedia}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
@@ -668,7 +667,7 @@ export default function ClubProfilePage() {
                 <label className="text-xs font-medium text-gray-500 flex items-center gap-1 mb-1">{icon} {label}</label>
                 {editMode ? (
                   <input type="url" value={(clubData as any)[key] || ''} onChange={e => set(key as keyof ClubData, e.target.value)}
-                    className={inpCls} placeholder={`رابط ${label}`} />
+                    className={inpCls} placeholder={interpolate(copy.linkPlaceholder, { label })} />
                 ) : (
                   <p className="text-sm text-gray-800">{(clubData as any)[key] || '—'}</p>
                 )}
@@ -680,14 +679,14 @@ export default function ClubProfilePage() {
         {/* ── Stats ──────────────────────────────────────────────────────── */}
         <div className="p-6 bg-white rounded-xl shadow">
           <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Star className="w-5 h-5 text-blue-500" /> الإحصائيات
+            <Star className="w-5 h-5 text-blue-500" /> {copy.statsTitle}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { key: 'players', label: 'اللاعبون' },
-              { key: 'contracts', label: 'العقود' },
-              { key: 'trophies', label: 'الألقاب' },
-              { key: 'staff', label: 'الكادر' },
+              { key: 'players', label: copy.stats.players },
+              { key: 'contracts', label: copy.stats.contracts },
+              { key: 'trophies', label: copy.stats.trophies },
+              { key: 'staff', label: copy.stats.staff },
             ].map(({ key, label }) => (
               <div key={key} className="text-center bg-blue-50 p-3 rounded-xl">
                 {editMode ? (
@@ -706,7 +705,7 @@ export default function ClubProfilePage() {
         {/* ── Trophies ───────────────────────────────────────────────────── */}
         <div className="p-6 bg-white rounded-xl shadow">
           <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-amber-500" /> الألقاب والإنجازات
+            <Trophy className="w-5 h-5 text-amber-500" /> {copy.trophiesTitle}
           </h3>
           {clubData.trophies.length > 0 ? (
             <div className="space-y-2 mb-4">
@@ -723,16 +722,16 @@ export default function ClubProfilePage() {
                 </div>
               ))}
             </div>
-          ) : <p className="text-sm text-gray-400 mb-4">لا توجد ألقاب مضافة</p>}
+          ) : <p className="text-sm text-gray-400 mb-4">{copy.noTrophies}</p>}
           {editMode && (
             <div className="grid grid-cols-3 gap-2">
               <input value={newTrophy.name} onChange={e => setNewTrophy(p => ({ ...p, name: e.target.value }))}
-                className={inpCls} placeholder="اسم اللقب" />
+                className={inpCls} placeholder={copy.trophyName} />
               <input value={newTrophy.year} onChange={e => setNewTrophy(p => ({ ...p, year: e.target.value }))}
-                className={inpCls} placeholder="السنة" />
+                className={inpCls} placeholder={copy.year} />
               <div className="flex gap-2">
                 <input value={newTrophy.category} onChange={e => setNewTrophy(p => ({ ...p, category: e.target.value }))}
-                  className={inpCls} placeholder="الفئة" />
+                  className={inpCls} placeholder={copy.category} />
                 <button onClick={() => {
                   if (!newTrophy.name) return;
                   setClubData(prev => ({ ...prev, trophies: [...prev.trophies, newTrophy] }));
@@ -749,13 +748,13 @@ export default function ClubProfilePage() {
         {(editMode || clubData.gallery.length > 0) && (
           <div className="p-6 bg-white rounded-xl shadow">
             <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <MessageCircle className="w-5 h-5 text-blue-500" /> معرض الصور
+              <MessageCircle className="w-5 h-5 text-blue-500" /> {copy.gallery}
             </h3>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
               {clubData.gallery.map((img, i) => (
                 <div key={i} className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group"
                   onClick={() => setLightboxImg(img)}>
-                  <img src={img} alt={`صورة ${i + 1}`} className="object-cover w-full h-full group-hover:scale-105 transition-transform" />
+                  <img src={img} alt={interpolate(copy.imageAlt, { number: i + 1 })} className="object-cover w-full h-full group-hover:scale-105 transition-transform" />
                   {editMode && (
                     <button onClick={e => { e.stopPropagation(); setClubData(prev => ({ ...prev, gallery: prev.gallery.filter((_, j) => j !== i) })); }}
                       className="flex absolute top-1 right-1 justify-center items-center w-6 h-6 text-white bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
@@ -769,7 +768,7 @@ export default function ClubProfilePage() {
                   <input type="file" accept="image/*" className="hidden"
                     onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'gallery')} />
                   <Plus className="w-6 h-6 text-gray-400" />
-                  <span className="text-xs text-gray-400">إضافة</span>
+                  <span className="text-xs text-gray-400">{copy.add}</span>
                 </label>
               )}
             </div>
@@ -781,7 +780,7 @@ export default function ClubProfilePage() {
       {/* Lightbox */}
       {lightboxImg && (
         <div className="flex fixed inset-0 z-50 justify-center items-center bg-black/80" onClick={() => setLightboxImg(null)}>
-          <img src={lightboxImg} alt="صورة مكبّرة" className="max-h-[90vh] max-w-[90vw] rounded-xl" />
+          <img src={lightboxImg} alt={copy.lightboxAlt} className="max-h-[90vh] max-w-[90vw] rounded-xl" />
         </div>
       )}
     </div>

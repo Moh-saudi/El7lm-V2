@@ -10,6 +10,7 @@ import 'dayjs/locale/ar';
 
 dayjs.locale('ar');
 import { getSupabaseImageUrl } from '@/lib/supabase/image-utils';
+import { useTranslation } from '@/lib/i18n';
 
 interface PlayerResumeProps {
   player: any;
@@ -77,13 +78,24 @@ const translatePosition = (pos: string | undefined | null) => {
 
 const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization }) => {
   const resumeRef = useRef<HTMLDivElement>(null);
+  const { t, isRTL } = useTranslation();
+  const resumeText = (key: string, values: Record<string, string> = {}) =>
+    Object.entries(values).reduce(
+      (text, [name, value]) => text.replaceAll(`{{${name}}}`, value),
+      t(`sharedComponents.playerResume.${key}`)
+    );
+  const detail = (key: string) => {
+    const primaryKey = `sharedComponents.playerResumeDetails.${key}`;
+    const value = t(primaryKey);
+    return value === primaryKey ? t(`sharedComponents.playerResumeExtra.${key}`) : value;
+  };
 
 
 
   const handleDownloadPDF = async () => {
     try {
       if (!resumeRef.current) {
-        alert('خطأ: لا يمكن العثور على العنصر المطلوب لإنشاء PDF');
+        alert(t('sharedComponents.playerResume.pdfElementMissing'));
         return;
       }
 
@@ -103,15 +115,15 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
         z-index: 9999;
         font-family: Arial, sans-serif;
       `;
-      loadingMessage.textContent = 'جاري إنشاء PDF... يرجى الانتظار';
+      loadingMessage.textContent = t('sharedComponents.playerResume.creatingPdf');
       document.body.appendChild(loadingMessage);
 
       // انتظار قصير للتأكد من أن العنصر جاهز
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       // انتظار تحميل جميع الصور
-      const images = resumeRef.current.querySelectorAll('img');
-      const imagePromises = Array.from(images).map(img => {
+      const images = resumeRef.current.querySelectorAll<HTMLImageElement>('img');
+      const imagePromises = Array.from(images).map((img: HTMLImageElement) => {
         return new Promise((resolve) => {
           if (img.complete) {
             resolve(null);
@@ -189,7 +201,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
       document.body.removeChild(loadingMessage);
 
       // إظهار رسالة نجاح
-      alert(`تم إنشاء PDF بنجاح!\nاسم الملف: ${fileName}\nيرجى التحقق من مجلد التنزيلات.`);
+      alert(resumeText('pdfCreated', { fileName }));
 
     } catch (error) {
       console.error('خطأ في إنشاء PDF:', error);
@@ -200,7 +212,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
         document.body.removeChild(loadingMessage);
       }
 
-      alert('خطأ في إنشاء PDF. يرجى المحاولة مرة أخرى.\n\nالتفاصيل: ' + (error as Error).message);
+      alert(resumeText('pdfError', { error: (error as Error).message }));
     }
   };
 
@@ -209,7 +221,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
 
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* أزرار التحكم */}
       <div className="space-y-4 print:hidden">
         {/* أزرار التنزيل */}
@@ -219,7 +231,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
             className="flex gap-2 items-center px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
           >
             <Download className="w-4 h-4" />
-            تنزيل PDF
+            {t('sharedComponents.playerResume.downloadPdf')}
           </button>
           <button
             onClick={async () => {
@@ -238,15 +250,15 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                 link.href = canvas.toDataURL();
                 link.click();
 
-                alert('تم تنزيل الصورة بنجاح!');
+                alert(t('sharedComponents.playerResume.imageDownloaded'));
               } catch (error) {
-                alert('خطأ في تنزيل الصورة: ' + (error as Error).message);
+                alert(resumeText('imageDownloadError', { error: (error as Error).message }));
               }
             }}
             className="flex gap-2 items-center px-4 py-2 text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors"
           >
             <Download className="w-4 h-4" />
-            تنزيل كصورة
+            {t('sharedComponents.playerResume.downloadImage')}
           </button>
         </div>
 
@@ -254,11 +266,11 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
         <div className="flex justify-center">
           <ShareModal
             playerId={player?.id}
-            playerName={player?.full_name || 'لاعب'}
+            playerName={player?.full_name || t('sharedComponents.playerResume.player')}
             trigger={
               <Button className="flex gap-2 items-center px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
                 <Download className="w-4 h-4" />
-                مشاركة التقرير
+                {t('sharedComponents.playerResume.shareReport')}
               </Button>
             }
           />
@@ -294,7 +306,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                   // استخدام المحول الموحد للروابط
                   return getSupabaseImageUrl(path, 'avatars');
                 })()}
-                alt="صورة اللاعب"
+                alt={detail('playerPhoto')}
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -310,23 +322,23 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
             </div>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                {player?.full_name || 'اسم اللاعب'}
+                {player?.full_name || detail('playerName')}
               </h1>
               <p className="text-xl text-blue-600 font-semibold mb-2">
-                {translatePosition(player?.primary_position || player?.position) || 'مركز اللاعب'}
+                {translatePosition(player?.primary_position || player?.position) || detail('playerPosition')}
               </p>
               <div className="flex gap-4 text-gray-600">
                 <span className="flex gap-1 items-center">
                   <Calendar className="w-4 h-4" />
-                  {age ? `${age} سنة` : 'غير محدد'}
+                  {age ? `${age} ${detail('years')}` : detail('notSpecified')}
                 </span>
                 <span className="flex gap-1 items-center">
                   <MapPin className="w-4 h-4" />
-                  {player?.city || 'غير محدد'}
+                  {player?.city || detail('notSpecified')}
                 </span>
                 <span className="flex gap-1 items-center">
                   <Flag className="w-4 h-4" />
-                  {player?.nationality || 'غير محدد'}
+                  {player?.nationality || detail('notSpecified')}
                 </span>
               </div>
             </div>
@@ -336,15 +348,15 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="flex justify-between items-center text-xs text-gray-600">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-blue-600">منصة الحلم لاكتشاف المواهب الكروية 2025</span>
+                <span className="font-semibold text-blue-600">{detail('platformName')}</span>
               </div>
               <div className="flex items-center gap-4">
-                <span>تاريخ الإنشاء: {dayjs().format('DD/MM/YYYY')}</span>
-                <span>آخر تحديث: {dayjs().format('DD/MM/YYYY HH:mm')}</span>
+                <span>{detail('createdDate')}: {dayjs().format('DD/MM/YYYY')}</span>
+                <span>{detail('lastUpdated')}: {dayjs().format('DD/MM/YYYY HH:mm')}</span>
               </div>
             </div>
             <div className="mt-2 text-xs text-gray-500 text-center">
-              هذه الوثيقة تم إنشاء بواسطة صاحب الحساب على منصة الحلم لاكتشاف المواهب الكروية دون أي مسؤولية عليها
+              {detail('accountOwnerDisclaimer')}
             </div>
           </div>
         </div>
@@ -353,24 +365,24 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex gap-2 items-center">
             <User className="w-5 h-5 text-blue-600" />
-            معلومات الاتصال
+            {detail('contactInformation')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex gap-2 items-center text-gray-700">
               <Phone className="w-4 h-4 text-blue-600" />
-              <span dir="ltr">{player?.phone || 'غير متاح'}</span>
+              <span dir="ltr">{player?.phone || detail('unavailable')}</span>
             </div>
             <div className="flex gap-2 items-center text-gray-700">
               <Mail className="w-4 h-4 text-blue-600" />
-              <span>{player?.email || 'غير متاح'}</span>
+              <span>{player?.email || detail('unavailable')}</span>
             </div>
             <div className="flex gap-2 items-center text-gray-700">
               <MapPin className="w-4 h-4 text-blue-600" />
-              <span>{[player?.city, player?.address].filter(Boolean).join(' - ') || 'غير محدد'}</span>
+              <span>{[player?.city, player?.address].filter(Boolean).join(' - ') || detail('notSpecified')}</span>
             </div>
             <div className="flex gap-2 items-center text-gray-700">
               <Globe className="w-4 h-4 text-blue-600" />
-              <span>{player?.nationality || player?.country || 'غير محدد'}</span>
+              <span>{player?.nationality || player?.country || detail('notSpecified')}</span>
             </div>
           </div>
 
@@ -379,7 +391,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
             <div className="mt-4 bg-gray-50 p-4 rounded-lg">
               <h3 className="font-semibold text-gray-900 mb-2 flex gap-2 items-center">
                 <FileText className="w-4 h-4 text-blue-600" />
-                النبذة المختصرة
+                {detail('summary')}
               </h3>
               <div className="text-sm text-gray-700 leading-relaxed">
                 {player.brief}
@@ -393,7 +405,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex gap-2 items-center">
             <ShieldCheck className="w-5 h-5 text-blue-600" />
-            الحالة والتبعية
+            {detail('statusAndAffiliation')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
@@ -402,7 +414,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
             {playerOrganization && (
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex flex-col justify-between h-full">
                 <div>
-                  <h3 className="font-bold text-blue-900 mb-2 text-sm">جهة التفاوض الرسمية</h3>
+                  <h3 className="font-bold text-blue-900 mb-2 text-sm">{detail('officialNegotiator')}</h3>
                   <div className="flex bg-white p-3 rounded-lg border border-blue-100 items-center gap-3 shadow-sm">
                     {playerOrganization.logo || playerOrganization.logoUrl ? (
                       <img src={playerOrganization.logo || playerOrganization.logoUrl} alt={playerOrganization.name} className="w-10 h-10 rounded-full object-cover border border-gray-100" />
@@ -424,15 +436,15 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
               return (
                 <div className={`p-4 rounded-lg border flex flex-col justify-between h-full ${hasConsent ? 'bg-green-50 border-green-100' : 'bg-amber-50 border-amber-100'}`}>
                   <div>
-                    <h3 className={`font-bold mb-2 text-sm ${hasConsent ? 'text-green-900' : 'text-amber-900'}`}>{hasConsent ? 'الوصاية القانونية' : 'تنبيه الوصاية'}</h3>
+                    <h3 className={`font-bold mb-2 text-sm ${hasConsent ? 'text-green-900' : 'text-amber-900'}`}>{hasConsent ? detail('legalGuardianship') : detail('guardianshipAlert')}</h3>
                     <div className="flex bg-white/60 p-3 rounded-lg items-center gap-3 shadow-sm border border-white/50">
                       {hasConsent ? <CheckCircle className="w-8 h-8 text-green-600" /> : <AlertTriangle className="w-8 h-8 text-amber-600" />}
                       <div>
                         <div className={`font-bold text-xs ${hasConsent ? 'text-green-800' : 'text-amber-800'}`}>
-                          {hasConsent ? 'موافقة ولي الأمر مكتملة' : 'تحت وصاية ولي الأمر'}
+                          {hasConsent ? detail('guardianConsentComplete') : detail('underGuardianship')}
                         </div>
                         <div className="text-[10px] text-gray-600 mt-1">
-                          {hasConsent ? 'يمكن التفاوض واستكمال الإجراءات' : 'بانتظار موافقة ولي الأمر الرسمية'}
+                          {hasConsent ? detail('negotiationAllowed') : detail('awaitingGuardianConsent')}
                         </div>
                       </div>
                     </div>
@@ -444,17 +456,17 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
             {/* 3. Evaluation Card */}
             <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 flex flex-col justify-between h-full">
               <div>
-                <h3 className="font-bold text-purple-900 mb-2 text-sm">تقييم الموهبة</h3>
+                <h3 className="font-bold text-purple-900 mb-2 text-sm">{detail('talentEvaluation')}</h3>
                 <div className="flex bg-white/60 p-3 rounded-lg items-center gap-3 shadow-sm border border-white/50">
                   <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center border border-purple-200">
                     <Star className="w-5 h-5 text-purple-600" />
                   </div>
                   <div>
                     <div className="font-bold text-xs text-purple-900">
-                      {player?.evaluation_status === 'rated' ? 'تم التقييم' : 'تحت التقييم'}
+                      {player?.evaluation_status === 'rated' ? detail('evaluated') : detail('underEvaluation')}
                     </div>
                     <div className="text-[10px] text-purple-700 mt-1">
-                      من اللجنة الفنية للمنصة
+                      {detail('byTechnicalCommittee')}
                     </div>
                   </div>
                 </div>
@@ -468,62 +480,62 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex gap-2 items-center">
             <User className="w-5 h-5 text-blue-600" />
-            المعلومات الشخصية
+            {detail('personalInformation')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-2">البيانات الأساسية</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">{detail('basicData')}</h3>
               <div className="space-y-1 text-sm text-gray-700">
-                <p><strong>تاريخ الميلاد:</strong> {player?.birth_date ? dayjs(player.birth_date).format('DD/MM/YYYY') : 'غير محدد'}</p>
-                <p><strong>العمر:</strong> {age ? `${age} سنة` : 'غير محدد'}</p>
-                {age < 18 && <p className="text-amber-700 font-medium"><strong>الحالة القانونية:</strong> تحت وصاية ولي الأمر</p>}
-                <p><strong>الجنسية:</strong> {player?.nationality || 'غير محدد'}</p>
-                <p><strong>المدينة:</strong> {player?.city || 'غير محدد'}</p>
+                <p><strong>{detail('birthDate')}:</strong> {player?.birth_date ? dayjs(player.birth_date).format('DD/MM/YYYY') : detail('notSpecified')}</p>
+                <p><strong>{detail('age')}:</strong> {age ? `${age} ${detail('years')}` : detail('notSpecified')}</p>
+                {age < 18 && <p className="text-amber-700 font-medium"><strong>{detail('legalStatus')}:</strong> {detail('underGuardianship')}</p>}
+                <p><strong>{detail('nationality')}:</strong> {player?.nationality || detail('notSpecified')}</p>
+                <p><strong>{detail('city')}:</strong> {player?.city || detail('notSpecified')}</p>
               </div>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-2">البيانات البدنية</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">{detail('physicalData')}</h3>
               <div className="space-y-1 text-sm text-gray-700">
-                <p><strong>الطول:</strong> {player?.height ? `${player.height} سم` : 'غير محدد'}</p>
-                <p><strong>الوزن:</strong> {player?.weight ? `${player.weight} كجم` : 'غير محدد'}</p>
-                <p><strong>فصيلة الدم:</strong> {player?.blood_type || 'غير محدد'}</p>
-                <p><strong>القدم المفضلة:</strong> {player?.preferred_foot || 'غير محدد'}</p>
+                <p><strong>{detail('height')}:</strong> {player?.height ? `${player.height} ${detail('cm')}` : detail('notSpecified')}</p>
+                <p><strong>{detail('weight')}:</strong> {player?.weight ? `${player.weight} ${detail('kg')}` : detail('notSpecified')}</p>
+                <p><strong>{detail('bloodType')}:</strong> {player?.blood_type || detail('notSpecified')}</p>
+                <p><strong>{detail('preferredFoot')}:</strong> {player?.preferred_foot || detail('notSpecified')}</p>
               </div>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-2">البيانات الرياضية</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">{detail('sportsData')}</h3>
               <div className="space-y-1 text-sm text-gray-700">
-                <p><strong>المركز الأساسي:</strong> {translatePosition(player?.primary_position || player?.position) || 'غير محدد'}</p>
-                {player?.secondary_position && <p><strong>المركز الثانوي:</strong> {translatePosition(player.secondary_position)}</p>}
-                {player?.jersey_number && <p><strong>رقم القميص:</strong> {player.jersey_number}</p>}
-                <p><strong>النادي الحالي:</strong> {player?.current_club || (player?.contract_status === 'free' ? 'لاعب حر' : 'غير محدد')}</p>
-                <p><strong>سنوات الخبرة:</strong> {player?.experience_years || player?.experience || 'غير محدد'}</p>
-                <p><strong>الحالة التعاقدية:</strong> {(player?.contract_status === 'contracted' || player?.currently_contracted === 'yes') ? 'مرتبط بعقد' : (player?.contract_status === 'loan' ? 'إعارة' : 'لاعب حر')}</p>
+                <p><strong>{detail('primaryPosition')}:</strong> {translatePosition(player?.primary_position || player?.position) || detail('notSpecified')}</p>
+                {player?.secondary_position && <p><strong>{detail('secondaryPosition')}:</strong> {translatePosition(player.secondary_position)}</p>}
+                {player?.jersey_number && <p><strong>{detail('jerseyNumber')}:</strong> {player.jersey_number}</p>}
+                <p><strong>{detail('currentClub')}:</strong> {player?.current_club || (player?.contract_status === 'free' ? detail('freeAgent') : detail('notSpecified'))}</p>
+                <p><strong>{detail('experienceYears')}:</strong> {player?.experience_years || player?.experience || detail('notSpecified')}</p>
+                <p><strong>{detail('contractStatus')}:</strong> {(player?.contract_status === 'contracted' || player?.currently_contracted === 'yes') ? detail('contracted') : (player?.contract_status === 'loan' ? detail('loan') : detail('freeAgent'))}</p>
               </div>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-2">الحالة الصحية</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">{detail('healthStatus')}</h3>
               <div className="space-y-1 text-sm text-gray-700">
-                <p><strong>الوضع الصحي:</strong> {player?.chronic_conditions ? 'يوجد ملاحظات' : 'سليم تماماً'}</p>
+                <p><strong>{detail('healthCondition')}:</strong> {player?.chronic_conditions ? detail('hasNotes') : detail('fullyHealthy')}</p>
                 {player?.chronic_conditions && <p className="text-red-600 font-medium text-xs bg-red-50 p-1 rounded">{player.chronic_details}</p>}
-                <p><strong>الحساسية:</strong> {player?.allergies || 'لا توجد'}</p>
+                <p><strong>{detail('allergies')}:</strong> {player?.allergies || detail('none')}</p>
                 {player?.medical_notes && <p className="text-xs text-gray-500 italic mt-1 border-t pt-1">{player.medical_notes}</p>}
               </div>
             </div>
 
             {/* التعليم */}
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-2">التعليم</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">{detail('education')}</h3>
               <div className="space-y-1 text-sm text-gray-700">
-                <p><strong>المستوى:</strong> {player?.education_level || 'غير محدد'}</p>
-                {player?.degree && <p><strong>التخصص:</strong> {player.degree}</p>}
-                {player?.graduation_year && <p><strong>التخرج:</strong> {player.graduation_year}</p>}
+                <p><strong>{detail('level')}:</strong> {player?.education_level || detail('notSpecified')}</p>
+                {player?.degree && <p><strong>{detail('specialization')}:</strong> {player.degree}</p>}
+                {player?.graduation_year && <p><strong>{detail('graduation')}:</strong> {player.graduation_year}</p>}
               </div>
             </div>
 
             {/* اللغات */}
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-2">اللغات</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">{detail('languages')}</h3>
               <div className="space-y-1 text-sm text-gray-700">
                 {player?.languages && Array.isArray(player.languages) && player.languages.length > 0 ? (
                   <div className="flex flex-wrap gap-1">
@@ -533,8 +545,8 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                   </div>
                 ) : (
                   <>
-                    <p><strong>العربية:</strong> {player?.arabic_level || 'غير محدد'}</p>
-                    <p><strong>الإنجليزية:</strong> {player?.english_level || 'غير محدد'}</p>
+                    <p><strong>{detail('arabic')}:</strong> {player?.arabic_level || detail('notSpecified')}</p>
+                    <p><strong>{detail('english')}:</strong> {player?.english_level || detail('notSpecified')}</p>
                   </>
                 )}
               </div>
@@ -542,23 +554,23 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
 
             {/* المستندات */}
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-2">المستندات</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">{detail('documents')}</h3>
               <div className="space-y-1 text-sm text-gray-700">
-                <p><strong>جواز السفر:</strong> {player?.has_passport === 'yes' ? 'متوفر' : 'غير متوفر'}</p>
+                <p><strong>{detail('passport')}:</strong> {player?.has_passport === 'yes' ? detail('available') : detail('notAvailable')}</p>
                 {age < 18 && (() => {
                   const guardianDoc = player?.documents?.find((d: any) => d.type === 'guardian_consent');
                   if (guardianDoc) {
                     return (
                       <div className="mt-2 pt-2 border-t-2 border-green-100 bg-green-50 p-2 rounded text-center">
-                        <p className="text-sm font-bold text-green-600 mb-1">✔ متوفر:</p>
-                        <p className="text-lg font-black text-green-700">موافقة ولي الأمر</p>
+                        <p className="text-sm font-bold text-green-600 mb-1">✔ {detail('available')}:</p>
+                        <p className="text-lg font-black text-green-700">{detail('guardianConsent')}</p>
                       </div>
                     );
                   }
                   return (
                     <div className="mt-2 pt-2 border-t-2 border-red-100 bg-red-50 p-2 rounded text-center">
-                      <p className="text-sm font-bold text-red-600 mb-1">⚠️ مطلوب:</p>
-                      <p className="text-lg font-black text-red-700">موافقة ولي الأمر</p>
+                      <p className="text-sm font-bold text-red-600 mb-1">⚠️ {detail('required')}:</p>
+                      <p className="text-lg font-black text-red-700">{detail('guardianConsent')}</p>
                     </div>
                   );
                 })()}
@@ -571,7 +583,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
             <div className="mt-4 bg-gray-50 p-4 rounded-lg">
               <h3 className="font-semibold text-gray-900 mb-2 flex gap-2 items-center">
                 <FileText className="w-4 h-4 text-blue-600" />
-                النبذة المختصرة
+                {detail('summary')}
               </h3>
               <div className="text-sm text-gray-700 leading-relaxed">
                 {player.brief}
@@ -586,24 +598,24 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex gap-2 items-center">
             <Star className="w-5 h-5 text-blue-600" />
-            المهارات والقدرات
+            {detail('skillsAndAbilities')}
           </h2>
 
           {/* New FIFA Stats */}
           {(() => {
             const mainStats = [
-              { label: 'السرعة', value: player?.stats_pace },
-              { label: 'التسديد', value: player?.stats_shooting },
-              { label: 'التمرير', value: player?.stats_passing },
-              { label: 'المراوغة', value: player?.stats_dribbling },
-              { label: 'الدفاع', value: player?.stats_defending },
-              { label: 'البدنية', value: player?.stats_physical },
+              { label: detail('pace'), value: player?.stats_pace },
+              { label: detail('shooting'), value: player?.stats_shooting },
+              { label: detail('passing'), value: player?.stats_passing },
+              { label: detail('dribbling'), value: player?.stats_dribbling },
+              { label: detail('defending'), value: player?.stats_defending },
+              { label: detail('physical'), value: player?.stats_physical },
             ].filter(s => s.value !== undefined);
 
             if (mainStats.length > 0) {
               return (
                 <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">القدرات الأساسية (0-99)</h3>
+                  <h3 className="font-semibold text-gray-900 mb-3">{detail('coreAbilities')} (0-99)</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                     {mainStats.map((stat, i) => (
                       <div key={i} className="flex flex-col items-center justify-center p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -624,7 +636,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
             {/* المهارات الفنية */}
             {player?.technical_skills && Object.keys(player.technical_skills).length > 0 && (
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-gray-900 mb-3">المهارات الفنية</h3>
+                <h3 className="font-semibold text-gray-900 mb-3">{detail('technicalSkills')}</h3>
                 <div className="space-y-2">
                   {Object.entries(player.technical_skills).map(([skill, value]) => (
                     <div key={skill} className="flex justify-between items-center">
@@ -647,7 +659,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
             {/* المهارات البدنية */}
             {player?.physical_skills && Object.keys(player.physical_skills).length > 0 && (
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-gray-900 mb-3">المهارات البدنية</h3>
+                <h3 className="font-semibold text-gray-900 mb-3">{detail('physicalSkills')}</h3>
                 <div className="space-y-2">
                   {Object.entries(player.physical_skills).map(([skill, value]) => (
                     <div key={skill} className="flex justify-between items-center">
@@ -670,7 +682,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
             {/* المهارات الاجتماعية */}
             {player?.social_skills && Object.keys(player.social_skills).length > 0 && (
               <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-gray-900 mb-3">المهارات الاجتماعية</h3>
+                <h3 className="font-semibold text-gray-900 mb-3">{detail('socialSkills')}</h3>
                 <div className="space-y-2">
                   {Object.entries(player.social_skills).map(([skill, value]) => (
                     <div key={skill} className="flex justify-between items-center">
@@ -696,7 +708,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex gap-2 items-center">
             <Target className="w-5 h-5 text-blue-600" />
-            الأهداف المهنية
+            {detail('careerGoals')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.isArray(player?.objectives) ? (
@@ -708,7 +720,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                   </div>
                 ))
               ) : (
-                <p className="text-gray-500 col-span-full text-center py-4 bg-gray-50 rounded-lg">لا توجد أهداف مسجلة</p>
+                <p className="text-gray-500 col-span-full text-center py-4 bg-gray-50 rounded-lg">{detail('noGoals')}</p>
               )
             ) : (
               player?.objectives && Object.entries(player.objectives).map(([objective, value]) => (
@@ -719,12 +731,12 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                     <XCircle className="w-5 h-5 text-red-600" />
                   )}
                   <span className="text-sm text-gray-700">
-                    {objective === 'european_leagues' && 'الدوريات الأوروبية'}
-                    {objective === 'arab_leagues' && 'الدوريات العربية'}
-                    {objective === 'local_leagues' && 'الدوريات المحلية'}
-                    {objective === 'professional' && 'الاحتراف'}
-                    {objective === 'training' && 'التدريب'}
-                    {objective === 'trials' && 'التجارب'}
+                    {objective === 'european_leagues' && detail('europeanLeagues')}
+                    {objective === 'arab_leagues' && detail('arabLeagues')}
+                    {objective === 'local_leagues' && detail('localLeagues')}
+                    {objective === 'professional' && detail('professional')}
+                    {objective === 'training' && detail('training')}
+                    {objective === 'trials' && detail('trials')}
                     {!['european_leagues', 'arab_leagues', 'local_leagues', 'professional', 'training', 'trials'].includes(objective) && objective}
                   </span>
                 </div>
@@ -737,12 +749,12 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex gap-2 items-center">
             <Trophy className="w-5 h-5 text-blue-600" />
-            التاريخ الرياضي والتدريبي
+            {detail('sportsHistory')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* الأندية السابقة */}
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-3">مسيرة الأندية</h3>
+              <h3 className="font-semibold text-gray-900 mb-3">{detail('clubCareer')}</h3>
               <div className="space-y-3">
                 {player?.club_history && player.club_history.length > 0 ? (
                   player.club_history.map((club: any, index: number) => (
@@ -755,27 +767,27 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                         {typeof club !== 'string' && (
                           <div className="text-xs text-gray-500 mt-1">
                             {club.position_played && <span className="block text-blue-600 mb-0.5">{club.position_played}</span>}
-                            <span>{club.season || (club.start_date ? `${club.start_date} - ${club.end_date || 'حتى الآن'}` : '')}</span>
+                            <span>{club.season || (club.start_date ? `${club.start_date} - ${club.end_date || detail('present')}` : '')}</span>
                           </div>
                         )}
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-gray-500 italic text-center py-4">لا توجد أندية سابقة مسجلة</p>
+                  <p className="text-sm text-gray-500 italic text-center py-4">{detail('noPreviousClubs')}</p>
                 )}
               </div>
             </div>
 
             {/* الأكاديميات والمدربين */}
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-3">التدريب والتطوير</h3>
+              <h3 className="font-semibold text-gray-900 mb-3">{detail('trainingDevelopment')}</h3>
               <div className="space-y-4">
                 {/* Academies */}
                 <div>
                   <h4 className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1">
                     <Building2 className="w-3 h-3" />
-                    الأكاديميات
+                    {detail('academies')}
                   </h4>
                   <div className="space-y-2">
                     {player?.academies && player.academies.length > 0 ? (
@@ -783,11 +795,11 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                         <div key={idx} className="flex gap-2 items-center bg-white p-2 rounded border border-gray-100 shadow-sm">
                           <span className="text-sm text-gray-800 font-medium">{aca.name}</span>
                           {(aca.start_date || aca.end_date) && (
-                            <span className="text-xs text-gray-400 mr-auto">{aca.start_date} - {aca.end_date || 'الآن'}</span>
+                            <span className="text-xs text-gray-400 mr-auto">{aca.start_date} - {aca.end_date || detail('now')}</span>
                           )}
                         </div>
                       ))
-                    ) : <p className="text-xs text-gray-400 italic">لا توجد أكاديميات</p>}
+                    ) : <p className="text-xs text-gray-400 italic">{detail('noAcademies')}</p>}
                   </div>
                 </div>
 
@@ -795,7 +807,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                 <div>
                   <h4 className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1">
                     <User className="w-3 h-3" />
-                    المدربين الخاصين
+                    {detail('privateCoaches')}
                   </h4>
                   <div className="space-y-2">
                     {player?.private_coaches && player.private_coaches.length > 0 ? (
@@ -803,11 +815,11 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                         <div key={idx} className="flex gap-2 items-center bg-white p-2 rounded border border-gray-100 shadow-sm">
                           <span className="text-sm text-gray-800 font-medium">{coach.name}</span>
                           {(coach.start_date || coach.end_date) && (
-                            <span className="text-xs text-gray-400 mr-auto">{coach.start_date} - {coach.end_date || 'الآن'}</span>
+                            <span className="text-xs text-gray-400 mr-auto">{coach.start_date} - {coach.end_date || detail('now')}</span>
                           )}
                         </div>
                       ))
-                    ) : <p className="text-xs text-gray-400 italic">لا يوجد مدربين خاصين</p>}
+                    ) : <p className="text-xs text-gray-400 italic">{detail('noPrivateCoaches')}</p>}
                   </div>
                 </div>
               </div>
@@ -819,13 +831,13 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-900 mb-4 flex gap-2 items-center">
             <FileText className="w-5 h-5 text-blue-600" />
-            الصور والفيديوهات
+            {detail('photosAndVideos')}
           </h2>
 
           {/* الصور */}
           {(player?.profile_image || (player?.additional_images && player.additional_images.length > 0)) && (
             <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 mb-3">الصور</h3>
+              <h3 className="font-semibold text-gray-900 mb-3">{detail('photos')}</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {/* الصورة الشخصية */}
                 {player?.profile_image && (
@@ -834,7 +846,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                       src={typeof player.profile_image === 'string'
                         ? player.profile_image
                         : (player.profile_image as { url: string })?.url}
-                      alt="الصورة الشخصية"
+                      alt={detail('profilePhoto')}
                       className="w-full h-32 object-cover rounded-lg border-2 border-blue-200 shadow-sm print:border-blue-600"
                       style={{
                         breakInside: 'avoid',
@@ -849,7 +861,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                             <div class="w-full h-32 bg-blue-100 rounded-lg border-2 border-blue-200 flex items-center justify-center">
                               <div class="text-center">
                                 <div class="text-blue-600 text-2xl mb-1">👤</div>
-                                <div class="text-blue-600 text-xs">صورة شخصية</div>
+                                <div class="text-blue-600 text-xs">${detail('profilePhoto')}</div>
                               </div>
                             </div>
                           `;
@@ -857,7 +869,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                       }}
                     />
                     <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-                      رئيسية
+                      {detail('primary')}
                     </div>
                   </div>
                 )}
@@ -868,7 +880,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                     <div key={idx} className="relative">
                       <img
                         src={typeof img === 'string' ? img : img.url}
-                        alt={`صورة إضافية ${idx + 1}`}
+                        alt={`${detail('additionalPhoto')} ${idx + 1}`}
                         className="w-full h-32 object-cover rounded-lg border border-gray-200 shadow-sm print:border-gray-600"
                         style={{
                           breakInside: 'avoid',
@@ -883,7 +895,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                               <div class="w-full h-32 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
                                 <div class="text-center">
                                   <div class="text-gray-600 text-2xl mb-1">🖼️</div>
-                                  <div class="text-gray-600 text-xs">صورة ${idx + 1}</div>
+                                  <div class="text-gray-600 text-xs">${detail('photo')} ${idx + 1}</div>
                                 </div>
                               </div>
                             `;
@@ -903,7 +915,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
           {/* الفيديوهات */}
           {player?.videos && player.videos.length > 0 && (
             <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 mb-3">الفيديوهات</h3>
+              <h3 className="font-semibold text-gray-900 mb-3">{detail('videos')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {player.videos.map((video: any, idx: number) => (
                   <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200 print:border-gray-600 shadow-sm">
@@ -912,7 +924,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                         <span className="text-red-600 text-lg font-bold print:text-red-800">▶</span>
                       </div>
                       <div>
-                        <span className="font-bold text-gray-900 text-lg print:text-black">فيديو {idx + 1}</span>
+                        <span className="font-bold text-gray-900 text-lg print:text-black">{detail('video')} {idx + 1}</span>
                         {video.title && (
                           <p className="text-sm text-gray-600 print:text-gray-700">{video.title}</p>
                         )}
@@ -920,7 +932,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                     </div>
                     <div className="space-y-2 text-sm text-gray-600 print:text-gray-700">
                       <div className="bg-white p-3 rounded border border-gray-200 print:border-gray-400">
-                        <p className="font-semibold text-gray-800 print:text-black mb-1">المشاهدة:</p>
+                        <p className="font-semibold text-gray-800 print:text-black mb-1">{detail('watch')}:</p>
                         <a
                           href={video.url}
                           target="_blank"
@@ -928,18 +940,18 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                           className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-2 font-medium"
                         >
                           <ExternalLink className="w-4 h-4" />
-                          <span>اضغط هنا لمشاهدة الفيديو</span>
+                          <span>{detail('clickToWatch')}</span>
                         </a>
                       </div>
                       {video.description && (
                         <div className="bg-white p-3 rounded border border-gray-200 print:border-gray-400">
-                          <p className="font-semibold text-gray-800 print:text-black mb-1">وصف الفيديو:</p>
+                          <p className="font-semibold text-gray-800 print:text-black mb-1">{detail('videoDescription')}:</p>
                           <p className="text-gray-700 print:text-gray-800">{video.description}</p>
                         </div>
                       )}
                       {video.type && (
                         <div className="bg-white p-3 rounded border border-gray-200 print:border-gray-400">
-                          <p className="font-semibold text-gray-800 print:text-black mb-1">نوع الفيديو:</p>
+                          <p className="font-semibold text-gray-800 print:text-black mb-1">{detail('videoType')}:</p>
                           <p className="text-gray-700 print:text-gray-800">{video.type}</p>
                         </div>
                       )}
@@ -955,7 +967,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
             !player?.additional_images?.length &&
             !player?.videos?.length && (
               <div className="bg-gray-50 p-4 rounded-lg text-center">
-                <p className="text-gray-500">لا توجد صور أو فيديوهات متاحة</p>
+                <p className="text-gray-500">{detail('noMedia')}</p>
               </div>
             )}
         </div>
@@ -967,7 +979,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
           <div className="mb-8">
             <h2 className="text-xl font-bold text-gray-900 mb-4 flex gap-2 items-center">
               <FileText className="w-5 h-5 text-blue-600" />
-              النبذة المختصرة
+              {detail('summary')}
             </h2>
             <div className="bg-gray-50 p-4 rounded-lg">
               <p className="text-gray-700 leading-relaxed">{player.brief}</p>
@@ -978,18 +990,18 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
         {/* Footer */}
         <div className="border-t-2 border-gray-300 pt-6 mt-8">
           <div className="text-center text-gray-600 text-xs">
-            <p className="font-semibold text-blue-600 mb-2">منصة الحلم لاكتشاف المواهب الكروية 2025</p>
-            <p>تم إنشاء هذه السيرة الذاتية بتاريخ {dayjs().format('DD/MM/YYYY')}</p>
-            <p>آخر تحديث: {dayjs().format('DD/MM/YYYY HH:mm')}</p>
-            <p className="mt-2">جميع المعلومات المذكورة صحيحة وقت إنشاء الوثيقة</p>
-            <p className="text-xs mt-1">هذه الوثيقة تم إعدادها بواسطة منصة الحلم المتخصصة في اكتشاف وتطوير المواهب الكروية</p>
-            <p className="text-xs mt-1 text-gray-500">هذه الوثيقة تم إنشاء بواسطة صاحب الحساب على منصة الحلم لاكتشاف المواهب الكروية دون أي مسؤولية عليها</p>
+            <p className="font-semibold text-blue-600 mb-2">{detail('platformName')}</p>
+            <p>{detail('resumeCreatedOn')} {dayjs().format('DD/MM/YYYY')}</p>
+            <p>{detail('lastUpdated')}: {dayjs().format('DD/MM/YYYY HH:mm')}</p>
+            <p className="mt-2">{detail('informationAccurate')}</p>
+            <p className="text-xs mt-1">{detail('preparedByPlatform')}</p>
+            <p className="text-xs mt-1 text-gray-500">{detail('accountOwnerDisclaimer')}</p>
           </div>
         </div>
       </div>
 
       {/* أنماط الطباعة */}
-      <style jsx>{`
+          <style dangerouslySetInnerHTML={{ __html: `
          @media print {
            @page {
              margin: 0.8cm;
@@ -1421,7 +1433,7 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
              color: #9333ea !important;
            }
          }
-       `}</style>
+       ` }} />
     </div>
   );
 };

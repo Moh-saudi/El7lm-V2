@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
+import { useTranslation } from '@/lib/i18n';
 
 type Team   = { id: string; name: string; logo_url: string | null };
 type Cat    = { id: string; name: string };
@@ -21,26 +22,19 @@ type Match  = {
 };
 type Event = { id?: string; team_id: string; event_type: string; minute: number | null; notes: string };
 
-const ROUND_LBL: Record<string,string> = {
-  league:'الدوري', group_stage:'دور المجموعات', R128:'دور الـ128', R64:'دور الـ64',
-  R32:'دور الـ32', R16:'دور الـ16', QF:'ربع النهائي', SF:'نصف النهائي', F:'النهائي', '3rd':'المركز الثالث',
-};
 const ROUND_ORDER = ['league','group_stage','R128','R64','R32','R16','QF','SF','F','3rd'];
 const ROUND_COLOR: Record<string,string> = { F:'#f59e0b', SF:'#8b5cf6', QF:'#3b82f6', '3rd':'#f97316' };
 
-const EVT: { v:string; lbl:string; emoji:string; color:string }[] = [
-  { v:'goal',           lbl:'هدف',              emoji:'⚽', color:'#16a34a' },
-  { v:'own_goal',       lbl:'هدف عكسي',         emoji:'🙈', color:'#dc2626' },
-  { v:'yellow_card',    lbl:'صفراء',             emoji:'🟨', color:'#ca8a04' },
-  { v:'red_card',       lbl:'حمراء',             emoji:'🟥', color:'#dc2626' },
-  { v:'second_yellow',  lbl:'ثانية → إخراج',    emoji:'🟨🟥',color:'#dc2626' },
-  { v:'penalty_scored', lbl:'ركلة جزاء ✓',      emoji:'✅', color:'#16a34a' },
-  { v:'penalty_missed', lbl:'ركلة جزاء ✗',      emoji:'❌', color:'#dc2626' },
-  { v:'sub_in',         lbl:'دخول',              emoji:'🔼', color:'#3b82f6' },
-  { v:'sub_out',        lbl:'خروج',              emoji:'🔽', color:'#64748b' },
-];
+const EVENT_META = [
+  ['goal','⚽','#16a34a'], ['own_goal','🙈','#dc2626'], ['yellow_card','🟨','#ca8a04'],
+  ['red_card','🟥','#dc2626'], ['second_yellow','🟨🟥','#dc2626'], ['penalty_scored','✅','#16a34a'],
+  ['penalty_missed','❌','#dc2626'], ['sub_in','🔼','#3b82f6'], ['sub_out','🔽','#64748b'],
+] as const;
 
 export default function MatchesPage() {
+  const { locale, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('tournamentMatches');
+  const EVT = EVENT_META.map(([v,emoji,color], index) => ({ v, emoji, color, lbl:copy.events[index] }));
   const { id }     = useParams<{ id: string }>();
   const { isDark } = usePortalTheme();
   const S = isDark ? D : L;
@@ -93,7 +87,7 @@ export default function MatchesPage() {
     const winnerId = done ? (hs > as_ ? scoreModal.home_team_id : as_ > hs ? scoreModal.away_team_id : null) : null;
     const { error } = await supabase.from('tournament_matches').update({ home_score:hs, away_score:as_, home_penalties:sc.hp?+sc.hp:null, away_penalties:sc.ap?+sc.ap:null, status:done?'completed':'scheduled', winner_id:winnerId }).eq('id',scoreModal.id);
     if (error) { toast.error(error.message); setSaving(false); return; }
-    toast.success('تم حفظ النتيجة');
+    toast.success(copy.scoreSaved);
     setScoreModal(null);
     fetchAll();
     // انتقال الفائز تلقائياً في الإقصاء
@@ -102,19 +96,19 @@ export default function MatchesPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ match_id: scoreModal.id }),
       }).then(r => r.json()).then(d => {
-        if (d.advanced) toast.success('تم نقل الفائز للدور القادم تلقائياً ✓');
+        if (d.advanced) toast.success(copy.winnerAdvanced);
       }).catch(() => {});
     }
     setSaving(false);
   };
 
   const addEvent = async () => {
-    if (!evModal||!ev.team) { toast.error('اختر الفريق'); return; }
+    if (!evModal||!ev.team) { toast.error(copy.selectTeam); return; }
     const { data, error } = await supabase.from('tournament_match_events').insert({ match_id:evModal.id, tournament_id:id, team_id:ev.team||null, event_type:ev.type, minute:ev.minute?+ev.minute:null, notes:ev.notes||null }).select().single();
     if (error) { toast.error(error.message); return; }
     setEvents(p => ({ ...p, [evModal.id]:[...(p[evModal.id]||[]),data] }));
     setEv(p => ({ ...p, minute:'', notes:'' }));
-    toast.success('تم تسجيل الحدث');
+    toast.success(copy.eventSaved);
   };
 
   const deleteEvent = async (mid: string, eid: string) => {
@@ -128,7 +122,7 @@ export default function MatchesPage() {
     const byRound: Record<string, Record<string, Match[]>> = {};
     for (const m of filtered) {
       const r = m.round||'other';
-      const date = m.match_date ? new Date(m.match_date).toLocaleDateString('ar-SA',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) : 'بدون تاريخ';
+      const date = m.match_date ? new Date(m.match_date).toLocaleDateString(locale,{weekday:'long',year:'numeric',month:'long',day:'numeric'}) : copy.noDate;
       if (!byRound[r]) byRound[r] = {};
       (byRound[r][date]=byRound[r][date]||[]).push(m);
     }
@@ -148,13 +142,13 @@ export default function MatchesPage() {
       {/* Filter bar */}
       <div style={{ background:S.surface, border:`1px solid ${S.border}`, borderRadius:14, padding:'12px 16px', display:'flex', alignItems:'center', flexWrap:'wrap', gap:8 }}>
         <div style={{ display:'flex', gap:6, flexWrap:'wrap', flex:1 }}>
-          {[{id:'all',name:`الكل (${matches.length})`},...cats.map(c=>({id:c.id,name:`${c.name} (${matches.filter(m=>m.category_id===c.id).length})`}))].map(c=>(
+          {[{id:'all',name:`${copy.all} (${matches.length})`},...cats.map(c=>({id:c.id,name:`${c.name} (${matches.filter(m=>m.category_id===c.id).length})`}))].map(c=>(
             <button key={c.id} onClick={()=>setSelCat(c.id)} className={`sp-cat-tab${selCat===c.id?' active':''}`}>{c.name}</button>
           ))}
         </div>
         <div style={{ display:'flex', gap:16 }}>
-          <span style={{ fontSize:12, color:'#16a34a', fontWeight:600 }}>✓ {completedN} منتهية</span>
-          <span style={{ fontSize:12, color:S.text2 }}>◷ {pendingN} قادمة</span>
+          <span style={{ fontSize:12, color:'#16a34a', fontWeight:600 }}>✓ {completedN} {copy.finished}</span>
+          <span style={{ fontSize:12, color:S.text2 }}>◷ {pendingN} {copy.upcoming}</span>
         </div>
       </div>
 
@@ -162,10 +156,10 @@ export default function MatchesPage() {
       {filtered.length === 0 && (
         <div style={{ background:S.surface, border:`2px dashed ${S.border}`, borderRadius:18, padding:'60px 24px', textAlign:'center' }}>
           <div style={{ fontSize:40, marginBottom:14 }}>⚽</div>
-          <div style={{ fontSize:15, fontWeight:700, color:S.text, marginBottom:8 }}>لا توجد مباريات بعد</div>
-          <div style={{ fontSize:13, color:S.text2, marginBottom:20 }}>ابدأ بتوليد الجدول من تبويب «الجدول»</div>
+          <div style={{ fontSize:15, fontWeight:700, color:S.text, marginBottom:8 }}>{copy.noMatches}</div>
+          <div style={{ fontSize:13, color:S.text2, marginBottom:20 }}>{copy.noMatchesHelp}</div>
           <Link href={`/tournament-portal/${id}/schedule`} style={{ textDecoration:'none' }}>
-            <button className="sp-btn sp-btn-primary">📅 الذهاب إلى الجدول</button>
+            <button className="sp-btn sp-btn-primary">📅 {copy.goSchedule}</button>
           </Link>
         </div>
       )}
@@ -179,7 +173,7 @@ export default function MatchesPage() {
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
               <div style={{ height:2, flex:1, background:`${rc}20`, borderRadius:1 }} />
               <div style={{ padding:'5px 14px', background:`${rc}15`, border:`1px solid ${rc}30`, borderRadius:18 }}>
-                <span style={{ fontSize:12, fontWeight:800, color:rc }}>{ROUND_LBL[round]||round}</span>
+                <span style={{ fontSize:12, fontWeight:800, color:rc }}>{copy.rounds[round]||round}</span>
               </div>
               <div style={{ height:2, flex:1, background:`${rc}20`, borderRadius:1 }} />
             </div>
@@ -196,6 +190,7 @@ export default function MatchesPage() {
                   {(dayMatches as Match[]).map(m => (
                     <ResultCard
                       key={m.id} match={m} teams={teams} events={events[m.id]}
+                      copy={copy} locale={locale}
                       isExpanded={expanded===m.id} isDark={isDark} S={S}
                       onExpand={() => {
                         const next = expanded===m.id ? null : m.id;
@@ -209,7 +204,7 @@ export default function MatchesPage() {
                         const newStatus = m.status === 'live' ? 'scheduled' : 'live';
                         await supabase.from('tournament_matches').update({ status: newStatus }).eq('id', m.id);
                         setMatches(prev => prev.map(x => x.id === m.id ? { ...x, status: newStatus } : x));
-                        toast.success(newStatus === 'live' ? '🔴 المباراة مباشرة الآن' : 'تم إيقاف البث المباشر');
+                        toast.success(newStatus === 'live' ? copy.liveNow : copy.liveStopped);
                       }}
                     />
                   ))}
@@ -221,8 +216,8 @@ export default function MatchesPage() {
       })}
 
       {/* ── Score Modal ── */}
-      <Modal open={!!scoreModal} onOk={saveScore} onCancel={()=>setScoreModal(null)} okText="حفظ النتيجة" cancelText="إلغاء" confirmLoading={saving} okButtonProps={{ style:{ background:'#16a34a', border:'none' } }} width={400}
-        title={scoreModal ? `${tName(scoreModal.home_team_id)} ضد ${tName(scoreModal.away_team_id)}` : ''}>
+      <Modal open={!!scoreModal} onOk={saveScore} onCancel={()=>setScoreModal(null)} okText={copy.saveScore} cancelText={copy.cancel} confirmLoading={saving} okButtonProps={{ style:{ background:'#16a34a', border:'none' } }} width={400}
+        title={scoreModal ? `${tName(scoreModal.home_team_id)} ${copy.against} ${tName(scoreModal.away_team_id)}` : ''}>
         {scoreModal && (
           <div style={{ marginTop:16 }}>
             {/* Teams banner */}
@@ -241,8 +236,8 @@ export default function MatchesPage() {
               {[
                 { lbl:tName(scoreModal.home_team_id), key:'hs' as const },
                 { lbl:tName(scoreModal.away_team_id), key:'as' as const },
-                { lbl:'ر.ج (محلي)',                  key:'hp' as const },
-                { lbl:'ر.ج (ضيف)',                   key:'ap' as const },
+                { lbl:copy.penHome,                  key:'hp' as const },
+                { lbl:copy.penAway,                  key:'ap' as const },
               ].map(f => (
                 <div key={f.key}>
                   <label className="sp-label">{f.lbl}</label>
@@ -256,13 +251,13 @@ export default function MatchesPage() {
 
       {/* ── Events Modal ── */}
       <Modal open={!!evModal} footer={null} onCancel={()=>setEvModal(null)} width={480}
-        title={evModal ? `أحداث: ${tName(evModal.home_team_id)} vs ${tName(evModal.away_team_id)}` : ''}>
+        title={evModal ? copy.eventsTitle.replace('{home}',tName(evModal.home_team_id)).replace('{away}',tName(evModal.away_team_id)) : ''}>
         {evModal && (
           <div style={{ marginTop:12 }}>
             {/* Events list */}
             <div style={{ maxHeight:220, overflowY:'auto', marginBottom:14 }} className="sp-scroll">
               {(events[evModal.id]||[]).length===0
-                ? <div style={{ padding:'24px', textAlign:'center', color:isDark?'#475569':'#94a3b8', fontSize:13 }}>لا أحداث بعد</div>
+                ? <div style={{ padding:'24px', textAlign:'center', color:isDark?'#475569':'#94a3b8', fontSize:13 }}>{copy.noEvents}</div>
                 : (events[evModal.id]||[]).map((e:any) => {
                     const et = EVT.find(x=>x.v===e.event_type);
                     return (
@@ -283,14 +278,14 @@ export default function MatchesPage() {
                 {EVT.map(e=><option key={e.v} value={e.v}>{e.emoji} {e.lbl}</option>)}
               </select>
               <select className="sp-select" style={{ width:120, padding:'6px 10px', fontSize:12 }} value={ev.team} onChange={e=>setEv(p=>({...p,team:e.target.value}))}>
-                <option value="">الفريق...</option>
+                <option value="">{copy.team}</option>
                 {[evModal.home_team_id,evModal.away_team_id].filter(Boolean).map(tid=>(
                   <option key={tid!} value={tid!}>{tName(tid)}</option>
                 ))}
               </select>
-              <input type="number" min={1} max={120} className="sp-input sp-input-sm" style={{ width:80 }} placeholder="الدقيقة" value={ev.minute} onChange={e=>setEv(p=>({...p,minute:e.target.value}))} />
-              <input className="sp-input sp-input-sm" style={{ width:130 }} placeholder="اسم اللاعب..." value={ev.notes} onChange={e=>setEv(p=>({...p,notes:e.target.value}))} />
-              <button onClick={addEvent} className="sp-btn sp-btn-sm" style={{ background:'#4f46e5', color:'#fff', border:'none' }}>+ تسجيل</button>
+              <input type="number" min={1} max={120} className="sp-input sp-input-sm" style={{ width:80 }} placeholder={copy.minute} value={ev.minute} onChange={e=>setEv(p=>({...p,minute:e.target.value}))} />
+              <input className="sp-input sp-input-sm" style={{ width:130 }} placeholder={copy.playerName} value={ev.notes} onChange={e=>setEv(p=>({...p,notes:e.target.value}))} />
+              <button onClick={addEvent} className="sp-btn sp-btn-sm" style={{ background:'#4f46e5', color:'#fff', border:'none' }}>+ {copy.record}</button>
             </div>
           </div>
         )}
@@ -300,8 +295,8 @@ export default function MatchesPage() {
 }
 
 // ── Result Card ───────────────────────────────────────────────────────────────
-function ResultCard({ match, teams, events, isExpanded, isDark, S, onExpand, onScore, onEvents, onDeleteEvent, onToggleLive }: any) {
-  const tName = (tid: string|null) => teams.find((t:any)=>t.id===tid)?.name||'TBD';
+function ResultCard({ match, teams, events, isExpanded, isDark, S, onExpand, onScore, onEvents, onDeleteEvent, onToggleLive, copy, locale }: any) {
+  const tName = (tid: string|null) => teams.find((t:any)=>t.id===tid)?.name||copy.tbd;
   const tLogo = (tid: string|null) => teams.find((t:any)=>t.id===tid)?.logo_url;
   const fin  = match.status === 'completed';
   const live = match.status === 'live';
@@ -319,7 +314,7 @@ function ResultCard({ match, teams, events, isExpanded, isDark, S, onExpand, onS
       {live && (
         <div style={{ background:'#ef4444', padding:'3px 14px', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
           <div className="sp-live-dot" />
-          <span style={{ fontSize:11, color:'#fff', fontWeight:800 }}>مباشر</span>
+          <span style={{ fontSize:11, color:'#fff', fontWeight:800 }}>{copy.live}</span>
         </div>
       )}
 
@@ -345,7 +340,7 @@ function ResultCard({ match, teams, events, isExpanded, isDark, S, onExpand, onS
             : live
               ? <div style={{ background:'#ef4444', borderRadius:9, padding:'5px 12px', display:'inline-block' }}><span style={{ color:'#fff', fontFamily:'monospace', fontWeight:900, fontSize:18 }}>{hs??0} - {as_??0}</span></div>
               : match.match_date
-                ? <div><div style={{ fontSize:16, fontWeight:800, color:S.text }}>{new Date(match.match_date).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'})}</div><div style={{ fontSize:10, color:S.text2, marginTop:2 }}>لم تبدأ</div></div>
+                ? <div><div style={{ fontSize:16, fontWeight:800, color:S.text }}>{new Date(match.match_date).toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit'})}</div><div style={{ fontSize:10, color:S.text2, marginTop:2 }}>{copy.notStarted}</div></div>
                 : <div style={{ background:S.surface2, borderRadius:8, padding:'5px 12px', display:'inline-block' }}><span style={{ color:S.text2, fontWeight:700 }}>vs</span></div>
           }
         </div>
@@ -368,20 +363,20 @@ function ResultCard({ match, teams, events, isExpanded, isDark, S, onExpand, onS
       <div style={{ padding:'8px 16px', background:S.surface2, borderTop:`1px solid ${S.border}`, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
         {match.venue && <span style={{ fontSize:13, color:S.text2 }}>📍 {match.venue}</span>}
         {match.referee_name && <span style={{ fontSize:13, color:S.text2 }}>👤 {match.referee_name}</span>}
-        <div style={{ marginRight:'auto', display:'flex', gap:8, flexWrap:'wrap' }}>
+        <div style={{ marginInlineStart:'auto', display:'flex', gap:8, flexWrap:'wrap' }}>
           {/* Live start/stop */}
           {!fin && (
             <button
               onClick={e=>{ e.stopPropagation(); onToggleLive(); }}
               style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:live?'rgba(239,68,68,0.15)':'rgba(239,68,68,0.08)', border:`1px solid ${live?'#ef4444':'rgba(239,68,68,0.3)'}`, borderRadius:8, color:'#ef4444', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-              {live ? '⏹ إيقاف المباشر' : '🔴 بدء مباشر'}
+              {live ? `⏹ ${copy.stopLive}` : `🔴 ${copy.startLive}`}
             </button>
           )}
           <button onClick={e=>{e.stopPropagation();onScore();}} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:fin?'transparent':'#d97706', border:fin?`1px solid ${S.border}`:'none', borderRadius:8, color:fin?S.text2:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-            {fin?'✏️ تعديل النتيجة':'⚡ إدخال النتيجة'}
+            {fin?`✏️ ${copy.editScore}`:`⚡ ${copy.enterScore}`}
           </button>
           <button onClick={e=>{e.stopPropagation();onEvents();}} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:'transparent', border:`1px solid ${S.border}`, borderRadius:8, color:S.text2, fontSize:13, fontWeight:700, cursor:'pointer' }}>
-            🎯 الأحداث {events?.length>0?`(${events.length})`:''}
+            🎯 {copy.eventsButton} {events?.length>0?`(${events.length})`:''}
           </button>
         </div>
       </div>

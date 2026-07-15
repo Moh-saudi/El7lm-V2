@@ -1,22 +1,25 @@
 import * as z from 'zod';
 
-export const coachSchema = z.object({
-    name: z.string().min(2, "اسم المدرب مطلوب"),
+type Translate = (key: string) => string;
+
+export const createProfileSchema = (t: Translate) => {
+const coachSchema = z.object({
+    name: z.string().min(2, t('profile.validation.coachNameRequired')),
     start_date: z.string().optional(),
     end_date: z.string().optional(),
     is_current: z.boolean().default(false),
 });
 
-export const academySchema = z.object({
-    name: z.string().min(2, "اسم الأكاديمية مطلوب"),
+const academySchema = z.object({
+    name: z.string().min(2, t('profile.validation.academyNameRequired')),
     start_date: z.string().optional(),
     end_date: z.string().optional(),
     is_current: z.boolean().default(false),
 });
 
-export const clubHistorySchema = z.object({
-    club_name: z.string().min(2, "اسم النادي مطلوب"),
-    season: z.string().min(4, "الموسم مطلوب"),
+const clubHistorySchema = z.object({
+    club_name: z.string().min(2, t('profile.validation.clubNameRequired')),
+    season: z.string().min(4, t('profile.validation.seasonRequired')),
     start_date: z.string().optional(),
     end_date: z.string().optional(),
     is_current: z.boolean().default(false),
@@ -27,82 +30,82 @@ export const clubHistorySchema = z.object({
     assists: z.coerce.number().optional(),
 });
 
-export const achievementSchema = z.object({
-    title: z.string().min(2, "عنوان الإنجاز مطلوب"),
+const achievementSchema = z.object({
+    title: z.string().min(2, t('profile.validation.achievementTitleRequired')),
     date: z.string().optional(),
     description: z.string().optional(),
     type: z.string().optional(),
 });
 
-export const videoSchema = z.object({
-    title: z.string().min(2, "العنوان مطلوب"),
-    url: z.string().url("رابط غير صحيح"),
+const videoSchema = z.object({
+    title: z.string().min(2, t('profile.validation.titleRequired')),
+    url: z.string().url(t('profile.validation.invalidUrl')),
     type: z.enum(['youtube', 'vimeo', 'other', 'uploaded']).default('youtube'),
     createdAt: z.string().optional(),
 });
 
-export const injurySchema = z.object({
+const injurySchema = z.object({
     injury_type: z.string(),
     injury_date: z.string().optional(),
     status: z.enum(['recovered', 'healing', 'active']).default('recovered'),
     notes: z.string().optional(),
 });
 
-export const surgerySchema = z.object({
-    procedure: z.string().min(2, "اسم العملية مطلوب"),
+const surgerySchema = z.object({
+    procedure: z.string().min(2, t('profile.validation.surgeryNameRequired')),
     date: z.string().optional(),
     doctor: z.string().optional(),
     notes: z.string().optional(),
 });
 
-export const allergySchema = z.object({
+const allergySchema = z.object({
     allergen: z.string(),
     severity: z.enum(['mild', 'moderate', 'severe']).default('mild'),
     reaction: z.string().optional(),
 });
 
-export const medicationSchema = z.object({
+const medicationSchema = z.object({
     name: z.string(),
     dosage: z.string().optional(),
     frequency: z.string().optional(),
 });
 
-export const socialLinkSchema = z.object({
+const socialLinkSchema = z.object({
     platform: z.string(),
     url: z.string().optional(),
     handle: z.string().optional(),
 });
 
-export const documentSchema = z.object({
-    type: z.string().min(2, "نوع المستند مطلوب"),
-    name: z.string().min(2, "اسم المستند مطلوب"),
-    url: z.string().url("رابط الملف مطلوب"),
+const documentSchema = z.object({
+    type: z.string().min(2, t('profile.validation.documentTypeRequired')),
+    name: z.string().min(2, t('profile.validation.documentNameRequired')),
+    url: z.string().url(t('profile.validation.documentUrlRequired')),
 });
 
-export const languageSchema = z.object({
+const languageSchema = z.object({
     language: z.string(),
     level: z.enum(['Beginner', 'Intermediate', 'Advanced', 'Native']),
 });
 
-export const courseSchema = z.object({
-    name: z.string().min(2, "اسم الدورة مطلوب"),
+const courseSchema = z.object({
+    name: z.string().min(2, t('profile.validation.courseNameRequired')),
     date: z.string().optional(),
     organization: z.string().optional(),
 });
 
-export const profileSchema = z.object({
+return z.object({
     // Personal Info
-    name: z.string().min(3, "الاسم الكامل يجب أن يكون 3 أحرف على الأقل"),
-    birth_date: z.string().refine((val) => val !== '', "تاريخ الميلاد مطلوب"),
-    gender: z.enum(['male', 'female'], { required_error: "يرجى تحديد الجنس" }),
-    nationality: z.string().min(2, "الجنسية مطلوبة"),
-    country: z.string().min(2, "دولة الإقامة مطلوبة"),
-    city: z.string().min(2, "المدينة مطلوبة"),
+    name: z.string().min(3, t('profile.validation.fullNameMin')),
+    birth_date: z.string().refine((val) => val !== '', t('profile.validation.birthDateRequired')),
+    gender: z.enum(['male', 'female'], { required_error: t('profile.validation.genderRequired') }),
+    nationality: z.string().min(2, t('profile.validation.nationalityRequired')),
+    country: z.string().min(2, t('profile.validation.countryRequired')),
+    city: z.string().min(2, t('profile.validation.cityRequired')),
 
     // Contact Info
-    phone: z.string().min(8, "رقم الهاتف غير صحيح"),
+    phone: z.string().min(8, t('profile.validation.invalidPhone')),
     whatsapp: z.string().optional(),
-    email: z.string().email("البريد الإلكتروني غير صحيح"),
+    email: z.string().email(t('profile.validation.invalidEmail')),
     address: z.string().optional(),
 
     // Guardian Info (Required if Age < 18 - Logic handled in resolver or UI)
@@ -119,8 +122,8 @@ export const profileSchema = z.object({
     courses: z.array(courseSchema).default([]),
 
     // Medical
-    height: z.preprocess((val) => Number(val), z.number().min(50, "الطول يجب أن يكون سم").max(300).optional().or(z.literal(0))),
-    weight: z.preprocess((val) => Number(val), z.number().min(20, "الوزن يجب أن يكون كجم").max(200).optional().or(z.literal(0))),
+    height: z.preprocess((val) => Number(val), z.number().min(50, t('profile.validation.heightMin')).max(300).optional().or(z.literal(0))),
+    weight: z.preprocess((val) => Number(val), z.number().min(20, t('profile.validation.weightMin')).max(200).optional().or(z.literal(0))),
     blood_type: z.string().optional(),
     chronic_diseases: z.string().optional(),
     // surgeries: z.string().optional(), // Linked to old schema if needed, but we prefer array
@@ -133,7 +136,7 @@ export const profileSchema = z.object({
     family_history: z.string().optional(),
 
     // Sports Info
-    position: z.string().min(2, "المركز الأساسي مطلوب"),
+    position: z.string().min(2, t('profile.validation.positionRequired')),
     detailed_position: z.string().optional(),
     secondary_position: z.string().optional(),
     jersey_number: z.string().optional(),
@@ -206,8 +209,11 @@ export const profileSchema = z.object({
     }
     return true;
 }, {
-    message: "تاريخ نهاية العقد لا يمكن أن يكون في الماضي",
+    message: t('profile.validation.contractEndPast'),
     path: ["contract_end_date"]
 });
+};
+
+export const profileSchema = createProfileSchema((key) => key);
 
 export type ProfileFormValues = z.infer<typeof profileSchema>;

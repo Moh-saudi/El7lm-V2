@@ -59,7 +59,7 @@ export default function StoreSectionManager() {
   };
 
   const updateHighlight = (
-    locale: 'highlightsAr' | 'highlightsEn',
+    locale: 'highlightsAr' | 'highlightsEn' | 'highlightsEs' | 'highlightsPt',
     index: number,
     field: 'title' | 'desc',
     value: string
@@ -70,7 +70,7 @@ export default function StoreSectionManager() {
     setData({ ...data, [locale]: updated });
   };
 
-  const addHighlight = (locale: 'highlightsAr' | 'highlightsEn') => {
+  const addHighlight = (locale: 'highlightsAr' | 'highlightsEn' | 'highlightsEs' | 'highlightsPt') => {
     if (!data) return;
     setData({
       ...data,
@@ -78,7 +78,7 @@ export default function StoreSectionManager() {
     });
   };
 
-  const removeHighlight = (locale: 'highlightsAr' | 'highlightsEn', index: number) => {
+  const removeHighlight = (locale: 'highlightsAr' | 'highlightsEn' | 'highlightsEs' | 'highlightsPt', index: number) => {
     if (!data) return;
     setData({
       ...data,
@@ -211,6 +211,22 @@ export default function StoreSectionManager() {
             className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-left dark:border-slate-700 dark:bg-slate-900 dark:text-white"
           />
         </div>
+        {([
+          { code: 'Es', label: 'النصوص الإسبانية' },
+          { code: 'Pt', label: 'النصوص البرتغالية' },
+        ] as const).map((language) => {
+          const code = language.code;
+          return (
+            <div key={code} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+              <h3 className="border-b pb-3 text-lg font-bold dark:text-white dark:border-slate-700">{language.label}</h3>
+              <input dir="ltr" value={data[`badge${code}`]} onChange={(e) => setData({ ...data, [`badge${code}`]: e.target.value })} placeholder="Badge" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-left dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+              <input dir="ltr" value={data[`title${code}`]} onChange={(e) => setData({ ...data, [`title${code}`]: e.target.value })} placeholder="Title" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-left dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+              <textarea dir="ltr" value={data[`sub${code}`]} onChange={(e) => setData({ ...data, [`sub${code}`]: e.target.value })} rows={4} placeholder="Description" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-left dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+              <input dir="ltr" value={data[`cta${code}`]} onChange={(e) => setData({ ...data, [`cta${code}`]: e.target.value })} placeholder="Store CTA" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-left dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+              <input dir="ltr" value={data[`secondary${code}`]} onChange={(e) => setData({ ...data, [`secondary${code}`]: e.target.value })} placeholder="Secondary CTA" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-left dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+            </div>
+          );
+        })}
       </div>
 
       <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
@@ -301,7 +317,7 @@ export default function StoreSectionManager() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {(['highlightsAr', 'highlightsEn'] as const).map((localeKey) => {
+        {(['highlightsAr', 'highlightsEn', 'highlightsEs', 'highlightsPt'] as const).map((localeKey) => {
           const isArabic = localeKey === 'highlightsAr';
           const items = data[localeKey];
 
@@ -309,7 +325,7 @@ export default function StoreSectionManager() {
             <div key={localeKey} className="space-y-4">
               <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
                 <h3 className="text-lg font-bold dark:text-white">
-                  {isArabic ? 'نقاط البيع - عربي' : 'Highlights - English'}
+                  {isArabic ? 'نقاط البيع - عربي' : localeKey === 'highlightsEn' ? 'Highlights - English' : localeKey === 'highlightsEs' ? 'Destacados - Español' : 'Destaques - Português'}
                 </h3>
                 <button
                   onClick={() => addHighlight(localeKey)}

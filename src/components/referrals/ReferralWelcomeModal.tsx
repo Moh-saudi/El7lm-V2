@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { organizationReferralService } from '@/lib/organization/organization-referral-service';
+import { useTranslation } from '@/lib/i18n';
 
 interface ReferralWelcomeModalProps {
     playerId: string;
@@ -16,6 +17,8 @@ interface ReferralWelcomeModalProps {
 }
 
 export default function ReferralWelcomeModal({ playerId, playerName, onClose }: ReferralWelcomeModalProps) {
+    const { t, isRTL } = useTranslation();
+    const rt = (key: string) => t(`sharedComponents.referrals.${key}`);
     const [isVisible, setIsVisible] = useState(true);
     const [referralCode, setReferralCode] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,7 +44,7 @@ export default function ReferralWelcomeModal({ playerId, playerName, onClose }: 
 
     const handleSubmit = async () => {
         if (!referralCode.trim()) {
-            toast.error('الرجاء إدخال كود الإحالة');
+            toast.error(rt('codeRequired'));
             return;
         }
 
@@ -55,11 +58,11 @@ export default function ReferralWelcomeModal({ playerId, playerName, onClose }: 
                 referralCode.trim()
             );
 
-            toast.success('🎉 تم إرسال طلب الانضمام بنجاح!');
+            toast.success(`🎉 ${rt('requestSent')}`);
             handleClose();
         } catch (error: any) {
             console.error('Error submitting referral code:', error);
-            toast.error(error.message || 'حدث خطأ في إرسال الكود');
+            toast.error(error.message || rt('codeSendFailed'));
         } finally {
             setIsSubmitting(false);
         }
@@ -124,7 +127,7 @@ export default function ReferralWelcomeModal({ playerId, playerName, onClose }: 
                             </div>
 
                             {/* Content */}
-                            <div className="relative p-8 text-white">
+                            <div className="relative p-8 text-white" dir={isRTL ? 'rtl' : 'ltr'}>
                                 {/* Header */}
                                 <div className="text-center mb-6">
                                     <motion.div
@@ -142,7 +145,7 @@ export default function ReferralWelcomeModal({ playerId, playerName, onClose }: 
                                         transition={{ delay: 0.3 }}
                                         className="text-3xl font-bold mb-2"
                                     >
-                                        🎉 مرحباً بك في الحلم!
+                                        🎉 {rt('welcome')}
                                     </motion.h2>
 
                                     <motion.p
@@ -151,7 +154,7 @@ export default function ReferralWelcomeModal({ playerId, playerName, onClose }: 
                                         transition={{ delay: 0.4 }}
                                         className="text-white/90 text-lg"
                                     >
-                                        هل لديك كود إحالة من أكاديمية؟
+                                        {rt('haveReferralCode')}
                                     </motion.p>
                                 </div>
 
@@ -165,19 +168,19 @@ export default function ReferralWelcomeModal({ playerId, playerName, onClose }: 
                                     <div className="flex items-start gap-3">
                                         <CheckCircle2 className="h-5 w-5 text-white flex-shrink-0 mt-0.5" />
                                         <p className="text-white/95 text-sm">
-                                            <strong>انضم لأكاديمية:</strong> احصل على تدريب احترافي ومتابعة مستمرة
+                                            <strong>{rt('joinAcademy')}:</strong> {rt('joinAcademyBenefit')}
                                         </p>
                                     </div>
                                     <div className="flex items-start gap-3">
                                         <CheckCircle2 className="h-5 w-5 text-white flex-shrink-0 mt-0.5" />
                                         <p className="text-white/95 text-sm">
-                                            <strong>فرص أفضل:</strong> تواصل مع الأندية المحلية والدولية
+                                            <strong>{rt('betterOpportunities')}:</strong> {rt('betterOpportunitiesBenefit')}
                                         </p>
                                     </div>
                                     <div className="flex items-start gap-3">
                                         <CheckCircle2 className="h-5 w-5 text-white flex-shrink-0 mt-0.5" />
                                         <p className="text-white/95 text-sm">
-                                            <strong>دعم كامل:</strong> مساعدة في بناء ملفك التعريفي الاحترافي
+                                            <strong>{rt('fullSupport')}:</strong> {rt('fullSupportBenefit')}
                                         </p>
                                     </div>
                                 </motion.div>
@@ -191,7 +194,7 @@ export default function ReferralWelcomeModal({ playerId, playerName, onClose }: 
                                 >
                                     <div className="flex gap-2">
                                         <Input
-                                            placeholder="أدخل كود الإحالة (مثال: ACAD-123)"
+                                            placeholder={rt('codePlaceholder')}
                                             value={referralCode}
                                             onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
                                             className="flex-1 bg-white/20 border-white/30 text-white placeholder:text-white/60 focus:bg-white/30 focus:border-white/50 transition-all"
@@ -202,7 +205,7 @@ export default function ReferralWelcomeModal({ playerId, playerName, onClose }: 
                                             disabled={isSubmitting || !referralCode.trim()}
                                             className="bg-white text-emerald-600 hover:bg-white/90 font-semibold px-6 shadow-lg"
                                         >
-                                            {isSubmitting ? 'جاري الإرسال...' : 'انضم الآن'}
+                                            {isSubmitting ? rt('sending') : rt('joinNow')}
                                         </Button>
                                     </div>
 
@@ -211,7 +214,7 @@ export default function ReferralWelcomeModal({ playerId, playerName, onClose }: 
                                         onClick={handleClose}
                                         className="w-full text-white/80 hover:text-white hover:bg-white/10"
                                     >
-                                        ليس لدي كود الآن
+                                        {rt('noCodeNow')}
                                     </Button>
 
                                     {/* Don't show again checkbox */}
@@ -226,7 +229,7 @@ export default function ReferralWelcomeModal({ playerId, playerName, onClose }: 
                                             htmlFor="dontShowAgain"
                                             className="text-sm text-white/70 cursor-pointer hover:text-white/90 transition-colors"
                                         >
-                                            لا تظهر هذه النافذة مرة أخرى
+                                            {rt('doNotShowAgain')}
                                         </label>
                                     </div>
                                 </motion.div>
@@ -238,7 +241,7 @@ export default function ReferralWelcomeModal({ playerId, playerName, onClose }: 
                                     transition={{ delay: 0.7 }}
                                     className="text-center text-white/70 text-xs mt-4"
                                 >
-                                    💡 يمكنك إضافة الكود لاحقاً من صفحة "الإحالات"
+                                    💡 {rt('addCodeLater')}
                                 </motion.p>
 
                                 {/* Auto-close timer indicator */}
@@ -257,7 +260,7 @@ export default function ReferralWelcomeModal({ playerId, playerName, onClose }: 
                                         />
                                     </div>
                                     <p className="text-center text-white/50 text-xs mt-1">
-                                        ستُغلق تلقائياً بعد 7 ثواني
+                                        {rt('closesInSevenSeconds')}
                                     </p>
                                 </motion.div>
                             </div>

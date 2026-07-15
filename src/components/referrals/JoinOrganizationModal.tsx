@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner';
 import { organizationReferralService } from '@/lib/organization/organization-referral-service';
 import { getOrganizationDetails } from '@/utils/player-organization';
+import { useTranslation } from '@/lib/i18n';
 
 interface JoinOrganizationModalProps {
     playerId: string;
@@ -34,15 +35,15 @@ const getOrganizationIcon = (type: string) => {
 const getOrganizationTypeLabel = (type: string) => {
     switch (type) {
         case 'academy':
-            return 'أكاديمية';
+            return 'academy';
         case 'club':
-            return 'نادي';
+            return 'club';
         case 'agent':
-            return 'وكيل';
+            return 'agent';
         case 'trainer':
-            return 'مدرب';
+            return 'trainer';
         default:
-            return 'منظمة';
+            return 'organization';
     }
 };
 
@@ -53,6 +54,8 @@ export default function JoinOrganizationModal({
     onClose,
     onSuccess
 }: JoinOrganizationModalProps) {
+    const { t, isRTL } = useTranslation();
+    const rt = (key: string) => t(`sharedComponents.referrals.${key}`);
     const [referralCode, setReferralCode] = useState('');
     const [isVerifying, setIsVerifying] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,7 +63,7 @@ export default function JoinOrganizationModal({
 
     const handleVerifyCode = async () => {
         if (!referralCode.trim()) {
-            toast.error('الرجاء إدخال كود الإحالة');
+            toast.error(rt('codeRequired'));
             return;
         }
 
@@ -72,7 +75,7 @@ export default function JoinOrganizationModal({
             const orgReferral = await organizationReferralService.verifyReferralCode(referralCode.trim());
 
             if (!orgReferral) {
-                toast.error('كود الإحالة غير صحيح أو منتهي الصلاحية');
+                toast.error(rt('invalidCode'));
                 return;
             }
 
@@ -87,10 +90,10 @@ export default function JoinOrganizationModal({
                 details: orgDetails
             });
 
-            toast.success('تم التحقق من الكود بنجاح!');
+            toast.success(rt('codeVerified'));
         } catch (error: any) {
             console.error('Error verifying code:', error);
-            toast.error(error.message || 'حدث خطأ في التحقق من الكود');
+            toast.error(error.message || rt('codeVerifyFailed'));
         } finally {
             setIsVerifying(false);
         }
@@ -108,12 +111,12 @@ export default function JoinOrganizationModal({
                 referralCode.trim()
             );
 
-            toast.success('🎉 تم إرسال طلب الانضمام بنجاح!');
+            toast.success(`🎉 ${rt('requestSent')}`);
             onSuccess();
             handleClose();
         } catch (error: any) {
             console.error('Error submitting request:', error);
-            toast.error(error.message || 'حدث خطأ في إرسال الطلب');
+            toast.error(error.message || rt('requestSendFailed'));
         } finally {
             setIsSubmitting(false);
         }
@@ -129,10 +132,10 @@ export default function JoinOrganizationModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md" dir={isRTL ? 'rtl' : 'ltr'}>
                 <DialogHeader>
                     <DialogTitle className="text-xl font-bold text-center">
-                        {verifiedOrg ? '✅ تأكيد الانضمام' : '🔍 الانضمام لمنظمة'}
+                        {verifiedOrg ? `✅ ${rt('confirmJoin')}` : `🔍 ${rt('joinOrganization')}`}
                     </DialogTitle>
                 </DialogHeader>
 
@@ -142,13 +145,13 @@ export default function JoinOrganizationModal({
                         <>
                             <div className="text-center mb-4">
                                 <p className="text-sm text-gray-600">
-                                    أدخل كود الإحالة الذي حصلت عليه من الأكاديمية أو النادي
+                                    {rt('enterCodeDescription')}
                                 </p>
                             </div>
 
                             <div className="space-y-3">
                                 <Input
-                                    placeholder="أدخل كود الإحالة (مثال: ACAD-123)"
+                                    placeholder={rt('codePlaceholder')}
                                     value={referralCode}
                                     onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
                                     className="text-center text-lg font-mono"
@@ -169,12 +172,12 @@ export default function JoinOrganizationModal({
                                     {isVerifying ? (
                                         <>
                                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                            جاري التحقق...
+                                            {rt('verifying')}
                                         </>
                                     ) : (
                                         <>
                                             <Search className="h-4 w-4 mr-2" />
-                                            التحقق من الكود
+                                            {rt('verifyCode')}
                                         </>
                                     )}
                                 </Button>
@@ -182,7 +185,7 @@ export default function JoinOrganizationModal({
 
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
                                 <p className="text-xs text-blue-800">
-                                    💡 <strong>ملاحظة:</strong> بعد إدخال الكود الصحيح، ستظهر لك بيانات المنظمة للتأكيد قبل الانضمام
+                                    💡 <strong>{rt('note')}:</strong> {rt('verifyNote')}
                                 </p>
                             </div>
                         </>
@@ -209,7 +212,7 @@ export default function JoinOrganizationModal({
                                             {verifiedOrg.organizationName}
                                         </h3>
                                         <p className="text-sm text-emerald-700 font-medium mb-2">
-                                            {getOrganizationTypeLabel(verifiedOrg.organizationType)}
+                                            {rt(`orgTypes.${getOrganizationTypeLabel(verifiedOrg.organizationType)}`)}
                                         </p>
 
                                         {verifiedOrg.description && (
@@ -221,11 +224,11 @@ export default function JoinOrganizationModal({
                                         <div className="flex flex-wrap gap-2 mt-2">
                                             <div className="inline-flex items-center gap-1 px-2 py-1 bg-white rounded-full text-xs">
                                                 <CheckCircle2 className="h-3 w-3 text-green-600" />
-                                                <span>كود صالح</span>
+                                                <span>{rt('validCode')}</span>
                                             </div>
                                             {verifiedOrg.currentUsage !== undefined && verifiedOrg.maxUsage && (
                                                 <div className="inline-flex items-center gap-1 px-2 py-1 bg-white rounded-full text-xs">
-                                                    📊 {verifiedOrg.currentUsage}/{verifiedOrg.maxUsage} منضم
+                                                    📊 {verifiedOrg.currentUsage}/{verifiedOrg.maxUsage} {rt('joined')}
                                                 </div>
                                             )}
                                         </div>
@@ -236,8 +239,8 @@ export default function JoinOrganizationModal({
                             {/* معلومات إضافية */}
                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
                                 <p className="text-xs text-amber-800">
-                                    ⚠️ سيتم إرسال طلب الانضمام إلى <strong>{verifiedOrg.organizationName}</strong>.
-                                    سيتم قبولك بعد موافقة المنظمة على طلبك.
+                                    ⚠️ {rt('requestWillBeSent')} <strong>{verifiedOrg.organizationName}</strong>.
+                                    {' '}{rt('approvalRequired')}
                                 </p>
                             </div>
 
@@ -249,7 +252,7 @@ export default function JoinOrganizationModal({
                                     className="flex-1"
                                     disabled={isSubmitting}
                                 >
-                                    إلغاء
+                                    {rt('cancel')}
                                 </Button>
                                 <Button
                                     onClick={handleSubmitRequest}
@@ -259,12 +262,12 @@ export default function JoinOrganizationModal({
                                     {isSubmitting ? (
                                         <>
                                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                            جاري الإرسال...
+                                            {rt('sending')}
                                         </>
                                     ) : (
                                         <>
                                             <CheckCircle2 className="h-4 w-4 mr-2" />
-                                            تأكيد الانضمام
+                                            {rt('confirmJoin')}
                                         </>
                                     )}
                                 </Button>

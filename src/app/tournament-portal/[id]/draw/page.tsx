@@ -11,6 +11,7 @@ import {
 import { toast } from 'sonner';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
+import { useTranslation } from '@/lib/i18n';
 
 const { Text } = Typography;
 
@@ -38,6 +39,8 @@ function TeamAvatar({ team, size = 32 }: { team: Team; size?: number }) {
 }
 
 export default function DrawPage() {
+  const { getTranslations } = useTranslation();
+  const copy = getTranslations<any>('tournamentDraw');
   const { id }      = useParams<{ id: string }>();
   const { isDark }  = usePortalTheme();
 
@@ -92,12 +95,12 @@ export default function DrawPage() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const createGroups = async () => {
-    if (customGroupCount < 2) { toast.error('يجب 2 مجموعات على الأقل'); return; }
+    if (customGroupCount < 2) { toast.error(copy.minGroups); return; }
     setCreatingGroups(true);
     const res = await fetch('/api/tournament-portal/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tournament_id: id, category_id: selectedCat, count: customGroupCount }) });
     const data = await res.json();
     if (!res.ok) toast.error(data.error);
-    else { setGroups((data.groups || []).map((g: any) => ({ ...g, teams: [] }))); toast.success(`تم إنشاء ${customGroupCount} مجموعات`); }
+    else { setGroups((data.groups || []).map((g: any) => ({ ...g, teams: [] }))); toast.success(copy.groupsCreated.replace('{count}', customGroupCount)); }
     setCreatingGroups(false);
   };
 
@@ -123,7 +126,7 @@ export default function DrawPage() {
       return g;
     }));
     setSelectedTeam(null);
-    toast.success(`تم نقل ${team.name}`);
+    toast.success(copy.moved.replace('{team}', team.name));
   };
 
   const removeFromGroup = (team: Team, groupId: string) => {
@@ -141,7 +144,7 @@ export default function DrawPage() {
       return g;
     }));
     setSelectedTeam(null);
-    toast.success(`تم تبديل ${src.name} ↔ ${targetTeam.name}`);
+    toast.success(copy.swapped.replace('{first}',src.name).replace('{second}',targetTeam.name));
   };
 
   const addUnassignedToGroup = (team: Team, toGroupId: string) => {
@@ -149,8 +152,8 @@ export default function DrawPage() {
   };
 
   const performDraw = () => {
-    if (groups.length === 0) { toast.error('أنشئ المجموعات أولاً'); return; }
-    if (allTeams.length === 0) { toast.error('لا توجد فرق مقبولة'); return; }
+    if (groups.length === 0) { toast.error(copy.createGroupsFirst); return; }
+    if (allTeams.length === 0) { toast.error(copy.noAcceptedTeams); return; }
     const seeded   = [...allTeams.filter((t) => t.seed)].sort((a, b) => (a.seed || 99) - (b.seed || 99));
     const unseeded = [...allTeams.filter((t) => !t.seed)].sort(() => Math.random() - 0.5);
     const dist: Group[] = groups.map((g) => ({ ...g, teams: [] }));
@@ -163,7 +166,7 @@ export default function DrawPage() {
       dist[gi].teams.push(team); gi = (gi + 1) % groups.length;
     }
     setGroups(dist); setSelectedTeam(null);
-    toast.success('تمت القرعة — راجع التوزيع وعدّله إذا أردت ثم احفظ');
+    toast.success(copy.drawReady);
   };
 
   const saveDraw = async () => {
@@ -171,7 +174,7 @@ export default function DrawPage() {
     const res = await fetch('/api/tournament-portal/save-draw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category_id: selectedCat !== 'all' ? selectedCat : null, groups: groups.map((g) => ({ id: g.id, teams: g.teams.map((t) => ({ id: t.id, category_id: t.category_id })) })) }) });
     const data = await res.json();
     if (!res.ok) toast.error(data.error);
-    else toast.success('تم حفظ القرعة بنجاح ✓');
+    else toast.success(copy.saved);
     setSaving(false);
   };
 
@@ -179,7 +182,7 @@ export default function DrawPage() {
     <div style={{ display: 'flex', justifyContent: 'center', padding: 80 }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ width: 48, height: 48, borderRadius: '50%', border: `3px solid ${isDark ? '#1e293b' : '#e5e7eb'}`, borderTopColor: '#d97706', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-        <Text style={{ color: textSec }}>جاري تحميل القرعة...</Text>
+        <Text style={{ color: textSec }}>{copy.loading}</Text>
       </div>
     </div>
   );
@@ -190,9 +193,9 @@ export default function DrawPage() {
   const step3Done = false;
 
   const STEPS = [
-    { n: 1, label: 'إنشاء المجموعات', done: step1Done },
-    { n: 2, label: 'توزيع الفرق',     done: step2Done },
-    { n: 3, label: 'حفظ القرعة',      done: step3Done },
+    { n: 1, label: copy.steps[0], done: step1Done },
+    { n: 2, label: copy.steps[1], done: step2Done },
+    { n: 3, label: copy.steps[2], done: step3Done },
   ];
 
   return (
@@ -268,7 +271,7 @@ export default function DrawPage() {
             </div>
             <div>
               <Text style={{ color: text, fontWeight: 700, fontSize: 18, lineHeight: 1, display: 'block' }}>{allTeams.length}</Text>
-              <Text style={{ color: textSec, fontSize: 12 }}>فريق</Text>
+              <Text style={{ color: textSec, fontSize: 12 }}>{copy.team}</Text>
             </div>
           </div>
 
@@ -278,7 +281,7 @@ export default function DrawPage() {
             </div>
             <div>
               <Text style={{ color: text, fontWeight: 700, fontSize: 18, lineHeight: 1, display: 'block' }}>{groups.length}</Text>
-              <Text style={{ color: textSec, fontSize: 12 }}>مجموعة</Text>
+              <Text style={{ color: textSec, fontSize: 12 }}>{copy.group}</Text>
             </div>
           </div>
 
@@ -289,7 +292,7 @@ export default function DrawPage() {
               </div>
               <div>
                 <Text style={{ color: '#ef4444', fontWeight: 700, fontSize: 18, lineHeight: 1, display: 'block' }}>{unassigned.length}</Text>
-                <Text style={{ color: textSec, fontSize: 12 }}>غير موزع</Text>
+                <Text style={{ color: textSec, fontSize: 12 }}>{copy.unassigned}</Text>
               </div>
             </div>
           )}
@@ -300,22 +303,22 @@ export default function DrawPage() {
                 <CheckCircleOutlined style={{ color: '#16a34a', fontSize: 16 }} />
               </div>
               <div>
-                <Text style={{ color: '#16a34a', fontWeight: 700, fontSize: 14, lineHeight: 1, display: 'block' }}>مكتمل</Text>
-                <Text style={{ color: textSec, fontSize: 12 }}>جاهز للحفظ</Text>
+                <Text style={{ color: '#16a34a', fontWeight: 700, fontSize: 14, lineHeight: 1, display: 'block' }}>{copy.complete}</Text>
+                <Text style={{ color: textSec, fontSize: 12 }}>{copy.readyToSave}</Text>
               </div>
             </div>
           )}
         </div>
 
         {/* Actions */}
-        <div style={{ marginRight: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ marginInlineStart: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           {/* Create groups inline */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
             background: bgSoft, border: `1px solid ${border}`,
             borderRadius: 10, padding: '6px 12px',
           }}>
-            <Text style={{ color: textSec, fontSize: 13 }}>مجموعات:</Text>
+            <Text style={{ color: textSec, fontSize: 13 }}>{copy.groups}</Text>
             <InputNumber
               min={2} max={16} value={customGroupCount}
               onChange={(v) => setCustomGroupCount(v || 4)}
@@ -334,7 +337,7 @@ export default function DrawPage() {
               }}
             >
               <PlusOutlined />
-              {groups.length > 0 ? 'إعادة' : 'إنشاء'}
+              {groups.length > 0 ? copy.recreate : copy.create}
             </button>
           </div>
 
@@ -352,7 +355,7 @@ export default function DrawPage() {
             }}
           >
             <ThunderboltOutlined style={{ fontSize: 15 }} />
-            {isDrawn ? 'إعادة القرعة' : 'قرعة عشوائية'}
+            {isDrawn ? copy.redraw : copy.randomDraw}
           </button>
 
           {isDrawn && (
@@ -370,7 +373,7 @@ export default function DrawPage() {
               }}
             >
               <SaveOutlined style={{ fontSize: 15 }} />
-              {saving ? 'جاري الحفظ...' : 'حفظ القرعة'}
+              {saving ? copy.saving : copy.save}
             </button>
           )}
         </div>
@@ -389,10 +392,10 @@ export default function DrawPage() {
           </div>
           <div>
             <Text style={{ color: isDark ? '#fbbf24' : '#92400e', fontWeight: 700, fontSize: 14, display: 'block' }}>
-              لا توجد فرق مقبولة بعد
+              {copy.noTeamsTitle}
             </Text>
             <Text style={{ color: isDark ? '#d97706' : '#b45309', fontSize: 13 }}>
-              اذهب لصفحة التسجيلات واقبل الفرق أولاً قبل إجراء القرعة
+              {copy.noTeamsHelp}
             </Text>
           </div>
         </div>
@@ -422,7 +425,7 @@ export default function DrawPage() {
               {selectedTeam.team.name}
             </Text>
             <Text style={{ color: isDark ? '#818cf8' : '#6366f1', fontSize: 13 }}>
-              {selectedTeam.fromGroupId ? 'محدد من مجموعة — انقر على مجموعة أخرى لنقله أو على فريق لمبادلتهما' : 'انقر على مجموعة لإضافته إليها'}
+              {selectedTeam.fromGroupId ? copy.selectedFromGroup : copy.clickGroup}
             </Text>
           </div>
           <button
@@ -457,7 +460,7 @@ export default function DrawPage() {
               <TeamOutlined style={{ color: '#ef4444', fontSize: 14 }} />
             </div>
             <Text style={{ color: '#ef4444', fontWeight: 700, fontSize: 14 }}>
-              فرق غير موزعة
+              {copy.unassignedTeams}
             </Text>
             <div style={{ background: '#ef4444', color: '#fff', borderRadius: 20, padding: '1px 10px', fontSize: 12, fontWeight: 700 }}>
               {unassigned.length}
@@ -487,7 +490,7 @@ export default function DrawPage() {
                     </Text>
                     {team.seed && (
                       <div style={{ background: '#d97706', color: '#fff', borderRadius: 6, padding: '1px 6px', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
-                        بذرة {team.seed}
+                        {copy.seed.replace('{number}',team.seed)}
                       </div>
                     )}
                   </div>
@@ -495,7 +498,7 @@ export default function DrawPage() {
                   {groups.length > 0 && (
                     <Select
                       size="small"
-                      placeholder="← نقل"
+                      placeholder={copy.move}
                       style={{ width: 100 }}
                       value={undefined}
                       onChange={(gid) => addUnassignedToGroup(team, gid)}
@@ -521,10 +524,10 @@ export default function DrawPage() {
               <TrophyOutlined style={{ fontSize: 30, color: '#d97706' }} />
             </div>
             <Text style={{ color: text, fontWeight: 700, fontSize: 16, display: 'block', marginBottom: 8 }}>
-              لم تُنشأ المجموعات بعد
+              {copy.noGroups}
             </Text>
             <Text style={{ color: textSec, fontSize: 14 }}>
-              حدد عدد المجموعات من شريط الأدوات أعلاه ثم اضغط «إنشاء»
+              {copy.noGroupsHelp}
             </Text>
           </div>
         )
@@ -571,8 +574,8 @@ export default function DrawPage() {
                       {group.name}
                     </Text>
                     <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>
-                      {group.teams.length} فريق
-                      {isTarget && <span style={{ color: '#c7d2fe', marginRight: 6 }}>← انقر للنقل هنا</span>}
+                      {group.teams.length} {copy.team}
+                      {isTarget && <span style={{ color: '#c7d2fe', marginInlineStart: 6 }}>{copy.clickMoveHere}</span>}
                     </Text>
                   </div>
                   <button
@@ -601,7 +604,7 @@ export default function DrawPage() {
                         transition: 'color 0.15s',
                       }}
                     >
-                      {selectedTeam ? '← اضغط هنا لنقل الفريق' : 'المجموعة فارغة'}
+                      {selectedTeam ? copy.clickToMove : copy.emptyGroup}
                     </div>
                   ) : (
                     <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -687,9 +690,9 @@ export default function DrawPage() {
           transition: 'all 0.3s',
         }}>
           {[
-            { color: '#6366f1', bg: isDark ? 'rgba(99,102,241,0.2)' : '#eef2ff', label: 'فريق محدد — انقر على مجموعة لنقله' },
-            { color: '#d97706', bg: isDark ? 'rgba(217,119,6,0.15)' : '#fffbeb', label: 'يمكن مبادلته مع الفريق المحدد' },
-            { color: textSec, bg: bgSoft, label: 'اضغط × لإرجاع الفريق لقائمة الانتظار' },
+            { color: '#6366f1', bg: isDark ? 'rgba(99,102,241,0.2)' : '#eef2ff', label: copy.legend[0] },
+            { color: '#d97706', bg: isDark ? 'rgba(217,119,6,0.15)' : '#fffbeb', label: copy.legend[1] },
+            { color: textSec, bg: bgSoft, label: copy.legend[2] },
           ].map((item, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
               <div style={{ width: 14, height: 14, borderRadius: 4, background: item.bg, border: `1.5px solid ${item.color}`, flexShrink: 0 }} />

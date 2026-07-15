@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { profileSchema, ProfileFormValues } from '../schemas/profile';
+import { createProfileSchema, ProfileFormValues } from '../schemas/profile';
 import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 
 export const usePlayerProfile = () => {
@@ -13,6 +14,8 @@ export const usePlayerProfile = () => {
     const [saving, setSaving] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const { user } = useAuth();
+    const { t, locale } = useTranslation();
+    const profileSchema = useMemo(() => createProfileSchema(t), [locale, t]);
 
     const form = useForm<ProfileFormValues>({
         resolver: zodResolver(profileSchema) as any,
@@ -143,14 +146,14 @@ export const usePlayerProfile = () => {
                 }
             } catch (error) {
                 console.error("Error fetching profile:", error);
-                toast.error("فشل تحميل بيانات الملف الشخصي");
+                toast.error(t('profile.notifications.loadFailed'));
             } finally {
                 setLoading(false);
             }
         };
 
         fetchProfile();
-    }, [user, form]);
+    }, [user, form, t]);
 
     const saveProfile = async (values: ProfileFormValues) => {
         if (!user) return;
@@ -184,11 +187,11 @@ export const usePlayerProfile = () => {
                 isProfileComplete: true
             });
 
-            toast.success("تم حفظ التغييرات بنجاح");
+            toast.success(t('profile.notifications.saved'));
             setIsEditing(false);
         } catch (error) {
             console.error("Error saving profile:", error);
-            toast.error("حدث خطأ أثناء الحفظ. يرجى المحاولة مرة أخرى.");
+            toast.error(t('profile.notifications.saveFailed'));
         }
         setSaving(false);
     };

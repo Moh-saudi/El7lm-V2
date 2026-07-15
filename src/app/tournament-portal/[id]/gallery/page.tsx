@@ -5,18 +5,16 @@ import { useParams } from 'next/navigation';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { toast } from 'sonner';
+import { useTranslation } from '@/lib/i18n';
 
 type Photo   = { id: string; url: string; caption: string | null; uploaded_at: string };
 type Sponsor = { id: string; name: string; logo_url: string | null; tier: string; website_url: string | null };
 
-const TIERS: { id: string; label: string; color: string }[] = [
-  { id: 'platinum', label: '💎 بلاتيني', color: '#e2e8f0' },
-  { id: 'gold',     label: '🥇 ذهبي',    color: '#f59e0b' },
-  { id: 'silver',   label: '🥈 فضي',     color: '#94a3b8' },
-  { id: 'bronze',   label: '🥉 برونزي',  color: '#b45309' },
-];
+const TIERS = [{id:'platinum',color:'#e2e8f0'},{id:'gold',color:'#f59e0b'},{id:'silver',color:'#94a3b8'},{id:'bronze',color:'#b45309'}];
 
 export default function GalleryPage() {
+  const { getTranslations } = useTranslation();
+  const copy = getTranslations<any>('tournamentGallery');
   const { id }     = useParams<{ id: string }>();
   const { isDark } = usePortalTheme();
   const S = isDark ? D : L;
@@ -63,12 +61,12 @@ export default function GalleryPage() {
         form.append('path', path);
         const res  = await fetch('/api/storage/upload', { method: 'POST', body: form });
         const json = await res.json();
-        if (!json.url) { toast.error('فشل رفع الصورة'); continue; }
+        if (!json.url) { toast.error(copy.uploadFailed); continue; }
         await supabase.from('tournament_gallery').insert({ tournament_id: id, url: json.url, caption: null });
       }
       const { data } = await supabase.from('tournament_gallery').select('*').eq('tournament_id', id).order('uploaded_at', { ascending: false });
       setPhotos(data || []);
-      toast.success('تم رفع الصور');
+      toast.success(copy.uploaded);
     } catch (e: any) { toast.error(e.message); }
     setUploading(false);
   };
@@ -76,7 +74,7 @@ export default function GalleryPage() {
   const deletePhoto = async (photoId: string) => {
     await supabase.from('tournament_gallery').delete().eq('id', photoId);
     setPhotos(p => p.filter(x => x.id !== photoId));
-    toast.success('تم الحذف');
+    toast.success(copy.deleted);
   };
 
   const uploadSponsorLogo = async (file: File): Promise<string | null> => {
@@ -92,19 +90,19 @@ export default function GalleryPage() {
   };
 
   const saveSponsor = async () => {
-    if (!sName.trim()) { toast.error('أدخل اسم الراعي'); return; }
+    if (!sName.trim()) { toast.error(copy.enterSponsor); return; }
     const { data, error } = await supabase.from('tournament_sponsors').insert({ tournament_id: id, name: sName.trim(), logo_url: sLogo || null, tier: sTier, website_url: sWeb.trim() || null }).select().single();
     if (error) { toast.error(error.message); return; }
     setSponsors(s => [...s, data]);
     setSName(''); setSTier('gold'); setSWeb(''); setSLogo('');
     setShowSponsorForm(false);
-    toast.success('تم إضافة الراعي');
+    toast.success(copy.sponsorAdded);
   };
 
   const deleteSponsor = async (sId: string) => {
     await supabase.from('tournament_sponsors').delete().eq('id', sId);
     setSponsors(s => s.filter(x => x.id !== sId));
-    toast.success('تم الحذف');
+    toast.success(copy.deleted);
   };
 
   if (loading) return <Loader isDark={isDark} />;
@@ -119,8 +117,8 @@ export default function GalleryPage() {
 
       {/* Tab bar */}
       <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: 14, padding: '4px', display: 'flex', gap: 4 }}>
-        {([['photos','🖼️ معرض الصور'],['sponsors','🤝 الرعاة']] as const).map(([k, lbl]) => (
-          <button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: '9px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, transition: 'all 0.15s', background: tab === k ? '#d97706' : 'transparent', color: tab === k ? '#fff' : S.text2 }}>{lbl}</button>
+        {(['photos','sponsors'] as const).map((k, index) => (
+          <button key={k} onClick={() => setTab(k)} style={{ flex: 1, padding: '9px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, transition: 'all 0.15s', background: tab === k ? '#d97706' : 'transparent', color: tab === k ? '#fff' : S.text2 }}>{copy.tabs[index]}</button>
         ))}
       </div>
 
@@ -130,12 +128,12 @@ export default function GalleryPage() {
           {/* Upload bar */}
           <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>رفع صور البطولة</div>
-              <div style={{ fontSize: 12, color: S.text2, marginTop: 2 }}>يمكنك رفع عدة صور دفعة واحدة · JPG, PNG, WebP</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: S.text }}>{copy.uploadTitle}</div>
+              <div style={{ fontSize: 12, color: S.text2, marginTop: 2 }}>{copy.uploadHelp}</div>
             </div>
             <input ref={photoInput} type="file" accept="image/*" multiple hidden onChange={e => e.target.files && uploadPhotos(e.target.files)} />
             <button onClick={() => photoInput.current?.click()} disabled={uploading} className="sp-btn sp-btn-primary sp-btn-sm">
-              {uploading ? '⏳ جاري الرفع...' : '📤 رفع صور'}
+              {uploading ? `⏳ ${copy.uploading}` : `📤 ${copy.upload}`}
             </button>
           </div>
 
@@ -143,7 +141,7 @@ export default function GalleryPage() {
           {photos.length === 0
             ? <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: 14, padding: '48px 24px', textAlign: 'center', color: S.text2, fontSize: 14 }}>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>🖼️</div>
-                <div>لا توجد صور بعد — ارفع أولى صور البطولة</div>
+                <div>{copy.noPhotos}</div>
               </div>
             : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
                 {photos.map(p => (
@@ -163,9 +161,9 @@ export default function GalleryPage() {
           {/* Add sponsor bar */}
           <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: 14, padding: '14px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: showSponsorForm ? 14 : 0 }}>
-              <div style={{ flex: 1, fontSize: 14, fontWeight: 700, color: S.text }}>🤝 إضافة راعٍ جديد</div>
+              <div style={{ flex: 1, fontSize: 14, fontWeight: 700, color: S.text }}>🤝 {copy.newSponsor}</div>
               <button onClick={() => setShowSponsorForm(f => !f)} className="sp-btn sp-btn-primary sp-btn-sm">
-                {showSponsorForm ? '✕ إلغاء' : '+ إضافة راعٍ'}
+                {showSponsorForm ? `✕ ${copy.cancel}` : `+ ${copy.addSponsor}`}
               </button>
             </div>
 
@@ -173,18 +171,18 @@ export default function GalleryPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div>
-                    <label className="sp-label">اسم الراعي *</label>
-                    <input className="sp-input" value={sName} onChange={e => setSName(e.target.value)} placeholder="مثال: شركة الاتصالات" />
+                    <label className="sp-label">{copy.sponsorName}</label>
+                    <input className="sp-input" value={sName} onChange={e => setSName(e.target.value)} placeholder={copy.sponsorPlaceholder} />
                   </div>
                   <div>
-                    <label className="sp-label">الفئة</label>
+                    <label className="sp-label">{copy.tier}</label>
                     <select className="sp-select" value={sTier} onChange={e => setSTier(e.target.value)}>
-                      {TIERS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                      {TIERS.map((t,index) => <option key={t.id} value={t.id}>{copy.tiers[index]}</option>)}
                     </select>
                   </div>
                 </div>
                 <div>
-                  <label className="sp-label">الموقع الإلكتروني (اختياري)</label>
+                  <label className="sp-label">{copy.website}</label>
                   <input className="sp-input" value={sWeb} onChange={e => setSWeb(e.target.value)} placeholder="https://..." dir="ltr" />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -193,11 +191,11 @@ export default function GalleryPage() {
                     const url = await uploadSponsorLogo(e.target.files[0]);
                     if (url) setSLogo(url);
                   }} />
-                  <button onClick={() => sponsorInput.current?.click()} className="sp-btn sp-btn-ghost sp-btn-sm">📤 رفع شعار</button>
+                  <button onClick={() => sponsorInput.current?.click()} className="sp-btn sp-btn-ghost sp-btn-sm">📤 {copy.logo}</button>
                   {sLogo && <img src={sLogo} alt="" style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 6, border: `1px solid ${S.border}` }} />}
-                  {sLogo && <button onClick={() => setSLogo('')} style={{ background: 'none', border: 'none', color: S.text2, cursor: 'pointer', fontSize: 12 }}>✕ إزالة الشعار</button>}
+                  {sLogo && <button onClick={() => setSLogo('')} style={{ background: 'none', border: 'none', color: S.text2, cursor: 'pointer', fontSize: 12 }}>✕ {copy.removeLogo}</button>}
                 </div>
-                <button onClick={saveSponsor} className="sp-btn sp-btn-primary">💾 حفظ الراعي</button>
+                <button onClick={saveSponsor} className="sp-btn sp-btn-primary">💾 {copy.save}</button>
               </div>
             )}
           </div>
@@ -206,14 +204,14 @@ export default function GalleryPage() {
           {sponsors.length === 0
             ? <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: 14, padding: '48px 24px', textAlign: 'center', color: S.text2, fontSize: 14 }}>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>🤝</div>
-                <div>لا يوجد رعاة بعد</div>
+                <div>{copy.noSponsors}</div>
               </div>
             : <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {[
-                  { tier: 'platinum', label: '💎 الرعاة البلاتينيون', items: platinums, color: '#e2e8f0', size: 90 },
-                  { tier: 'gold',     label: '🥇 الرعاة الذهبيون',    items: golds,     color: '#f59e0b', size: 70 },
-                  { tier: 'silver',   label: '🥈 الرعاة الفضيون',     items: silvers,   color: '#94a3b8', size: 56 },
-                  { tier: 'bronze',   label: '🥉 الرعاة البرونزيون',  items: bronzes,   color: '#b45309', size: 44 },
+                  { tier: 'platinum', label: copy.groups[0], items: platinums, color: '#e2e8f0', size: 90 },
+                  { tier: 'gold', label: copy.groups[1], items: golds, color: '#f59e0b', size: 70 },
+                  { tier: 'silver', label: copy.groups[2], items: silvers, color: '#94a3b8', size: 56 },
+                  { tier: 'bronze', label: copy.groups[3], items: bronzes, color: '#b45309', size: 44 },
                 ].filter(tier => tier.items.length > 0).map(tier => (
                   <div key={tier.tier} style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: 14, padding: '16px 18px' }}>
                     <div style={{ fontSize: 13, fontWeight: 800, color: tier.color, marginBottom: 12 }}>{tier.label}</div>
@@ -227,7 +225,7 @@ export default function GalleryPage() {
                           }
                           <div style={{ fontSize: 12, fontWeight: 700, color: S.text, textAlign: 'center' }}>{sp.name}</div>
                           {sp.website_url && (
-                            <a href={sp.website_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: '#3b82f6', textDecoration: 'none' }}>🔗 الموقع</a>
+                            <a href={sp.website_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, color: '#3b82f6', textDecoration: 'none' }}>🔗 {copy.site}</a>
                           )}
                         </div>
                       ))}
@@ -242,7 +240,7 @@ export default function GalleryPage() {
       {/* Lightbox */}
       {lightbox && (
         <div onClick={() => setLightbox(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <button onClick={() => setLightbox(null)} style={{ position: 'absolute', top: 20, left: 20, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>✕ إغلاق</button>
+          <button onClick={() => setLightbox(null)} style={{ position: 'absolute', top: 20, left: 20, background: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>✕ {copy.close}</button>
           <img src={lightbox} alt="" style={{ maxWidth: '90vw', maxHeight: '85vh', objectFit: 'contain', borderRadius: 12 }} onClick={e => e.stopPropagation()} />
         </div>
       )}

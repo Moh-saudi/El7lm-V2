@@ -5,21 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Trophy, ArrowRight, ArrowLeft, Loader2, Check } from 'lucide-react';
 import { getCurrentClient, createPortalClient, TournamentClient } from '@/lib/tournament-portal/auth';
 import { PortalShell } from '../_components/PortalShell';
+import { useTranslation } from '@/lib/i18n';
 
 // ── Steps ─────────────────────────────────────────────────────
-const STEPS = [
-    { id: 1, label: 'المعلومات الأساسية' },
-    { id: 2, label: 'نظام البطولة'       },
-    { id: 3, label: 'التسجيل والدفع'    },
-    { id: 4, label: 'القواعد والجوائز'  },
-];
-
-const COUNTRIES = [
-    'السعودية','الإمارات','قطر','الكويت','البحرين','عُمان',
-    'مصر','الأردن','العراق','لبنان','تونس','الجزائر','المغرب',
-    'ليبيا','السودان','اليمن','فلسطين','سوريا','موريتانيا',
-];
-
 function slugify(text: string) {
     return text
         .toLowerCase()
@@ -65,6 +53,10 @@ const INITIAL = {
 type FormState = typeof INITIAL;
 
 export default function NewTournamentPage() {
+    const { isRTL, getTranslations } = useTranslation();
+    const t = getTranslations<any>('tournamentPortalNew');
+    const registerCopy = getTranslations<any>('tournamentPortalRegister');
+    const steps = t.steps.map((label: string, index: number) => ({ id: index + 1, label }));
     const router = useRouter();
     const [client,  setClient]  = useState<TournamentClient | null>(null);
     const [step,    setStep]    = useState(1);
@@ -84,13 +76,13 @@ export default function NewTournamentPage() {
     // ── Validate step ─────────────────────────────────────────
     const validateStep = () => {
         if (step === 1) {
-            if (!form.name.trim())       { setError('اسم البطولة مطلوب'); return false; }
-            if (!form.country)           { setError('الدولة مطلوبة');      return false; }
-            if (!form.start_date)        { setError('تاريخ البدء مطلوب');  return false; }
-            if (!form.end_date)          { setError('تاريخ الانتهاء مطلوب'); return false; }
+            if (!form.name.trim())       { setError(t.errors.name); return false; }
+            if (!form.country)           { setError(t.errors.country); return false; }
+            if (!form.start_date)        { setError(t.errors.start); return false; }
+            if (!form.end_date)          { setError(t.errors.end); return false; }
         }
         if (step === 2) {
-            if (!form.max_teams || +form.max_teams < 2) { setError('عدد الفرق يجب أن يكون 2 أو أكثر'); return false; }
+            if (!form.max_teams || +form.max_teams < 2) { setError(t.errors.teams); return false; }
         }
         setError('');
         return true;
@@ -146,7 +138,7 @@ export default function NewTournamentPage() {
             if (dbErr) throw new Error(dbErr.message);
             router.push(`/tournament-portal/${data.id}/setup`);
         } catch (e: any) {
-            setError(e.message || 'فشل إنشاء البطولة');
+            setError(e.message || t.errors.create);
         } finally {
             setLoading(false);
         }
@@ -160,7 +152,7 @@ export default function NewTournamentPage() {
 
     return (
         <PortalShell client={client}>
-            <div className="max-w-2xl mx-auto" dir="rtl">
+            <div className="max-w-2xl mx-auto" dir={isRTL ? 'rtl' : 'ltr'}>
 
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-8">
@@ -168,14 +160,14 @@ export default function NewTournamentPage() {
                         <Trophy className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-xl font-black text-slate-900">بطولة جديدة</h1>
-                        <p className="text-slate-400 text-sm">أكمل الخطوات لإنشاء بطولتك</p>
+                        <h1 className="text-xl font-black text-slate-900">{t.title}</h1>
+                        <p className="text-slate-400 text-sm">{t.subtitle}</p>
                     </div>
                 </div>
 
                 {/* Steps indicator */}
                 <div className="flex items-center gap-2 mb-8">
-                    {STEPS.map((s, i) => (
+                    {steps.map((s: { id: number; label: string }, i: number) => (
                         <div key={s.id} className="flex items-center flex-1">
                             <div className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold flex-shrink-0 transition-all
                                 ${step > s.id  ? 'bg-emerald-500 text-white' :
@@ -187,7 +179,7 @@ export default function NewTournamentPage() {
                                 ${step === s.id ? 'text-slate-900' : 'text-slate-400'}`}>
                                 {s.label}
                             </span>
-                            {i < STEPS.length - 1 && (
+                            {i < steps.length - 1 && (
                                 <div className={`h-0.5 flex-1 mx-2 rounded ${step > s.id ? 'bg-emerald-400' : 'bg-slate-200'}`} />
                             )}
                         </div>
@@ -200,48 +192,48 @@ export default function NewTournamentPage() {
                     {/* ── Step 1: Basic info ── */}
                     {step === 1 && (
                         <div className="space-y-4">
-                            <h2 className="font-bold text-slate-800 text-base mb-4">المعلومات الأساسية</h2>
+                            <h2 className="font-bold text-slate-800 text-base mb-4">{t.steps[0]}</h2>
 
                             <div>
-                                <label className="form-label">اسم البطولة *</label>
-                                <input className="form-input" value={form.name} onChange={set('name')} placeholder="بطولة الملك للأندية..." />
+                                <label className="form-label">{t.basic.name}</label>
+                                <input className="form-input" value={form.name} onChange={set('name')} placeholder={t.basic.namePlaceholder} />
                             </div>
 
                             <div>
-                                <label className="form-label">الوصف</label>
-                                <textarea className="form-input min-h-[80px] resize-none" value={form.description} onChange={set('description')} placeholder="نبذة عن البطولة..." />
+                                <label className="form-label">{t.basic.description}</label>
+                                <textarea className="form-input min-h-[80px] resize-none" value={form.description} onChange={set('description')} placeholder={t.basic.descriptionPlaceholder} />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="form-label">الدولة *</label>
+                                    <label className="form-label">{t.basic.country}</label>
                                     <select className="form-input" value={form.country} onChange={set('country')}>
-                                        <option value="">اختر الدولة</option>
-                                        {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                        <option value="">{t.basic.selectCountry}</option>
+                                        {registerCopy.countries.map((c: string) => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="form-label">المدينة</label>
-                                    <input className="form-input" value={form.city} onChange={set('city')} placeholder="الرياض" />
+                                    <label className="form-label">{t.basic.city}</label>
+                                    <input className="form-input" value={form.city} onChange={set('city')} placeholder={t.basic.cityPlaceholder} />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="form-label">الملعب / المكان</label>
-                                <input className="form-input" value={form.location} onChange={set('location')} placeholder="استاد الملك فهد" />
+                                <label className="form-label">{t.basic.location}</label>
+                                <input className="form-input" value={form.location} onChange={set('location')} placeholder={t.basic.locationPlaceholder} />
                             </div>
 
                             <div className="grid grid-cols-3 gap-3">
                                 <div>
-                                    <label className="form-label">تاريخ البدء *</label>
+                                    <label className="form-label">{t.basic.start}</label>
                                     <input type="date" className="form-input" value={form.start_date} onChange={set('start_date')} />
                                 </div>
                                 <div>
-                                    <label className="form-label">تاريخ الانتهاء *</label>
+                                    <label className="form-label">{t.basic.end}</label>
                                     <input type="date" className="form-input" value={form.end_date} onChange={set('end_date')} />
                                 </div>
                                 <div>
-                                    <label className="form-label">آخر تسجيل</label>
+                                    <label className="form-label">{t.basic.registrationDeadline}</label>
                                     <input type="date" className="form-input" value={form.registration_deadline} onChange={set('registration_deadline')} />
                                 </div>
                             </div>
@@ -251,16 +243,12 @@ export default function NewTournamentPage() {
                     {/* ── Step 2: Tournament system ── */}
                     {step === 2 && (
                         <div className="space-y-4">
-                            <h2 className="font-bold text-slate-800 text-base mb-4">نظام البطولة</h2>
+                            <h2 className="font-bold text-slate-800 text-base mb-4">{t.steps[1]}</h2>
 
                             <div>
-                                <label className="form-label">نوع النظام *</label>
+                                <label className="form-label">{t.system.type}</label>
                                 <div className="grid grid-cols-3 gap-3">
-                                    {[
-                                        { value: 'knockout',        label: 'كأس (إقصائي)',    desc: 'الخاسر يخرج' },
-                                        { value: 'league',          label: 'دوري',            desc: 'جميع الفرق تلتقي' },
-                                        { value: 'groups_knockout', label: 'مجموعات + كأس',  desc: 'مجموعات ثم إقصاء' },
-                                    ].map(opt => (
+                                    {t.system.options.map((opt: { value: string; label: string; description: string }) => (
                                         <button
                                             key={opt.value}
                                             type="button"
@@ -272,7 +260,7 @@ export default function NewTournamentPage() {
                                             }`}
                                         >
                                             <p className="font-bold text-sm text-slate-900">{opt.label}</p>
-                                            <p className="text-[11px] text-slate-400 mt-0.5">{opt.desc}</p>
+                                            <p className="text-[11px] text-slate-400 mt-0.5">{opt.description}</p>
                                         </button>
                                     ))}
                                 </div>
@@ -280,23 +268,23 @@ export default function NewTournamentPage() {
 
                             <div className="grid grid-cols-3 gap-3">
                                 <div>
-                                    <label className="form-label">الحد الأقصى للفرق *</label>
+                                    <label className="form-label">{t.system.maxTeams}</label>
                                     <input type="number" min="2" className="form-input" value={form.max_teams} onChange={set('max_teams')} placeholder="16" />
                                 </div>
                                 <div>
-                                    <label className="form-label">الحد الأدنى للفرق</label>
+                                    <label className="form-label">{t.system.minTeams}</label>
                                     <input type="number" min="2" className="form-input" value={form.min_teams} onChange={set('min_teams')} placeholder="4" />
                                 </div>
                                 <div>
-                                    <label className="form-label">لاعبون لكل فريق</label>
+                                    <label className="form-label">{t.system.playersPerTeam}</label>
                                     <input type="number" min="1" className="form-input" value={form.players_per_team} onChange={set('players_per_team')} placeholder="11" />
                                 </div>
                             </div>
 
                             {form.type === 'groups_knockout' && (
                                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                                    <p className="text-sm font-semibold text-blue-800 mb-1">ملاحظة — نظام المجموعات</p>
-                                    <p className="text-xs text-blue-600">ستتمكن من تحديد عدد المجموعات وعدد الفرق في كل مجموعة بعد إنشاء البطولة من صفحة الإعداد.</p>
+                                    <p className="text-sm font-semibold text-blue-800 mb-1">{t.system.groupsNote}</p>
+                                    <p className="text-xs text-blue-600">{t.system.groupsHelp}</p>
                                 </div>
                             )}
                         </div>
@@ -305,13 +293,13 @@ export default function NewTournamentPage() {
                     {/* ── Step 3: Registration & Payment ── */}
                     {step === 3 && (
                         <div className="space-y-4">
-                            <h2 className="font-bold text-slate-800 text-base mb-4">التسجيل والدفع</h2>
+                            <h2 className="font-bold text-slate-800 text-base mb-4">{t.steps[2]}</h2>
 
                             {/* Paid toggle */}
                             <div className="flex items-center justify-between bg-slate-50 rounded-xl p-4 border border-slate-200">
                                 <div>
-                                    <p className="font-semibold text-slate-800 text-sm">بطولة مدفوعة</p>
-                                    <p className="text-xs text-slate-400 mt-0.5">تفعيل رسوم التسجيل للفرق</p>
+                                    <p className="font-semibold text-slate-800 text-sm">{t.payment.paid}</p>
+                                    <p className="text-xs text-slate-400 mt-0.5">{t.payment.paidHelp}</p>
                                 </div>
                                 <button
                                     type="button"
@@ -326,11 +314,11 @@ export default function NewTournamentPage() {
                                 <div className="space-y-4 border border-yellow-200 bg-yellow-50/50 rounded-xl p-4">
                                     <div className="grid grid-cols-3 gap-3">
                                         <div className="col-span-2">
-                                            <label className="form-label">رسوم التسجيل</label>
+                                            <label className="form-label">{t.payment.entryFee}</label>
                                             <input type="number" min="0" className="form-input" value={form.entry_fee} onChange={set('entry_fee')} placeholder="500" />
                                         </div>
                                         <div>
-                                            <label className="form-label">العملة</label>
+                                            <label className="form-label">{t.payment.currency}</label>
                                             <select className="form-input" value={form.currency} onChange={set('currency')}>
                                                 {['SAR','AED','EGP','QAR','KWD','BHD','OMR','USD','EUR'].map(c =>
                                                     <option key={c} value={c}>{c}</option>
@@ -341,32 +329,32 @@ export default function NewTournamentPage() {
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="form-label">نوع الرسوم</label>
+                                            <label className="form-label">{t.payment.feeType}</label>
                                             <select className="form-input" value={form.fee_type} onChange={set('fee_type')}>
-                                                <option value="team">لكل فريق</option>
-                                                <option value="individual">لكل لاعب</option>
+                                                <option value="team">{t.payment.perTeam}</option>
+                                                <option value="individual">{t.payment.perPlayer}</option>
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="form-label">آخر موعد للدفع</label>
+                                            <label className="form-label">{t.payment.deadline}</label>
                                             <input type="date" className="form-input" value={form.payment_deadline} onChange={set('payment_deadline')} />
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
-                                            <label className="form-label">اسم المحفظة (واتس/فودافون)</label>
+                                            <label className="form-label">{t.payment.walletName}</label>
                                             <input className="form-input" value={form.wallet_name} onChange={set('wallet_name')} placeholder="STC Pay" />
                                         </div>
                                         <div>
-                                            <label className="form-label">رقم المحفظة</label>
+                                            <label className="form-label">{t.payment.walletNumber}</label>
                                             <input className="form-input" value={form.wallet_number} onChange={set('wallet_number')} placeholder="05xxxxxxxx" dir="ltr" />
                                         </div>
                                     </div>
 
                                     <div className="flex items-center justify-between bg-white rounded-xl p-3 border border-yellow-200">
                                         <div>
-                                            <p className="font-semibold text-slate-800 text-sm">السماح بالتقسيط</p>
+                                            <p className="font-semibold text-slate-800 text-sm">{t.payment.installments}</p>
                                         </div>
                                         <button type="button" onClick={toggle('allow_installments')}
                                             className={`w-11 h-6 rounded-full transition-all relative ${form.allow_installments ? 'bg-yellow-500' : 'bg-slate-300'}`}>
@@ -375,14 +363,14 @@ export default function NewTournamentPage() {
                                     </div>
                                     {form.allow_installments && (
                                         <div>
-                                            <label className="form-label">عدد الأقساط</label>
+                                            <label className="form-label">{t.payment.installmentsCount}</label>
                                             <input type="number" min="2" max="12" className="form-input" value={form.installments_count} onChange={set('installments_count')} placeholder="3" />
                                         </div>
                                     )}
 
                                     <div>
-                                        <label className="form-label">سياسة الاسترداد</label>
-                                        <textarea className="form-input min-h-[70px] resize-none" value={form.refund_policy} onChange={set('refund_policy')} placeholder="يُسترد 100% في حال الانسحاب قبل 7 أيام..." />
+                                        <label className="form-label">{t.payment.refund}</label>
+                                        <textarea className="form-input min-h-[70px] resize-none" value={form.refund_policy} onChange={set('refund_policy')} placeholder={t.payment.refundPlaceholder} />
                                     </div>
                                 </div>
                             )}
@@ -392,26 +380,26 @@ export default function NewTournamentPage() {
                     {/* ── Step 4: Rules & Prizes ── */}
                     {step === 4 && (
                         <div className="space-y-4">
-                            <h2 className="font-bold text-slate-800 text-base mb-4">القواعد والجوائز</h2>
+                            <h2 className="font-bold text-slate-800 text-base mb-4">{t.steps[3]}</h2>
 
                             <div>
-                                <label className="form-label">قواعد البطولة</label>
-                                <textarea className="form-input min-h-[120px] resize-none" value={form.rules} onChange={set('rules')} placeholder="1. يلتزم جميع اللاعبين بقانون اللعبة الدولي&#10;2. يُحظر الاحتجاج على قرارات الحكام..." />
+                                <label className="form-label">{t.rules.rules}</label>
+                                <textarea className="form-input min-h-[120px] resize-none" value={form.rules} onChange={set('rules')} placeholder={t.rules.rulesPlaceholder} />
                             </div>
 
                             <div>
-                                <label className="form-label">الجوائز</label>
-                                <textarea className="form-input min-h-[90px] resize-none" value={form.prizes} onChange={set('prizes')} placeholder="🥇 المركز الأول: كأس + 50,000 ريال&#10;🥈 المركز الثاني: كأس + 25,000 ريال..." />
+                                <label className="form-label">{t.rules.prizes}</label>
+                                <textarea className="form-input min-h-[90px] resize-none" value={form.prizes} onChange={set('prizes')} placeholder={t.rules.prizesPlaceholder} />
                             </div>
 
                             <div>
-                                <label className="form-label">معلومات التواصل</label>
-                                <input className="form-input" value={form.contact_info} onChange={set('contact_info')} placeholder="للاستفسار: 05xxxxxxxx / tournament@email.com" />
+                                <label className="form-label">{t.rules.contact}</label>
+                                <input className="form-input" value={form.contact_info} onChange={set('contact_info')} placeholder={t.rules.contactPlaceholder} />
                             </div>
 
                             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
-                                <p className="font-semibold text-slate-800 mb-1">✅ جاهز للإنشاء</p>
-                                <p>بعد الإنشاء ستنتقل لصفحة الإعداد حيث تضيف الفئات العمرية وتفتح باب التسجيل.</p>
+                                <p className="font-semibold text-slate-800 mb-1">{t.rules.ready}</p>
+                                <p>{t.rules.readyHelp}</p>
                             </div>
                         </div>
                     )}
@@ -431,21 +419,21 @@ export default function NewTournamentPage() {
                             disabled={step === 1}
                             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-all"
                         >
-                            <ArrowRight className="w-4 h-4" /> السابق
+                            <ArrowRight className={`w-4 h-4 ${isRTL ? '' : 'rotate-180'}`} /> {t.previous}
                         </button>
 
-                        <span className="text-xs text-slate-400">{step} / {STEPS.length}</span>
+                        <span className="text-xs text-slate-400">{step} / {steps.length}</span>
 
                         {step < 4 ? (
                             <button type="button" onClick={next}
                                 className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-white font-bold px-5 py-2 rounded-xl text-sm transition-all">
-                                التالي <ArrowLeft className="w-4 h-4" />
+                                {t.next} <ArrowLeft className={`w-4 h-4 ${isRTL ? '' : 'rotate-180'}`} />
                             </button>
                         ) : (
                             <button type="button" onClick={handleSubmit} disabled={loading}
                                 className="flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 disabled:opacity-50 text-white font-bold px-5 py-2 rounded-xl text-sm transition-all">
                                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                                إنشاء البطولة
+                                {t.create}
                             </button>
                         )}
                     </div>

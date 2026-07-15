@@ -5,15 +5,17 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
+import { useTranslation } from '@/lib/i18n';
 
 type Cat   = { id:string; name:string; type:string };
 type Team  = { id:string; name:string; logo_url:string|null };
 type BM    = { id:string; round:string; match_number:number|null; home_team_id:string|null; away_team_id:string|null; home_score:number|null; away_score:number|null; status:string; match_date:string|null; home_team?:Team|null; away_team?:Team|null };
 
 const RO  = ['R128','R64','R32','R16','QF','SF','F','3rd'];
-const RL: Record<string,string> = { R128:'دور الـ128',R64:'دور الـ64',R32:'دور الـ32',R16:'دور الـ16',QF:'ربع النهائي',SF:'نصف النهائي',F:'النهائي','3rd':'المركز الثالث' };
 
 export default function BracketPage() {
+  const { getTranslations } = useTranslation();
+  const copy = getTranslations<any>('tournamentBracket');
   const { id }     = useParams<{ id:string }>();
   const { isDark } = usePortalTheme();
   const S = isDark ? D : L;
@@ -55,8 +57,8 @@ export default function BracketPage() {
   if (cats.length===0) return (
     <div style={{ background:S.surface, border:`2px dashed ${S.border}`, borderRadius:18, padding:'60px 24px', textAlign:'center' }}>
       <div style={{ fontSize:40, marginBottom:14 }}>🏆</div>
-      <div style={{ fontSize:15, fontWeight:700, color:S.text, marginBottom:8 }}>لا توجد فئات إقصائية</div>
-      <div style={{ fontSize:13, color:S.text2 }}>أضف فئة من نوع «إقصائي» أو «مجموعات + إقصاء» في الإعداد</div>
+      <div style={{ fontSize:15, fontWeight:700, color:S.text, marginBottom:8 }}>{copy.noCategories}</div>
+      <div style={{ fontSize:13, color:S.text2 }}>{copy.noCategoriesHelp}</div>
     </div>
   );
 
@@ -77,8 +79,8 @@ export default function BracketPage() {
       {matches.length===0
         ? <div style={{ background:S.surface, border:`2px dashed ${S.border}`, borderRadius:16, padding:'48px 24px', textAlign:'center' }}>
             <div style={{ fontSize:34, marginBottom:12 }}>🌳</div>
-            <div style={{ fontSize:15, fontWeight:700, color:S.text, marginBottom:8 }}>لا توجد مباريات إقصائية</div>
-            <div style={{ fontSize:13, color:S.text2 }}>ولّد الجدول من تبويب «الجدول» ثم ارجع هنا</div>
+            <div style={{ fontSize:15, fontWeight:700, color:S.text, marginBottom:8 }}>{copy.noMatches}</div>
+            <div style={{ fontSize:13, color:S.text2 }}>{copy.noMatchesHelp}</div>
           </div>
         : <>
             {/* Champion */}
@@ -87,7 +89,7 @@ export default function BracketPage() {
                 <span style={{ fontSize:40 }}>🏆</span>
                 <LogoImg name={champ.name} logo={champ.logo_url} size={52} />
                 <div>
-                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', fontWeight:600, marginBottom:4 }}>بطل البطولة</div>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', fontWeight:600, marginBottom:4 }}>{copy.champion}</div>
                   <div style={{ fontSize:24, fontWeight:900, color:'#fff' }}>{champ.name}</div>
                 </div>
               </div>
@@ -96,16 +98,16 @@ export default function BracketPage() {
             {/* Bracket scroll */}
             <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
               <div style={{ padding:'12px 18px', borderBottom:`1px solid ${S.border}`, background:S.surface2 }}>
-                <span style={{ fontSize:14, fontWeight:700, color:S.text }}>🌳 شجرة الإقصاء</span>
-                <span style={{ fontSize:12, color:S.text2, marginRight:8 }}>— {matches.length} مباراة</span>
+                <span style={{ fontSize:14, fontWeight:700, color:S.text }}>🌳 {copy.tree}</span>
+                <span style={{ fontSize:12, color:S.text2, marginRight:8 }}>— {matches.length} {copy.match}</span>
               </div>
               <div style={{ overflowX:'auto', padding:'20px 16px' }} className="sp-scroll">
                 <div dir="ltr" style={{ display:'flex', gap:20, minWidth:'max-content' }}>
                   {main.map(round=>(
                     <div key={round} style={{ display:'flex', flexDirection:'column', gap:10 }}>
                       <div style={{ textAlign:'center', padding:'8px 14px', borderRadius:10, background:round==='F'?'linear-gradient(135deg,#78350f,#d97706)':round==='SF'?'#2e1065':S.surface3 }}>
-                        <div style={{ fontSize:11, fontWeight:800, color:'#fff' }}>{RL[round]||round}</div>
-                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>{byRound[round].length} م</div>
+                        <div style={{ fontSize:11, fontWeight:800, color:'#fff' }}>{copy.rounds[round]||round}</div>
+                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.45)' }}>{byRound[round].length} {copy.match}</div>
                       </div>
                       {byRound[round].map(m=>(
                         <BracketCard key={m.id} m={m} S={S} isFinal={round==='F'} />
@@ -120,7 +122,7 @@ export default function BracketPage() {
             {third.length>0 && (
               <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
                 <div style={{ padding:'10px 18px', borderBottom:`1px solid ${S.border}`, background:'linear-gradient(90deg,#7c2d12,#ea580c)' }}>
-                  <span style={{ fontSize:13, fontWeight:700, color:'#fff' }}>🥉 نهائي المركز الثالث</span>
+                  <span style={{ fontSize:13, fontWeight:700, color:'#fff' }}>🥉 {copy.thirdPlace}</span>
                 </div>
                 <div style={{ padding:16, display:'flex', gap:12, flexWrap:'wrap' }}>
                   {third.map(m=><BracketCard key={m.id} m={m} S={S} />)}
@@ -134,6 +136,7 @@ export default function BracketPage() {
 }
 
 function BracketCard({ m, S, isFinal=false }: { m:BM; S:any; isFinal?:boolean }) {
+  const { locale } = useTranslation();
   const fin=m.status==='completed', hs=m.home_score, as_=m.away_score;
   const hw=fin&&hs!==null&&as_!==null&&hs>as_, aw=fin&&hs!==null&&as_!==null&&as_>hs;
   const Row=({ t, won, score }:{ t?:Team|null; won:boolean; score:number|null })=>(
@@ -147,7 +150,7 @@ function BracketCard({ m, S, isFinal=false }: { m:BM; S:any; isFinal?:boolean })
     <div className={`sp-bracket-card${isFinal?' final':''}`} style={{ background:S.surface, borderColor:isFinal?'#f59e0b':S.border }}>
       <Row t={m.home_team} won={hw} score={hs} />
       <Row t={m.away_team} won={aw} score={as_} />
-      {m.match_date&&<div style={{ padding:'4px 10px', background:S.surface2, fontSize:10, color:S.text2, textAlign:'center' }}>{new Date(m.match_date).toLocaleDateString('ar-SA',{month:'short',day:'numeric'})}</div>}
+      {m.match_date&&<div style={{ padding:'4px 10px', background:S.surface2, fontSize:10, color:S.text2, textAlign:'center' }}>{new Date(m.match_date).toLocaleDateString(locale,{month:'short',day:'numeric'})}</div>}
     </div>
   );
 }

@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
+import { useTranslation } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 interface AgentData {
   full_name: string;
@@ -98,14 +100,7 @@ const initialAgentData: AgentData = {
   },
 };
 
-const REQUIRED_FIELDS_AGENT: { key: keyof AgentData; label: string }[] = [
-  { key: 'full_name',      label: 'الاسم الكامل' },
-  { key: 'nationality',    label: 'الجنسية' },
-  { key: 'phone',          label: 'رقم الهاتف' },
-  { key: 'email',          label: 'البريد الإلكتروني' },
-  { key: 'specialization', label: 'التخصص' },
-  { key: 'bio',            label: 'نبذة شخصية' },
-];
+const REQUIRED_FIELD_KEYS: (keyof AgentData)[] = ['full_name', 'nationality', 'phone', 'email', 'specialization', 'bio'];
 
 const getImageUrl = (path: string) => {
   if (!path) return '';
@@ -115,6 +110,13 @@ const getImageUrl = (path: string) => {
 };
 
 export default function AgentProfilePage() {
+  const { isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('agentProfile');
+  const common = getTranslations<any>('common');
+  const profileCopy = getTranslations<any>('profile');
+  const sharedProfileCopy = getTranslations<any>('academyProfile');
+  const interpolate = (template: string, values: Record<string, string | number>) => template.replace(/\{\{(\w+)\}\}/g, (_, key) => String(values[key] ?? ''));
+  const requiredFields = REQUIRED_FIELD_KEYS.map(key => ({ key, label: copy.requiredLabels[key] }));
   const { userData, user, updateUserData } = useAuth();
   const router = useRouter();
 
@@ -159,7 +161,7 @@ export default function AgentProfilePage() {
       }
     } catch (err) {
       console.error('Error fetching agent data:', err);
-      toast.error('حدث خطأ أثناء تحميل البيانات');
+      toast.error(profileCopy.notifications.loadFailed);
     } finally {
       setLoading(false);
     }
@@ -172,7 +174,7 @@ export default function AgentProfilePage() {
   const BANNER_SNOOZE_KEY = `agent_profile_banner_snoozed_${user?.id}`;
   const SNOOZE_DAYS = 3;
 
-  const missingFields = REQUIRED_FIELDS_AGENT.filter(({ key }) => {
+  const missingFields = requiredFields.filter(({ key }) => {
     const val = agentData[key];
     return !val || (typeof val === 'string' && !val.trim());
   });
@@ -190,15 +192,15 @@ export default function AgentProfilePage() {
 
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof AgentData, string>> = {};
-    REQUIRED_FIELDS_AGENT.forEach(({ key, label }) => {
+    requiredFields.forEach(({ key, label }) => {
       const val = agentData[key];
       if (!val || (typeof val === 'string' && !val.trim())) {
-        newErrors[key] = `${label} مطلوب`;
+        newErrors[key] = interpolate(copy.required, { field: label });
       }
     });
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) {
-      toast.error('يرجى استكمال البيانات الأساسية المطلوبة');
+      toast.error(copy.completeRequired);
       return false;
     }
     return true;
@@ -222,11 +224,11 @@ export default function AgentProfilePage() {
   const handleImageUpload = async (file: File, type: 'photo' | 'cover' | 'gallery') => {
     if (!user?.id) return;
     if (!file.type.startsWith('image/')) {
-      toast.error('يرجى اختيار ملف صورة صالح');
+      toast.error(copy.invalidImage);
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('حجم الصورة يتجاوز 5 ميجابايت');
+      toast.error(copy.imageTooLarge);
       return;
     }
     setUploading(true);
@@ -241,7 +243,7 @@ export default function AgentProfilePage() {
       formData.append('contentType', file.type);
 
       const res = await fetch('/api/storage/upload', { method: 'POST', body: formData });
-      if (!res.ok) throw new Error('فشل الرفع');
+      if (!res.ok) throw new Error(copy.uploadFailed);
       const { publicUrl } = await res.json();
 
       if (type === 'gallery') {
@@ -252,10 +254,10 @@ export default function AgentProfilePage() {
           [type === 'photo' ? 'profile_photo' : 'coverImage']: publicUrl,
         }));
       }
-      toast.success('تم رفع الصورة بنجاح');
+      toast.success(copy.uploadSuccess);
     } catch (err) {
       console.error('Upload error:', err);
-      toast.error('حدث خطأ أثناء رفع الصورة');
+      toast.error(copy.uploadError);
     } finally {
       setUploading(false);
     }
@@ -286,11 +288,11 @@ export default function AgentProfilePage() {
         profile_image: agentData.profile_photo,
         logo: agentData.profile_photo,
       });
-      toast.success('تم حفظ الملف الشخصي بنجاح');
+      toast.success(profileCopy.notifications.saved);
       setEditMode(false);
     } catch (err) {
       console.error('Save error:', err);
-      toast.error('حدث خطأ أثناء الحفظ');
+      toast.error(profileCopy.notifications.saveFailed);
     } finally {
       setUploading(false);
     }
@@ -318,14 +320,14 @@ export default function AgentProfilePage() {
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
           <div className="mx-auto mb-4 w-16 h-16 rounded-full border-4 border-purple-200 animate-spin border-t-purple-600"></div>
-          <p className="text-gray-600">جاري تحميل الملف الشخصي...</p>
+          <p className="text-gray-600">{copy.loading}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* Sticky Header */}
       <div className="sticky top-0 z-50 border-b border-gray-200 shadow-sm backdrop-blur-md bg-white/95">
@@ -336,15 +338,16 @@ export default function AgentProfilePage() {
               className="flex gap-2 items-center px-4 py-2 text-gray-600 rounded-lg transition hover:text-gray-800 hover:bg-gray-100"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span className="font-medium">العودة</span>
+              <span className="font-medium">{sharedProfileCopy.back}</span>
             </button>
             <div className="text-center">
-              <h1 className="text-xl font-bold text-gray-900">الملف الشخصي - وكيل اللاعبين</h1>
+              <h1 className="text-xl font-bold text-gray-900">{copy.title}</h1>
               {agentData.full_name && (
                 <p className="text-sm text-gray-500">{agentData.full_name}</p>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <LanguageSwitcher />
               {editMode ? (
                 <>
                   <button
@@ -353,14 +356,14 @@ export default function AgentProfilePage() {
                     className="flex gap-2 items-center px-4 py-2 text-white bg-green-600 rounded-lg transition hover:bg-green-700 disabled:opacity-60"
                   >
                     <Save className="w-4 h-4" />
-                    {uploading ? 'جاري الحفظ...' : 'حفظ'}
+                    {uploading ? profileCopy.savingBtn : common.save}
                   </button>
                   <button
                     onClick={() => { fetchData(); setEditMode(false); }}
                     className="flex gap-2 items-center px-4 py-2 text-gray-700 bg-gray-100 rounded-lg transition hover:bg-gray-200"
                   >
                     <X className="w-4 h-4" />
-                    إلغاء
+                    {common.cancel}
                   </button>
                 </>
               ) : (
@@ -369,7 +372,7 @@ export default function AgentProfilePage() {
                   className="flex gap-2 items-center px-5 py-2 text-white rounded-lg shadow transition hover:scale-105 bg-gradient-to-l from-purple-500 to-purple-700"
                 >
                   <Edit className="w-4 h-4" />
-                  تعديل البيانات
+                  {common.edit}
                 </button>
               )}
             </div>
@@ -387,8 +390,8 @@ export default function AgentProfilePage() {
               <Award className="w-5 h-5 text-amber-600" />
             </div>
             <div className="flex-1">
-              <p className="mb-1 text-sm font-bold text-amber-800">الملف الشخصي غير مكتمل</p>
-              <p className="mb-2 text-xs text-amber-700">أكمل بياناتك الأساسية لتحسين ظهورك وجذب الفرص. الحقول الناقصة:</p>
+              <p className="mb-1 text-sm font-bold text-amber-800">{profileCopy.incompleteTitle}</p>
+              <p className="mb-2 text-xs text-amber-700">{profileCopy.incompleteDesc}</p>
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {missingFields.map(({ label }) => (
                   <span key={label} className="px-2 py-0.5 text-xs font-medium text-amber-700 bg-amber-100 rounded-full border border-amber-300">
@@ -398,9 +401,9 @@ export default function AgentProfilePage() {
               </div>
               <div className="flex gap-3 items-center">
                 <button onClick={() => setEditMode(true)} className="px-4 py-1.5 text-xs font-semibold text-white bg-amber-500 rounded-lg transition hover:bg-amber-600">
-                  استكمال البيانات الآن
+                  {profileCopy.completeNowBtn}
                 </button>
-                <span className="text-xs text-amber-500">سيتم تذكيرك مجدداً بعد {SNOOZE_DAYS} أيام عند الإغلاق</span>
+                <span className="text-xs text-amber-500">{interpolate(profileCopy.snoozeTip, { days: SNOOZE_DAYS })}</span>
               </div>
             </div>
             <button
@@ -416,7 +419,7 @@ export default function AgentProfilePage() {
         <div className="overflow-hidden relative mb-8 h-52 rounded-2xl shadow-lg">
           <img
             src={agentData.coverImage || '/images/hero-1.jpg'}
-            alt="صورة الغلاف"
+            alt={copy.coverAlt}
             className="object-cover w-full h-full"
           />
           {editMode && (
@@ -427,7 +430,7 @@ export default function AgentProfilePage() {
               />
               <div className="flex flex-col items-center gap-2 text-white">
                 <Camera className="w-8 h-8" />
-                <span className="text-sm font-medium">تغيير صورة الغلاف</span>
+                <span className="text-sm font-medium">{copy.changeCover}</span>
               </div>
             </label>
           )}
@@ -439,7 +442,7 @@ export default function AgentProfilePage() {
           <div className="relative flex-shrink-0">
             <img
               src={agentData.profile_photo || '/images/agent-avatar.png'}
-              alt="الصورة الشخصية"
+              alt={copy.photoAlt}
               className="object-cover w-32 h-32 rounded-full border-4 border-purple-500 shadow-lg"
             />
             {editMode && (
@@ -460,11 +463,11 @@ export default function AgentProfilePage() {
                 type="text"
                 value={agentData.full_name}
                 onChange={e => { handleChange('full_name', e.target.value); setErrors(p => ({ ...p, full_name: '' })); }}
-                placeholder="الاسم الكامل"
+                placeholder={copy.fullName}
                 className={`mb-2 w-full text-2xl font-bold text-right text-gray-900 bg-transparent border-b-2 focus:outline-none focus:border-purple-600 ${errors.full_name ? 'border-red-400' : 'border-purple-300'}`}
               />
             ) : (
-              <h2 className="mb-1 text-2xl font-bold text-purple-700">{agentData.full_name || 'وكيل اللاعبين'}</h2>
+              <h2 className="mb-1 text-2xl font-bold text-purple-700">{agentData.full_name || copy.fallback}</h2>
             )}
 
             {editMode ? (
@@ -472,11 +475,11 @@ export default function AgentProfilePage() {
                 type="text"
                 value={agentData.specialization}
                 onChange={e => handleChange('specialization', e.target.value)}
-                placeholder="التخصص (مثال: وكيل لاعبين دوليين...)"
+                placeholder={copy.specializationPlaceholder}
                 className="mb-3 w-full text-right text-gray-600 bg-transparent border-b border-gray-200 focus:outline-none focus:border-purple-400"
               />
             ) : (
-              <p className="mb-3 text-gray-600">{agentData.specialization || 'وكيل لاعبين'}</p>
+              <p className="mb-3 text-gray-600">{agentData.specialization || copy.fallback}</p>
             )}
 
             <div className="flex flex-wrap gap-4 text-sm text-gray-500">
@@ -484,14 +487,14 @@ export default function AgentProfilePage() {
                 <Flag size={15} />
                 {editMode ? (
                   <input type="text" value={agentData.nationality} onChange={e => handleChange('nationality', e.target.value)}
-                    placeholder="الجنسية" className="w-24 bg-transparent border-b border-gray-200 focus:outline-none" />
+                    placeholder={copy.nationality} className="w-24 bg-transparent border-b border-gray-200 focus:outline-none" />
                 ) : (agentData.nationality || '—')}
               </span>
               <span className="flex gap-1 items-center">
                 <MapPin size={15} />
                 {editMode ? (
                   <input type="text" value={agentData.current_location} onChange={e => handleChange('current_location', e.target.value)}
-                    placeholder="الموقع" className="w-28 bg-transparent border-b border-gray-200 focus:outline-none" />
+                    placeholder={copy.location} className="w-28 bg-transparent border-b border-gray-200 focus:outline-none" />
                 ) : (agentData.current_location || '—')}
               </span>
               <span className="flex gap-1 items-center">
@@ -499,13 +502,13 @@ export default function AgentProfilePage() {
                 {editMode ? (
                   <input type="number" value={agentData.years_of_experience} onChange={e => handleChange('years_of_experience', e.target.value)}
                     placeholder="0" className="w-12 bg-transparent border-b border-gray-200 focus:outline-none" />
-                ) : agentData.years_of_experience} سنوات خبرة
+                ) : interpolate(copy.experienceYears, { count: agentData.years_of_experience || 0 })}
               </span>
             </div>
 
             {/* FIFA Badge */}
             <div className="flex gap-2 mt-4">
-              <span className="self-center text-sm text-gray-500">رخصة FIFA:</span>
+              <span className="self-center text-sm text-gray-500">{copy.fifaLicense}</span>
               <button
                 disabled={!editMode}
                 onClick={() => editMode && handleChange('is_fifa_licensed', true)}
@@ -516,7 +519,7 @@ export default function AgentProfilePage() {
                 } disabled:cursor-default`}
               >
                 <Shield className="inline w-3.5 h-3.5 ml-1" />
-                معتمد FIFA
+                {copy.fifaLicensed}
               </button>
               <button
                 disabled={!editMode}
@@ -527,7 +530,7 @@ export default function AgentProfilePage() {
                     : 'border-gray-200 text-gray-400'
                 } disabled:cursor-default`}
               >
-                محلي
+                {copy.local}
               </button>
             </div>
           </div>
@@ -536,10 +539,10 @@ export default function AgentProfilePage() {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-4 mb-8 md:grid-cols-4">
           {[
-            { icon: <Users size={26} />, label: 'لاعبون نشطون', field: 'active_players', color: 'from-purple-400 to-purple-600' },
-            { icon: <Trophy size={26} />, label: 'صفقات مكتملة', field: 'completed_deals', color: 'from-green-400 to-green-600' },
-            { icon: <Zap size={26} />, label: 'إجمالي العمولات (K)', field: 'total_commission', color: 'from-yellow-400 to-yellow-600' },
-            { icon: <Target size={26} />, label: 'معدل النجاح %', field: 'success_rate', color: 'from-blue-400 to-blue-600' },
+            { icon: <Users size={26} />, label: copy.stats.active, field: 'active_players', color: 'from-purple-400 to-purple-600' },
+            { icon: <Trophy size={26} />, label: copy.stats.deals, field: 'completed_deals', color: 'from-green-400 to-green-600' },
+            { icon: <Zap size={26} />, label: copy.stats.commission, field: 'total_commission', color: 'from-yellow-400 to-yellow-600' },
+            { icon: <Target size={26} />, label: copy.stats.success, field: 'success_rate', color: 'from-blue-400 to-blue-600' },
           ].map(({ icon, label, field, color }) => (
             <div key={field} className={`flex flex-col items-center p-5 text-white bg-gradient-to-br ${color} rounded-xl shadow`}>
               {icon}
@@ -564,19 +567,19 @@ export default function AgentProfilePage() {
           {/* Bio */}
           <div className="p-6 bg-white rounded-xl shadow">
             <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-purple-700">
-              <FileText size={20} /> نبذة شخصية
+              <FileText size={20} /> {copy.bioTitle}
             </h3>
             {editMode ? (
               <textarea
                 value={agentData.bio}
                 onChange={e => handleChange('bio', e.target.value)}
                 rows={5}
-                placeholder="اكتب نبذة عن خبراتك ومسيرتك المهنية..."
+                placeholder={copy.bioPlaceholder}
                 className="p-3 w-full text-right text-sm rounded-lg border border-gray-200 resize-none focus:outline-none focus:ring-2 focus:ring-purple-300"
               />
             ) : (
               <p className="text-sm leading-relaxed text-right text-gray-600">
-                {agentData.bio || 'لا توجد نبذة شخصية بعد.'}
+                {agentData.bio || copy.noBio}
               </p>
             )}
           </div>
@@ -584,15 +587,15 @@ export default function AgentProfilePage() {
           {/* Contact */}
           <div className="p-6 bg-white rounded-xl shadow">
             <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-purple-700">
-              <Phone size={20} /> بيانات التواصل
+              <Phone size={20} /> {copy.contactTitle}
             </h3>
             <div className="space-y-3">
               {[
-                { icon: <Phone size={15} />, label: 'الهاتف', field: 'phone', type: 'tel' },
-                { icon: <Phone size={15} />, label: 'واتساب', field: 'whatsapp', type: 'tel' },
-                { icon: <Mail size={15} />, label: 'البريد', field: 'email', type: 'email' },
-                { icon: <Building2 size={15} />, label: 'المكتب', field: 'office_address', type: 'text' },
-                { icon: <Globe size={15} />, label: 'الموقع', field: 'website', type: 'url' },
+                { icon: <Phone size={15} />, label: copy.contactFields.phone, field: 'phone', type: 'tel' },
+                { icon: <Phone size={15} />, label: copy.contactFields.whatsapp, field: 'whatsapp', type: 'tel' },
+                { icon: <Mail size={15} />, label: copy.contactFields.email, field: 'email', type: 'email' },
+                { icon: <Building2 size={15} />, label: copy.contactFields.office, field: 'office_address', type: 'text' },
+                { icon: <Globe size={15} />, label: copy.contactFields.website, field: 'website', type: 'url' },
               ].map(({ icon, label, field, type }) => {
                 const hasError = !!errors[field as keyof AgentData];
                 return (
@@ -621,14 +624,14 @@ export default function AgentProfilePage() {
           {/* Professional Info */}
           <div className="p-6 bg-white rounded-xl shadow">
             <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-purple-700">
-              <Shield size={20} /> المعلومات المهنية
+              <Shield size={20} /> {copy.professionalTitle}
             </h3>
             <div className="space-y-3">
               {agentData.is_fifa_licensed && (
                 <>
                   <div className="flex gap-3 items-center">
                     <span className="text-purple-500"><Shield size={15} /></span>
-                    <span className="w-24 text-sm text-gray-500">رقم الرخصة:</span>
+                    <span className="w-24 text-sm text-gray-500">{copy.licenseNumber}</span>
                     {editMode ? (
                       <input type="text" value={agentData.license_number}
                         onChange={e => handleChange('license_number', e.target.value)}
@@ -639,7 +642,7 @@ export default function AgentProfilePage() {
                   </div>
                   <div className="flex gap-3 items-center">
                     <span className="text-purple-500"><Calendar size={15} /></span>
-                    <span className="w-24 text-sm text-gray-500">انتهاء الرخصة:</span>
+                    <span className="w-24 text-sm text-gray-500">{copy.licenseExpiry}</span>
                     {editMode ? (
                       <input type="date" value={agentData.license_expiry}
                         onChange={e => handleChange('license_expiry', e.target.value)}
@@ -652,7 +655,7 @@ export default function AgentProfilePage() {
               )}
               <div className="flex gap-3 items-center">
                 <span className="text-purple-500"><Calendar size={15} /></span>
-                <span className="w-24 text-sm text-gray-500">تاريخ الميلاد:</span>
+                <span className="w-24 text-sm text-gray-500">{copy.birthDate}</span>
                 {editMode ? (
                   <input type="date" value={agentData.date_of_birth}
                     onChange={e => handleChange('date_of_birth', e.target.value)}
@@ -663,13 +666,13 @@ export default function AgentProfilePage() {
               </div>
               <div className="flex gap-3 items-start">
                 <span className="mt-1 text-purple-500"><Languages size={15} /></span>
-                <span className="w-24 text-sm text-gray-500 shrink-0">اللغات:</span>
+                <span className="w-24 text-sm text-gray-500 shrink-0">{copy.languages}</span>
                 {editMode ? (
                   <input
                     type="text"
                     value={agentData.spoken_languages.join(', ')}
                     onChange={e => handleChange('spoken_languages', e.target.value.split(',').map(l => l.trim()).filter(Boolean))}
-                    placeholder="العربية، الإنجليزية (افصل بفاصلة)"
+                    placeholder={copy.languagesPlaceholder}
                     className="flex-1 px-2 py-1 text-sm rounded border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-300"
                   />
                 ) : (
@@ -689,17 +692,17 @@ export default function AgentProfilePage() {
           {/* Players Portfolio */}
           <div className="p-6 bg-white rounded-xl shadow">
             <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-purple-700">
-              <Briefcase size={20} /> محفظة اللاعبين
+              <Briefcase size={20} /> {copy.portfolio}
             </h3>
 
             {/* Current Players */}
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-semibold text-gray-700">اللاعبون الحاليون</span>
+                <span className="text-sm font-semibold text-gray-700">{copy.currentPlayers}</span>
                 {editMode && (
                   <button onClick={() => setAddPlayerType('current')}
                     className="flex gap-1 items-center text-xs text-purple-600 hover:text-purple-800">
-                    <Plus size={13} /> إضافة
+                    <Plus size={13} /> {copy.add}
                   </button>
                 )}
               </div>
@@ -707,14 +710,14 @@ export default function AgentProfilePage() {
                 <div className="flex gap-2 mb-2">
                   <input type="text" value={newPlayer} onChange={e => setNewPlayer(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAddPlayer()}
-                    placeholder="اسم اللاعب"
+                    placeholder={copy.playerName}
                     className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-300" />
-                  <button onClick={handleAddPlayer} className="px-3 py-1.5 text-sm text-white bg-purple-600 rounded-lg hover:bg-purple-700">إضافة</button>
+                  <button onClick={handleAddPlayer} className="px-3 py-1.5 text-sm text-white bg-purple-600 rounded-lg hover:bg-purple-700">{copy.add}</button>
                   <button onClick={() => { setAddPlayerType(null); setNewPlayer(''); }} className="px-2 py-1.5 text-gray-500 hover:text-red-500"><X size={16} /></button>
                 </div>
               )}
               {agentData.current_players.length === 0 ? (
-                <p className="text-xs text-gray-400">لا يوجد لاعبون حاليون</p>
+                <p className="text-xs text-gray-400">{copy.noCurrent}</p>
               ) : (
                 <div className="space-y-1">
                   {agentData.current_players.map((player, i) => (
@@ -732,11 +735,11 @@ export default function AgentProfilePage() {
             {/* Past Players */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-semibold text-gray-700">اللاعبون السابقون</span>
+                <span className="text-sm font-semibold text-gray-700">{copy.pastPlayers}</span>
                 {editMode && (
                   <button onClick={() => setAddPlayerType('past')}
                     className="flex gap-1 items-center text-xs text-purple-600 hover:text-purple-800">
-                    <Plus size={13} /> إضافة
+                    <Plus size={13} /> {copy.add}
                   </button>
                 )}
               </div>
@@ -744,14 +747,14 @@ export default function AgentProfilePage() {
                 <div className="flex gap-2 mb-2">
                   <input type="text" value={newPlayer} onChange={e => setNewPlayer(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAddPlayer()}
-                    placeholder="اسم اللاعب"
+                    placeholder={copy.playerName}
                     className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-300" />
-                  <button onClick={handleAddPlayer} className="px-3 py-1.5 text-sm text-white bg-purple-600 rounded-lg hover:bg-purple-700">إضافة</button>
+                  <button onClick={handleAddPlayer} className="px-3 py-1.5 text-sm text-white bg-purple-600 rounded-lg hover:bg-purple-700">{copy.add}</button>
                   <button onClick={() => { setAddPlayerType(null); setNewPlayer(''); }} className="px-2 py-1.5 text-gray-500 hover:text-red-500"><X size={16} /></button>
                 </div>
               )}
               {agentData.past_players.length === 0 ? (
-                <p className="text-xs text-gray-400">لا يوجد لاعبون سابقون</p>
+                <p className="text-xs text-gray-400">{copy.noPast}</p>
               ) : (
                 <div className="space-y-1">
                   {agentData.past_players.map((player, i) => (
@@ -771,19 +774,19 @@ export default function AgentProfilePage() {
         {/* Notable Deals */}
         <div className="p-6 mb-8 bg-white rounded-xl shadow">
           <h3 className="flex gap-2 items-center mb-4 text-lg font-bold text-purple-700">
-            <Star size={20} /> الصفقات البارزة
+            <Star size={20} /> {copy.notableDeals}
           </h3>
           {editMode ? (
             <textarea
               value={agentData.notable_deals}
               onChange={e => handleChange('notable_deals', e.target.value)}
               rows={4}
-              placeholder="اكتب وصفاً للصفقات البارزة والانتقالات المهمة التي أنجزتها..."
+              placeholder={copy.dealsPlaceholder}
               className="p-3 w-full text-right text-sm rounded-lg border border-gray-200 resize-none focus:outline-none focus:ring-2 focus:ring-purple-300"
             />
           ) : (
             <p className="text-sm leading-relaxed text-right text-gray-600">
-              {agentData.notable_deals || 'لا توجد صفقات بارزة مسجّلة بعد.'}
+              {agentData.notable_deals || copy.noDeals}
             </p>
           )}
         </div>
@@ -791,7 +794,7 @@ export default function AgentProfilePage() {
         {/* Social Media */}
         <div className="p-6 mb-8 bg-white rounded-xl shadow">
           <h3 className="flex gap-2 items-center mb-5 text-lg font-bold text-purple-700">
-            <Globe size={20} /> وسائل التواصل الاجتماعي
+            <Globe size={20} /> {copy.socialMedia}
           </h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {[
@@ -825,12 +828,12 @@ export default function AgentProfilePage() {
         {/* Photo Gallery */}
         <div className="p-6 bg-white rounded-xl shadow">
           <h3 className="flex gap-2 items-center mb-5 text-lg font-bold text-purple-700">
-            <Camera size={20} /> معرض الصور
+            <Camera size={20} /> {copy.gallery}
           </h3>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {agentData.gallery.map((img, idx) => (
               <div key={idx} className="overflow-hidden relative rounded-lg aspect-square group">
-                <img src={img} alt={`صورة ${idx + 1}`} className="object-cover w-full h-full" />
+                <img src={img} alt={interpolate(copy.imageAlt, { number: idx + 1 })} className="object-cover w-full h-full" />
                 {editMode && (
                   <button
                     onClick={() => handleRemoveGallery(idx)}
@@ -846,12 +849,12 @@ export default function AgentProfilePage() {
                 <input type="file" accept="image/*" className="hidden"
                   onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'gallery')} />
                 <Plus size={24} className="text-gray-400" />
-                <span className="text-xs text-gray-400">إضافة صورة</span>
+                <span className="text-xs text-gray-400">{copy.addImage}</span>
               </label>
             )}
           </div>
           {agentData.gallery.length === 0 && !editMode && (
-            <p className="py-6 text-sm text-center text-gray-400">لا توجد صور في المعرض بعد</p>
+            <p className="py-6 text-sm text-center text-gray-400">{copy.noImages}</p>
           )}
         </div>
 

@@ -5,8 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Trophy, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { signInClient } from '@/lib/tournament-portal/auth';
+import { useTranslation } from '@/lib/i18n';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 export default function TournamentPortalLogin() {
+    const { isRTL, getTranslations } = useTranslation();
+    const t = getTranslations<any>('tournamentPortal');
     const router       = useRouter();
     const searchParams = useSearchParams();
     const redirect     = searchParams.get('redirect') || '/tournament-portal';
@@ -19,7 +23,7 @@ export default function TournamentPortalLogin() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!email || !password) { setError('يرجى تعبئة جميع الحقول'); return; }
+        if (!email || !password) { setError(t.login.required); return; }
         setLoading(true);
         setError('');
         try {
@@ -27,15 +31,16 @@ export default function TournamentPortalLogin() {
             router.push(redirect);
         } catch (err: any) {
             setError(err.message === 'Invalid login credentials'
-                ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة'
-                : err.message || 'فشل تسجيل الدخول');
+                ? t.login.invalid
+                : err.message || t.login.failed);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4" dir="rtl">
+        <div className="relative min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4" dir={isRTL ? 'rtl' : 'ltr'}>
+            <div className={`absolute top-4 ${isRTL ? 'left-4' : 'right-4'}`}><LanguageSwitcher /></div>
 
             {/* Card */}
             <div className="w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
@@ -45,8 +50,8 @@ export default function TournamentPortalLogin() {
                     <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg mb-4">
                         <Trophy className="w-8 h-8 text-white" />
                     </div>
-                    <h1 className="text-2xl font-black text-white">بوابة البطولات</h1>
-                    <p className="text-slate-400 text-sm mt-1">تسجيل الدخول لإدارة بطولاتك</p>
+                    <h1 className="text-2xl font-black text-white">{t.common.portal}</h1>
+                    <p className="text-slate-400 text-sm mt-1">{t.login.subtitle}</p>
                 </div>
 
                 {/* Form */}
@@ -54,7 +59,7 @@ export default function TournamentPortalLogin() {
 
                     {/* Email */}
                     <div>
-                        <label className="text-slate-300 text-sm font-medium mb-1.5 block">البريد الإلكتروني</label>
+                        <label className="text-slate-300 text-sm font-medium mb-1.5 block">{t.login.email}</label>
                         <div className="relative">
                             <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <input
@@ -71,7 +76,7 @@ export default function TournamentPortalLogin() {
 
                     {/* Password */}
                     <div>
-                        <label className="text-slate-300 text-sm font-medium mb-1.5 block">كلمة المرور</label>
+                        <label className="text-slate-300 text-sm font-medium mb-1.5 block">{t.login.password}</label>
                         <div className="relative">
                             <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <input
@@ -107,15 +112,15 @@ export default function TournamentPortalLogin() {
                         className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-yellow-500/20 flex items-center justify-center gap-2 mt-2"
                     >
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trophy className="w-4 h-4" />}
-                        {loading ? 'جاري الدخول...' : 'تسجيل الدخول'}
+                        {loading ? t.login.submitting : t.login.submit}
                     </button>
                 </form>
 
                 {/* Register link */}
                 <p className="text-center text-slate-400 text-sm mt-6">
-                    ليس لديك حساب؟{' '}
+                    {t.login.noAccount}{' '}
                     <Link href="/tournament-portal/register" className="text-yellow-400 hover:text-yellow-300 font-semibold transition-colors">
-                        إنشاء حساب جديد
+                        {t.login.register}
                     </Link>
                 </p>
             </div>

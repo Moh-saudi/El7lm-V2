@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Copy, MessageCircle, Mail, Printer, Eye, EyeOff, CheckCircle, Phone, Send, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/lib/i18n';
 
 interface PlayerLoginCredentialsProps {
   playerData: {
@@ -35,67 +36,53 @@ export default function PlayerLoginCredentials({
   accountOwner,
   onClose 
 }: PlayerLoginCredentialsProps) {
+  const { t, locale, isRTL } = useTranslation();
+  const tr = (key: string, values: Record<string, string> = {}) =>
+    Object.entries(values).reduce(
+      (text, [name, value]) => text.replaceAll(`{{${name}}}`, value),
+      t(`sharedComponents.playerCredentials.${key}`)
+    );
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [showWhatsAppConfirm, setShowWhatsAppConfirm] = useState(false);
   const [confirmedWhatsApp, setConfirmedWhatsApp] = useState(playerData.whatsapp || playerData.phone || '');
   const [sendingOfficial, setSendingOfficial] = useState(false);
 
-  const playerName = playerData.full_name || playerData.name || 'اللاعب';
+  const playerName = playerData.full_name || playerData.name || t('sharedComponents.playerCredentials.player');
   
   // بيانات صاحب الحساب
   const senderPhone = accountOwner?.whatsapp || accountOwner?.phone || '+97472053188';
-  const organizationName = accountOwner?.organizationName || 'المنظمة';
+  const organizationName = accountOwner?.organizationName || t('sharedComponents.playerCredentials.organization');
   const accountType = accountOwner?.accountType || 'club';
   
-  // تحديد نوع المنظمة بالعربية
-  const getOrganizationTypeArabic = () => {
+  const getOrganizationType = () => {
     switch(accountType) {
-      case 'club': return 'نادي';
-      case 'academy': return 'أكاديمية';
-      case 'trainer': return 'مدرب';
-      case 'agent': return 'وكيل';
-      default: return 'منظمة';
+      case 'club': return t('sharedComponents.playerCredentials.orgTypes.club');
+      case 'academy': return t('sharedComponents.playerCredentials.orgTypes.academy');
+      case 'trainer': return t('sharedComponents.playerCredentials.orgTypes.trainer');
+      case 'agent': return t('sharedComponents.playerCredentials.orgTypes.agent');
+      default: return t('sharedComponents.playerCredentials.orgTypes.organization');
     }
   };
   
-  const orgTypeArabic = getOrganizationTypeArabic();
+  const organizationType = getOrganizationType();
 
   // رسالة تسجيل الدخول
-  const loginMessage = `مرحباً ${playerName}! 🎉
-
-تم إنشاء حساب تسجيل الدخول الخاص بك:
-
-📧 الإيميل: ${playerData.email}
-🔑 كلمة المرور: ${password}
-
-للدخول:
-1. اذهب لصفحة تسجيل الدخول
-2. استخدم الإيميل وكلمة المرور أعلاه
-3. يمكنك تغيير كلمة المرور بعد الدخول
-
-مرحباً بك! 🎯`;
+  const loginMessage = tr('loginMessage', {
+    playerName,
+    email: playerData.email,
+    password
+  });
 
   // رسالة رسمية مخصصة حسب نوع المنظمة
-  const officialMessage = `مرحباً ${playerName}! 👋
-
-${organizationName} ${accountType === 'trainer' ? 'يرحب' : accountType === 'academy' ? 'ترحب' : 'يرحب'} بك! ${getOrgEmoji()}
-
-تم إنشاء حساب تسجيل الدخول الخاص بك:
-
-📧 الإيميل: ${playerData.email}
-🔑 كلمة المرور: ${password}
-
-خطوات الدخول:
-1️⃣ اذهب لصفحة تسجيل الدخول
-2️⃣ أدخل الإيميل وكلمة المرور المذكورة أعلاه
-3️⃣ يمكنك تغيير كلمة المرور حسب رغبتك
-
-مرحباً بك معنا! 🎯
-
----
-إدارة ${organizationName}
-${senderPhone}`;
+  const officialMessage = tr('officialMessage', {
+    playerName,
+    organizationName,
+    orgEmoji: getOrgEmoji(),
+    email: playerData.email,
+    password,
+    senderPhone
+  });
 
   // إيموجي حسب نوع المنظمة
   function getOrgEmoji() {
@@ -112,16 +99,16 @@ ${senderPhone}`;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(type);
-      toast.success('تم النسخ للحافظة');
+      toast.success(t('sharedComponents.playerCredentials.copied'));
       setTimeout(() => setCopied(null), 2000);
     } catch (error) {
-      toast.error('فشل في النسخ');
+      toast.error(t('sharedComponents.playerCredentials.copyFailed'));
     }
   };
 
   const sendWhatsApp = () => {
     if (!playerData.whatsapp && !playerData.phone) {
-      toast.error('لا يوجد رقم واتساب أو هاتف للاعب');
+      toast.error(t('sharedComponents.playerCredentials.noWhatsappOrPhone'));
       return;
     }
     
@@ -133,7 +120,7 @@ ${senderPhone}`;
 
   const sendSMS = () => {
     if (!playerData.phone) {
-      toast.error('لا يوجد رقم هاتف للاعب');
+      toast.error(t('sharedComponents.playerCredentials.noPhone'));
       return;
     }
     
@@ -142,14 +129,14 @@ ${senderPhone}`;
   };
 
   const sendEmail = () => {
-    const subject = `بيانات تسجيل الدخول - ${playerName}`;
+    const subject = tr('emailSubject', { playerName });
     const emailUrl = `mailto:${playerData.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(loginMessage)}`;
     window.open(emailUrl);
   };
 
   const sendOfficialWhatsApp = async () => {
     if (!confirmedWhatsApp) {
-      toast.error('يرجى تأكيد رقم الواتساب');
+      toast.error(t('sharedComponents.playerCredentials.confirmWhatsapp'));
       return;
     }
 
@@ -173,7 +160,7 @@ ${senderPhone}`;
       const result = await response.json();
       
       if (result.success) {
-        toast.success(`تم إرسال بيانات الدخول لـ ${playerName} عبر الواتساب الرسمي بنجاح!`);
+        toast.success(tr('officialSent', { playerName }));
         setShowWhatsAppConfirm(false);
         
         // تسجيل في الكونسول
@@ -184,12 +171,14 @@ ${senderPhone}`;
           console.log(`ℹ️ ملاحظة: ${result.note}`);
         }
       } else {
-        throw new Error(result.error || 'فشل في إرسال الرسالة');
+        throw new Error(result.error || t('sharedComponents.playerCredentials.sendFailed'));
       }
       
     } catch (error) {
       console.error('❌ خطأ في إرسال الرسالة:', error);
-      toast.error(`فشل في إرسال الرسالة الرسمية: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+      toast.error(tr('officialSendFailed', {
+        error: error instanceof Error ? error.message : t('sharedComponents.playerCredentials.unknownError')
+      }));
     } finally {
       setSendingOfficial(false);
     }
@@ -203,11 +192,11 @@ ${senderPhone}`;
       <!DOCTYPE html>
       <html>
       <head>
-        <title>بيانات تسجيل الدخول - ${playerName}</title>
+        <title>${tr('emailSubject', { playerName })}</title>
         <style>
           body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            direction: rtl; 
+            direction: ${isRTL ? 'rtl' : 'ltr'};
             text-align: center;
             padding: 40px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -238,7 +227,7 @@ ${senderPhone}`;
             border-radius: 12px;
             padding: 20px;
             margin: 15px 0;
-            text-align: right;
+            text-align: ${isRTL ? 'right' : 'left'};
           }
           .label {
             color: #64748b;
@@ -260,7 +249,7 @@ ${senderPhone}`;
             border-radius: 12px;
             padding: 20px;
             margin-top: 30px;
-            text-align: right;
+            text-align: ${isRTL ? 'right' : 'left'};
           }
           .instructions h3 {
             color: #1d4ed8;
@@ -268,7 +257,7 @@ ${senderPhone}`;
           }
           .instructions ol {
             color: #1e40af;
-            text-align: right;
+            text-align: ${isRTL ? 'right' : 'left'};
           }
           .instructions li {
             margin: 8px 0;
@@ -287,33 +276,33 @@ ${senderPhone}`;
       </head>
       <body>
         <div class="card">
-          <div class="header">🔐 بيانات تسجيل الدخول</div>
+          <div class="header">🔐 ${t('sharedComponents.playerCredentials.loginCredentials')}</div>
           <div class="name">${playerName}</div>
           
           <div class="credential">
-            <div class="label">📧 الإيميل:</div>
+            <div class="label">📧 ${t('sharedComponents.playerCredentials.email')}:</div>
             <div class="value">${playerData.email}</div>
           </div>
           
           <div class="credential">
-            <div class="label">🔑 كلمة المرور:</div>
+            <div class="label">🔑 ${t('sharedComponents.playerCredentials.password')}:</div>
             <div class="value">${password}</div>
           </div>
 
           <div class="instructions">
-            <h3>📋 خطوات تسجيل الدخول:</h3>
+            <h3>📋 ${t('sharedComponents.playerCredentials.loginSteps')}:</h3>
             <ol>
-              <li>اذهب إلى صفحة تسجيل الدخول</li>
-              <li>أدخل الإيميل المذكور أعلاه</li>
-              <li>أدخل كلمة المرور المذكورة أعلاه</li>
-              <li>يمكنك تغيير كلمة المرور بعد الدخول</li>
-              <li>مرحباً بك في حسابك الشخصي! 🎯</li>
+              <li>${t('sharedComponents.playerCredentials.stepOpenLogin')}</li>
+              <li>${t('sharedComponents.playerCredentials.stepEnterEmail')}</li>
+              <li>${t('sharedComponents.playerCredentials.stepEnterPassword')}</li>
+              <li>${t('sharedComponents.playerCredentials.stepChangePassword')}</li>
+              <li>${t('sharedComponents.playerCredentials.stepWelcome')} 🎯</li>
             </ol>
           </div>
 
           <div class="footer">
-            تم الإنشاء في: ${new Date().toLocaleDateString('ar-SA')} - ${new Date().toLocaleTimeString('ar-SA')}<br/>
-            إدارة ${organizationName}: ${senderPhone}
+            ${t('sharedComponents.playerCredentials.createdAt')}: ${new Date().toLocaleDateString(locale)} - ${new Date().toLocaleTimeString(locale)}<br/>
+            ${t('sharedComponents.playerCredentials.management')} ${organizationName}: ${senderPhone}
           </div>
         </div>
       </body>
@@ -325,14 +314,14 @@ ${senderPhone}`;
   };
 
   return (
-    <Card className="border-green-200 bg-green-50">
+    <Card className="border-green-200 bg-green-50" dir={isRTL ? 'rtl' : 'ltr'}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-green-800">
           <CheckCircle className="w-5 h-5" />
-          تم إنشاء حساب تسجيل الدخول!
+          {t('sharedComponents.playerCredentials.accountCreated')}
         </CardTitle>
         <CardDescription className="text-green-700">
-          تم إنشاء حساب تسجيل دخول للاعب {playerName} بنجاح
+          {tr('accountCreatedFor', { playerName })}
         </CardDescription>
       </CardHeader>
       
@@ -341,7 +330,7 @@ ${senderPhone}`;
         {/* بيانات الاعتماد */}
         <div className="bg-white border border-green-200 rounded-lg p-4">
           <h3 className="font-semibold text-gray-800 mb-4 text-center">
-            🔐 بيانات تسجيل الدخول
+            🔐 {t('sharedComponents.playerCredentials.loginCredentials')}
           </h3>
           
           <div className="space-y-4">
@@ -350,7 +339,7 @@ ${senderPhone}`;
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm text-gray-600 flex items-center gap-1">
                   <Mail className="w-4 h-4" />
-                  الإيميل:
+                  {t('sharedComponents.playerCredentials.email')}:
                 </span>
                 <Button
                   variant="ghost"
@@ -373,7 +362,7 @@ ${senderPhone}`;
             {/* كلمة المرور */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-gray-600">🔑 كلمة المرور:</span>
+                <span className="text-sm text-gray-600">🔑 {t('sharedComponents.playerCredentials.password')}:</span>
                 <div className="flex gap-1">
                   <Button
                     variant="ghost"
@@ -406,7 +395,7 @@ ${senderPhone}`;
 
         {/* معلومات الاتصال */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h4 className="font-medium text-blue-800 mb-3">📱 معلومات الاتصال:</h4>
+          <h4 className="font-medium text-blue-800 mb-3">📱 {t('sharedComponents.playerCredentials.contactInformation')}:</h4>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             {playerData.phone && (
               <div className="flex items-center gap-2">
@@ -430,7 +419,7 @@ ${senderPhone}`;
         {/* خيارات المشاركة */}
         <div className="space-y-4">
           <h4 className="font-medium text-gray-800 text-center">
-            📤 مشاركة بيانات الدخول مع اللاعب:
+            📤 {t('sharedComponents.playerCredentials.shareWithPlayer')}:
           </h4>
           
           <div className="grid grid-cols-2 gap-3">
@@ -442,26 +431,26 @@ ${senderPhone}`;
                   className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 col-span-2"
                 >
                   <Send className="w-4 h-4" />
-                  إرسال رسمي عبر الواتساب
+                  {t('sharedComponents.playerCredentials.officialWhatsapp')}
                   <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs">
-                    مميز
+                    {t('sharedComponents.playerCredentials.featured')}
                   </Badge>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md" dir="rtl">
+              <DialogContent className="max-w-md" dir={isRTL ? 'rtl' : 'ltr'}>
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
                     <MessageCircle className="w-5 h-5 text-green-600" />
-                    إرسال رسمي عبر الواتساب
+                    {t('sharedComponents.playerCredentials.officialWhatsapp')}
                   </DialogTitle>
                   <DialogDescription>
-                    سيتم الإرسال من رقم {orgTypeArabic} {organizationName}: {senderPhone}
+                    {tr('sentFrom', { organizationType, organizationName, senderPhone })}
                   </DialogDescription>
                 </DialogHeader>
                 
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="whatsapp-confirm">تأكيد رقم واتساب اللاعب:</Label>
+                    <Label htmlFor="whatsapp-confirm">{t('sharedComponents.playerCredentials.confirmPlayerWhatsapp')}:</Label>
                     <Input
                       id="whatsapp-confirm"
                       type="tel"
@@ -472,14 +461,14 @@ ${senderPhone}`;
                       dir="ltr"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      تأكد من الرقم قبل الإرسال - يجب أن يشمل رمز الدولة
+                      {t('sharedComponents.playerCredentials.verifyCountryCode')}
                     </p>
                   </div>
 
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <AlertTriangle className="w-4 h-4 text-yellow-600" />
-                      <span className="text-sm font-medium text-yellow-800">معاينة الرسالة:</span>
+                      <span className="text-sm font-medium text-yellow-800">{t('sharedComponents.playerCredentials.messagePreview')}:</span>
                     </div>
                     <div className="text-xs text-gray-600 bg-white p-2 rounded border max-h-32 overflow-y-auto">
                       {officialMessage}
@@ -495,12 +484,12 @@ ${senderPhone}`;
                       {sendingOfficial ? (
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          جاري الإرسال...
+                          {t('sharedComponents.playerCredentials.sending')}
                         </>
                       ) : (
                         <>
                           <Send className="w-4 h-4 mr-2" />
-                          إرسال الآن
+                          {t('sharedComponents.playerCredentials.sendNow')}
                         </>
                       )}
                     </Button>
@@ -508,7 +497,7 @@ ${senderPhone}`;
                       variant="outline"
                       onClick={() => setShowWhatsAppConfirm(false)}
                     >
-                      إلغاء
+                      {t('sharedComponents.playerCredentials.cancel')}
                     </Button>
                   </div>
                 </div>
@@ -523,7 +512,7 @@ ${senderPhone}`;
               className="border-green-300 text-green-600 hover:bg-green-50 flex items-center gap-2"
             >
               <MessageCircle className="w-4 h-4" />
-              واتساب عادي
+              {t('sharedComponents.playerCredentials.regularWhatsapp')}
             </Button>
 
             {/* SMS */}
@@ -534,7 +523,7 @@ ${senderPhone}`;
               className="border-blue-300 text-blue-600 hover:bg-blue-50 flex items-center gap-2"
             >
               <Phone className="w-4 h-4" />
-              رسالة نصية
+              {t('sharedComponents.playerCredentials.sms')}
             </Button>
 
             {/* إيميل */}
@@ -544,7 +533,7 @@ ${senderPhone}`;
               className="border-purple-300 text-purple-600 hover:bg-purple-50 flex items-center gap-2"
             >
               <Mail className="w-4 h-4" />
-              إيميل
+              {t('sharedComponents.playerCredentials.email')}
             </Button>
 
             {/* طباعة */}
@@ -554,7 +543,7 @@ ${senderPhone}`;
               className="border-gray-300 text-gray-600 hover:bg-gray-50 flex items-center gap-2"
             >
               <Printer className="w-4 h-4" />
-              طباعة
+              {t('sharedComponents.playerCredentials.print')}
             </Button>
           </div>
 
@@ -567,12 +556,12 @@ ${senderPhone}`;
             {copied === 'message' ? (
               <>
                 <CheckCircle className="w-4 h-4 mr-2" />
-                تم النسخ!
+                {t('sharedComponents.playerCredentials.copiedShort')}
               </>
             ) : (
               <>
                 <Copy className="w-4 h-4 mr-2" />
-                نسخ الرسالة كاملة
+                {t('sharedComponents.playerCredentials.copyFullMessage')}
               </>
             )}
           </Button>
@@ -580,12 +569,12 @@ ${senderPhone}`;
 
         {/* تعليمات للمدير */}
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <h4 className="font-medium text-yellow-800 mb-2">💡 تعليمات:</h4>
+          <h4 className="font-medium text-yellow-800 mb-2">💡 {t('sharedComponents.playerCredentials.instructions')}:</h4>
           <ul className="text-sm text-yellow-700 space-y-1">
-            <li>• <strong>الإرسال الرسمي</strong> من رقم {orgTypeArabic} {organizationName}</li>
-            <li>• تأكد من صحة رقم الواتساب قبل الإرسال</li>
-            <li>• يمكن للاعب تغيير كلمة المرور بعد الدخول الأول</li>
-            <li>• رقم {orgTypeArabic}: {senderPhone}</li>
+            <li>• <strong>{t('sharedComponents.playerCredentials.officialSending')}</strong> {tr('fromOrganization', { organizationType, organizationName })}</li>
+            <li>• {t('sharedComponents.playerCredentials.checkWhatsapp')}</li>
+            <li>• {t('sharedComponents.playerCredentials.canChangePassword')}</li>
+            <li>• {tr('organizationNumber', { organizationType, senderPhone })}</li>
           </ul>
         </div>
 
@@ -596,7 +585,7 @@ ${senderPhone}`;
             variant="outline" 
             className="w-full"
           >
-            إغلاق
+            {t('sharedComponents.playerCredentials.close')}
           </Button>
         )}
       </CardContent>

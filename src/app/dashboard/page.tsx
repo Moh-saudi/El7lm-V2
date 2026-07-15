@@ -3,10 +3,14 @@
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useTranslation } from '@/lib/i18n';
 
 export default function Dashboard() {
   const { user, userData, loading } = useAuth();
   const router = useRouter();
+  const { isRTL, getTranslations } = useTranslation();
+  const common = getTranslations<any>('common');
+  const copy = getTranslations<any>('dashboardRedirect');
 
   useEffect(() => {
     if (loading) return;
@@ -47,20 +51,20 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">جاري التحميل...</p>
+          <p className="mt-4 text-gray-600">{common.loading}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">جاري توجيهك إلى لوحة التحكم...</p>
+        <p className="mt-4 text-gray-600">{copy.redirecting}</p>
       </div>
     </div>
   );

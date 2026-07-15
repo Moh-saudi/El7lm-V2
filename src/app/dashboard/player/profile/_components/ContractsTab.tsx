@@ -241,7 +241,7 @@ export function ContractsTab() {
                                 <FormItem>
                                     <FormLabel>{t('profile.contractsTab.email')}</FormLabel>
                                     <FormControl>
-                                        <Input className="bg-white" placeholder="example@email.com" type="email" {...field} value={field.value || ""} />
+                                        <Input className="bg-white" placeholder={t('profile.contractsTab.email')} type="email" {...field} value={field.value || ""} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

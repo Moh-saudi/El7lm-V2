@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { X, AlertCircle, ArrowLeft } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n';
 
 // الحقول الأساسية لكل نوع حساب
 const REQUIRED_FIELDS: Record<string, { key: string; label: string }[]> = {
@@ -80,6 +81,7 @@ interface Props {
 
 export default function ProfileCompletionReminder({ uid, accountType }: Props) {
   const router = useRouter();
+  const { t, isRTL } = useTranslation();
   const [visible, setVisible] = useState(false);
   const [missingFields, setMissingFields] = useState<string[]>([]);
 
@@ -106,7 +108,7 @@ export default function ProfileCompletionReminder({ uid, accountType }: Props) {
         if (!data) return;
         const missing = requiredFields
           .filter(({ key }) => !data[key] || (typeof data[key] === 'string' && !data[key].trim()))
-          .map(({ label }) => label);
+          .map(({ key }) => key);
 
         if (missing.length > 0) {
           setMissingFields(missing);
@@ -131,16 +133,16 @@ export default function ProfileCompletionReminder({ uid, accountType }: Props) {
 
   return (
     <div
-      dir="rtl"
+      dir={isRTL ? 'rtl' : 'ltr'}
       className="fixed bottom-6 left-6 z-50 w-80 rounded-2xl shadow-2xl border border-amber-200 bg-white overflow-hidden animate-in slide-in-from-bottom-4 duration-300"
     >
       {/* شريط علوي */}
       <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-l from-amber-500 to-orange-500">
         <div className="flex items-center gap-2 text-white">
           <AlertCircle className="w-4 h-4" />
-          <span className="text-sm font-bold">أكمل ملفك الشخصي</span>
+          <span className="text-sm font-bold">{t('sharedComponents.profileReminder.title')}</span>
         </div>
-        <button onClick={handleClose} className="text-white/80 hover:text-white transition">
+        <button onClick={handleClose} className="text-white/80 hover:text-white transition" aria-label={t('sharedComponents.otp.close')}>
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -148,18 +150,18 @@ export default function ProfileCompletionReminder({ uid, accountType }: Props) {
       {/* المحتوى */}
       <div className="p-4">
         <p className="text-xs text-gray-500 mb-3">
-          الملف الشخصي غير مكتمل — أكمله لتحسين ظهورك وجذب الفرص.
+          {t('sharedComponents.profileReminder.description')}
         </p>
 
         <div className="flex flex-wrap gap-1.5 mb-4">
-          {missingFields.slice(0, 4).map(label => (
-            <span key={label} className="px-2 py-0.5 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full">
-              {label}
+          {missingFields.slice(0, 4).map(field => (
+            <span key={field} className="px-2 py-0.5 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full">
+              {t(`sharedComponents.profileReminder.fields.${field}`)}
             </span>
           ))}
           {missingFields.length > 4 && (
             <span className="px-2 py-0.5 text-xs bg-gray-50 text-gray-500 border border-gray-200 rounded-full">
-              +{missingFields.length - 4} أخرى
+              +{missingFields.length - 4} {t('sharedComponents.profileReminder.more')}
             </span>
           )}
         </div>
@@ -169,10 +171,10 @@ export default function ProfileCompletionReminder({ uid, accountType }: Props) {
             onClick={handleGoToProfile}
             className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-amber-500 rounded-xl hover:bg-amber-600 transition"
           >
-            اكمل الآن
-            <ArrowLeft className="w-3.5 h-3.5" />
+            {t('sharedComponents.profileReminder.completeNow')}
+            <ArrowLeft className={`w-3.5 h-3.5 ${isRTL ? '' : 'rotate-180'}`} />
           </button>
-          <span className="text-xs text-gray-400">سيظهر مجدداً بعد 3 ساعات</span>
+          <span className="text-xs text-gray-400">{t('sharedComponents.profileReminder.remindLater')}</span>
         </div>
       </div>
     </div>

@@ -45,7 +45,7 @@ import {
   getPlayersManagementAccountName,
   getPlayersManagementCopy,
   interpolate
-} from '@/lib/i18n/page-copy/players-management';
+} from '@/lib/i18n/players-management-copy';
 
 export default function AgentPlayersPage() {
   const { user, userData } = useAuth();
@@ -536,10 +536,14 @@ export default function AgentPlayersPage() {
         {/* Results Summary */}
         <div className="flex justify-between items-center text-sm text-gray-600">
           <span>
-            عرض {startIndex + 1}-{Math.min(endIndex, totalPlayers)} من {totalPlayers} نتيجة
+            {interpolate(copy.results.range, {
+              start: startIndex + 1,
+              end: Math.min(endIndex, totalPlayers),
+              total: totalPlayers,
+            })}
             {players.some(p => (p as any)._debug_note) && (
               <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">
-                🔍 وضع التشخيص - اللاعبين غير مربوطين بالوكيل
+                {interpolate(copy.results.diagnostic, { accountName })}
               </span>
             )}
           </span>
@@ -580,7 +584,9 @@ export default function AgentPlayersPage() {
           <>
           <Card className="overflow-hidden">
             <div className="p-4 border-b">
-              <h3 className="font-bold text-gray-800">اللاعبون المنضمون عبر كود الإحالة ({currentPlayers.filter(p => (p as any).joinedViaReferral).length})</h3>
+              <h3 className="font-bold text-gray-800">
+                {interpolate(copy.table.joinedViaReferral, { count: currentPlayers.filter(p => (p as any).joinedViaReferral).length })}
+              </h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -635,11 +641,11 @@ export default function AgentPlayersPage() {
                             {player.joinedViaReferral && (
                               <div className="mt-1 space-y-1">
                                 <div className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                                  انضم عبر كود
+                                  {copy.common.joinedViaCode}
                                   {player.referralCodeUsed && <span className="font-mono">({player.referralCodeUsed})</span>}
                                 </div>
                                 <div className="text-[11px] text-gray-500">
-                                  تاريخ الانضمام: {formatDate((player as any).organizationJoinedAt)}
+                                  {copy.common.date}: {formatDate((player as any).organizationJoinedAt)}
                                   {(player as any).organizationApprovedBy?.userName && (
                                     <span className="ml-2">— {copy.common.by}: {(player as any).organizationApprovedBy.userName}</span>
                                   )}

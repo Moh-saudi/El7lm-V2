@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { TeamLogo as LogoImg } from '../../_components/TeamLogo';
+import { useTranslation } from '@/lib/i18n';
 
 type Match  = { id:string; home_score:number|null; away_score:number|null; status:string; category_id:string; round:string|null; home_team:{ name:string; logo_url:string|null }|null; away_team:{ name:string; logo_url:string|null }|null };
 type Event  = { event_type:string; minute:number|null; team_id:string; match_id:string; match?:{ category_id:string }|null };
@@ -12,6 +13,8 @@ type Cat    = { id:string; name:string };
 type Scorer = { player_name:string; goals:number; assists:number; team:{ name:string; logo_url:string|null }|null };
 
 export default function AnalyticsPage() {
+  const { getTranslations } = useTranslation();
+  const copy = getTranslations<any>('tournamentAnalytics');
   const { id }     = useParams<{ id: string }>();
   const { isDark } = usePortalTheme();
   const S = isDark ? D : L;
@@ -99,7 +102,6 @@ export default function AnalyticsPage() {
     const r = m.round || 'group_stage';
     roundGoals[r] = (roundGoals[r] || 0) + (m.home_score || 0) + (m.away_score || 0);
   });
-  const ROUND_LABEL: Record<string, string> = { group_stage:'دور المجموعات', round_of_16:'دور الـ16', quarter_final:'ربع النهائي', semi_final:'نصف النهائي', third_place:'المركز الثالث', final:'النهائي', QF:'ربع ن', SF:'نصف ن', F:'النهائي', '3rd':'3rd' };
   const rounds    = Object.entries(roundGoals).sort((a, b) => (ROUND_ORDER[a[0]] || 99) - (ROUND_ORDER[b[0]] || 99));
   const maxRound  = Math.max(...rounds.map(r => r[1]), 1);
 
@@ -116,10 +118,10 @@ export default function AnalyticsPage() {
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }} className="sp-grid-4col">
         {[
-          { icon: '⚽', v: totalGoals, lbl: 'إجمالي الأهداف',    color: '#16a34a' },
-          { icon: '📊', v: avgGoals,   lbl: 'متوسط أهداف/مباراة', color: '#3b82f6' },
-          { icon: '✅', v: `${winPct}%`, lbl: 'مباريات حُسمت',    color: '#f59e0b' },
-          { icon: '🤝', v: `${drawPct}%`, lbl: 'مباريات تعادل',   color: '#8b5cf6' },
+          { icon: '⚽', v: totalGoals, lbl: copy.totalGoals, color: '#16a34a' },
+          { icon: '📊', v: avgGoals, lbl: copy.avgGoals, color: '#3b82f6' },
+          { icon: '✅', v: `${winPct}%`, lbl: copy.decided, color: '#f59e0b' },
+          { icon: '🤝', v: `${drawPct}%`, lbl: copy.draws, color: '#8b5cf6' },
         ].map(kpi => (
           <div key={kpi.lbl} className="sp-kpi" style={{ background: S.surface, borderColor: S.border }}>
             <div style={{ fontSize: 24, marginBottom: 8 }}>{kpi.icon}</div>
@@ -134,9 +136,9 @@ export default function AnalyticsPage() {
 
         {/* Goal timing */}
         <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: 14, padding: '16px 18px' }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: S.text, marginBottom: 16 }}>⏱️ توقيت الأهداف</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: S.text, marginBottom: 16 }}>⏱️ {copy.goalTiming}</div>
           {goalEvents.length === 0
-            ? <Empty S={S} text="لا توجد أحداث مسجلة" />
+            ? <Empty S={S} text={copy.noEvents} />
             : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {periods.map(p => (
                   <div key={p.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -153,9 +155,9 @@ export default function AnalyticsPage() {
 
         {/* Result distribution */}
         <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: 14, padding: '16px 18px' }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: S.text, marginBottom: 16 }}>🎯 نتائج المباريات الأكثر تكراراً</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: S.text, marginBottom: 16 }}>🎯 {copy.commonScores}</div>
           {topScores.length === 0
-            ? <Empty S={S} text="لا توجد نتائج" />
+            ? <Empty S={S} text={copy.noResults} />
             : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {topScores.map(([score, count]) => (
                   <div key={score} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -174,13 +176,13 @@ export default function AnalyticsPage() {
       {/* Goals per round chart */}
       {rounds.length > 0 && (
         <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: 14, padding: '16px 18px' }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: S.text, marginBottom: 16 }}>📈 الأهداف لكل جولة</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: S.text, marginBottom: 16 }}>📈 {copy.goalsByRound}</div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 90, overflowX: 'auto' }}>
             {rounds.map(([rnd, goals]) => (
               <div key={rnd} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#d97706' }}>{goals}</div>
                 <div style={{ width: 36, height: Math.max(6, Math.round((goals / maxRound) * 70)), background: 'linear-gradient(180deg,#d97706,#f59e0b)', borderRadius: '4px 4px 0 0', transition: 'height 0.5s' }} />
-                <div style={{ fontSize: 10, color: S.text2, whiteSpace: 'nowrap', maxWidth: 52, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' }}>{ROUND_LABEL[rnd] || rnd}</div>
+                <div style={{ fontSize: 10, color: S.text2, whiteSpace: 'nowrap', maxWidth: 52, overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'center' }}>{copy.rounds[rnd] || rnd}</div>
               </div>
             ))}
           </div>
@@ -189,9 +191,9 @@ export default function AnalyticsPage() {
 
       {/* Team goals chart */}
       <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: 14, padding: '16px 18px' }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: S.text, marginBottom: 16 }}>🏹 أهداف الفرق (سجّل / استقبل)</div>
+        <div style={{ fontSize: 14, fontWeight: 800, color: S.text, marginBottom: 16 }}>🏹 {copy.teamGoals}</div>
         {teamArr.length === 0
-          ? <Empty S={S} text="لا توجد مباريات منتهية" />
+          ? <Empty S={S} text={copy.noFinished} />
           : <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {teamArr.slice(0, 10).map(t => (
                 <div key={t.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -199,14 +201,14 @@ export default function AnalyticsPage() {
                   <div style={{ width: 110, fontSize: 12, fontWeight: 600, color: S.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{t.name}</div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <div style={{ width: 22, fontSize: 9, color: '#4ade80', textAlign: 'right', flexShrink: 0 }}>سجّل</div>
+                      <div style={{ width: 48, fontSize: 9, color: '#4ade80', textAlign: 'right', flexShrink: 0 }}>{copy.scored}</div>
                       <div style={{ flex: 1, height: 8, background: S.surface2, borderRadius: 2 }}>
                         <div style={{ height: '100%', width: `${Math.round((t.for / maxFor) * 100)}%`, background: '#16a34a', borderRadius: 2 }} />
                       </div>
                       <span style={{ fontSize: 11, fontWeight: 700, color: '#4ade80', width: 20 }}>{t.for}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <div style={{ width: 22, fontSize: 9, color: '#f87171', textAlign: 'right', flexShrink: 0 }}>استقبل</div>
+                      <div style={{ width: 48, fontSize: 9, color: '#f87171', textAlign: 'right', flexShrink: 0 }}>{copy.conceded}</div>
                       <div style={{ flex: 1, height: 8, background: S.surface2, borderRadius: 2 }}>
                         <div style={{ height: '100%', width: `${Math.round((t.against / maxFor) * 100)}%`, background: '#dc2626', borderRadius: 2 }} />
                       </div>
@@ -221,18 +223,18 @@ export default function AnalyticsPage() {
 
       {/* Win/Draw/Loss bar */}
       <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: 14, padding: '16px 18px' }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: S.text, marginBottom: 16 }}>🏁 توزيع نتائج المباريات ({played.length} مباراة)</div>
+        <div style={{ fontSize: 14, fontWeight: 800, color: S.text, marginBottom: 16 }}>🏁 {copy.distribution} ({played.length} {copy.match})</div>
         {played.length === 0
-          ? <Empty S={S} text="لا توجد مباريات منتهية" />
+          ? <Empty S={S} text={copy.noFinished} />
           : <>
               <div style={{ display: 'flex', height: 28, borderRadius: 8, overflow: 'hidden', marginBottom: 12, gap: 2 }}>
-                <div title={`حُسمت ${wins}`} style={{ flex: wins, background: '#16a34a', minWidth: wins > 0 ? 4 : 0 }} />
-                <div title={`تعادل ${draws}`}  style={{ flex: draws, background: '#f59e0b', minWidth: draws > 0 ? 4 : 0 }} />
+                <div title={`${copy.decided} ${wins}`} style={{ flex: wins, background: '#16a34a', minWidth: wins > 0 ? 4 : 0 }} />
+                <div title={`${copy.draws} ${draws}`}  style={{ flex: draws, background: '#f59e0b', minWidth: draws > 0 ? 4 : 0 }} />
               </div>
               <div style={{ display: 'flex', gap: 20 }}>
                 {[
-                  { lbl: 'مباريات حُسمت', v: wins,  pct: winPct,  color: '#16a34a' },
-                  { lbl: 'مباريات تعادل', v: draws, pct: drawPct, color: '#f59e0b' },
+                  { lbl: copy.decided, v: wins, pct: winPct, color: '#16a34a' },
+                  { lbl: copy.draws, v: draws, pct: drawPct, color: '#f59e0b' },
                 ].map(item => (
                   <div key={item.lbl} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ width: 10, height: 10, borderRadius: 2, background: item.color, flexShrink: 0 }} />
@@ -248,7 +250,7 @@ export default function AnalyticsPage() {
       {/* Top scorers mini */}
       {scorers.length > 0 && (
         <div style={{ background: S.surface, border: `1px solid ${S.border}`, borderRadius: 14, padding: '16px 18px' }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: S.text, marginBottom: 14 }}>⚽ أبرز الهدافين</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: S.text, marginBottom: 14 }}>⚽ {copy.topScorers}</div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {scorers.slice(0, 8).map((s, i) => (
               <div key={i} style={{ background: S.surface2, border: `1px solid ${S.border}`, borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, minWidth: 160 }}>
@@ -256,7 +258,7 @@ export default function AnalyticsPage() {
                 <LogoImg name={s.team?.name || '?'} logo={s.team?.logo_url || null} size={26} />
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700, color: S.text }}>{s.player_name}</div>
-                  <div style={{ fontSize: 11, color: S.text2 }}>{s.team?.name} · <span style={{ color: '#4ade80', fontWeight: 700 }}>{s.goals} أهداف</span></div>
+                  <div style={{ fontSize: 11, color: S.text2 }}>{s.team?.name} · <span style={{ color: '#4ade80', fontWeight: 700 }}>{s.goals} {copy.goals}</span></div>
                 </div>
               </div>
             ))}

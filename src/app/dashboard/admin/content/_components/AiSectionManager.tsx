@@ -7,6 +7,7 @@ export default function AiSectionManager() {
   const [data, setData] = useState<AiSectionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [activeLocale, setActiveLocale] = useState<'ar' | 'en' | 'es' | 'pt'>('ar');
 
   useEffect(() => {
     loadData();
@@ -33,26 +34,33 @@ export default function AiSectionManager() {
 
   const updateFeature = (index: number, field: string, value: string) => {
     if (!data) return;
-    const newFeatures = [...data.features];
+    const current = data[activeLocale];
+    const newFeatures = [...current.features];
     newFeatures[index] = { ...newFeatures[index], [field]: value };
-    setData({ ...data, features: newFeatures });
+    setData({ ...data, [activeLocale]: { ...current, features: newFeatures } });
   };
 
   const addFeature = () => {
     if (!data) return;
+    const current = data[activeLocale];
     setData({
       ...data,
-      features: [...data.features, { title: 'ميزة جديدة', desc: '', color: '#bdc4ef', icon: 'star' }]
+      [activeLocale]: {
+        ...current,
+        features: [...current.features, { title: 'ميزة جديدة', desc: '', color: '#bdc4ef', icon: 'star' }],
+      },
     });
   };
 
   const removeFeature = (index: number) => {
     if (!data) return;
-    const newFeatures = data.features.filter((_, i) => i !== index);
-    setData({ ...data, features: newFeatures });
+    const current = data[activeLocale];
+    const newFeatures = current.features.filter((_, i) => i !== index);
+    setData({ ...data, [activeLocale]: { ...current, features: newFeatures } });
   };
 
   if (loading || !data) return <div className="text-center p-8">جاري التحميل...</div>;
+  const current = data[activeLocale];
 
   return (
     <div className="space-y-8" dir="rtl">
@@ -71,6 +79,24 @@ export default function AiSectionManager() {
         </button>
       </div>
 
+      <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
+        {([
+          ['ar', 'العربية'],
+          ['en', 'English'],
+          ['es', 'Español'],
+          ['pt', 'Português'],
+        ] as const).map(([code, label]) => (
+          <button
+            key={code}
+            type="button"
+            onClick={() => setActiveLocale(code)}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${activeLocale === code ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="grid md:grid-cols-2 gap-6">
         <div className="space-y-4 bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700">
           <h3 className="font-bold text-lg dark:text-white border-b dark:border-slate-700 pb-3">النصوص الرئيسية</h3>
@@ -79,8 +105,8 @@ export default function AiSectionManager() {
             <label className="block text-sm font-medium mb-1 dark:text-slate-300">الشارة (Badge)</label>
             <input
               type="text"
-              value={data.badge}
-              onChange={(e) => setData({ ...data, badge: e.target.value })}
+              value={current.badge}
+              onChange={(e) => setData({ ...data, [activeLocale]: { ...current, badge: e.target.value } })}
               className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 dark:text-white"
             />
           </div>
@@ -89,8 +115,8 @@ export default function AiSectionManager() {
             <label className="block text-sm font-medium mb-1 dark:text-slate-300">العنوان الأبرز</label>
             <input
               type="text"
-              value={data.title}
-              onChange={(e) => setData({ ...data, title: e.target.value })}
+              value={current.title}
+              onChange={(e) => setData({ ...data, [activeLocale]: { ...current, title: e.target.value } })}
               className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 dark:text-white"
             />
           </div>
@@ -98,8 +124,8 @@ export default function AiSectionManager() {
           <div>
             <label className="block text-sm font-medium mb-1 dark:text-slate-300">الوصف</label>
             <textarea
-              value={data.desc}
-              onChange={(e) => setData({ ...data, desc: e.target.value })}
+              value={current.desc}
+              onChange={(e) => setData({ ...data, [activeLocale]: { ...current, desc: e.target.value } })}
               rows={4}
               className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-2 dark:text-white"
             />
@@ -108,7 +134,7 @@ export default function AiSectionManager() {
 
         <div className="space-y-4">
           <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-            <h3 className="font-bold text-lg dark:text-white">المميزات ({data.features.length})</h3>
+            <h3 className="font-bold text-lg dark:text-white">المميزات ({current.features.length})</h3>
             <button
               onClick={addFeature}
               className="flex items-center gap-1 text-sm bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-3 py-1.5 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
@@ -118,7 +144,7 @@ export default function AiSectionManager() {
           </div>
 
           <div className="space-y-4">
-            {data.features.map((feature, index) => (
+            {current.features.map((feature, index) => (
               <div key={index} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 relative group">
                 <button
                   onClick={() => removeFeature(index)}

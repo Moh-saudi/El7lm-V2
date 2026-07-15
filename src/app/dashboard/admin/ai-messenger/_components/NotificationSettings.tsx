@@ -11,6 +11,7 @@ import {
   Bell, Eye, Video, Heart, MessageCircle, Share2, Mail, UserPlus,
   Save, CheckCircle2, Info, Loader2, RefreshCw, ChevronDown, ChevronUp,
 } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n';
 
 // ── Event type definitions ────────────────────────────────────────────────────
 
@@ -25,83 +26,20 @@ type EventType =
 
 interface EventDef {
   type: EventType;
-  label: string;
-  description: string;
   icon: React.ReactNode;
   color: string;
-  // Fixed params order for all our approved templates
   params: string[];
 }
 
 const EVENT_DEFS: EventDef[] = [
-  {
-    type: 'profile_view',
-    label: 'مشاهدة الملف الشخصي',
-    description: 'عند زيارة شخص ما لملف مستخدم',
-    icon: <Eye className="w-4 h-4" />,
-    color: 'text-indigo-500',
-    params: ['recipientName', 'actorName'],
-  },
-  {
-    type: 'video_view',
-    label: 'مشاهدة فيديو',
-    description: 'عند مشاهدة شخص ما لأحد الفيديوهات',
-    icon: <Video className="w-4 h-4" />,
-    color: 'text-sky-500',
-    params: ['recipientName', 'actorName'],
-  },
-  {
-    type: 'video_like',
-    label: 'إعجاب بفيديو',
-    description: 'عند إعجاب شخص ما بأحد الفيديوهات',
-    icon: <Heart className="w-4 h-4" />,
-    color: 'text-rose-500',
-    params: ['recipientName', 'actorName'],
-  },
-  {
-    type: 'video_comment',
-    label: 'تعليق على فيديو',
-    description: 'عند تعليق شخص على أحد الفيديوهات',
-    icon: <MessageCircle className="w-4 h-4" />,
-    color: 'text-amber-500',
-    params: ['recipientName', 'actorName'],
-  },
-  {
-    type: 'video_share',
-    label: 'مشاركة فيديو',
-    description: 'عند مشاركة شخص لأحد الفيديوهات',
-    icon: <Share2 className="w-4 h-4" />,
-    color: 'text-emerald-500',
-    params: ['recipientName', 'actorName'],
-  },
-  {
-    type: 'message_received',
-    label: 'رسالة جديدة',
-    description: 'عند إرسال رسالة خاصة لمستخدم',
-    icon: <Mail className="w-4 h-4" />,
-    color: 'text-violet-500',
-    params: ['recipientName', 'actorName'],
-  },
-  {
-    type: 'follow',
-    label: 'متابعة جديدة',
-    description: 'عند متابعة شخص ما لمستخدم آخر',
-    icon: <UserPlus className="w-4 h-4" />,
-    color: 'text-teal-500',
-    params: ['recipientName', 'actorName'],
-  },
+  { type: 'profile_view', icon: <Eye className="w-4 h-4" />, color: 'text-indigo-500', params: ['recipientName', 'actorName'] },
+  { type: 'video_view', icon: <Video className="w-4 h-4" />, color: 'text-sky-500', params: ['recipientName', 'actorName'] },
+  { type: 'video_like', icon: <Heart className="w-4 h-4" />, color: 'text-rose-500', params: ['recipientName', 'actorName'] },
+  { type: 'video_comment', icon: <MessageCircle className="w-4 h-4" />, color: 'text-amber-500', params: ['recipientName', 'actorName'] },
+  { type: 'video_share', icon: <Share2 className="w-4 h-4" />, color: 'text-emerald-500', params: ['recipientName', 'actorName'] },
+  { type: 'message_received', icon: <Mail className="w-4 h-4" />, color: 'text-violet-500', params: ['recipientName', 'actorName'] },
+  { type: 'follow', icon: <UserPlus className="w-4 h-4" />, color: 'text-teal-500', params: ['recipientName', 'actorName'] },
 ];
-
-// ── Param label helper ────────────────────────────────────────────────────────
-
-const PARAM_LABELS: Record<string, string> = {
-  recipientName: 'اسم المستقبل',
-  actorName: 'اسم المُرسِل / الزائر',
-  messagePreview: 'معاينة الرسالة',
-  commentText: 'نص التعليق',
-};
-
-// ── Single event row ──────────────────────────────────────────────────────────
 
 interface EventRowProps {
   def: EventDef;
@@ -112,6 +50,8 @@ interface EventRowProps {
 }
 
 function EventRow({ def, templateName, templates, loading, onChange }: EventRowProps) {
+  const { getTranslations } = useTranslation();
+  const copy = getTranslations<any>('aiMessenger.notificationSettings');
   const [open, setOpen] = useState(false);
   const selected = templates.find(t => t.name === templateName) || null;
 
@@ -125,8 +65,8 @@ function EventRow({ def, templateName, templates, loading, onChange }: EventRowP
         <div className="flex items-center gap-3 min-w-0">
           <div className={`shrink-0 ${def.color}`}>{def.icon}</div>
           <div className="min-w-0">
-            <p className="text-xs font-bold text-slate-800 truncate">{def.label}</p>
-            <p className="text-[10px] text-slate-400 truncate">{def.description}</p>
+            <p className="text-xs font-bold text-slate-800 truncate">{copy.events[def.type].label}</p>
+            <p className="text-[10px] text-slate-400 truncate">{copy.events[def.type].description}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0 mr-2">
@@ -136,7 +76,7 @@ function EventRow({ def, templateName, templates, loading, onChange }: EventRowP
             </Badge>
           ) : (
             <Badge className="text-[9px] px-1.5 py-0 bg-slate-100 text-slate-400 border-none">
-              بدون قالب
+              {copy.noTemplate}
             </Badge>
           )}
           {open ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
@@ -149,18 +89,18 @@ function EventRow({ def, templateName, templates, loading, onChange }: EventRowP
 
           {/* Template selector */}
           {loading ? (
-            <p className="text-[11px] text-slate-400 animate-pulse py-1">جاري تحميل القوالب...</p>
+            <p className="text-[11px] text-slate-400 animate-pulse py-1">{copy.loadingTemplates}</p>
           ) : (
             <Select
               value={templateName || '__none__'}
               onValueChange={val => onChange(val === '__none__' ? '' : val)}
             >
               <SelectTrigger className="h-8 text-xs border-slate-200 bg-white rounded-xl">
-                <SelectValue placeholder="اختر قالباً..." />
+                <SelectValue placeholder={copy.selectTemplate} />
               </SelectTrigger>
               <SelectContent className="text-xs">
                 <SelectItem value="__none__" className="text-slate-400">
-                  — بدون قالب (تعطيل WhatsApp لهذا النوع) —
+                  {copy.disableTemplate}
                 </SelectItem>
                 {templates.map(t => (
                   <SelectItem key={t.name} value={t.name}>
@@ -174,7 +114,7 @@ function EventRow({ def, templateName, templates, loading, onChange }: EventRowP
                             : 'bg-sky-50 text-sky-700 border-sky-200'
                         }`}
                       >
-                        {t.category === 'MARKETING' ? 'تسويقي' : t.category === 'UTILITY' ? 'خدمي' : t.category || 'عام'}
+                        {t.category === 'MARKETING' ? copy.marketing : t.category === 'UTILITY' ? copy.utility : t.category || copy.general}
                       </Badge>
                     </div>
                   </SelectItem>
@@ -195,7 +135,7 @@ function EventRow({ def, templateName, templates, loading, onChange }: EventRowP
             <Info className="w-3.5 h-3.5 text-blue-400 mt-0.5 shrink-0" />
             <div className="text-[10px] text-blue-700 space-y-0.5">
               {def.params.map((p, i) => (
-                <p key={p}><span className="font-mono font-bold">{`{{${i + 1}}}`}</span> = {PARAM_LABELS[p] || p}</p>
+                <p key={p}><span className="font-mono font-bold">{`{{${i + 1}}}`}</span> = {copy.params[p] || p}</p>
               ))}
             </div>
           </div>
@@ -210,6 +150,8 @@ function EventRow({ def, templateName, templates, loading, onChange }: EventRowP
 type TemplateMap = Record<EventType, string>;
 
 export const NotificationSettings: React.FC = () => {
+  const { isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('aiMessenger.notificationSettings');
   const [templates, setTemplates] = useState<ChatAmanTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -249,7 +191,7 @@ export const NotificationSettings: React.FC = () => {
       }
     } catch (err) {
       console.error('Error loading notification settings:', err);
-      toast.error('حدث خطأ أثناء تحميل الإعدادات');
+      toast.error(copy.loadError);
     } finally {
       setLoadingTemplates(false);
     }
@@ -272,35 +214,35 @@ export const NotificationSettings: React.FC = () => {
       await supabase.from('system_configs').upsert({ id: 'notification_templates', ...firestoreData });
 
       setSaved(true);
-      toast.success('تم حفظ إعدادات القوالب بنجاح');
+      toast.success(copy.saveSuccess);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
       console.error('Error saving notification settings:', err);
-      toast.error('حدث خطأ أثناء الحفظ');
+      toast.error(copy.saveError);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="space-y-4 h-full overflow-y-auto custom-scrollbar p-1" dir="rtl">
+    <div className="space-y-4 h-full overflow-y-auto custom-scrollbar p-1" dir={isRTL ? 'rtl' : 'ltr'}>
       <Card className="border-none shadow-xl bg-white rounded-2xl">
         <CardHeader className="p-4 pb-2">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                 <Bell className="w-4 h-4 text-emerald-500" />
-                قوالب إشعارات WhatsApp
+                {copy.title}
               </CardTitle>
               <CardDescription className="text-[10px] text-slate-400 mt-0.5">
-                حدد قالب ChatAman لكل نوع إشعار — اتركه فارغاً لتعطيل WhatsApp لذلك النوع
+                {copy.description}
               </CardDescription>
             </div>
             <button
               onClick={loadData}
               disabled={loadingTemplates}
               className="text-slate-400 hover:text-slate-600 transition-colors"
-              title="تحديث القوالب"
+              title={copy.refreshTemplates}
             >
               <RefreshCw className={`w-4 h-4 ${loadingTemplates ? 'animate-spin' : ''}`} />
             </button>
@@ -313,9 +255,9 @@ export const NotificationSettings: React.FC = () => {
           <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-100">
             <Info className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
             <p className="text-[10px] text-amber-700 leading-relaxed">
-              يمكن استخدام نفس القالب لأكثر من نوع إشعار. جميع القوالب تدعم{' '}
-              <span className="font-mono font-bold">{'{{1}}'}</span> = اسم المستقبل و{' '}
-              <span className="font-mono font-bold">{'{{2}}'}</span> = اسم المُرسِل/الزائر.
+              {copy.sharedNoteStart}{' '}
+              <span className="font-mono font-bold">{'{{1}}'}</span> = {copy.recipientDefinition} /{' '}
+              <span className="font-mono font-bold">{'{{2}}'}</span> = {copy.actorDefinition}.
             </p>
           </div>
 
@@ -343,12 +285,12 @@ export const NotificationSettings: React.FC = () => {
               {saving ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  جاري الحفظ...
+                  {copy.saving}
                 </>
               ) : (
                 <>
                   <Save className="w-3.5 h-3.5" />
-                  حفظ جميع الإعدادات
+                  {copy.saveAll}
                 </>
               )}
             </Button>
@@ -356,7 +298,7 @@ export const NotificationSettings: React.FC = () => {
             {saved && (
               <div className="flex items-center gap-1.5 text-emerald-600 text-xs font-semibold animate-in fade-in slide-in-from-left-2">
                 <CheckCircle2 className="w-4 h-4" />
-                تم الحفظ بنجاح
+                {copy.saved}
               </div>
             )}
           </div>

@@ -22,21 +22,22 @@ import {
   Smartphone,
   MessageCircle 
 } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n';
 
 const getCountryFlag = (phone: string, country?: string): string => {
    if (country) {
        const c = country.trim().toLowerCase();
-       if (c.includes('مصر') || c.includes('egypt')) return '🇪🇬';
-       if (c.includes('السعودية') || c.includes('saudi')) return '🇸🇦';
-       if (c.includes('الكويت') || c.includes('kuwait')) return '🇰🇼';
-       if (c.includes('الامارات') || c.includes('الإمارات') || c.includes('emirates') || c.includes('uae')) return '🇦🇪';
-       if (c.includes('قطر') || c.includes('qatar')) return '🇶🇦';
-       if (c.includes('عمان') || c.includes('عُمان') || c.includes('oman')) return '🇴🇲';
-       if (c.includes('البحرين') || c.includes('bahrain')) return '🇧🇭';
-       if (c.includes('الاردن') || c.includes('الأردن') || c.includes('jordan')) return '🇯🇴';
-       if (c.includes('المغرب') || c.includes('morocco')) return '🇲🇦';
-       if (c.includes('تونس') || c.includes('tunisia')) return '🇹🇳';
-       if (c.includes('الجزائر') || c.includes('algeria')) return '🇩🇿';
+       if (c.includes('\u0645\u0635\u0631') || c.includes('egypt')) return '🇪🇬';
+       if (c.includes('\u0627\u0644\u0633\u0639\u0648\u062f\u064a\u0629') || c.includes('saudi')) return '🇸🇦';
+       if (c.includes('\u0627\u0644\u0643\u0648\u064a\u062a') || c.includes('kuwait')) return '🇰🇼';
+       if (c.includes('\u0627\u0644\u0627\u0645\u0627\u0631\u0627\u062a') || c.includes('\u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062a') || c.includes('emirates') || c.includes('uae')) return '🇦🇪';
+       if (c.includes('\u0642\u0637\u0631') || c.includes('qatar')) return '🇶🇦';
+       if (c.includes('\u0639\u0645\u0627\u0646') || c.includes('\u0639\u064f\u0645\u0627\u0646') || c.includes('oman')) return '🇴🇲';
+       if (c.includes('\u0627\u0644\u0628\u062d\u0631\u064a\u0646') || c.includes('bahrain')) return '🇧🇭';
+       if (c.includes('\u0627\u0644\u0627\u0631\u062f\u0646') || c.includes('\u0627\u0644\u0623\u0631\u062f\u0646') || c.includes('jordan')) return '🇯🇴';
+       if (c.includes('\u0627\u0644\u0645\u063a\u0631\u0628') || c.includes('morocco')) return '🇲🇦';
+       if (c.includes('\u062a\u0648\u0646\u0633') || c.includes('tunisia')) return '🇹🇳';
+       if (c.includes('\u0627\u0644\u062c\u0632\u0627\u0626\u0631') || c.includes('algeria')) return '🇩🇿';
    }
 
    if (!phone) return '🌍';
@@ -55,6 +56,10 @@ const getCountryFlag = (phone: string, country?: string): string => {
 };
 
 export const LiveChatView: React.FC = () => {
+  const { isRTL, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('aiMessenger.liveChat');
+  const interpolate = (template: string, values: Record<string, string | number>) =>
+    template.replace(/\{\{(\w+)\}\}/g, (_, key) => String(values[key] ?? ''));
   const [activeChat, setActiveChat] = useState<any | null>(null);
   const [chatSearch, setChatSearch] = useState('');
   const [users, setUsers] = useState<any[]>([]);
@@ -191,7 +196,7 @@ export const LiveChatView: React.FC = () => {
       for (const data of rows) {
         const id = data.id;
         const accountType = tableToType[tableName] || data.accountType || tableName;
-        const name = data.displayName || data.full_name || data.name || data.academyName || data.academy_name || data.clubName || data.club_name || data.userName || data.username || 'مستخدم مجهول';
+        const name = data.displayName || data.full_name || data.name || data.academyName || data.academy_name || data.clubName || data.club_name || data.userName || data.username || copy.unknownUser;
         const phone = data.phone || data.phoneNumber || data.whatsapp || data.official_contact?.phone || '';
         const country = data.country || data.countryName || '';
 
@@ -341,12 +346,12 @@ export const LiveChatView: React.FC = () => {
      if (!activeChat) return;
 
      if (sendMethod === 'whatsapp' && selectedTemplate && templateVariables.some(v => !v.trim())) {
-        toast.error('يرجى تعبئة كافة المتغيرات');
+        toast.error(copy.fillVariables);
         return;
      }
 
      if (!customMessage.trim() && !selectedTemplate) {
-        toast.error('يرجى كتابة رسالة أو تحديد قالب');
+        toast.error(copy.writeOrSelect);
         return;
      }
 
@@ -367,12 +372,12 @@ export const LiveChatView: React.FC = () => {
            console.log('[handleSend] Response Result:', result);
 
             if (result.success) {
-               toast.success('✅ تم الإرسال عبر WhatsApp');
+               toast.success(copy.whatsappSent);
                setCustomMessage('');
 
                try {
                   const messageBody = selectedTemplate
-                     ? (selectedTemplate.body || `قالب: ${selectedTemplate.name}`)
+                     ? (selectedTemplate.body || interpolate(copy.templatePrefix, { name: selectedTemplate.name }))
                      : customMessage;
 
                   await supabase.from('messages').insert({
@@ -380,7 +385,7 @@ export const LiveChatView: React.FC = () => {
                      conversationId: convoId,
                      senderId: 'admin',
                      receiverId: activeChat.id,
-                     senderName: 'الإدارة',
+                     senderName: copy.admin,
                      message: messageBody,
                      timestamp: new Date().toISOString(),
                      isRead: true,
@@ -407,16 +412,16 @@ export const LiveChatView: React.FC = () => {
                     id: 'chataman_templates_presets',
                     [selectedTemplate.name]: templateVariables
                  });
-                 toast.success('❄️ تم تثبيت المتغيرات لهذا القالب');
+                 toast.success(copy.variablesSaved);
               }
            } else {
-              toast.error(`❌ خطأ: ${result.error}`);
+              toast.error(interpolate(copy.errorPrefix, { error: result.error || '' }));
            }
 
         } else {
            await supabase.from('notifications').insert({
               id: crypto.randomUUID(),
-              title: selectedTemplate ? 'إشعار من الإدارة' : 'رسالة جديدة',
+              title: selectedTemplate ? copy.adminNotification : copy.newMessage,
               message: selectedTemplate ? selectedTemplate.body : customMessage,
               userId: activeChat.id,
               isRead: false,
@@ -424,11 +429,11 @@ export const LiveChatView: React.FC = () => {
               priority: 'medium',
               createdAt: new Date().toISOString()
            });
-           toast.success('✅ تم إرسال إشعار التطبيق بنجاح');
+           toast.success(copy.appNotificationSent);
            setCustomMessage('');
         }
      } catch (e: any) {
-        toast.error(`خطأ: ${e.message}`);
+        toast.error(interpolate(copy.genericError, { error: e.message }));
      } finally {
         setSending(false);
      }
@@ -438,7 +443,7 @@ export const LiveChatView: React.FC = () => {
   const uniqueCountries = Array.from(new Set(users.map(u => u.country))).filter(Boolean);
 
   return (
-    <div className="flex bg-white/80 backdrop-blur-md rounded-2xl shadow-xl overflow-hidden h-[calc(100vh-180px)] border border-white/20" dir="rtl">
+    <div className="flex bg-white/80 backdrop-blur-md rounded-2xl shadow-xl overflow-hidden h-[calc(100vh-180px)] border border-white/20" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* 🟢 Left sidebar: Contacts */}
       <div className="w-1/3 border-l border-slate-100/80 flex flex-col h-full bg-slate-50/20">
          <div className="p-4 border-b border-slate-100 bg-white/80 space-y-2">
@@ -446,7 +451,7 @@ export const LiveChatView: React.FC = () => {
                <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <Input 
-                    placeholder="ابحث عن محادثة أو عميل..." 
+                    placeholder={copy.search}
                     value={chatSearch}
                     onChange={(e) => setChatSearch(e.target.value)}
                     className="pl-9 h-9 text-xs border-none bg-slate-100/80 focus-visible:ring-emerald-500 rounded-xl"
@@ -455,10 +460,10 @@ export const LiveChatView: React.FC = () => {
                
                <Select onValueChange={setRoleFilter} defaultValue="all">
                   <SelectTrigger className="w-24 h-9 text-[10px] border-none bg-slate-100/80 rounded-xl px-2">
-                     <SelectValue placeholder="الفئة" />
+                     <SelectValue placeholder={copy.segment} />
                   </SelectTrigger>
                   <SelectContent className="text-xs">
-                     <SelectItem value="all">كل الفئات</SelectItem>
+                     <SelectItem value="all">{copy.allSegments}</SelectItem>
                      {uniqueRoles.map(r => (
                         <SelectItem key={r} value={r}>{r}</SelectItem>
                      ))}
@@ -467,10 +472,10 @@ export const LiveChatView: React.FC = () => {
 
                <Select onValueChange={setCountryFilter} defaultValue="all">
                   <SelectTrigger className="w-24 h-9 text-[10px] border-none bg-slate-100/80 rounded-xl px-2">
-                     <SelectValue placeholder="البلد" />
+                     <SelectValue placeholder={copy.country} />
                   </SelectTrigger>
                   <SelectContent className="text-xs">
-                     <SelectItem value="all">الكل</SelectItem>
+                     <SelectItem value="all">{copy.all}</SelectItem>
                      {uniqueCountries.map(c => (
                         <SelectItem key={c} value={c}>{getCountryFlag('', c)} {c}</SelectItem>
                      ))}
@@ -518,8 +523,8 @@ export const LiveChatView: React.FC = () => {
                <div className="w-16 h-16 bg-white/80 rounded-full flex items-center justify-center shadow-lg border border-slate-100">
                   <User className="w-6 h-6 text-slate-300" />
                </div>
-               <p className="text-sm font-semibold text-slate-600 mt-4">اختر عميلاً من القائمة للبدء</p>
-               <p className="text-[10px] text-slate-400 mt-1">إرسال القوالب وتثبيت المتغيرات متاح الآن</p>
+               <p className="text-sm font-semibold text-slate-600 mt-4">{copy.chooseCustomer}</p>
+               <p className="text-[10px] text-slate-400 mt-1">{copy.chooseCustomerHint}</p>
             </div>
          ) : (
             <>
@@ -548,7 +553,7 @@ export const LiveChatView: React.FC = () => {
                           className={`h-7 px-2.5 text-[10px] gap-1 rounded-md ${sendMethod === 'whatsapp' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}
                         >
                            <MessageCircle className="w-3.5 h-3.5" />
-                           واتساب
+                           {copy.whatsapp}
                         </Button>
                         <Button 
                           onClick={() => setSendMethod('app_notification')}
@@ -556,7 +561,7 @@ export const LiveChatView: React.FC = () => {
                           className={`h-7 px-2.5 text-[10px] gap-1 rounded-md ${sendMethod === 'app_notification' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}
                         >
                            <Smartphone className="w-3.5 h-3.5" />
-                           إشعار تطبيق
+                           {copy.appNotification}
                         </Button>
                      </div>
                   </div>
@@ -566,7 +571,7 @@ export const LiveChatView: React.FC = () => {
                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-slate-50/50">
                   {messages.length === 0 ? (
                      <div className="flex h-full items-center justify-center text-slate-400 text-xs">
-                        لا توجد رسائل سابقة في هذه المحادثة
+                        {copy.noMessages}
                      </div>
                   ) : (
                      messages.map((m) => (
@@ -598,13 +603,13 @@ export const LiveChatView: React.FC = () => {
                           targetPhone={activeChat.phone}
                           targetName={activeChat.name}
                           shortcuts={[
-                            { label: 'الفئة', value: activeChat.role },
-                            { label: 'البلد', value: activeChat.country },
-                            { label: 'قيمة الاشتراك', value: activeChat.raw?.subscription?.amount || activeChat.raw?.subscriptionAmount || activeChat.raw?.subscription_price || activeChat.raw?.price || '' },
-                            { label: 'مدة الاشتراك', value: activeChat.raw?.subscription?.duration || activeChat.raw?.subscriptionDuration || activeChat.raw?.duration || '' },
-                            { label: 'الباقة', value: activeChat.raw?.packageName || activeChat.raw?.package_name || activeChat.raw?.package || activeChat.raw?.plan || '' },
-                            { label: 'تاريخ الانتهاء', value: activeChat.raw?.subscription?.expiry || activeChat.raw?.subscription_expiry || activeChat.raw?.expiryDate || activeChat.raw?.expiration || '' },
-                            { label: 'رمز OTP', value: activeChat.raw?.lastOtp || activeChat.raw?.otp || '' }
+                            { label: copy.shortcuts.segment, value: activeChat.role },
+                            { label: copy.shortcuts.country, value: activeChat.country },
+                            { label: copy.shortcuts.subscriptionValue, value: activeChat.raw?.subscription?.amount || activeChat.raw?.subscriptionAmount || activeChat.raw?.subscription_price || activeChat.raw?.price || '' },
+                            { label: copy.shortcuts.subscriptionDuration, value: activeChat.raw?.subscription?.duration || activeChat.raw?.subscriptionDuration || activeChat.raw?.duration || '' },
+                            { label: copy.shortcuts.package, value: activeChat.raw?.packageName || activeChat.raw?.package_name || activeChat.raw?.package || activeChat.raw?.plan || '' },
+                            { label: copy.shortcuts.expiryDate, value: activeChat.raw?.subscription?.expiry || activeChat.raw?.subscription_expiry || activeChat.raw?.expiryDate || activeChat.raw?.expiration || '' },
+                            { label: copy.shortcuts.otp, value: activeChat.raw?.lastOtp || activeChat.raw?.otp || '' }
                           ].filter(s => s.value)}
                         />
 
@@ -616,8 +621,8 @@ export const LiveChatView: React.FC = () => {
                                onCheckedChange={(checked) => setFreezeVariables(checked as boolean)}
                              />
                              <Label htmlFor="freeze" className="text-[11px] cursor-pointer text-slate-600 flex items-center gap-1">
-                                تثبيت وحفظ المتغيرات لهذا القالب مستقبلاً 
-                                <Badge className="bg-amber-50 text-amber-700 text-[8px] font-normal border border-amber-100 px-1 py-0 px-1.5 h-4 flex items-center">ميزة حفظ</Badge>
+                                {copy.freezeVariables}
+                                <Badge className="bg-amber-50 text-amber-700 text-[8px] font-normal border border-amber-100 px-1 py-0 px-1.5 h-4 flex items-center">{copy.saveFeature}</Badge>
                              </Label>
                           </div>
                         )}
@@ -626,9 +631,9 @@ export const LiveChatView: React.FC = () => {
 
                   {(!selectedTemplate || sendMethod === 'app_notification') && (
                      <div className="space-y-2 bg-white/80 p-4 rounded-xl border border-white/50 shadow-md">
-                        <Label className="text-xs font-bold text-slate-700">رسالة نصية حرة (مخصصة)</Label>
+                        <Label className="text-xs font-bold text-slate-700">{copy.customMessage}</Label>
                         <Input 
-                           placeholder={sendMethod === 'whatsapp' ? 'اكتب رسالة WhatsApp...' : 'اكتب نص الإشعار فوري للتطبيق...'}
+                           placeholder={sendMethod === 'whatsapp' ? copy.whatsappPlaceholder : copy.notificationPlaceholder}
                            value={customMessage}
                            onChange={(e) => setCustomMessage(e.target.value)}
                            className="text-xs h-10 border-slate-200 focus-visible:ring-emerald-500"
@@ -648,10 +653,10 @@ export const LiveChatView: React.FC = () => {
                        : 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white'
                     }`}
                   >
-                     {sending ? 'جاري الإرسال...' : (
+                     {sending ? copy.sending : (
                         <>
                            <Send className="w-3.5 h-3.5 ml-0.5" />
-                           إرسال الآن عبر {sendMethod === 'whatsapp' ? 'WhatsApp' : 'التطبيق'}
+                           {interpolate(copy.sendNow, { method: sendMethod === 'whatsapp' ? copy.whatsapp : copy.app })}
                         </>
                      )}
                   </Button>

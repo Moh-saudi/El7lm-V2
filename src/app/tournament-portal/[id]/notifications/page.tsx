@@ -5,21 +5,16 @@ import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
+import { useTranslation } from '@/lib/i18n';
 
 type Team  = { id:string; name:string; logo_url:string|null; contact_phone?:string|null };
 type Notif = { id:string; title:string; body:string; target_type:'all'|'team'; target_id:string|null; status:'pending'|'sent'|'failed'; created_at:string; channel?:string; target_team?:{ name:string }|null };
 
 type Channel = 'app' | 'whatsapp' | 'sms';
 
-const TEMPLATES = [
-  { lbl:'📅 موعد مباراة',  title:'تذكير بموعد المباراة',  body:'يُذكَّر فريقكم بموعد المباراة القادمة. يرجى الحضور في الوقت المحدد.' },
-  { lbl:'⚽ نتيجة مباراة', title:'نتيجة المباراة',          body:'تم تسجيل نتيجة مباراتكم الأخيرة. يمكنكم الاطلاع عليها من خلال التطبيق.' },
-  { lbl:'📋 جدول محدث',   title:'جدول المباريات المحدث',  body:'تم تحديث جدول مباريات البطولة. يرجى الاطلاع على المواعيد الجديدة.' },
-  { lbl:'🏆 مبروك التأهل', title:'مبروك التأهل!',           body:'يهنئكم منظمو البطولة بالتأهل إلى الدور القادم. استمروا في التألق!' },
-  { lbl:'📢 معلومة عامة',  title:'إشعار من البطولة',       body:'' },
-];
-
 export default function NotificationsPage() {
+  const { locale, getTranslations } = useTranslation();
+  const copy = getTranslations<any>('tournamentNotifications');
   const { id }     = useParams<{ id:string }>();
   const { isDark } = usePortalTheme();
   const S = isDark ? D : L;
@@ -52,9 +47,9 @@ export default function NotificationsPage() {
   };
 
   const send = async()=>{
-    if (!title.trim()||!body.trim()) { toast.error('أدخل العنوان والمحتوى'); return; }
-    if (target==='team'&&!teamId) { toast.error('اختر الفريق'); return; }
-    if (channels.length === 0) { toast.error('اختر قناة إرسال واحدة على الأقل'); return; }
+    if (!title.trim()||!body.trim()) { toast.error(copy.enterContent); return; }
+    if (target==='team'&&!teamId) { toast.error(copy.selectTeam); return; }
+    if (channels.length === 0) { toast.error(copy.selectChannel); return; }
     setSending(true);
     setWhatsappResults([]);
 
@@ -71,7 +66,7 @@ export default function NotificationsPage() {
       const targetTeams = target === 'all' ? teams : teams.filter(t => t.id === teamId);
       const teamsWithPhone = targetTeams.filter(t => t.contact_phone);
       if (teamsWithPhone.length === 0) {
-        toast.warning('لا توجد أرقام واتساب مسجلة للفرق المختارة');
+        toast.warning(copy.noWhatsapp);
       } else {
         const encoded = encodeURIComponent(msg);
         const links = teamsWithPhone.map(t => ({
@@ -79,7 +74,7 @@ export default function NotificationsPage() {
           link: `https://wa.me/${(t.contact_phone||'').replace(/\D/g,'')}?text=${encoded}`,
         }));
         setWhatsappResults(links);
-        toast.success(`تم إنشاء ${links.length} رابط واتساب`);
+        toast.success(copy.whatsappCreated.replace('{count}', links.length));
       }
     }
 
@@ -88,7 +83,7 @@ export default function NotificationsPage() {
       const targetTeams = target === 'all' ? teams : teams.filter(t => t.id === teamId);
       const teamsWithPhone = targetTeams.filter(t => t.contact_phone);
       if (teamsWithPhone.length === 0) {
-        toast.warning('لا توجد أرقام هاتف مسجلة للإرسال بالرسائل');
+        toast.warning(copy.noPhones);
       } else {
         const res = await fetch('/api/tournament-portal/send-sms', {
           method: 'POST',
@@ -97,7 +92,7 @@ export default function NotificationsPage() {
         });
         const json = await res.json();
         if (json.error) toast.error(json.error);
-        else toast.success(`تم إرسال ${json.sent || 0} رسالة SMS`);
+        else toast.success(copy.smsSent.replace('{count}', json.sent || 0));
       }
     }
 
@@ -109,7 +104,7 @@ export default function NotificationsPage() {
   const del = async(nid:string)=>{
     await supabase.from('tournament_notifications').delete().eq('id',nid);
     setNotifs(p=>p.filter(n=>n.id!==nid));
-    toast.success('تم الحذف');
+    toast.success(copy.deleted);
   };
 
   if (loading) return <Loader isDark={isDark} />;
@@ -122,9 +117,9 @@ export default function NotificationsPage() {
       {/* KPIs */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }} className="sp-grid-3col">
         {[
-          { icon:'🔔', v:sentN,       lbl:'إشعار مُرسل', color:'#d97706' },
-          { icon:'👥', v:teams.length, lbl:'فريق مقبول', color:'#3b82f6' },
-          { icon:'✅', v:sentN,        lbl:'تم التسليم',  color:'#16a34a' },
+          { icon:'🔔', v:sentN,       lbl:copy.sent, color:'#d97706' },
+          { icon:'👥', v:teams.length, lbl:copy.accepted, color:'#3b82f6' },
+          { icon:'✅', v:sentN,        lbl:copy.delivered, color:'#16a34a' },
         ].map(s=>(
           <div key={s.lbl} className="sp-kpi" style={{ background:S.surface, borderColor:S.border, display:'flex', alignItems:'center', gap:12 }}>
             <div style={{ width:42, height:42, borderRadius:11, background:`${s.color}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>{s.icon}</div>
@@ -141,25 +136,25 @@ export default function NotificationsPage() {
         {/* ── Compose ── */}
         <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
           <div className="sp-section-header">
-            <span style={{ fontSize:14, fontWeight:700, color:'#fff' }}>🔔 إنشاء إشعار جديد</span>
+            <span style={{ fontSize:14, fontWeight:700, color:'#fff' }}>🔔 {copy.create}</span>
           </div>
           <div style={{ padding:'18px' }}>
 
             {/* Templates */}
-            <label className="sp-label">قوالب جاهزة</label>
+            <label className="sp-label">{copy.ready}</label>
             <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:18 }}>
-              {TEMPLATES.map(t=>(
-                <button key={t.lbl} onClick={()=>{ setTitle(t.title); setBody(t.body); }} className="sp-btn sp-btn-ghost sp-btn-sm">{t.lbl}</button>
+              {copy.templates.map((t:{label:string;title:string;body:string})=>(
+                <button key={t.label} onClick={()=>{ setTitle(t.title); setBody(t.body); }} className="sp-btn sp-btn-ghost sp-btn-sm">{t.label}</button>
               ))}
             </div>
 
             {/* Target */}
-            <label className="sp-label">المستهدفون</label>
+            <label className="sp-label">{copy.targets}</label>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14 }}>
               {(['all','team'] as const).map(type=>(
                 <button key={type} onClick={()=>setTarget(type)} style={{ padding:'11px 14px', borderRadius:10, cursor:'pointer', border:`2px solid ${target===type?'#d97706':S.border}`, background:target===type?(isDark?'rgba(217,119,6,0.1)':'#fffbeb'):'transparent', display:'flex', alignItems:'center', gap:8, transition:'all 0.15s', fontSize:13, fontWeight:600, color:target===type?'#d97706':S.text2, fontFamily:'inherit' }}>
                   {type==='all'?'👥':'🔔'}
-                  {type==='all'?'جميع الفرق':'فريق محدد'}
+                  {type==='all'?copy.allTeams:copy.specific}
                 </button>
               ))}
             </div>
@@ -167,19 +162,19 @@ export default function NotificationsPage() {
             {target==='team' && (
               <div style={{ marginBottom:14 }}>
                 <select className="sp-select" value={teamId} onChange={e=>setTeamId(e.target.value)}>
-                  <option value="">اختر الفريق...</option>
+                  <option value="">{copy.selectTeam}...</option>
                   {teams.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
             )}
 
             {/* Channels */}
-            <label className="sp-label">قنوات الإرسال</label>
+            <label className="sp-label">{copy.channels}</label>
             <div style={{ display:'flex', gap:8, marginBottom:14, flexWrap:'wrap' }}>
               {([
-                { id:'app',       icon:'🔔', lbl:'داخل التطبيق', color:'#3b82f6' },
-                { id:'whatsapp',  icon:'💬', lbl:'واتساب',        color:'#16a34a' },
-                { id:'sms',       icon:'📱', lbl:'رسائل SMS',     color:'#7c3aed' },
+                { id:'app',       icon:'🔔', lbl:copy.channelNames[0], color:'#3b82f6' },
+                { id:'whatsapp',  icon:'💬', lbl:copy.channelNames[1], color:'#16a34a' },
+                { id:'sms',       icon:'📱', lbl:copy.channelNames[2], color:'#7c3aed' },
               ] as {id:Channel;icon:string;lbl:string;color:string}[]).map(ch => (
                 <button key={ch.id} onClick={() => toggleChannel(ch.id)} style={{ padding:'9px 14px', borderRadius:10, cursor:'pointer', border:`2px solid ${channels.includes(ch.id)?ch.color:S.border}`, background:channels.includes(ch.id)?(isDark?`${ch.color}22`:`${ch.color}18`):'transparent', display:'flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color:channels.includes(ch.id)?ch.color:S.text2, transition:'all 0.15s', fontFamily:'inherit' }}>
                   {ch.icon} {ch.lbl}
@@ -190,48 +185,48 @@ export default function NotificationsPage() {
 
             {(channels.includes('whatsapp') || channels.includes('sms')) && (
               <div style={{ background:isDark?'rgba(245,158,11,0.08)':'#fffbeb', border:`1px solid ${isDark?'rgba(245,158,11,0.2)':'#fde68a'}`, borderRadius:10, padding:'10px 14px', marginBottom:14, fontSize:12, color:isDark?'#fbbf24':'#92400e' }}>
-                ⚠️ يتطلب واتساب/SMS وجود <strong>رقم الاتصال</strong> مسجلاً لكل فريق في بيانات الفريق.
+                ⚠️ {copy.phoneHelp}
               </div>
             )}
 
-            <label className="sp-label">عنوان الإشعار *</label>
-            <input className="sp-input" style={{ marginBottom:14 }} value={title} onChange={e=>setTitle(e.target.value)} placeholder="مثال: تذكير بموعد المباراة" />
+            <label className="sp-label">{copy.title}</label>
+            <input className="sp-input" style={{ marginBottom:14 }} value={title} onChange={e=>setTitle(e.target.value)} placeholder={copy.titlePlaceholder} />
 
-            <label className="sp-label">نص الإشعار *</label>
-            <textarea className="sp-input sp-textarea" style={{ marginBottom:6 }} value={body} onChange={e=>setBody(e.target.value)} placeholder="اكتب محتوى الإشعار..." maxLength={500} />
+            <label className="sp-label">{copy.body}</label>
+            <textarea className="sp-input sp-textarea" style={{ marginBottom:6 }} value={body} onChange={e=>setBody(e.target.value)} placeholder={copy.bodyPlaceholder} maxLength={500} />
             <div style={{ textAlign:'left', fontSize:10, color:S.text2, marginBottom:14 }}>{body.length}/500</div>
 
             {/* Preview */}
             {(title||body) && (
               <div style={{ background:'#0b0e1a', borderRadius:16, padding:'16px 18px', marginBottom:16, border:'1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ fontSize:10, color:'#475569', fontWeight:600, marginBottom:10, letterSpacing:1 }}>PREVIEW</div>
+                <div style={{ fontSize:10, color:'#475569', fontWeight:600, marginBottom:10, letterSpacing:1 }}>{copy.previewTitle}</div>
                 <div style={{ display:'flex', gap:10 }}>
                   <div style={{ width:36, height:36, borderRadius:10, background:'#d97706', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>🔔</div>
                   <div>
-                    <div style={{ fontSize:13, fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>{title||'العنوان'}</div>
-                    <div style={{ fontSize:12, color:'#94a3b8', lineHeight:1.5 }}>{body||'نص الإشعار...'}</div>
-                    <div style={{ fontSize:10, color:'#374151', marginTop:6 }}>الآن · بطولة</div>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#f1f5f9', marginBottom:4 }}>{title||copy.previewTitle}</div>
+                    <div style={{ fontSize:12, color:'#94a3b8', lineHeight:1.5 }}>{body||copy.previewBody}</div>
+                    <div style={{ fontSize:10, color:'#374151', marginTop:6 }}>{copy.now}</div>
                   </div>
                 </div>
               </div>
             )}
 
             <button onClick={send} disabled={sending} className="sp-btn sp-btn-primary" style={{ width:'100%', justifyContent:'center', borderRadius:12, height:46, fontSize:15, boxShadow:'0 4px 16px rgba(217,119,6,0.3)' }}>
-              {sending?'جاري الإرسال...':'📤 إرسال الإشعار'}
+              {sending?copy.sending:`📤 ${copy.send}`}
             </button>
 
             {/* WhatsApp links result */}
             {whatsappResults.length > 0 && (
               <div style={{ marginTop:14, background:isDark?'rgba(22,163,74,0.08)':'#f0fdf4', border:`1px solid ${isDark?'rgba(22,163,74,0.2)':'#bbf7d0'}`, borderRadius:12, padding:'12px 16px' }}>
-                <div style={{ fontSize:12, fontWeight:700, color:'#16a34a', marginBottom:10 }}>💬 روابط واتساب — انقر لفتح كل رابط</div>
+                <div style={{ fontSize:12, fontWeight:700, color:'#16a34a', marginBottom:10 }}>💬 {copy.whatsappLinks}</div>
                 <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                   {whatsappResults.map(r => (
                     <a key={r.name} href={r.link} target="_blank" rel="noopener noreferrer" style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:isDark?'rgba(22,163,74,0.1)':'#dcfce7', borderRadius:8, textDecoration:'none', fontSize:12, color:'#16a34a', fontWeight:600 }}>
-                      <span style={{ fontSize:16 }}>💬</span> {r.name} <span style={{ marginRight:'auto', fontSize:10, color:'#4ade80' }}>→ فتح</span>
+                      <span style={{ fontSize:16 }}>💬</span> {r.name} <span style={{ marginInlineStart:'auto', fontSize:10, color:'#4ade80' }}>→ {copy.open}</span>
                     </a>
                   ))}
                 </div>
-                <button onClick={() => setWhatsappResults([])} style={{ marginTop:8, background:'none', border:'none', fontSize:11, color:S.text2, cursor:'pointer', padding:0 }}>✕ إخفاء الروابط</button>
+                <button onClick={() => setWhatsappResults([])} style={{ marginTop:8, background:'none', border:'none', fontSize:11, color:S.text2, cursor:'pointer', padding:0 }}>✕ {copy.hide}</button>
               </div>
             )}
           </div>
@@ -240,7 +235,7 @@ export default function NotificationsPage() {
         {/* ── History ── */}
         <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
           <div style={{ padding:'12px 18px', borderBottom:`1px solid ${S.border}`, background:S.surface2, display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:14, fontWeight:700, color:S.text, flex:1 }}>⏰ سجل الإشعارات</span>
+            <span style={{ fontSize:14, fontWeight:700, color:S.text, flex:1 }}>⏰ {copy.history}</span>
             <span style={{ fontSize:12, color:S.text2 }}>{notifs.length}</span>
           </div>
 
@@ -248,7 +243,7 @@ export default function NotificationsPage() {
             {notifs.length===0
               ? <div style={{ padding:'48px 24px', textAlign:'center' }}>
                   <div style={{ fontSize:36, marginBottom:12 }}>🔕</div>
-                  <div style={{ fontSize:14, color:S.text2 }}>لم يتم إرسال أي إشعارات بعد</div>
+                  <div style={{ fontSize:14, color:S.text2 }}>{copy.empty}</div>
                 </div>
               : notifs.map(n=>{
                   const statusIcon = n.status==='sent'?'✅':n.status==='failed'?'❌':'⏳';
@@ -261,9 +256,9 @@ export default function NotificationsPage() {
                         <div style={{ fontSize:11, color:S.text2, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden', marginBottom:6 }}>{n.body}</div>
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                           <span style={{ fontSize:10, fontWeight:700, color:n.target_type==='all'?'#60a5fa':'#a78bfa', background:n.target_type==='all'?(isDark?'rgba(59,130,246,0.12)':'#dbeafe'):(isDark?'rgba(139,92,246,0.12)':'#ede9fe'), padding:'2px 8px', borderRadius:6 }}>
-                            {n.target_type==='all'?'جميع الفرق':(n.target_team as any)?.name||'فريق محدد'}
+                            {n.target_type==='all'?copy.allTeams:(n.target_team as any)?.name||copy.specific}
                           </span>
-                          <span style={{ fontSize:10, color:S.text2 }}>{new Date(n.created_at).toLocaleDateString('ar-SA',{month:'short',day:'numeric'})}</span>
+                          <span style={{ fontSize:10, color:S.text2 }}>{new Date(n.created_at).toLocaleDateString(locale,{month:'short',day:'numeric'})}</span>
                         </div>
                       </div>
                       <button onClick={()=>del(n.id)} style={{ width:28, height:28, borderRadius:7, background:'transparent', border:`1px solid ${S.border}`, color:'#ef4444', cursor:'pointer', fontSize:14, flexShrink:0 }}>×</button>

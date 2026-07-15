@@ -6,20 +6,18 @@ import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { createPortalClient } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
+import { useTranslation } from '@/lib/i18n';
 
 type Cat    = { id:string; name:string };
 type Scorer = { id:string; team_id:string; player_name:string; goals:number; assists:number; yellow_cards:number; red_cards:number; matches_played:number; team?:{ name:string; logo_url:string|null } };
 type TStat  = { team_id:string; played:number; goals_for:number; goals_against:number; goal_diff:number; points:number; team?:{ name:string; logo_url:string|null } };
 
 type Tab = 'scorers'|'attack'|'defense'|'cards';
-const TABS: { key:Tab; emoji:string; lbl:string }[] = [
-  { key:'scorers', emoji:'⚽', lbl:'الهدافون' },
-  { key:'attack',  emoji:'🎯', lbl:'الهجوم'   },
-  { key:'defense', emoji:'🛡️', lbl:'الدفاع'   },
-  { key:'cards',   emoji:'🟨', lbl:'البطاقات' },
-];
+const TABS: { key:Tab; emoji:string }[] = [{key:'scorers',emoji:'⚽'},{key:'attack',emoji:'🎯'},{key:'defense',emoji:'🛡️'},{key:'cards',emoji:'🟨'}];
 
 export default function StatsPage() {
+  const { getTranslations } = useTranslation();
+  const copy = getTranslations<any>('tournamentStats');
   const { id }     = useParams<{ id:string }>();
   const { isDark } = usePortalTheme();
   const S = isDark ? D : L;
@@ -74,7 +72,7 @@ export default function StatsPage() {
         if (!s.goals&&!s.assists&&!s.yellow_cards&&!s.red_cards) continue;
         await supabase.from('tournament_top_scorers').upsert({ tournament_id:id, category_id:selCat, team_id:s.team_id, player_name:s.player_name, goals:s.goals, assists:s.assists, yellow_cards:s.yellow_cards, red_cards:s.red_cards, matches_played:s.matches.size },{ onConflict:'tournament_id,category_id,team_id,player_name' });
       }
-      await load(); toast.success('تم تحديث الإحصائيات');
+      await load(); toast.success(copy.updated);
     } catch (e:any) { toast.error(e.message); }
     setRecalc(false);
   };
@@ -97,17 +95,17 @@ export default function StatsPage() {
           {cats.map(c=><button key={c.id} onClick={()=>setSelCat(c.id)} className={`sp-cat-tab${selCat===c.id?' active':''}`}>{c.name}</button>)}
         </div>
         <button onClick={recalculate} disabled={recalc} className="sp-btn sp-btn-sm" style={{ background:'#4f46e5', color:'#fff', border:'none' }}>
-          {recalc?'جاري الحساب...':'↻ إعادة حساب'}
+          {recalc?copy.calculating:`↻ ${copy.recalculate}`}
         </button>
       </div>
 
       {/* KPIs */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }} className="sp-grid-4col">
         {[
-          { icon:'⚽', v:total,       lbl:'إجمالي الأهداف', color:'#16a34a' },
-          { icon:'🏆', v:top?`${top.player_name} (${top.goals})`:'—', lbl:'الهداف الأول', color:'#f59e0b', sm:true },
-          { icon:'🛡️', v:bestD?.team?.name||'—', lbl:'أقل استقبالاً', color:'#3b82f6', sm:true },
-          { icon:'👥', v:stats.length, lbl:'عدد الفرق',     color:'#8b5cf6' },
+          { icon:'⚽', v:total, lbl:copy.totalGoals, color:'#16a34a' },
+          { icon:'🏆', v:top?`${top.player_name} (${top.goals})`:'—', lbl:copy.topScorer, color:'#f59e0b', sm:true },
+          { icon:'🛡️', v:bestD?.team?.name||'—', lbl:copy.bestDefense, color:'#3b82f6', sm:true },
+          { icon:'👥', v:stats.length, lbl:copy.teamsCount, color:'#8b5cf6' },
         ].map(s=>(
           <div key={s.lbl} className="sp-kpi" style={{ background:S.surface, borderColor:S.border }}>
             <div style={{ fontSize:24, marginBottom:8 }}>{s.icon}</div>
@@ -120,9 +118,9 @@ export default function StatsPage() {
       {/* Tabs */}
       <div className="sp-card" style={{ background:S.surface, borderColor:S.border }}>
         <div className="sp-tabs">
-          {TABS.map(t=>(
+          {TABS.map((t,index)=>(
             <button key={t.key} onClick={()=>setTab(t.key)} className={`sp-tab${tab===t.key?' active':''}`}>
-              {t.emoji} {t.lbl}
+              {t.emoji} {copy.tabs[index]}
             </button>
           ))}
         </div>
@@ -130,7 +128,7 @@ export default function StatsPage() {
         {/* Scorers */}
         {tab==='scorers' && (
           scorers.length===0
-            ? <Empty S={S} text="لا توجد إحصائيات — أدخل أحداث المباريات ثم اضغط «إعادة حساب»" />
+            ? <Empty S={S} text={copy.noStatsHelp} />
             : scorers.map((p,i)=>(
                 <div key={p.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 18px', borderBottom:`1px solid ${S.border}` }}>
                   <div style={{ width:28, textAlign:'center', flexShrink:0 }}>
@@ -143,7 +141,7 @@ export default function StatsPage() {
                       <LogoImg name={p.team?.name||'?'} logo={p.team?.logo_url} size={26} />
                       <div>
                         <div style={{ fontSize:14, fontWeight:700, color:S.text }}>{p.player_name}</div>
-                        <div style={{ fontSize:11, color:S.text2 }}>{p.team?.name||'—'} · {p.matches_played} م</div>
+                        <div style={{ fontSize:11, color:S.text2 }}>{p.team?.name||'—'} · {p.matches_played} {copy.matches}</div>
                       </div>
                     </div>
                     <div style={{ height:4, background:S.surface2, borderRadius:2, overflow:'hidden' }}>
@@ -153,11 +151,11 @@ export default function StatsPage() {
                   <div style={{ display:'flex', gap:14, alignItems:'center', flexShrink:0 }}>
                     <div style={{ textAlign:'center' }}>
                       <div style={{ fontSize:22, fontWeight:900, color:'#16a34a', lineHeight:1 }}>{p.goals}</div>
-                      <div style={{ fontSize:9, color:S.text2 }}>هدف</div>
+                      <div style={{ fontSize:9, color:S.text2 }}>{copy.goal}</div>
                     </div>
                     <div style={{ textAlign:'center' }}>
                       <div style={{ fontSize:16, fontWeight:700, color:'#3b82f6', lineHeight:1 }}>{p.assists}</div>
-                      <div style={{ fontSize:9, color:S.text2 }}>صنع</div>
+                      <div style={{ fontSize:9, color:S.text2 }}>{copy.assist}</div>
                     </div>
                     {(p.yellow_cards>0||p.red_cards>0)&&(
                       <div style={{ display:'flex', gap:4 }}>
@@ -172,10 +170,10 @@ export default function StatsPage() {
 
         {/* Attack */}
         {tab==='attack' && (
-          byAtk.length===0 ? <Empty S={S} text="لا توجد إحصائيات" /> :
+          byAtk.length===0 ? <Empty S={S} text={copy.noStats} /> :
           <>
             <div style={{ display:'grid', gridTemplateColumns:'36px 1fr 44px 56px 60px', padding:'8px 18px', background:S.surface2, fontSize:10, fontWeight:700, color:S.text2 }}>
-              <div>#</div><div>الفريق</div><div style={{textAlign:'center'}}>لعب</div><div style={{textAlign:'center'}}>أهداف</div><div style={{textAlign:'center'}}>متوسط</div>
+              <div>#</div><div>{copy.team}</div><div style={{textAlign:'center'}}>{copy.played}</div><div style={{textAlign:'center'}}>{copy.goals}</div><div style={{textAlign:'center'}}>{copy.average}</div>
             </div>
             {byAtk.map((t,i)=>(
               <div key={t.team_id} style={{ display:'grid', gridTemplateColumns:'36px 1fr 44px 56px 60px', padding:'11px 18px', alignItems:'center', borderBottom:`1px solid ${S.border}` }}>
@@ -191,10 +189,10 @@ export default function StatsPage() {
 
         {/* Defense */}
         {tab==='defense' && (
-          byDef.length===0 ? <Empty S={S} text="لا توجد إحصائيات" /> :
+          byDef.length===0 ? <Empty S={S} text={copy.noStats} /> :
           <>
             <div style={{ display:'grid', gridTemplateColumns:'36px 1fr 44px 60px 60px', padding:'8px 18px', background:S.surface2, fontSize:10, fontWeight:700, color:S.text2 }}>
-              <div>#</div><div>الفريق</div><div style={{textAlign:'center'}}>لعب</div><div style={{textAlign:'center'}}>استقبل</div><div style={{textAlign:'center'}}>متوسط</div>
+              <div>#</div><div>{copy.team}</div><div style={{textAlign:'center'}}>{copy.played}</div><div style={{textAlign:'center'}}>{copy.conceded}</div><div style={{textAlign:'center'}}>{copy.average}</div>
             </div>
             {byDef.map((t,i)=>(
               <div key={t.team_id} style={{ display:'grid', gridTemplateColumns:'36px 1fr 44px 60px 60px', padding:'11px 18px', alignItems:'center', borderBottom:`1px solid ${S.border}` }}>
@@ -210,10 +208,10 @@ export default function StatsPage() {
 
         {/* Cards */}
         {tab==='cards' && (
-          cards.length===0 ? <Empty S={S} text="لا توجد بطاقات" /> :
+          cards.length===0 ? <Empty S={S} text={copy.noCards} /> :
           <>
             <div style={{ display:'grid', gridTemplateColumns:'36px 1fr 1fr 52px 52px', padding:'8px 18px', background:S.surface2, fontSize:10, fontWeight:700, color:S.text2 }}>
-              <div>#</div><div>اللاعب</div><div>الفريق</div><div style={{textAlign:'center'}}>🟨</div><div style={{textAlign:'center'}}>🟥</div>
+              <div>#</div><div>{copy.player}</div><div>{copy.team}</div><div style={{textAlign:'center'}}>🟨</div><div style={{textAlign:'center'}}>🟥</div>
             </div>
             {cards.map((p,i)=>(
               <div key={p.id} style={{ display:'grid', gridTemplateColumns:'36px 1fr 1fr 52px 52px', padding:'11px 18px', alignItems:'center', borderBottom:`1px solid ${S.border}` }}>

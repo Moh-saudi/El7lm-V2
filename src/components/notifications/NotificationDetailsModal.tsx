@@ -43,8 +43,9 @@ import {
   Forward
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { ar } from 'date-fns/locale/ar';
+import { ar, enUS, es, pt } from 'date-fns/locale';
 import toast from 'react-hot-toast';
+import { useTranslation } from '@/lib/i18n';
 
 interface Notification {
   id: string;
@@ -92,6 +93,8 @@ export default function NotificationDetailsModal({
   onForward
 }: NotificationDetailsModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const { t, locale, isRTL } = useTranslation();
+  const nt = (key: string) => t(`sharedComponents.notifications.${key}`);
 
   if (!isOpen || !notification) return null;
 
@@ -99,9 +102,10 @@ export default function NotificationDetailsModal({
   const getFormattedDate = (timestamp: any) => {
     try {
       const date = timestamp?.toDate?.() || new Date(timestamp);
-      return formatDistanceToNow(date, { addSuffix: true, locale: ar });
+      const dateLocale = locale === 'ar' ? ar : locale === 'es' ? es : locale === 'pt' ? pt : enUS;
+      return formatDistanceToNow(date, { addSuffix: true, locale: dateLocale });
     } catch {
-      return 'الآن';
+      return nt('now');
     }
   };
 
@@ -109,7 +113,7 @@ export default function NotificationDetailsModal({
   const getFullDate = (timestamp: any) => {
     try {
       const date = timestamp?.toDate?.() || new Date(timestamp);
-      return date.toLocaleDateString('en-GB', {
+      return date.toLocaleDateString(locale, {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -117,7 +121,7 @@ export default function NotificationDetailsModal({
         minute: '2-digit'
       });
     } catch {
-      return 'تاريخ غير محدد';
+      return nt('dateNotSpecified');
     }
   };
 
@@ -180,7 +184,7 @@ export default function NotificationDetailsModal({
   // دالة لنسخ النص
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success('تم نسخ النص');
+    toast.success(nt('textCopied'));
   };
 
   // دالة لمشاركة الإشعار
@@ -202,12 +206,12 @@ export default function NotificationDetailsModal({
 
   // دالة لحفظ الإشعار
   const bookmarkNotification = () => {
-    toast.success('تم حفظ الإشعار');
+    toast.success(nt('saved'));
   };
 
   // دالة للإبلاغ عن الإشعار
   const reportNotification = () => {
-    toast.success('تم الإبلاغ عن الإشعار');
+    toast.success(nt('reported'));
   };
 
   // دالة لمعالجة الإجراءات
@@ -253,7 +257,7 @@ export default function NotificationDetailsModal({
       }
     } catch (error) {
       console.error('خطأ في معالجة الإجراء:', error);
-      toast.error('حدث خطأ في معالجة الإجراء');
+      toast.error(nt('actionFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -268,15 +272,15 @@ export default function NotificationDetailsModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
             {getTypeIcon(notification.type)}
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">تفاصيل الإشعار</h2>
-              <p className="text-sm text-gray-600">معلومات مفصلة عن الإشعار</p>
+              <h2 className="text-xl font-semibold text-gray-900">{nt('details')}</h2>
+              <p className="text-sm text-gray-600">{nt('detailsDescription')}</p>
             </div>
           </div>
           <Button
@@ -308,7 +312,7 @@ export default function NotificationDetailsModal({
           {notification.senderId && notification.senderName && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">معلومات المرسل</CardTitle>
+                <CardTitle className="text-lg">{nt('senderInformation')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-4">
@@ -325,13 +329,13 @@ export default function NotificationDetailsModal({
                     <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
                       {getAccountTypeIcon(notification.senderAccountType)}
                       <span className="capitalize">
-                        {notification.senderAccountType === 'admin' ? 'مدير' :
-                         notification.senderAccountType === 'player' ? 'لاعب' :
-                         notification.senderAccountType === 'club' ? 'نادي' :
-                         notification.senderAccountType === 'academy' ? 'أكاديمية' :
-                         notification.senderAccountType === 'trainer' ? 'مدرب' :
-                         notification.senderAccountType === 'agent' ? 'وكيل' :
-                         notification.senderAccountType === 'marketer' ? 'مسوق' :
+                        {notification.senderAccountType === 'admin' ? nt('admin') :
+                         notification.senderAccountType === 'player' ? nt('player') :
+                         notification.senderAccountType === 'club' ? nt('club') :
+                         notification.senderAccountType === 'academy' ? nt('academy') :
+                         notification.senderAccountType === 'trainer' ? nt('trainer') :
+                         notification.senderAccountType === 'agent' ? nt('agent') :
+                         notification.senderAccountType === 'marketer' ? nt('marketer') :
                          notification.senderAccountType}
                       </span>
                     </div>
@@ -351,7 +355,7 @@ export default function NotificationDetailsModal({
                       className="bg-blue-600 hover:bg-blue-700 text-white border-0"
                     >
                       <Eye className="w-4 h-4 ml-2" />
-                      عرض الملف الشخصي
+                      {nt('viewProfile')}
                     </Button>
                   ) : (
                     <Button
@@ -363,12 +367,12 @@ export default function NotificationDetailsModal({
                       {isAdminSender(notification.senderAccountType) ? (
                         <>
                           <MessageSquare className="w-4 h-4 ml-2" />
-                          رسالة الدعم الفني
+                          {nt('technicalSupportMessage')}
                         </>
                       ) : (
                         <>
                           <User className="w-4 h-4 ml-2" />
-                          عرض ملف المرسل
+                          {nt('viewSenderProfile')}
                         </>
                       )}
                     </Button>
@@ -381,36 +385,36 @@ export default function NotificationDetailsModal({
           {/* معلومات الإشعار */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">معلومات الإشعار</CardTitle>
+              <CardTitle className="text-lg">{nt('notificationInformation')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">تاريخ الإنشاء:</span>
+                  <span className="text-sm text-gray-600">{nt('createdDate')}:</span>
                   <span className="text-sm font-medium">{getFullDate(notification.createdAt)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">منذ:</span>
+                  <span className="text-sm text-gray-600">{nt('since')}:</span>
                   <span className="text-sm font-medium">{getFormattedDate(notification.createdAt)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Bell className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">النوع:</span>
+                  <span className="text-sm text-gray-600">{nt('type')}:</span>
                   <Badge variant={notification.type === 'success' ? 'default' : 
                                    notification.type === 'warning' ? 'secondary' :
                                    notification.type === 'error' ? 'destructive' : 'outline'}>
-                    {notification.type === 'success' ? 'نجاح' :
-                     notification.type === 'warning' ? 'تحذير' :
-                     notification.type === 'error' ? 'خطأ' : 'معلومات'}
+                    {notification.type === 'success' ? nt('success') :
+                     notification.type === 'warning' ? nt('warning') :
+                     notification.type === 'error' ? nt('error') : nt('information')}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2">
                   <Eye className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-600">الحالة:</span>
+                  <span className="text-sm text-gray-600">{nt('status')}:</span>
                   <Badge variant={notification.isRead ? 'default' : 'secondary'}>
-                    {notification.isRead ? 'مقروء' : 'غير مقروء'}
+                    {notification.isRead ? nt('read') : nt('unread')}
                   </Badge>
                 </div>
               </div>
@@ -421,7 +425,7 @@ export default function NotificationDetailsModal({
           {notification.metadata && Object.keys(notification.metadata).length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">البيانات الوصفية</CardTitle>
+                <CardTitle className="text-lg">{nt('metadata')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
@@ -439,7 +443,7 @@ export default function NotificationDetailsModal({
           {/* الإجراءات */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">الإجراءات</CardTitle>
+              <CardTitle className="text-lg">{nt('actions')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -451,7 +455,7 @@ export default function NotificationDetailsModal({
                     className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white border-0"
                   >
                     <Check className="w-4 h-4" />
-                    تحديد كمقروء
+                    {nt('markAsRead')}
                   </Button>
                 )}
                 
@@ -463,7 +467,7 @@ export default function NotificationDetailsModal({
                     className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white border-0"
                   >
                     <ExternalLink className="w-4 h-4" />
-                    فتح الرابط
+                    {nt('openLink')}
                   </Button>
                 )}
 
@@ -473,7 +477,7 @@ export default function NotificationDetailsModal({
                   className="flex items-center gap-2 border-yellow-500 text-yellow-700 hover:bg-yellow-50 hover:border-yellow-600"
                 >
                   <Bookmark className="w-4 h-4" />
-                  حفظ
+                  {nt('save')}
                 </Button>
 
                 <Button
@@ -482,7 +486,7 @@ export default function NotificationDetailsModal({
                   className="flex items-center gap-2 border-purple-500 text-purple-700 hover:bg-purple-50 hover:border-purple-600"
                 >
                   <Share2 className="w-4 h-4" />
-                  مشاركة
+                  {nt('share')}
                 </Button>
 
                 {onReply && (
@@ -493,7 +497,7 @@ export default function NotificationDetailsModal({
                     className="flex items-center gap-2 border-indigo-500 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-600"
                   >
                     <Reply className="w-4 h-4" />
-                    رد
+                    {nt('reply')}
                   </Button>
                 )}
 
@@ -505,7 +509,7 @@ export default function NotificationDetailsModal({
                     className="flex items-center gap-2 border-teal-500 text-teal-700 hover:bg-teal-50 hover:border-teal-600"
                   >
                     <Forward className="w-4 h-4" />
-                    إعادة توجيه
+                    {nt('forward')}
                   </Button>
                 )}
 
@@ -515,7 +519,7 @@ export default function NotificationDetailsModal({
                   className="flex items-center gap-2 border-orange-500 text-orange-700 hover:bg-orange-50 hover:border-orange-600"
                 >
                   <Flag className="w-4 h-4" />
-                  إبلاغ
+                  {nt('report')}
                 </Button>
 
                 {onArchive && (
@@ -526,7 +530,7 @@ export default function NotificationDetailsModal({
                     className="flex items-center gap-2 border-gray-500 text-gray-700 hover:bg-gray-50 hover:border-gray-600"
                   >
                     <Archive className="w-4 h-4" />
-                    أرشفة
+                    {nt('archive')}
                   </Button>
                 )}
 
@@ -538,7 +542,7 @@ export default function NotificationDetailsModal({
                     className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white border-0"
                   >
                     <Trash2 className="w-4 h-4" />
-                    حذف
+                    {nt('delete')}
                   </Button>
                 )}
               </div>
@@ -554,7 +558,7 @@ export default function NotificationDetailsModal({
             className="border-gray-400 text-gray-700 hover:bg-gray-100 hover:border-gray-500 px-6 py-2"
           >
             <X className="w-4 h-4 ml-2" />
-            إغلاق
+            {nt('close')}
           </Button>
           {notification.link && (
             <Button 
@@ -563,7 +567,7 @@ export default function NotificationDetailsModal({
               className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 px-6 py-2 shadow-lg hover:shadow-xl transition-all duration-200"
             >
               <ExternalLink className="w-4 h-4 ml-2" />
-              فتح الرابط
+              {nt('openLink')}
             </Button>
           )}
         </div>

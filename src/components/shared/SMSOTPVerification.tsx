@@ -2,6 +2,7 @@
 
 import { AlertTriangle, CheckCircle, Clock, RefreshCw, X } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from '@/lib/i18n';
 
 interface SMSOTPVerificationProps {
   phoneNumber: string;
@@ -25,13 +26,17 @@ export default function SMSOTPVerification({
   onVerificationSuccess,
   onVerificationFailed,
   onClose,
-  title = 'التحقق من رقم الهاتف',
-  subtitle = 'تم إرسال رمز التحقق إلى هاتفك',
+  title,
+  subtitle,
   otpExpirySeconds = 180, // 3 دقائق
   maxAttempts = 3,
   language,
-  t,
+  t: suppliedT,
 }: SMSOTPVerificationProps) {
+  const { t: contextT, isRTL } = useTranslation();
+  const translate = suppliedT || contextT;
+  const resolvedTitle = title || translate('sharedComponents.otp.title');
+  const resolvedSubtitle = subtitle || translate('sharedComponents.otp.subtitleSms');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
@@ -47,9 +52,9 @@ export default function SMSOTPVerification({
     if (isOpen && !isInitializedRef.current) {
       isInitializedRef.current = true;
       setTimeRemaining(otpExpirySeconds);
-      setMessage(`تم إرسال رمز التحقق إلى ${phoneNumber}`);
+      setMessage(translate('sharedComponents.otp.sentTo').replace('{{phone}}', phoneNumber));
     }
-  }, [isOpen, phoneNumber, otpExpirySeconds]);
+  }, [isOpen, phoneNumber, otpExpirySeconds, translate]);
 
   // منطق المؤقت
   useEffect(() => {
@@ -103,7 +108,7 @@ export default function SMSOTPVerification({
     setError('');
 
     if (attempts >= maxAttempts) {
-      setError('تم تجاوز الحد الأقصى للمحاولات.');
+      setError(translate('sharedComponents.otp.maxAttempts'));
       setLoading(false);
       return;
     }
@@ -120,20 +125,22 @@ export default function SMSOTPVerification({
       const verifyResult = await verifyResponse.json();
 
       if (!verifyResponse.ok || !verifyResult.success) {
-        throw new Error(verifyResult.error || 'رمز التحقق غير صحيح.');
+        throw new Error(verifyResult.error || translate('sharedComponents.otp.invalidCode'));
       }
 
-      setMessage('تم التحقق بنجاح!');
+      setMessage(translate('sharedComponents.otp.verified'));
       setTimeout(() => onVerificationSuccess(phoneNumber), 1000);
 
     } catch (err: any) {
-      setError(err.message);
+      const errorMessage = err.message || translate('sharedComponents.otp.invalidCode');
+      setError(errorMessage);
+      onVerificationFailed(errorMessage);
       setOtp(['', '', '', '', '', '']);
       document.getElementById('sms-otp-0')?.focus();
     } finally {
       setLoading(false);
     }
-  }, [phoneNumber, onVerificationSuccess, loading, attempts, maxAttempts]);
+  }, [phoneNumber, onVerificationSuccess, onVerificationFailed, loading, attempts, maxAttempts, translate]);
 
   const handleResendOTP = useCallback(async () => {
     if (resendLoading || timeRemaining > 0) return;
@@ -148,9 +155,9 @@ export default function SMSOTPVerification({
         body: JSON.stringify({ phoneNumber, name, channel: 'whatsapp' }),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'فشل إعادة الإرسال');
+      if (!res.ok || !data.success) throw new Error(data.error || translate('sharedComponents.otp.resendFailed'));
 
-      setMessage('تم إعادة إرسال الرمز بنجاح.');
+      setMessage(translate('sharedComponents.otp.resent'));
       setTimeRemaining(otpExpirySeconds);
       setAttempts(0); // إعادة تعيين المحاولات
       setOtp(['', '', '', '', '', '']);
@@ -159,7 +166,7 @@ export default function SMSOTPVerification({
     } finally {
       setResendLoading(false);
     }
-  }, [resendLoading, timeRemaining, phoneNumber, name, language, otpExpirySeconds]);
+  }, [resendLoading, timeRemaining, phoneNumber, name, language, otpExpirySeconds, translate]);
 
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
 
@@ -167,15 +174,15 @@ export default function SMSOTPVerification({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-xl" dir="rtl">
+      <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-xl" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <h2 className="text-2xl font-bold text-gray-800">{resolvedTitle}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600" title={translate('sharedComponents.otp.close')} aria-label={translate('sharedComponents.otp.close')}>
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        <p className="text-center text-gray-600 mb-4">{subtitle}</p>
+        <p className="text-center text-gray-600 mb-4">{resolvedSubtitle}</p>
 
         {error && (
             <div className="flex items-center gap-2 p-3 mb-4 text-red-700 bg-red-50 rounded-lg">
@@ -202,6 +209,7 @@ export default function SMSOTPVerification({
               className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-blue-500"
               maxLength={1}
               disabled={loading}
+              aria-label={translate('sharedComponents.otp.digitLabel').replace('{{number}}', String(index + 1))}
             />
           ))}
         </div>
@@ -210,10 +218,10 @@ export default function SMSOTPVerification({
           {timeRemaining > 0 ? (
             <div className="flex items-center justify-center gap-2">
               <Clock className="w-4 h-4" />
-              <span>الوقت المتبقي: {formatTime(timeRemaining)}</span>
+              <span>{translate('sharedComponents.otp.timeRemaining')}: {formatTime(timeRemaining)}</span>
             </div>
           ) : (
-            <p className="text-red-500">انتهت صلاحية الرمز.</p>
+            <p className="text-red-500">{translate('sharedComponents.otp.expired')}</p>
           )}
         </div>
 
@@ -223,7 +231,7 @@ export default function SMSOTPVerification({
           className="w-full py-3 px-4 rounded-lg font-medium text-lg flex items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-300"
         >
           {resendLoading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <RefreshCw className="w-5 h-5" />}
-          إعادة إرسال الرمز
+          {translate('sharedComponents.otp.resend')}
         </button>
       </div>
     </div>
