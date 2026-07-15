@@ -2,9 +2,8 @@
 
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { Mail, Menu, X } from 'lucide-react';
-import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
-import { useTranslation } from '@/lib/i18n';
+import { Check, ChevronDown, Globe2, Mail, Menu, X } from 'lucide-react';
+import { useTranslation, type Locale } from '@/lib/i18n';
 import { SUPPORT_CONTACT } from '@/lib/support-contact';
 
 type PublicLandingShellProps = {
@@ -18,9 +17,18 @@ const socialLinks = [
   { label: 'Instagram', href: 'https://www.instagram.com/hagzzel7lm/' },
 ];
 
+const languages: Array<{ code: Locale; label: string; short: string }> = [
+  { code: 'ar', label: 'العربية', short: 'AR' },
+  { code: 'en', label: 'English', short: 'EN' },
+  { code: 'es', label: 'Español', short: 'ES' },
+  { code: 'pt', label: 'Português', short: 'PT' },
+];
+
 export function PublicLandingShell({ children }: PublicLandingShellProps) {
-  const { t, isRTL } = useTranslation();
+  const { t, isRTL, locale, changeLanguage } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
+  const currentLanguage = languages.find((language) => language.code === locale) ?? languages[0];
   const navItems = [
     { label: t('support.navHome'), href: '/' },
     { label: t('support.navAbout'), href: '/about' },
@@ -53,7 +61,35 @@ export function PublicLandingShell({ children }: PublicLandingShellProps) {
           </nav>
 
           <div className="hidden items-center gap-3 lg:flex">
-            <LanguageSwitcher variant="light" compact />
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setLanguageOpen((value) => !value)}
+                className="flex h-11 items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 text-sm font-black text-indigo-800 transition hover:bg-indigo-100"
+                aria-label={t('support.languageLabel')}
+                aria-expanded={languageOpen}
+              >
+                <Globe2 className="h-4 w-4" />
+                <span>{currentLanguage.label}</span>
+                <ChevronDown className={`h-4 w-4 transition ${languageOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {languageOpen && (
+                <div className={`absolute top-[52px] z-50 w-48 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl ${isRTL ? 'left-0' : 'right-0'}`}>
+                  <p className="px-3 pb-2 pt-1 text-xs font-bold text-slate-500">{t('support.languageLabel')}</p>
+                  {languages.map((language) => (
+                    <button
+                      key={language.code}
+                      type="button"
+                      onClick={() => changeLanguage(language.code)}
+                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-bold ${language.code === locale ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                    >
+                      <span>{language.label}</span>
+                      {language.code === locale && <Check className="h-4 w-4" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <Link href="/auth/login" className="px-3 py-2 text-sm font-bold text-slate-700 hover:text-indigo-700">
               {t('support.login')}
             </Link>
@@ -66,7 +102,35 @@ export function PublicLandingShell({ children }: PublicLandingShellProps) {
           </div>
 
           <div className="flex items-center gap-2 lg:hidden">
-            <LanguageSwitcher variant="light" compact />
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setLanguageOpen((value) => !value)}
+                className="flex h-10 items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-2.5 text-xs font-black text-indigo-800"
+                aria-label={t('support.languageLabel')}
+                aria-expanded={languageOpen}
+              >
+                <Globe2 className="h-4 w-4" />
+                <span>{currentLanguage.short}</span>
+                <ChevronDown className={`h-3.5 w-3.5 transition ${languageOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {languageOpen && (
+                <div className={`absolute top-12 z-50 w-44 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl ${isRTL ? 'left-0' : 'right-0'}`}>
+                  <p className="px-3 pb-2 pt-1 text-xs font-bold text-slate-500">{t('support.languageLabel')}</p>
+                  {languages.map((language) => (
+                    <button
+                      key={language.code}
+                      type="button"
+                      onClick={() => changeLanguage(language.code)}
+                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-bold ${language.code === locale ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                    >
+                      <span>{language.label}</span>
+                      {language.code === locale && <Check className="h-4 w-4" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => setMenuOpen((value) => !value)}
