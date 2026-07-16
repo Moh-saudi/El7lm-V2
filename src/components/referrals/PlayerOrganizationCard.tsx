@@ -19,9 +19,11 @@ import {
 import { organizationReferralService } from '@/lib/organization/organization-referral-service';
 import { PlayerJoinRequest } from '@/types/organization-referral';
 import { useTranslation } from '@/lib/i18n';
+import JoinOrganizationModal from './JoinOrganizationModal';
 
 interface PlayerOrganizationCardProps {
     playerId: string;
+    playerName?: string;
 }
 
 const getOrganizationIcon = (type: string) => {
@@ -67,11 +69,12 @@ const formatDate = (date: any, locale: string) => {
     }
 };
 
-export default function PlayerOrganizationCard({ playerId }: PlayerOrganizationCardProps) {
+export default function PlayerOrganizationCard({ playerId, playerName = '' }: PlayerOrganizationCardProps) {
     const { t, locale, isRTL } = useTranslation();
     const rt = (key: string) => t(`sharedComponents.referrals.${key}`);
     const [joinRequests, setJoinRequests] = useState<PlayerJoinRequest[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
 
     useEffect(() => {
         loadJoinRequests();
@@ -109,39 +112,37 @@ export default function PlayerOrganizationCard({ playerId }: PlayerOrganizationC
     // إذا لم يكن هناك أي طلبات
     if (joinRequests.length === 0) {
         return (
-            <Card className="border-2 border-dashed border-gray-300 bg-gray-50/50" dir={isRTL ? 'rtl' : 'ltr'}>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                        <Users className="h-5 w-5 text-gray-400" />
-                        {rt('joinOrganization')}
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="text-center py-4">
-                        <div className="mb-4">
-                            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-100 to-green-100 rounded-full mb-3">
-                                <Plus className="h-8 w-8 text-emerald-600" />
+            <>
+                <Card className="border-2 border-dashed border-gray-300 bg-gray-50/50" dir={isRTL ? 'rtl' : 'ltr'}>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                            <Users className="h-5 w-5 text-gray-400" />
+                            {rt('joinOrganization')}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-center py-4">
+                            <div className="mb-4">
+                                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-100 to-green-100 rounded-full mb-3">
+                                    <Plus className="h-8 w-8 text-emerald-600" />
+                                </div>
+                                <p className="text-gray-600 mb-2">{rt('notJoined')}</p>
+                                <p className="text-sm text-gray-500">{rt('joinBenefit')}</p>
                             </div>
-                            <p className="text-gray-600 mb-2">
-                                {rt('notJoined')}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                                {rt('joinBenefit')}
-                            </p>
-                        </div>
-                        <Link href="/dashboard/player/referrals">
-                            <Button className="bg-emerald-600 hover:bg-emerald-700">
+                            <Button onClick={() => setIsJoinModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
                                 <Plus className="h-4 w-4 mr-2" />
                                 {rt('joinNow')}
                             </Button>
-                        </Link>
-                    </div>
-                </CardContent>
-            </Card>
+                        </div>
+                    </CardContent>
+                </Card>
+                <JoinOrganizationModal playerId={playerId} playerName={playerName} isOpen={isJoinModalOpen} onClose={() => setIsJoinModalOpen(false)} onSuccess={() => { setIsJoinModalOpen(false); loadJoinRequests(); }} />
+            </>
         );
     }
 
     return (
+        <>
         <Card className="overflow-hidden" dir={isRTL ? 'rtl' : 'ltr'}>
             <CardHeader className="bg-gradient-to-r from-emerald-500 to-green-600 text-white">
                 <CardTitle className="flex items-center justify-between">
@@ -254,14 +255,14 @@ export default function PlayerOrganizationCard({ playerId }: PlayerOrganizationC
                     )}
 
                     {/* زر الانضمام */}
-                    <Link href="/dashboard/player/referrals">
-                        <Button variant="outline" className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-50">
-                            <Plus className="h-4 w-4 mr-2" />
-                            {rt('joinNewOrganization')}
-                        </Button>
-                    </Link>
+                    <Button onClick={() => setIsJoinModalOpen(true)} variant="outline" className="w-full border-emerald-300 text-emerald-700 hover:bg-emerald-50">
+                        <Plus className="h-4 w-4 mr-2" />
+                        {rt('joinNewOrganization')}
+                    </Button>
                 </div>
             </CardContent>
         </Card>
+        <JoinOrganizationModal playerId={playerId} playerName={playerName} isOpen={isJoinModalOpen} onClose={() => setIsJoinModalOpen(false)} onSuccess={() => { setIsJoinModalOpen(false); loadJoinRequests(); }} />
+        </>
     );
 }

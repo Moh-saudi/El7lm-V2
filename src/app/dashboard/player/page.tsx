@@ -341,7 +341,7 @@ export default function PlayerDashboard() {
         {/* Player Organization Card - الارتباطات */}
         {user && (
           <div className="mb-6 md:mb-8">
-            <PlayerOrganizationCard playerId={user.id} />
+            <PlayerOrganizationCard playerId={user.id} playerName={String(userData?.full_name || userData?.name || user.email || '')} />
           </div>
         )}
 
