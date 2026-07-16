@@ -265,6 +265,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
   useEffect(() => {
     let isSubscribed = true;
     let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+    let listenerRun = 0;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isSubscribed) return;
@@ -276,11 +277,13 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
 
         // Set up realtime listener for user data
         const setupUserListener = async () => {
+          const runId = ++listenerRun;
           try {
             // Firebase UID: check metadata first, then sessionStorage (set by OTP login page)
             const storedFirebaseUid = typeof window !== 'undefined' ? sessionStorage.getItem('otp_firebase_uid') : null;
             const firebaseUidForFetch = (authUser.user_metadata?.db_id || authUser.user_metadata?.firebase_uid || storedFirebaseUid) as string | undefined;
             const result = await fetchUserData(authUser.id, authUser.email || '', firebaseUidForFetch);
+            if (!isSubscribed || runId !== listenerRun) return;
             if (!result) {
               if (isSubscribed) { setLoading(false); setHasInitialized(true); }
               return;
@@ -292,6 +295,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
             let legacyData: Record<string, unknown> = {};
             if (collectionName !== 'users') {
               const { data: usersData } = await supabase.from('users').select('*').eq('id', authUser.id).limit(1);
+              if (!isSubscribed || runId !== listenerRun) return;
               if (usersData?.length) legacyData = usersData[0] as Record<string, unknown>;
             }
 
@@ -355,22 +359,29 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
             }
 
             // Set up realtime subscription for user data changes
-            if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+            if (!isSubscribed || runId !== listenerRun) return;
+            if (realtimeChannel) {
+              await supabase.removeChannel(realtimeChannel);
+              if (!isSubscribed || runId !== listenerRun) return;
+              realtimeChannel = null;
+            }
             const tableName = collectionName === 'employees' ? 'employees' : (collectionName === 'admins' ? 'users' : collectionName);
-            realtimeChannel = supabase.channel(`user-data-${authUser.id}`)
-              .on('postgres_changes', {
+            const nextChannel = supabase.channel(`user-data-${authUser.id}`);
+            nextChannel.on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
                 table: tableName,
                 filter: `id=eq.${collectionName === 'employees' ? String(rowData.id) : authUser.id}`,
               }, async () => {
+                if (!isSubscribed || runId !== listenerRun) return;
                 // Refresh on change
                 const refreshResult = await fetchUserData(authUser.id, authUser.email || '', (authUser.user_metadata?.db_id || authUser.user_metadata?.firebase_uid) as string | undefined);
-                if (refreshResult && isSubscribed) {
+                if (refreshResult && isSubscribed && runId === listenerRun) {
                   setUserData(prev => ({ ...(prev || {}), ...refreshResult.data } as UserData));
                 }
-              })
-              .subscribe();
+              });
+            realtimeChannel = nextChannel;
+            await nextChannel.subscribe();
 
           } catch (err) {
             console.error('Error in user data listener:', err);
@@ -391,8 +402,9 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
 
     return () => {
       isSubscribed = false;
+      listenerRun += 1;
       subscription.unsubscribe();
-      if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+      if (realtimeChannel) void supabase.removeChannel(realtimeChannel);
     };
   }, []);
 
