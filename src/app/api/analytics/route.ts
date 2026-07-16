@@ -12,14 +12,14 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const userAgent = request.headers.get('user-agent') || 'Unknown';
-    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown';
-
-    let country = 'غير محدد';
-    let city = 'غير محدد';
-    if (request.geo) {
-      country = request.geo.country || 'غير محدد';
-      city = request.geo.city || 'غير محدد';
-    }
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || request.headers.get('x-real-ip')
+      || 'Unknown';
+    // NextRequest no longer exposes `geo` in the standard type. Vercel provides
+    // the same values through request headers at the edge, with safe fallbacks
+    // for local development and non-Vercel deployments.
+    const country = request.headers.get('x-vercel-ip-country') || 'Unknown';
+    const city = request.headers.get('x-vercel-ip-city') || 'Unknown';
 
     const analyticsData = {
       id: crypto.randomUUID(),
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       const db = getSupabaseAdmin();
       await db.from('analytics').insert(analyticsData);
     } catch (e) {
-      console.error('❌ [Analytics API] Supabase error:', e);
+      console.error('[Analytics API] Supabase error:', e);
     }
 
     return NextResponse.json({ success: true, data: analyticsData, message: 'Analytics data processed successfully' }, { status: 200, headers: CORS_HEADERS });
