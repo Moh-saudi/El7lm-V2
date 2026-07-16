@@ -32,7 +32,6 @@ import {
 import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
 import { Bar, BarChart, Line, LineChart, CartesianGrid, XAxis, Pie, PieChart } from 'recharts';
-import * as XLSX from 'xlsx';
 
 interface MessageStats {
     totalMessages: number;
@@ -174,9 +173,10 @@ export default function MessageManagementPage() {
         },
     } satisfies ChartConfig;
 
-    const exportToExcel = () => {
+    const exportToExcel = async () => {
         try {
-            const wb = XLSX.utils.book_new();
+            const { default: ExcelJS } = await import('exceljs');
+            const workbook = new ExcelJS.Workbook();
 
             const statsData = [
                 ['تقرير إحصائيات الرسائل'],
@@ -195,19 +195,30 @@ export default function MessageManagementPage() {
                 ['رسائل صوتية', stats.voiceMessages, stats.totalMessages > 0 ? Math.round((stats.voiceMessages / stats.totalMessages) * 100) : 0],
                 ['صور', stats.imageMessages, stats.totalMessages > 0 ? Math.round((stats.imageMessages / stats.totalMessages) * 100) : 0],
             ];
-            const ws1 = XLSX.utils.aoa_to_sheet(statsData);
-            XLSX.utils.book_append_sheet(wb, ws1, 'الإحصائيات');
+            const statsSheet = workbook.addWorksheet('الإحصائيات');
+            statsSheet.addRows(statsData);
 
             const dailyData = [
                 ['الرسائل اليومية'],
                 ['اليوم', 'عدد الرسائل'],
                 ...dailyMessages.map(d => [d.day, d.messages])
             ];
-            const ws2 = XLSX.utils.aoa_to_sheet(dailyData);
-            XLSX.utils.book_append_sheet(wb, ws2, 'الرسائل اليومية');
+            const dailySheet = workbook.addWorksheet('الرسائل اليومية');
+            dailySheet.addRows(dailyData);
 
             const fileName = `تقرير-الرسائل-${new Date().toISOString().split('T')[0]}.xlsx`;
-            XLSX.writeFile(wb, fileName);
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([new Uint8Array(buffer)], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+            const downloadUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(downloadUrl);
             toast.success('تم تصدير التقرير بصيغة Excel');
         } catch (error) {
             console.error('Error exporting to Excel:', error);

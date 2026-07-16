@@ -22,7 +22,6 @@ import {
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { useEmployeePermissions, PermissionGuard } from '@/hooks/useEmployeePermissions';
 import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
 import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 
@@ -365,11 +364,27 @@ export default function CustomerManagementPage() {
               alert('خطأ في قراءة ملف CSV');
             }
           });
-        } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-          const workbook = XLSX.read(data, { type: 'binary' });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        } else if (file.name.endsWith('.xlsx')) {
+          const { default: ExcelJS } = await import('exceljs');
+          const workbook = new ExcelJS.Workbook();
+          await workbook.xlsx.load(data as ArrayBuffer);
+          const worksheet = workbook.worksheets[0];
+          if (!worksheet) throw new Error('ملف Excel لا يحتوي على أوراق بيانات');
+
+          const headers: string[] = [];
+          worksheet.getRow(1).eachCell((cell, columnNumber) => {
+            headers[columnNumber] = cell.text.trim();
+          });
+
+          const jsonData: Record<string, unknown>[] = [];
+          worksheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return;
+            const record: Record<string, unknown> = {};
+            headers.forEach((header, columnNumber) => {
+              if (header) record[header] = row.getCell(columnNumber).text;
+            });
+            if (Object.values(record).some((value) => value !== '')) jsonData.push(record);
+          });
           setUploadProgress(80);
           setUploadMessage('جاري حفظ البيانات...');
           processFileData(jsonData);
@@ -395,7 +410,7 @@ export default function CustomerManagementPage() {
     if (file.name.endsWith('.csv')) {
       reader.readAsText(file);
     } else {
-      reader.readAsBinaryString(file);
+      reader.readAsArrayBuffer(file);
     }
   };
 
@@ -1565,7 +1580,7 @@ export default function CustomerManagementPage() {
               <label className="block text-sm font-medium mb-2">اختر ملف CSV أو Excel</label>
               <Input
                 type="file"
-                accept=".csv,.xlsx,.xls"
+                accept=".csv,.xlsx"
                 onChange={handleFileUpload}
                 className="w-full"
                 disabled={isUploading}
