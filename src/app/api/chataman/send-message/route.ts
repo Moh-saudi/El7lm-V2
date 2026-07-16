@@ -1,17 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
+
+function getChatAmanBaseUrl(value: unknown): string | null {
+  try {
+    const url = new URL(String(value || ''));
+    if (url.protocol !== 'https:') return null;
+    if (url.hostname !== 'chataman.com' && !url.hostname.endsWith('.chataman.com')) return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
+    const authorization = await authorizeAdmin(req);
+    if (!authorization.ok) return authorization.response;
+
     const { payload, apiKey, baseUrl } = await req.json();
 
     if (!payload || !apiKey || !baseUrl) {
       return NextResponse.json({ success: false, error: 'Missing required parameters: payload, apiKey, or baseUrl' }, { status: 400 });
     }
 
-    const targetUrl = `${baseUrl}/api/send`;
+    const safeBaseUrl = getChatAmanBaseUrl(baseUrl);
+    if (!safeBaseUrl) {
+      return NextResponse.json({ success: false, error: 'Invalid ChatAman URL' }, { status: 400 });
+    }
+    const targetUrl = `${safeBaseUrl}/api/send`;
 
     console.log(`[Proxy-Message] Forwarding to: ${targetUrl}`);
-    console.log(`[Proxy-Message] Payload:`, JSON.stringify(payload, null, 2));
 
     const response = await fetch(targetUrl, {
       method: 'POST',

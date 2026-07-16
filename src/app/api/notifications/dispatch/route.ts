@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeUser } from '@/lib/api/user-auth';
 
 export type NotificationEventType =
   | 'profile_view' | 'video_view' | 'video_like' | 'video_comment'
@@ -152,12 +153,17 @@ async function sendWhatsAppTemplate(
 }
 
 export async function POST(req: NextRequest) {
+  const authorization = await authorizeUser(req);
+  if (!authorization.ok) return authorization.response;
   try {
     const body: DispatchPayload = await req.json();
     const { eventType, targetUserId, actorId, actorName, actorAccountType, metadata } = body;
 
     if (!eventType || !targetUserId || !actorId) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
+    }
+    if (actorId !== authorization.user.id) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
     if (targetUserId === actorId) {
       return NextResponse.json({ success: true, skipped: 'self' });
@@ -220,7 +226,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, whatsapp: whatsappResult, _debug: { phone: phone || null, targetUserId } });
+    return NextResponse.json({ success: true, whatsapp: whatsappResult });
   } catch (error: unknown) {
     console.error('[dispatch] Error:', error);
     return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown' }, { status: 500 });

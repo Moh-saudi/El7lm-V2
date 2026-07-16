@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeUser } from '@/lib/api/user-auth';
 
 /**
  * POST /api/tournament-portal/complete-registration
@@ -13,10 +14,20 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
     try {
+        const authorization = await authorizeUser(req);
+        if (!authorization.user) return authorization.response;
+
         const { supabase_auth_id, name, organization_name, email, phone, country } = await req.json();
 
         if (!supabase_auth_id || !name || !email) {
             return NextResponse.json({ error: 'supabase_auth_id و name و email مطلوبة' }, { status: 400 });
+        }
+
+        if (
+            supabase_auth_id !== authorization.user.id ||
+            email.toLowerCase() !== authorization.user.email?.toLowerCase()
+        ) {
+            return NextResponse.json({ error: 'Registration identity mismatch' }, { status: 403 });
         }
 
         // تحقق إن كان السجل موجوداً أصلاً

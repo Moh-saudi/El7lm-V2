@@ -771,7 +771,7 @@ export default function PlayerVideosPage({ accountType }: PlayerVideosPageProps)
             country: d.country || d.nationality || '',
             nationality: d.nationality || d.country || '',
             age,
-            phone: d.phone || d.whatsapp || '',
+            phone: '',
           });
         });
       }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Trophy, Users, Plus, Trash2, Eye, EyeOff, Search, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 type Client = {
     id: string;
@@ -31,7 +32,7 @@ export default function TournamentClientsPage() {
     const load = async () => {
         setLoading(true);
         try {
-            const res  = await fetch('/api/admin/tournament-clients/list');
+            const res  = await authenticatedFetch('/api/admin/tournament-clients/list', { cache: 'no-store' });
             const json = await res.json();
             if (!res.ok) throw new Error(json.error);
             setClients(json.clients || []);
@@ -46,7 +47,7 @@ export default function TournamentClientsPage() {
 
     // ── Toggle active ────────────────────────────────────────
     const toggleActive = async (client: Client) => {
-        const res  = await fetch('/api/admin/tournament-clients/toggle', {
+        const res  = await authenticatedFetch('/api/admin/tournament-clients/toggle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: client.id, is_active: !client.is_active }),
@@ -60,7 +61,7 @@ export default function TournamentClientsPage() {
     // ── Delete ───────────────────────────────────────────────
     const deleteClient = async (client: Client) => {
         if (!confirm(`حذف العميل "${client.name}"؟ سيتم حذف جميع بطولاته.`)) return;
-        const res  = await fetch('/api/admin/tournament-clients/delete', {
+        const res  = await authenticatedFetch('/api/admin/tournament-clients/delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: client.id, supabase_auth_id: client.supabase_auth_id }),
@@ -81,7 +82,7 @@ export default function TournamentClientsPage() {
         }
         setCreating(true);
         try {
-            const res  = await fetch('/api/admin/tournament-clients/create', {
+            const res  = await authenticatedFetch('/api/admin/tournament-clients/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

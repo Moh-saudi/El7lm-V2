@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
     if (!phone) return NextResponse.json({ error: 'phone is required' }, { status: 400 });
     const result = await findByPhone(phone);
     if (!result.found) return NextResponse.json({ found: false }, { status: 404 });
-    return NextResponse.json(result);
+    return NextResponse.json({ found: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Internal error' }, { status: 500 });
   }
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     if (!phone) return NextResponse.json({ error: 'phone is required' }, { status: 400 });
     const result = await findByPhone(phone);
     if (!result.found) return NextResponse.json({ found: false }, { status: 404 });
-    return NextResponse.json(result);
+    return NextResponse.json({ found: true });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Internal error' }, { status: 500 });
   }

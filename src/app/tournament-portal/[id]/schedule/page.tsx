@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import { DatePicker } from 'antd';
 import dayjs from 'dayjs';
 import { toast } from 'sonner';
-import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { createPortalClient, portalAuthenticatedFetch } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { useTranslation } from '@/lib/i18n';
 
@@ -68,7 +68,7 @@ export default function SchedulePage() {
     (async () => {
       const [catsRes, refsRes] = await Promise.all([
         supabase.from('tournament_categories').select('id,name,type,group_count').eq('tournament_id', id).order('sort_order'),
-        fetch(`/api/tournament-portal/referees?tournament_id=${id}`).then(r => r.json()),
+        portalAuthenticatedFetch(`/api/tournament-portal/referees?tournament_id=${id}`).then(r => r.json()),
       ]);
       setCategories(catsRes.data || []);
       if (catsRes.data?.length) setSelectedCat(catsRes.data[0].id);
@@ -81,7 +81,7 @@ export default function SchedulePage() {
   const generate = async () => {
     setConfirmGen(false); setGenerating(true);
     try {
-      const res = await fetch('/api/tournament-portal/generate-fixtures', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ tournament_id:id, category_id:selectedCat }) });
+      const res = await portalAuthenticatedFetch('/api/tournament-portal/generate-fixtures', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ tournament_id:id, category_id:selectedCat }) });
       const d = await res.json();
       if (!res.ok) { toast.error(d.error); return; }
       toast.success(copy.generated.replace('{count}', d.generated));
@@ -106,7 +106,7 @@ export default function SchedulePage() {
     if (!dirty.length) { toast.info(copy.noChanges); return; }
     setSaving(true);
     try {
-      const res = await fetch('/api/tournament-portal/save-schedule', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ matches: dirty.map(([mid,d]) => ({ id:mid, ...d })) }) });
+      const res = await portalAuthenticatedFetch('/api/tournament-portal/save-schedule', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ tournament_id:id, matches: dirty.map(([mid,d]) => ({ id:mid, ...d })) }) });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error); return; }
       toast.success(copy.saved.replace('{count}', data.updated));

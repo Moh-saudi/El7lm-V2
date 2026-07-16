@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeUser } from '@/lib/api/user-auth';
 
 export async function POST(request: NextRequest) {
+  const authorization = await authorizeUser(request);
+  if (!authorization.ok) return authorization.response;
   try {
-    const { opportunityId, playerId, ...data } = await request.json();
-    if (!opportunityId || !playerId) {
-      return NextResponse.json({ error: 'opportunityId and playerId required' }, { status: 400 });
+    const { opportunityId, playerId: _ignoredPlayerId, ...data } = await request.json();
+    const playerId = authorization.user.id;
+    if (!opportunityId) {
+      return NextResponse.json({ error: 'opportunityId required' }, { status: 400 });
     }
 
     const db = getSupabaseAdmin();

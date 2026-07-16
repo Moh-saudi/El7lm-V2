@@ -9,7 +9,7 @@ import {
   ThunderboltOutlined, CheckCircleOutlined, InfoCircleOutlined,
 } from '@ant-design/icons';
 import { toast } from 'sonner';
-import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { createPortalClient, portalAuthenticatedFetch } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { useTranslation } from '@/lib/i18n';
 
@@ -97,7 +97,7 @@ export default function DrawPage() {
   const createGroups = async () => {
     if (customGroupCount < 2) { toast.error(copy.minGroups); return; }
     setCreatingGroups(true);
-    const res = await fetch('/api/tournament-portal/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tournament_id: id, category_id: selectedCat, count: customGroupCount }) });
+    const res = await portalAuthenticatedFetch('/api/tournament-portal/groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tournament_id: id, category_id: selectedCat, count: customGroupCount }) });
     const data = await res.json();
     if (!res.ok) toast.error(data.error);
     else { setGroups((data.groups || []).map((g: any) => ({ ...g, teams: [] }))); toast.success(copy.groupsCreated.replace('{count}', customGroupCount)); }
@@ -105,7 +105,7 @@ export default function DrawPage() {
   };
 
   const deleteGroup = async (groupId: string) => {
-    const res = await fetch(`/api/tournament-portal/groups?id=${groupId}`, { method: 'DELETE' });
+    const res = await portalAuthenticatedFetch(`/api/tournament-portal/groups?id=${groupId}&tournament_id=${id}`, { method: 'DELETE' });
     if (!res.ok) { const d = await res.json(); toast.error(d.error); return; }
     setGroups((prev) => prev.filter((g) => g.id !== groupId));
     setSelectedTeam(null);
@@ -171,7 +171,7 @@ export default function DrawPage() {
 
   const saveDraw = async () => {
     setSaving(true);
-    const res = await fetch('/api/tournament-portal/save-draw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category_id: selectedCat !== 'all' ? selectedCat : null, groups: groups.map((g) => ({ id: g.id, teams: g.teams.map((t) => ({ id: t.id, category_id: t.category_id })) })) }) });
+    const res = await portalAuthenticatedFetch('/api/tournament-portal/save-draw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tournament_id:id, category_id: selectedCat !== 'all' ? selectedCat : null, groups: groups.map((g) => ({ id: g.id, teams: g.teams.map((t) => ({ id: t.id, category_id: t.category_id })) })) }) });
     const data = await res.json();
     if (!res.ok) toast.error(data.error);
     else toast.success(copy.saved);

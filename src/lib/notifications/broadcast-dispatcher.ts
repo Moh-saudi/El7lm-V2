@@ -8,6 +8,7 @@
  *
  * Fire-and-forget — never throws.
  */
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 export interface BroadcastOpportunityParams {
   opportunityId: string;
@@ -38,7 +39,7 @@ export async function broadcastOpportunityWhatsApp(p: BroadcastOpportunityParams
     if (p.country) targeting.country = p.country;
     if (p.gender && p.gender !== 'both') targeting.gender = p.gender;
 
-    const res = await fetch('/api/notifications/broadcast-whatsapp', {
+    const res = await authenticatedFetch('/api/notifications/broadcast-whatsapp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -77,7 +78,7 @@ export async function broadcastOpportunityWhatsApp(p: BroadcastOpportunityParams
 
 export async function broadcastClubWhatsApp(p: BroadcastClubParams): Promise<void> {
   try {
-    const res = await fetch('/api/notifications/broadcast-whatsapp', {
+    const res = await authenticatedFetch('/api/notifications/broadcast-whatsapp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeUser } from '@/lib/api/user-auth';
+import { isRecordOwner } from '@/lib/api/record-ownership';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -141,6 +143,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const authorization = await authorizeUser(request);
+  if (!authorization.ok) return authorization.response;
   try {
     const invoiceId = params.id;
     const searchParams = request.nextUrl.searchParams;
@@ -184,6 +188,9 @@ export async function GET(
     if (!invoiceData) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
+    if (!isRecordOwner(invoiceData, authorization.user)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const createdAt = toDate(invoiceData.created_at || invoiceData.createdAt || invoiceData.timestamp) || new Date();
     const paidAt = toDate(invoiceData.paid_at || invoiceData.paidAt || invoiceData.paymentDate) || null;
@@ -218,7 +225,10 @@ export async function GET(
     const invoiceUrl = `${baseUrl}/invoice/${invoiceId}`;
     const html = generateInvoiceHTML(normalizedRecord, invoiceUrl);
     return new NextResponse(html, {
-      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'private, no-store, max-age=0',
+      },
     });
   } catch (error: unknown) {
     console.error('❌ [API /invoices/[id]] Error:', error);

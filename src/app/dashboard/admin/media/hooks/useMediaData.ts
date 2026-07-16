@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { MediaItem } from '../types';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 // ── مساعدات YouTube ────────────────────────────────────────────
 export const getYouTubeId = (url: string): string | null => {
@@ -46,7 +47,7 @@ export function useMediaData() {
         setLoading(true);
         setError(null);
         try {
-            const res  = await fetch('/api/media/list-r2');
+            const res  = await authenticatedFetch('/api/media/list-r2', { cache: 'no-store' });
             const data = await res.json();
             if (!data.success) throw new Error(data.error || 'فشل جلب البيانات');
 
@@ -76,7 +77,7 @@ export function useMediaData() {
         reviewerId: string,
         notes?: string
     ) => {
-        const res = await fetch('/api/media/update-status', {
+        const res = await authenticatedFetch('/api/media/update-status', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({
@@ -101,7 +102,7 @@ export function useMediaData() {
         reviewerId: string
     ) => {
         await Promise.all(bulkItems.map(item =>
-            fetch('/api/media/update-status', {
+            authenticatedFetch('/api/media/update-status', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify({
@@ -134,7 +135,7 @@ export function useMediaData() {
         setItems(prev => {
             const item = prev.find(i => i.id === itemId);
             if (item?.r2Key) {
-                fetch('/api/media/update-status', {
+                authenticatedFetch('/api/media/update-status', {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body:    JSON.stringify({
@@ -151,7 +152,7 @@ export function useMediaData() {
 
     // ── حذف عنصر ─────────────────────────────────────────────
     const deleteItem = useCallback(async (item: MediaItem) => {
-        const res = await fetch('/api/media/delete', {
+        const res = await authenticatedFetch('/api/media/delete', {
             method:  'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ r2Key: item.r2Key, sourceType: item.sourceType }),

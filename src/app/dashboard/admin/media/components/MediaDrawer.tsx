@@ -11,6 +11,7 @@ import {
     Copy, AlertCircle, Send, Trash2, ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 interface Props {
     item: MediaItem | null;
@@ -174,7 +175,7 @@ export function MediaDrawer({ item, onClose, onUpdateStatus, onAIResult, onDelet
         if (!message.trim() || !item) return;
         setSendingMsg(true);
         try {
-            const res = await fetch('/api/notifications/dispatch', {
+            const res = await authenticatedFetch('/api/notifications/dispatch', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body:    JSON.stringify({

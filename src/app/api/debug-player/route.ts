@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import dns from 'dns';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 dns.setDefaultResultOrder('ipv4first');
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+  const authorization = await authorizeAdmin(req);
+  if (!authorization.ok) return authorization.response;
   try {
     const db = getSupabaseAdmin();
     const { data: cfgRows } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);

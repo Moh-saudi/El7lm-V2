@@ -44,7 +44,7 @@ function isAccountDeleted(data: Record<string, unknown>): boolean {
   return false;
 }
 
-async function existsByPhone(phoneRaw: string): Promise<{ phoneExists: boolean; email?: string }> {
+async function existsByPhone(phoneRaw: string): Promise<{ phoneExists: boolean }> {
   const start = Date.now();
   const candidates = normalize(phoneRaw);
 
@@ -58,15 +58,14 @@ async function existsByPhone(phoneRaw: string): Promise<{ phoneExists: boolean; 
       const batch = candidates.slice(0, 10);
       const { data } = await db
         .from(coll)
-        .select('id, phone, email, isDeleted, isActive, deletedAt, deletedBy')
+        .select('id, phone, isDeleted, isActive, deletedAt, deletedBy')
         .in('phone', batch);
 
       if (data && data.length > 0) {
         for (const row of data) {
           if (!isAccountDeleted(row as Record<string, unknown>)) {
-            const email = (row as any).email || undefined;
             console.log(`[check-user-exists] ✅ Found in ${coll} (${Date.now() - start}ms)`);
-            return { phoneExists: true, email };
+            return { phoneExists: true };
           }
         }
       }
@@ -74,13 +73,13 @@ async function existsByPhone(phoneRaw: string): Promise<{ phoneExists: boolean; 
       // بحث إضافي بـ originalPhone
       const { data: data2 } = await db
         .from(coll)
-        .select('id, originalPhone, email, isDeleted, isActive, deletedAt, deletedBy')
+        .select('id, originalPhone, isDeleted, isActive, deletedAt, deletedBy')
         .in('originalPhone', batch);
 
       if (data2 && data2.length > 0) {
         for (const row of data2) {
           if (!isAccountDeleted(row as Record<string, unknown>)) {
-            return { phoneExists: true, email: (row as any).email || undefined };
+            return { phoneExists: true };
           }
         }
       }

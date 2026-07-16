@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -66,6 +67,8 @@ async function getUserPackageInfo(
 }
 
 export async function POST(request: NextRequest) {
+    const authorization = await authorizeAdmin(request);
+    if (!authorization.ok) return authorization.response;
     try {
         const db = getSupabaseAdmin();
         console.log('🔄 [Geidea Migration] Starting package info migration...');
@@ -130,7 +133,9 @@ export async function POST(request: NextRequest) {
     }
 }
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
+    const authorization = await authorizeAdmin(request);
+    if (!authorization.ok) return authorization.response;
     try {
         const db = getSupabaseAdmin();
         const { data: payments } = await db.from('geidea_payments').select('plan_name, packageType');

@@ -19,7 +19,7 @@ class SmartOTPService {
 
   constructor() {
     // استخدام الـ token الصحيح المقدم من المستخدم
-    this.BEON_TOKEN = process.env.BEON_SMS_TOKEN || process.env.BEON_WHATSAPP_TOKEN || 'vSCuMzZwLjDxzR882YphwEgW';
+    this.BEON_TOKEN = process.env.BEON_SMS_TOKEN || process.env.BEON_WHATSAPP_TOKEN || '';
   }
 
   // التحقق من صحة التكوين
@@ -27,8 +27,6 @@ class SmartOTPService {
     const isValid = !!this.BEON_TOKEN;
     console.log('🔍 BeOn Token Validation:');
     console.log('🔍 Token Present:', !!this.BEON_TOKEN);
-    console.log('🔍 Token Length:', this.BEON_TOKEN?.length || 0);
-    console.log('🔍 Token Preview:', this.BEON_TOKEN ? `${this.BEON_TOKEN.substring(0, 8)}...` : 'None');
     
     if (!isValid) {
       console.warn('⚠️ BeOn token is missing');
@@ -58,28 +56,14 @@ class SmartOTPService {
     });
 
     // كود تحقق احتياطي ثابت للإدارة
-    const ADMIN_BACKUP_OTP = '123456';
-    
-    console.log('📱 Using admin backup OTP code:', {
-      userPhone: config.phoneNumber,
-      adminOTP: ADMIN_BACKUP_OTP
-    });
+    if (!this.validateConfig()) {
+      return { success: false, error: 'OTP service is not configured' };
+    }
 
-    // إرجاع الكود الاحتياطي مباشرة بدون إرسال
-    return {
-      success: true,
-      otp: ADMIN_BACKUP_OTP,
-      message: 'تم إنشاء رمز التحقق (كود احتياطي للإدارة)',
-      method: 'admin_backup' as any
-    };
-
-    // لا نحتاج لإرسال حقيقي - نستخدم الكود الاحتياطي
-    return {
-      success: true,
-      otp: ADMIN_BACKUP_OTP,
-      message: 'تم إنشاء رمز التحقق (كود احتياطي للإدارة)',
-      method: 'admin_backup' as any
-    };
+    const method = this.getSendingMethod(config.country);
+    if (method === 'sms') return this.sendSMSOnly(config);
+    if (method === 'both') return this.sendBothWhatsAppAndSMS(config);
+    return this.sendWhatsAppOnly(config);
   }
 
   // إرسال WhatsApp فقط
@@ -181,7 +165,6 @@ class SmartOTPService {
       console.log('📱 SMS Request Details:');
       console.log('📱 URL:', 'https://beon.chat/api/send/message/otp');
       console.log('📱 Token:', this.BEON_TOKEN ? '✅ Present' : '❌ Missing');
-      console.log('📱 Token Value:', this.BEON_TOKEN);
       console.log('📱 Phone Number:', config.phoneNumber);
       console.log('📱 Name:', config.name);
       console.log('📱 Boundary:', boundary);

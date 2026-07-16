@@ -9,7 +9,7 @@ async function check(email: string) {
     const { data } = await db.from(table).select('id, isDeleted, isActive, email, uid').eq('email', email).limit(1);
     if (data?.length) {
       const row = data[0] as Record<string, unknown>;
-      return { found: true, collection: table, isDeleted: row.isDeleted, isActive: row.isActive, email: row.email, uid: row.uid };
+      return { found: true, isDeleted: row.isDeleted === true, isActive: row.isActive !== false };
     }
   }
   return { found: false };

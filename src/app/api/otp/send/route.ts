@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
       name,
       purpose = 'registration',
       channel = 'auto',
-      customOTP,
     } = body;
 
     if (!phoneNumber) {
@@ -32,7 +31,6 @@ export async function POST(request: NextRequest) {
       name,
       purpose: purpose as any,
       channel: channel as any,
-      customOTP,
     };
 
     const result = await sendOTP(options);
@@ -72,7 +70,6 @@ export async function GET() {
         name: 'string (optional) - اسم المستخدم',
         purpose: 'string (optional) - registration | login | password_reset | verification',
         channel: 'string (optional) - whatsapp | sms | firebase_phone | auto',
-        customOTP: 'string (optional) - OTP مخصص (إذا لم يتم توفيره، سيتم توليده تلقائياً)',
         instanceId: 'string (optional) - Instance ID لـ WhatsApp'
       }
     },

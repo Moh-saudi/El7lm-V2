@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { createPortalClient, portalAuthenticatedFetch } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { toast } from 'sonner';
 import { useTranslation } from '@/lib/i18n';
@@ -59,7 +59,7 @@ export default function GalleryPage() {
         form.append('file', file);
         form.append('bucket', 'tournaments');
         form.append('path', path);
-        const res  = await fetch('/api/storage/upload', { method: 'POST', body: form });
+        const res  = await portalAuthenticatedFetch('/api/storage/upload', { method: 'POST', body: form });
         const json = await res.json();
         if (!json.url) { toast.error(copy.uploadFailed); continue; }
         await supabase.from('tournament_gallery').insert({ tournament_id: id, url: json.url, caption: null });
@@ -84,7 +84,7 @@ export default function GalleryPage() {
     form.append('file', file);
     form.append('bucket', 'tournaments');
     form.append('path', path);
-    const res  = await fetch('/api/storage/upload', { method: 'POST', body: form });
+    const res  = await portalAuthenticatedFetch('/api/storage/upload', { method: 'POST', body: form });
     const json = await res.json();
     return json.url || null;
   };

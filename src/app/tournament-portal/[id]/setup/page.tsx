@@ -11,7 +11,7 @@ import {
   CheckCircleOutlined,
 } from '@ant-design/icons';
 import { toast } from 'sonner';
-import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { createPortalClient, portalAuthenticatedFetch } from '@/lib/tournament-portal/auth';
 import { useTranslation } from '@/lib/i18n';
 
 const { Text } = Typography;
@@ -132,14 +132,14 @@ export default function TournamentSetupPage() {
   // Load venues + referees
   useEffect(() => {
     if (!id) return;
-    fetch(`/api/tournament-portal/venues?tournament_id=${id}`).then(r=>r.json()).then(d=>setVenues(d.venues||[]));
-    fetch(`/api/tournament-portal/referees?tournament_id=${id}`).then(r=>r.json()).then(d=>setReferees(d.referees||[]));
+    portalAuthenticatedFetch(`/api/tournament-portal/venues?tournament_id=${id}`).then(r=>r.json()).then(d=>setVenues(d.venues||[]));
+    portalAuthenticatedFetch(`/api/tournament-portal/referees?tournament_id=${id}`).then(r=>r.json()).then(d=>setReferees(d.referees||[]));
   }, [id]);
 
   const addVenue = async () => {
     if (!newVenue.name.trim()) { toast.error(copy.venueRequired); return; }
     setAddingVenue(true);
-    const res = await fetch('/api/tournament-portal/venues', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tournament_id:id, ...newVenue, capacity: newVenue.capacity ? +newVenue.capacity : null }) });
+    const res = await portalAuthenticatedFetch('/api/tournament-portal/venues', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tournament_id:id, ...newVenue, capacity: newVenue.capacity ? +newVenue.capacity : null }) });
     const d = await res.json();
     if (!res.ok) toast.error(d.error);
     else { setVenues(p=>[...p, d.venue]); setNewVenue({ name:'', country:'', city:'', address:'', capacity:'' }); toast.success(copy.added); }
@@ -147,7 +147,7 @@ export default function TournamentSetupPage() {
   };
 
   const deleteVenue = async (vid: string) => {
-    await fetch(`/api/tournament-portal/venues?id=${vid}`, { method:'DELETE' });
+    await portalAuthenticatedFetch(`/api/tournament-portal/venues?id=${vid}&tournament_id=${id}`, { method:'DELETE' });
     setVenues(p=>p.filter(v=>v.id!==vid));
     toast.success(copy.deleted);
   };
@@ -155,7 +155,7 @@ export default function TournamentSetupPage() {
   const addReferee = async () => {
     if (!newRef.name.trim()) { toast.error(copy.refereeRequired); return; }
     setAddingRef(true);
-    const res = await fetch('/api/tournament-portal/referees', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tournament_id:id, ...newRef }) });
+    const res = await portalAuthenticatedFetch('/api/tournament-portal/referees', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tournament_id:id, ...newRef }) });
     const d = await res.json();
     if (!res.ok) toast.error(d.error);
     else { setReferees(p=>[...p, d.referee]); setNewRef({ name:'', phone:'', level:'' }); toast.success(copy.added); }
@@ -163,7 +163,7 @@ export default function TournamentSetupPage() {
   };
 
   const deleteReferee = async (rid: string) => {
-    await fetch(`/api/tournament-portal/referees?id=${rid}`, { method:'DELETE' });
+    await portalAuthenticatedFetch(`/api/tournament-portal/referees?id=${rid}&tournament_id=${id}`, { method:'DELETE' });
     setReferees(p=>p.filter(r=>r.id!==rid));
     toast.success(copy.deleted);
   };

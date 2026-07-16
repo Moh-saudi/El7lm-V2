@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import { Modal } from 'antd';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { createPortalClient, portalAuthenticatedFetch } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { useTranslation } from '@/lib/i18n';
 
@@ -92,9 +92,9 @@ export default function MatchesPage() {
     fetchAll();
     // انتقال الفائز تلقائياً في الإقصاء
     if (done && ['R128','R64','R32','R16','QF','SF'].includes(scoreModal.round || '')) {
-      fetch('/api/tournament-portal/advance-winner', {
+      portalAuthenticatedFetch('/api/tournament-portal/advance-winner', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ match_id: scoreModal.id }),
+        body: JSON.stringify({ tournament_id:id, match_id: scoreModal.id }),
       }).then(r => r.json()).then(d => {
         if (d.advanced) toast.success(copy.winnerAdvanced);
       }).catch(() => {});

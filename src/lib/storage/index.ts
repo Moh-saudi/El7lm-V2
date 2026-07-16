@@ -51,9 +51,9 @@ class StorageManager {
                 accountId: customConfig?.cloudflare?.accountId ||
                     process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID || '',
                 accessKeyId: customConfig?.cloudflare?.accessKeyId ||
-                    process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID || '',
+                    process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID || '',
                 secretAccessKey: customConfig?.cloudflare?.secretAccessKey ||
-                    process.env.CLOUDFLARE_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY || '',
+                    process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_SECRET_ACCESS_KEY || '',
                 bucketName: customConfig?.cloudflare?.bucketName ||
                     process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform',
                 publicUrl: customConfig?.cloudflare?.publicUrl ||

@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,14 +17,16 @@ const s3 = new S3Client({
     endpoint: process.env.CLOUDFLARE_R2_ENDPOINT || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ENDPOINT
         || `https://${process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
     credentials: {
-        accessKeyId:     (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID)!,
-        secretAccessKey: (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY)!,
+        accessKeyId:     (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID)!,
+        secretAccessKey: (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_SECRET_ACCESS_KEY)!,
     },
 });
 
 const BUCKET = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform';
 
 export async function DELETE(req: NextRequest) {
+    const authorization = await authorizeAdmin(req);
+    if (!authorization.ok) return authorization.response;
     try {
         const { r2Key, sourceType } = await req.json();
         if (!r2Key) return NextResponse.json({ success: false, error: 'r2Key مطلوب' }, { status: 400 });

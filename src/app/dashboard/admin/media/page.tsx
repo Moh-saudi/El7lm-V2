@@ -14,6 +14,7 @@ import { MediaKPIBar }  from './components/MediaKPIBar';
 import { MediaToolbar } from './components/MediaToolbar';
 import { MediaGrid }    from './components/MediaGrid';
 import { MediaDrawer }  from './components/MediaDrawer';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 // ─── ترتيب العناصر ────────────────────────────────────────────
 const STATUS_ORDER: Record<string, number> = {
@@ -102,7 +103,7 @@ export default function MediaPage() {
             flagged:  'media_flagged',
         };
         try {
-            await fetch('/api/notifications/dispatch', {
+            await authenticatedFetch('/api/notifications/dispatch', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -1,7 +1,10 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authorization = await authorizeAdmin(request);
+  if (!authorization.ok) return authorization.response;
   try {
     if (process.env.NEXT_PHASE === 'phase-production-build') {
       return NextResponse.json({ success: true, data: { items: [], total: 0, lastUpdated: new Date().toISOString() } });
@@ -29,6 +32,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const authorization = await authorizeAdmin(request);
+  if (!authorization.ok) return authorization.response;
   try {
     const { title, content, type, status } = await request.json();
     if (!title || !content || !type) {
@@ -54,6 +59,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const authorization = await authorizeAdmin(request);
+  if (!authorization.ok) return authorization.response;
   try {
     const { id, title, content, type, status } = await request.json();
     if (!id) return NextResponse.json({ success: false, error: 'Content ID is required' }, { status: 400 });
@@ -79,6 +86,8 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const authorization = await authorizeAdmin(request);
+  if (!authorization.ok) return authorization.response;
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

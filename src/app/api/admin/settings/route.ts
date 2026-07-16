@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 const DEFAULT_SETTINGS = {
   siteName: 'El7lm - منصة كرة القدم',
@@ -12,7 +13,9 @@ const DEFAULT_SETTINGS = {
   debugMode: false,
 };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authorization = await authorizeAdmin(request);
+  if (!authorization.ok) return authorization.response;
   try {
     if (process.env.NEXT_PHASE === 'phase-production-build') {
       return NextResponse.json({ success: true, data: { ...DEFAULT_SETTINGS, lastUpdated: new Date().toISOString() } });
@@ -34,6 +37,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const authorization = await authorizeAdmin(request);
+  if (!authorization.ok) return authorization.response;
   try {
     const { settings } = await request.json();
     if (!settings) return NextResponse.json({ success: false, error: 'Settings data is required' }, { status: 400 });

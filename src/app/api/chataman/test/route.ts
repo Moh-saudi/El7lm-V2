@@ -5,9 +5,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import chatAmanService from '@/services/chataman.service';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export async function GET(request: NextRequest) {
     try {
+        const authorization = await authorizeAdmin(request);
+        if (!authorization.ok) return authorization.response;
+
         // التحقق من وجود Access Token
         if (!process.env.CHATAMAN_ACCESS_TOKEN) {
             return NextResponse.json(
@@ -52,6 +56,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
+        const authorization = await authorizeAdmin(request);
+        if (!authorization.ok) return authorization.response;
+
         // قراءة البيانات من الطلب
         const body = await request.json();
         const { phone, message, type = 'text' } = body;

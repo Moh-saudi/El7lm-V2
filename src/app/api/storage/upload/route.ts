@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand, ListBucketsCommand } from '@aws-sdk/client-s3';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
+import { authorizeUser } from '@/lib/api/user-auth';
 
 // البوكتات الموجودة فعلاً في R2 — يُستخدم كـ fallback آمن
 const KNOWN_R2_BUCKETS = [
@@ -31,6 +33,9 @@ function resolveEndpoint(accountId: string | undefined) {
 
 export async function POST(request: NextRequest) {
     try {
+        const authorization = await authorizeUser(request);
+        if (!authorization.user) return authorization.response;
+
         const formData = await request.formData();
         const file = formData.get('file') as File;
         const requestedBucket = formData.get('bucket') as string;
@@ -44,8 +49,8 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const accessKeyId = process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID;
-        const secretAccessKey = process.env.CLOUDFLARE_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+        const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID;
+        const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_SECRET_ACCESS_KEY;
         const publicUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_PUBLIC_URL || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || 'https://assets.el7lm.com';
         const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID;
         const endpoint = resolveEndpoint(accountId);
@@ -96,11 +101,14 @@ export async function POST(request: NextRequest) {
     }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+    const authorization = await authorizeAdmin(request);
+    if (!authorization.user) return authorization.response;
+
     const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID || '';
     const endpoint = resolveEndpoint(accountId) || '';
-    const accessKeyId = process.env.CLOUDFLARE_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID || '';
-    const secretAccessKey = process.env.CLOUDFLARE_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY || '';
+    const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID || '';
+    const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_SECRET_ACCESS_KEY || '';
     const configuredBucket = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || FALLBACK_BUCKET;
 
     let availableBuckets: string[] | string = '(could not list)';
@@ -112,7 +120,7 @@ export async function GET() {
         availableBuckets = e instanceof Error ? e.message : 'error';
     }
 
-    return NextResponse.json({ configuredBucket, effectiveFallback: FALLBACK_BUCKET, accountId, endpoint, hasKey: !!accessKeyId, hasSecret: !!secretAccessKey, availableBuckets });
+    return NextResponse.json({ configuredBucket, effectiveFallback: FALLBACK_BUCKET, hasKey: !!accessKeyId, hasSecret: !!secretAccessKey, availableBuckets });
 }
 
 export const runtime = 'nodejs';

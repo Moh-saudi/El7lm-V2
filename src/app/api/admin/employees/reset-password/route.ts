@@ -1,20 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export async function POST(req: NextRequest) {
+  const authorization = await authorizeAdmin(req);
+  if (!authorization.ok) return authorization.response;
   try {
-    const idToken = req.headers.get('Authorization')?.split('Bearer ')[1];
-    if (!idToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    // Verify the token
-    try {
-      const db = getSupabaseAdmin();
-      const { error } = await db.auth.getUser(idToken);
-      if (error) throw error;
-    } catch {
-      return NextResponse.json({ error: 'Invalid Token' }, { status: 401 });
-    }
-
     const { uid, newPassword } = await req.json();
     if (!uid || !newPassword) {
       return NextResponse.json({ error: 'Missing uid or newPassword' }, { status: 400 });

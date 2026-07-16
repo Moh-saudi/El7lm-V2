@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export async function POST(request: NextRequest) {
   try {
+    const authorization = await authorizeAdmin(request);
+    if (!authorization.ok) return authorization.response;
+
     const body = await request.json();
     const { phoneNumber, message, type = 'notification' } = body;
+
+    if (!process.env.BEON_SMS_TOKEN) {
+      return NextResponse.json({ error: 'SMS service is not configured' }, { status: 503 });
+    }
 
     console.log('📱 استلام طلب إرسال SMS:', { phoneNumber, type });
 
@@ -26,7 +34,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'beon-token': process.env.BEON_SMS_TOKEN || 'SPb4sgedfe'
+        'beon-token': process.env.BEON_SMS_TOKEN || ''
       },
       body: JSON.stringify({
         name: 'منصة الحلم',

@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
 import { useTranslation } from '@/lib/i18n';
 import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 interface AgentData {
   full_name: string;
@@ -242,7 +243,7 @@ export default function AgentProfilePage() {
       formData.append('path', `${user.id}/${fileName}`);
       formData.append('contentType', file.type);
 
-      const res = await fetch('/api/storage/upload', { method: 'POST', body: formData });
+      const res = await authenticatedFetch('/api/storage/upload', { method: 'POST', body: formData });
       if (!res.ok) throw new Error(copy.uploadFailed);
       const { publicUrl } = await res.json();
 

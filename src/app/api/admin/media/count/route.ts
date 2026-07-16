@@ -1,11 +1,14 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 function emptyStats() {
   return { success: true, data: { totalVideos: 0, totalImages: 0, pendingVideos: 0, pendingImages: 0, approvedVideos: 0, approvedImages: 0, rejectedVideos: 0, rejectedImages: 0, totalMedia: 0, lastUpdated: new Date().toISOString() } };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authorization = await authorizeAdmin(request);
+  if (!authorization.ok) return authorization.response;
   try {
     if (process.env.NEXT_PHASE === 'phase-production-build') return NextResponse.json(emptyStats());
 

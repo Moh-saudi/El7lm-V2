@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 const DB_COLUMNS = [
   'id', 'organizerId', 'organizerName', 'organizerType', 'organizerAvatar', 
@@ -33,6 +34,8 @@ function preparePayload(body: any, isUpdate = false) {
 }
 
 export async function GET(req: NextRequest) {
+  const authorization = await authorizeAdmin(req);
+  if (!authorization.ok) return authorization.response;
   try {
     const admin = getSupabaseAdmin();
     
@@ -64,6 +67,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const authorization = await authorizeAdmin(req);
+  if (!authorization.ok) return authorization.response;
   try {
     const admin = getSupabaseAdmin();
     const body = await req.json();
@@ -102,6 +107,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const authorization = await authorizeAdmin(req);
+  if (!authorization.ok) return authorization.response;
   try {
     const admin = getSupabaseAdmin();
     const body = await req.json();
@@ -130,6 +137,8 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const authorization = await authorizeAdmin(req);
+  if (!authorization.ok) return authorization.response;
   try {
     const admin = getSupabaseAdmin();
     const { searchParams } = new URL(req.url);

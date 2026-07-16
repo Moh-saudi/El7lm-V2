@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 const BATCH_SIZE = 10;
 
@@ -105,6 +106,8 @@ async function sendInBatches(phones: string[], templateName: string, params: str
 }
 
 export async function POST(req: NextRequest) {
+  const authorization = await authorizeAdmin(req);
+  if (!authorization.ok) return authorization.response;
   try {
     const body = await req.json();
     const { eventType = 'new_opportunity', templateName = 'opp_pick_up_3', params = [], targeting, broadcastData } = body;

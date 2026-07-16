@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { createPortalClient, portalAuthenticatedFetch } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { useTranslation } from '@/lib/i18n';
 
@@ -85,10 +85,10 @@ export default function NotificationsPage() {
       if (teamsWithPhone.length === 0) {
         toast.warning(copy.noPhones);
       } else {
-        const res = await fetch('/api/tournament-portal/send-sms', {
+        const res = await portalAuthenticatedFetch('/api/tournament-portal/send-sms', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phones: teamsWithPhone.map(t => t.contact_phone), message: `${title.trim()}\n${body.trim()}` }),
+          body: JSON.stringify({ tournament_id:id, phones: teamsWithPhone.map(t => t.contact_phone), message: `${title.trim()}\n${body.trim()}` }),
         });
         const json = await res.json();
         if (json.error) toast.error(json.error);

@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+    const authorization = await authorizeAdmin(req);
+    if (!authorization.ok) return authorization.response;
     const db = getSupabaseAdmin();
     const mode = req.nextUrl.searchParams.get('mode') || 'players';
 

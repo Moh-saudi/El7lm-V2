@@ -5,11 +5,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+    const authorization = await authorizeAdmin(req);
+    if (!authorization.ok) return authorization.response;
     try {
         const body = await req.json();
         const { r2Key, status, reviewedBy, notes, aiAnalysis, aiRating, aiAnalyzedAt } = body;

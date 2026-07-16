@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import SimpleLoader from '@/components/shared/SimpleLoader';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 interface DatabaseStats {
   users: number;
@@ -140,7 +141,7 @@ export default function SystemMonitoring() {
 
   const fetchStorageStats = async () => {
     try {
-      const response = await fetch('/api/admin/storage/stats');
+      const response = await authenticatedFetch('/api/admin/storage/stats');
       const data = await response.json();
 
       if (data.success && data.stats) {

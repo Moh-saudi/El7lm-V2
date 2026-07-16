@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { Bell, Database, RefreshCw, Save, Settings, Shield } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 export default function AdminSettingsPage() {
   const { handleError, handleSuccess } = useErrorHandler();
@@ -32,7 +33,7 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const response = await fetch('/api/admin/settings');
+        const response = await authenticatedFetch('/api/admin/settings', { cache: 'no-store' });
         const result = await response.json();
 
         if (result.success) {
@@ -57,7 +58,7 @@ export default function AdminSettingsPage() {
   const handleSave = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/admin/settings', {
+      const response = await authenticatedFetch('/api/admin/settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

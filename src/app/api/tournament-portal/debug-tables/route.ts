@@ -1,9 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+    const authorization = await authorizeAdmin(request);
+    if (!authorization.ok) return authorization.response;
     const supa = getSupabaseAdmin();
     const tables = ['players', 'clubs', 'academies', 'trainers', 'tournament_players'];
     const info: Record<string, any> = {};

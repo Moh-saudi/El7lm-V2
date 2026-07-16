@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils/index'
+import { supabase } from '@/lib/supabase/config'
 
 type CareerApplication = {
   id: string
@@ -328,7 +329,14 @@ export default function CareersAdminPage() {
     const load = async () => {
       try {
         setLoading(true)
-        const res = await fetch('/api/careers/applications')
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) {
+          throw new Error('يجب تسجيل الدخول بحساب إداري')
+        }
+        const res = await fetch('/api/careers/applications', {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          cache: 'no-store'
+        })
         const json = await res.json()
         if (!res.ok) throw new Error(json?.error || 'تعذر جلب الطلبات')
         setApplications(json.items || [])

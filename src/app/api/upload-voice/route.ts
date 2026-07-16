@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { authorizeUser } from '@/lib/api/user-auth';
 
 export async function POST(request: NextRequest) {
     try {
+        const authorization = await authorizeUser(request);
+        if (!authorization.user) return authorization.response;
+
         const formData = await request.formData();
         const file = formData.get('audio') as File;
-        const userId = formData.get('userId') as string;
+        const userId = authorization.user.id;
 
         if (!file) {
             return NextResponse.json(
@@ -38,11 +42,9 @@ export async function POST(request: NextRequest) {
         }
 
         // قراءة بيانات Cloudflare R2 من المتغيرات البيئية (نفس الطريقة المستخدمة للصور)
-        const accountId = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID;
-        const accessKeyId = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID;
-        const secretAccessKey = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY;
-        const publicUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL;
-        const mainBucket = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET;
+        const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID;
+        const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID;
+        const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_SECRET_ACCESS_KEY;
 
         if (!accountId || !accessKeyId || !secretAccessKey) {
             return NextResponse.json(

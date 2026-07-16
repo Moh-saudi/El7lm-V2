@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { Resend } from 'resend';
+import { authorizeUser } from '@/lib/api/user-auth';
+import { isRecordOwner } from '@/lib/api/record-ownership';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -159,6 +161,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const authorization = await authorizeUser(request);
+  if (!authorization.ok) return authorization.response;
   try {
     const { email: overrideEmail } = await request.json().catch(() => ({}));
     const invoiceId = params.id;
@@ -183,6 +187,9 @@ export async function POST(
     }
 
     if (!invoiceData) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+    if (!isRecordOwner(invoiceData, authorization.user)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const createdAt = toDate(invoiceData.created_at || invoiceData.createdAt || invoiceData.timestamp) || new Date();
     const paidAt = toDate(invoiceData.paid_at || invoiceData.paidAt || invoiceData.paymentDate);
@@ -211,6 +218,10 @@ export async function POST(
     const targetEmail = overrideEmail || String(rec.customerEmail);
     if (!targetEmail || !targetEmail.includes('@')) {
       return NextResponse.json({ error: 'No valid email address found for this invoice' }, { status: 400 });
+    }
+    const authenticatedEmail = String(authorization.user.email || '').toLowerCase();
+    if (targetEmail.toLowerCase() !== authenticatedEmail) {
+      return NextResponse.json({ error: 'Forbidden email recipient' }, { status: 403 });
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://el7lm.com';

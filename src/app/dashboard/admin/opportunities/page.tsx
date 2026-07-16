@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 import { Opportunity, OpportunityApplication, OpportunityType } from '@/types/opportunities';
 import { OPPORTUNITY_TYPES, FOOTBALL_POSITIONS } from '@/lib/opportunities/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
@@ -126,7 +127,7 @@ function EditOpportunityModal({ opp, onClose, onSaved }: EditModalProps) {
         ageMax: form.ageMax !== '' ? Number(form.ageMax) : null,
         fee: form.isPaid && form.fee !== '' ? Number(form.fee) : null,
       };
-      const res = await fetch('/api/admin/opportunities', {
+      const res = await authenticatedFetch('/api/admin/opportunities', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...payload, updatedAt: new Date().toISOString() }),
@@ -469,7 +470,7 @@ function CreateModal({ onClose, onCreated, user, userData }: any) {
         providesAccommodation: false, providesMeals: false, providesTransport: false,
         isPaid: false,
       };
-      const res = await fetch('/api/admin/opportunities', {
+      const res = await authenticatedFetch('/api/admin/opportunities', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -566,7 +567,7 @@ export default function AdminOpportunitiesPage() {
     if (!quiet) setLoading(true); else setRefreshing(true);
     try {
       // Fetch from API to bypass RLS
-      const res = await fetch('/api/admin/opportunities');
+      const res = await authenticatedFetch('/api/admin/opportunities', { cache: 'no-store' });
       if (!res.ok) {
         const errorData = await res.json();
         console.error('❌ API fetch opportunities error:', errorData);
@@ -587,7 +588,7 @@ export default function AdminOpportunitiesPage() {
 
   const toggleActive = async (opp: Opportunity) => {
     try {
-      const res = await fetch('/api/admin/opportunities', {
+      const res = await authenticatedFetch('/api/admin/opportunities', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: opp.id, isActive: !opp.isActive }),
@@ -600,7 +601,7 @@ export default function AdminOpportunitiesPage() {
 
   const toggleFeatured = async (opp: Opportunity) => {
     try {
-      const res = await fetch('/api/admin/opportunities', {
+      const res = await authenticatedFetch('/api/admin/opportunities', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: opp.id, isFeatured: !opp.isFeatured }),
@@ -613,7 +614,7 @@ export default function AdminOpportunitiesPage() {
 
   const changeStatus = async (opp: Opportunity, status: string) => {
     try {
-      const res = await fetch('/api/admin/opportunities', {
+      const res = await authenticatedFetch('/api/admin/opportunities', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: opp.id, status }),
@@ -627,7 +628,7 @@ export default function AdminOpportunitiesPage() {
   const deleteOpp = async (id: string) => {
     if (!confirm('هل أنت متأكد من حذف هذه الفرصة نهائياً؟ لا يمكن التراجع.')) return;
     try {
-      const res = await fetch(`/api/admin/opportunities?id=${id}`, { method: 'DELETE' });
+      const res = await authenticatedFetch(`/api/admin/opportunities?id=${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error();
       setOpportunities(p => p.filter(o => o.id !== id));
       toast.success('تم الحذف بنجاح');

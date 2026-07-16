@@ -12,6 +12,7 @@ import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 export default function CheckPhonePage() {
   const router = useRouter();
@@ -39,7 +40,7 @@ export default function CheckPhonePage() {
       // تنظيف الرقم من الأحرف غير الرقمية
       const cleanPhone = phone.replace(/\D/g, '');
 
-      const response = await fetch('/api/debug/check-account', {
+      const response = await authenticatedFetch('/api/debug/check-account', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

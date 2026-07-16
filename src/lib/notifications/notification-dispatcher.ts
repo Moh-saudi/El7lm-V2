@@ -4,6 +4,7 @@
  * Use this instead of calling interactionNotificationService directly.
  * Works from any page — video player, search, profile, etc.
  */
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 export type NotificationEventType =
   | 'profile_view'
@@ -34,7 +35,7 @@ export interface DispatchOptions {
  */
 export async function dispatchNotification(opts: DispatchOptions): Promise<void> {
   try {
-    const res = await fetch('/api/notifications/dispatch', {
+    const res = await authenticatedFetch('/api/notifications/dispatch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(opts),
@@ -44,9 +45,9 @@ export async function dispatchNotification(opts: DispatchOptions): Promise<void>
       if (data.skipped) {
         console.log(`[notify] ${opts.eventType} skipped (${data.skipped})`);
       } else if (data.whatsapp === 'sent') {
-        console.log(`[notify] ✅ ${opts.eventType} — in-app ✓ whatsapp ✓ → phone: ${data._debug?.phone ?? 'unknown'}`);
+        console.log(`[notify] ✅ ${opts.eventType} — in-app ✓ whatsapp ✓`);
       } else if (data.whatsapp === 'failed') {
-        console.warn(`[notify] ⚠️ ${opts.eventType} — in-app ✓ whatsapp ✗ → phone: ${data._debug?.phone ?? 'NOT FOUND'}`);
+        console.warn(`[notify] ⚠️ ${opts.eventType} — in-app ✓ whatsapp ✗`);
       } else {
         console.log(`[notify] ${opts.eventType} →`, data);
       }

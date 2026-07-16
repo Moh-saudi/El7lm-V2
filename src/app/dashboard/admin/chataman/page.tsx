@@ -18,6 +18,7 @@ import {
   ChevronRight, Wifi, WifiOff, LayoutTemplate, ArrowRight
 } from 'lucide-react';
 import { ChatAmanService, ChatAmanConfig, ChatAmanTemplate } from '@/lib/services/chataman-service';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 // ─── Nav items ────────────────────────────────────────────────────────────────
 type Section = 'connection' | 'templates' | 'test' | 'webhook';
@@ -144,7 +145,7 @@ export default function ChatAmanSettingsPage() {
     setVtTesting(true);
     setVtResult('idle');
     try {
-      const res = await fetch('/api/chataman/test-video-notification', {
+      const res = await authenticatedFetch('/api/chataman/test-video-notification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

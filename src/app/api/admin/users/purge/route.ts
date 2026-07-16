@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export async function POST(req: NextRequest) {
+  const authorization = await authorizeAdmin(req);
+  if (!authorization.ok) return authorization.response;
   try {
     const { email } = await req.json();
     if (!email) return NextResponse.json({ success: false, error: 'Email required' }, { status: 400 });

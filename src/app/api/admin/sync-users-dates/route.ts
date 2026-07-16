@@ -1,12 +1,15 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { detectCountryFromPhone } from '@/lib/constants/countries';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const authorization = await authorizeAdmin(request);
+  if (!authorization.ok) return authorization.response;
   try {
     const db = getSupabaseAdmin();
     console.log('🔄 Starting Full Sync from Auth Source...');

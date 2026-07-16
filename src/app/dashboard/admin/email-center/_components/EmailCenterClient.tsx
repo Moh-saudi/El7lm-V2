@@ -7,6 +7,7 @@ import {
     Filter, Search, Clock, AlertTriangle, Plus
 } from 'lucide-react';
 import { EmailLog, EmailType } from '@/types/email';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 interface EmailCenterClientProps {
     initialLogs: EmailLog[];
@@ -391,7 +392,7 @@ function SendEmailModal({ onClose, onSuccess, isTestMode }: { onClose: () => voi
                 payload.template = formData.template;
             }
 
-            const response = await fetch('/api/admin/send-email', {
+            const response = await authenticatedFetch('/api/admin/send-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 import {
   ArrowRight,
   BarChart3,
@@ -59,9 +60,9 @@ export default function AdminDashboardPage() {
 
       try {
         const [userResult, adResult, mediaResult] = await Promise.allSettled([
-          fetch('/api/admin/users/count'),
-          fetch('/api/admin/ads/count'),
-          fetch('/api/admin/media/count')
+          authenticatedFetch('/api/admin/users/count', { cache: 'no-store' }),
+          authenticatedFetch('/api/admin/ads/count', { cache: 'no-store' }),
+          authenticatedFetch('/api/admin/media/count', { cache: 'no-store' })
         ]);
 
         // 1. User Stats

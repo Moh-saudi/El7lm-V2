@@ -11,7 +11,7 @@ export async function GET() {
     const db = getSupabaseAdmin();
     const { data, error } = await db
       .from('players')
-      .select('*');
+      .select('id, full_name, name, videos, age, birth_date, primary_position, position, country, nationality, profile_image_url, profile_image, image');
 
     if (error) {
       console.error('[/api/players/videos] error:', error);

@@ -49,6 +49,19 @@ export async function signOutClient() {
     await supabase.auth.signOut();
 }
 
+export async function portalAuthenticatedFetch(
+    input: RequestInfo | URL,
+    init: RequestInit = {}
+): Promise<Response> {
+    const supabase = createPortalClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error('Authentication required');
+
+    const headers = new Headers(init.headers);
+    headers.set('Authorization', `Bearer ${session.access_token}`);
+    return fetch(input, { ...init, headers });
+}
+
 // ── إنشاء حساب جديد ───────────────────────────────────────
 export async function signUpClient(params: {
     email: string;

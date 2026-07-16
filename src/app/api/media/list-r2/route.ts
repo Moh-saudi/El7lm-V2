@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export const runtime     = 'nodejs';
 export const dynamic     = 'force-dynamic';
@@ -26,8 +27,8 @@ export const maxDuration = 45;
 // ─── R2 Client ───────────────────────────────────────────────
 const CF_ENDPOINT   = process.env.CLOUDFLARE_R2_ENDPOINT || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ENDPOINT
     || `https://${process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-const CF_ACCESS_KEY = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID  || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID;
-const CF_SECRET_KEY = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+const CF_ACCESS_KEY = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID;
+const CF_SECRET_KEY = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_SECRET_ACCESS_KEY;
 
 const s3 = new S3Client({
     region: 'auto',
@@ -149,7 +150,9 @@ async function listAll(prefix: string, maxItems = 2000) {
 }
 
 // ─── Route ───────────────────────────────────────────────────
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
+    const authorization = await authorizeAdmin(req);
+    if (!authorization.ok) return authorization.response;
     try {
         const db = getSupabaseAdmin();
 

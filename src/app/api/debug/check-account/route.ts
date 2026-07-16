@@ -1,10 +1,14 @@
 import { supabase } from '@/lib/supabase/config';
 import { NextRequest, NextResponse } from 'next/server';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 const TABLES = ['employees', 'users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
 
 export async function POST(req: NextRequest) {
   try {
+    const authorization = await authorizeAdmin(req);
+    if (!authorization.user) return authorization.response;
+
     const phone = String((await req.json().catch(() => ({}))).phone || '');
     if (!phone) return NextResponse.json({ error: 'phone is required' }, { status: 400 });
 

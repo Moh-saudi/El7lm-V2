@@ -1,11 +1,11 @@
-import { supabase } from '@/lib/supabase/config';
 import { Opportunity, OpportunityApplication, ApplicationStatus } from '@/types/opportunities';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 export async function getMyOpportunities(organizerId: string, status?: string): Promise<Opportunity[]> {
   try {
     const params = new URLSearchParams({ organizerId });
     if (status) params.set('status', status);
-    const res = await fetch(`/api/opportunities?${params}`);
+    const res = await authenticatedFetch(`/api/opportunities?${params}`, { cache: 'no-store' });
     if (!res.ok) {
       console.error('[getMyOpportunities] API error:', res.status, await res.text());
       return [];
@@ -22,7 +22,7 @@ export async function getMyOpportunities(organizerId: string, status?: string): 
 export async function createOpportunity(
   data: Omit<Opportunity, 'id' | 'createdAt' | 'updatedAt' | 'currentApplicants' | 'viewCount'>
 ): Promise<string> {
-  const res = await fetch('/api/opportunities', {
+  const res = await authenticatedFetch('/api/opportunities', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -33,7 +33,7 @@ export async function createOpportunity(
 }
 
 export async function updateOpportunity(id: string, data: Partial<Opportunity>): Promise<void> {
-  const res = await fetch('/api/opportunities', {
+  const res = await authenticatedFetch('/api/opportunities', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, ...data }),
@@ -45,7 +45,7 @@ export async function updateOpportunity(id: string, data: Partial<Opportunity>):
 }
 
 export async function deleteOpportunity(id: string): Promise<void> {
-  const res = await fetch(`/api/opportunities?id=${id}`, { method: 'DELETE' });
+  const res = await authenticatedFetch(`/api/opportunities?id=${id}`, { method: 'DELETE' });
   if (!res.ok) {
     const json = await res.json();
     throw new Error(json.error || 'فشل حذف الفرصة');
@@ -65,7 +65,7 @@ export async function getOpportunityApplications(
 ): Promise<OpportunityApplication[]> {
   const params = new URLSearchParams({ opportunityId });
   if (status) params.set('status', status);
-  const res = await fetch(`/api/opportunities/applications?${params}`);
+  const res = await authenticatedFetch(`/api/opportunities/applications?${params}`, { cache: 'no-store' });
   if (!res.ok) return [];
   const { data } = await res.json();
   const results = (data || []) as OpportunityApplication[];
@@ -73,7 +73,7 @@ export async function getOpportunityApplications(
 }
 
 export async function getPlayerApplications(playerId: string): Promise<OpportunityApplication[]> {
-  const res = await fetch(`/api/opportunities/applications?playerId=${playerId}`);
+  const res = await authenticatedFetch(`/api/opportunities/applications?playerId=${playerId}`, { cache: 'no-store' });
   if (!res.ok) return [];
   const { data } = await res.json();
   const results = (data || []) as OpportunityApplication[];
@@ -108,7 +108,7 @@ export async function applyToOpportunity(
     message?: string;
   }
 ): Promise<string> {
-  const res = await fetch('/api/opportunities/apply', {
+  const res = await authenticatedFetch('/api/opportunities/apply', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ opportunityId, playerId, ...data }),
@@ -124,7 +124,7 @@ export async function updateApplicationStatus(
   reviewedBy: string,
   note?: string
 ): Promise<void> {
-  await fetch('/api/opportunities/applications', {
+  await authenticatedFetch('/api/opportunities/applications', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id: applicationId, status, reviewedBy, reviewNote: note }),
@@ -132,7 +132,7 @@ export async function updateApplicationStatus(
 }
 
 export async function rateApplication(applicationId: string, rating: number, comment?: string): Promise<void> {
-  await fetch('/api/opportunities/applications', {
+  await authenticatedFetch('/api/opportunities/applications', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id: applicationId, rating, ratingComment: comment || '', ratedAt: new Date().toISOString() }),

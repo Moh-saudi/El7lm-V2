@@ -1,10 +1,14 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { authorizeAdmin, withPrivateResponseHeaders } from '@/lib/api/admin-auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const authorization = await authorizeAdmin(request);
+    if (!authorization.ok) return authorization.response;
+
     if (process.env.NEXT_PHASE === 'phase-production-build') {
-      return NextResponse.json({ success: true, items: [] });
+      return withPrivateResponseHeaders(NextResponse.json({ success: true, items: [] }));
     }
 
     const db = getSupabaseAdmin();
@@ -25,7 +29,7 @@ export async function GET() {
       return new Date(String(bRow.createdAt ?? 0)).getTime() - new Date(String(aRow.createdAt ?? 0)).getTime();
     });
 
-    return NextResponse.json({ success: true, items: allItems });
+    return withPrivateResponseHeaders(NextResponse.json({ success: true, items: allItems }));
   } catch (error) {
     return NextResponse.json({ success: false, error: 'Failed to fetch applications', details: error instanceof Error ? error.message : 'Unknown' }, { status: 500 });
   }

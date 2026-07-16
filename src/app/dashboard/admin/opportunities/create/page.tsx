@@ -14,6 +14,7 @@ import { OPPORTUNITY_TYPES, FOOTBALL_POSITIONS } from '@/lib/opportunities/confi
 import { OpportunityType } from '@/types/opportunities';
 import { supabase } from '@/lib/supabase/config';
 import { storageManager } from '@/lib/storage';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -430,7 +431,7 @@ export default function AdminCreateOpportunityPage() {
         isFeatured: form.isFeatured,
       };
 
-      const res = await fetch('/api/admin/opportunities', {
+      const res = await authenticatedFetch('/api/admin/opportunities', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

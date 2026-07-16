@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase/config';
 import { broadcastClubWhatsApp } from '@/lib/notifications/broadcast-dispatcher';
 import { useTranslation } from '@/lib/i18n';
 import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -120,7 +121,7 @@ async function uploadToR2(file: File, uid: string, folder: string): Promise<stri
   formData.append('file', file);
   formData.append('bucket', 'clubs');
   formData.append('path', `${uid}/${folder}/${filename}`);
-  const res = await fetch('/api/storage/upload', { method: 'POST', body: formData });
+  const res = await authenticatedFetch('/api/storage/upload', { method: 'POST', body: formData });
   if (!res.ok) throw new Error('Upload failed');
   const data = await res.json();
   return data.url as string;

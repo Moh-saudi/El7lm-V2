@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 export interface ChatAmanConfig {
   apiKey: string;
@@ -54,7 +55,7 @@ export const ChatAmanService = {
       else if (cleaned.startsWith('1') && cleaned.length === 10) cleaned = `20${cleaned}`;
       const formattedPhone = `+${cleaned}`;
 
-      const response = await fetch('/api/chataman/send-message', {
+      const response = await authenticatedFetch('/api/chataman/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ payload: { phone: formattedPhone, message }, apiKey: config.apiKey, baseUrl: config.baseUrl || 'https://chataman.com' }),
@@ -90,7 +91,7 @@ export const ChatAmanService = {
     if (!config?.apiKey) { console.error('ChatAman: API Key not found'); return []; }
 
     try {
-      const response = await fetch('/api/chataman/get-templates', {
+      const response = await authenticatedFetch('/api/chataman/get-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: config.apiKey, baseUrl: config.baseUrl || 'https://chataman.com' }),
@@ -151,7 +152,7 @@ export const ChatAmanService = {
 
       const payload = { phone: formattedPhone, template: { name: templateName, language: { code: params.language || 'ar' }, components } };
 
-      const response = await fetch('/api/chataman/send-template', {
+      const response = await authenticatedFetch('/api/chataman/send-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ payload, apiKey: config.apiKey, baseUrl: (config.baseUrl || 'https://chataman.com').trim() }),

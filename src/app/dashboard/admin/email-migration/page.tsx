@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -166,7 +167,7 @@ export default function EmailMigration() {
   const updateUserEmail = async (userId: string, newEmail: string, accountType: string) => {
     try {
       // استخدام API الجديد لترحيل البريد الإلكتروني
-      const response = await fetch('/api/admin/migrate-email', {
+      const response = await authenticatedFetch('/api/admin/migrate-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -68,10 +68,23 @@ export class CloudflareStorageProvider implements StorageProvider {
             formData.append('path', path);
             formData.append('contentType', options?.contentType || 'application/octet-stream');
 
+            if (typeof window === 'undefined') {
+                throw new Error('Authenticated storage uploads must be initiated from the browser');
+            }
+
+            const { supabase } = await import('@/lib/supabase/config');
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) {
+                throw new Error('Authentication required');
+            }
+
             // إرسال الطلب إلى API Route
             const response = await fetch('/api/storage/upload', {
                 method: 'POST',
                 body: formData,
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                },
             });
 
             if (!response.ok) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,8 @@ function getSupabaseAdminClient() {
  * 2. Creates a tournament_clients record linked to that auth user
  */
 export async function POST(req: NextRequest) {
+    const authorization = await authorizeAdmin(req);
+    if (!authorization.ok) return authorization.response;
     try {
         const body = await req.json();
         const { name, organization_name, email, phone, country, password } = body;

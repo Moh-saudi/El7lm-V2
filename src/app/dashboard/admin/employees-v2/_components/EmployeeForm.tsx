@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { Form, Input, Select, Switch, Row, Col, Divider, Alert, Upload, Button, message } from 'antd';
 import { UserOutlined, MailOutlined, LockOutlined, InboxOutlined, FileTextOutlined } from '@ant-design/icons';
 import { Employee, Role, EmployeeDocument } from '../_types';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 interface EmployeeFormProps {
     initialValues?: Partial<Employee>;
@@ -41,7 +42,7 @@ export default function EmployeeForm({ initialValues, roles, isEditing, form }: 
         formData.append('contentType', file.type);
 
         try {
-            const response = await fetch('/api/storage/upload', {
+            const response = await authenticatedFetch('/api/storage/upload', {
                 method: 'POST',
                 body: formData,
             });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 /**
  * POST /api/chataman/test-video-notification
@@ -8,6 +9,8 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
  * If apiKey is omitted, reads from Supabase system_configs/chataman_config
  */
 export async function POST(req: NextRequest) {
+  const authorization = await authorizeAdmin(req);
+  if (!authorization.ok) return authorization.response;
   try {
     const { phone, playerName, viewerName, apiKey: bodyApiKey, baseUrl: bodyBaseUrl } = await req.json();
 

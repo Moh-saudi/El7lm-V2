@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 export default function CheckAccountPage() {
   const [phone, setPhone] = useState('201278988086');
@@ -12,7 +13,7 @@ export default function CheckAccountPage() {
     setResult(null);
     
     try {
-      const response = await fetch('/api/debug/check-account', {
+      const response = await authenticatedFetch('/api/debug/check-account', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Loader2, ArrowRight, Printer, Download, Mail, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 const TABLES = [
   'invoices', 'geidea_payments', 'bulk_payments', 'bulkPayments',
@@ -235,7 +236,7 @@ export default function PublicInvoicePage() {
     }
     setEmailSending(true);
     try {
-      const res = await fetch(`/api/invoices/${params.id}/send-email`, {
+      const res = await authenticatedFetch(`/api/invoices/${params.id}/send-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: targetEmail }),

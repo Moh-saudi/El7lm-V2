@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import AdAnalytics from '@/components/ads/AdAnalytics';
 import AdFormDialog from '@/components/ads/AdFormDialog';
 import { Ad } from '@/types/ads';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 export default function AdminAdsPage() {
   const [ads, setAds] = useState<Ad[]>([]);
@@ -68,7 +69,7 @@ export default function AdminAdsPage() {
 
   const checkBucketStatus = async () => {
     try {
-      const response = await fetch('/api/admin/ads/storage-stats', { cache: 'no-store' });
+      const response = await authenticatedFetch('/api/admin/ads/storage-stats', { cache: 'no-store' });
       const payload = await response.json();
 
       if (!response.ok || !payload?.success) {

@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 import {
     ConfigProvider,
     App,
@@ -208,7 +209,7 @@ function UsersPageContent() {
             message.loading({ content: 'جاري بدء عملية المزامنة...', key: 'sync' });
 
             // هنا نستخدم fetch لأنه طلب API وليس عملية Firestore مباشرة
-            const response = await fetch('/api/admin/sync-users-dates', {
+            const response = await authenticatedFetch('/api/admin/sync-users-dates', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

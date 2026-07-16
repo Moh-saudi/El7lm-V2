@@ -1,7 +1,10 @@
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authorization = await authorizeAdmin(request);
+  if (!authorization.ok) return authorization.response;
   try {
     if (process.env.NEXT_PHASE === 'phase-production-build') {
       return NextResponse.json({ success: true, data: { totalAds: 0, activeAds: 0, inactiveAds: 0, totalViews: 0, totalClicks: 0, clickThroughRate: 0, lastUpdated: new Date().toISOString() } });

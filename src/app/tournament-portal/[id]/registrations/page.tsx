@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Modal, Select as AntSelect, Popconfirm } from 'antd';
 import { toast } from 'sonner';
-import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { createPortalClient, portalAuthenticatedFetch } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { TeamLogo } from '../../_components/TeamLogo';
 import { resolveImg } from '../../_utils/img';
@@ -114,7 +114,7 @@ export default function RegistrationsPage() {
   const loadPlayers = async (teamId: string) => {
     if (playerMap[teamId]) return;
     setLoadingPl(teamId);
-    const res = await fetch(`/api/tournament-portal/team-players?team_id=${teamId}`);
+    const res = await portalAuthenticatedFetch(`/api/tournament-portal/team-players?team_id=${teamId}&tournament_id=${id}`);
     const d = await res.json();
     setPlayerMap(p => ({ ...p, [teamId]: d.players || [] }));
     setLoadingPl(null);
@@ -123,7 +123,7 @@ export default function RegistrationsPage() {
   const addPlayer = async (teamId: string) => {
     if (!newPlayer.name.trim()) { toast.error(copy.playerRequired); return; }
     setActing('pl_' + teamId);
-    const res = await fetch('/api/tournament-portal/team-players', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ team_id:teamId, tournament_id:id, player_name:newPlayer.name, position:newPlayer.position||null, jersey_number:newPlayer.number?+newPlayer.number:null, phone:newPlayer.phone||null }) });
+    const res = await portalAuthenticatedFetch('/api/tournament-portal/team-players', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ team_id:teamId, tournament_id:id, player_name:newPlayer.name, position:newPlayer.position||null, jersey_number:newPlayer.number?+newPlayer.number:null, phone:newPlayer.phone||null }) });
     const d = await res.json();
     if (!res.ok) toast.error(d.error);
     else { setPlayerMap(p => ({ ...p, [teamId]:[...(p[teamId]||[]), d.player] })); setNewPlayer({ name:'', position:'', number:'', phone:'' }); toast.success(copy.added); }
@@ -131,7 +131,7 @@ export default function RegistrationsPage() {
   };
 
   const deletePlayer = async (teamId: string, playerId: string) => {
-    await fetch(`/api/tournament-portal/team-players?player_id=${playerId}`, { method:'DELETE' });
+    await portalAuthenticatedFetch(`/api/tournament-portal/team-players?player_id=${playerId}&tournament_id=${id}`, { method:'DELETE' });
     setPlayerMap(p => ({ ...p, [teamId]: p[teamId].filter(x => x.id !== playerId) }));
     toast.success(copy.deleted);
   };
@@ -139,14 +139,14 @@ export default function RegistrationsPage() {
   const searchImport = async () => {
     if (importQ.length < 2) return;
     setSearching(true);
-    const res = await fetch(`/api/tournament-portal/search-platform-users?q=${encodeURIComponent(importQ)}&type=${importType}`);
+    const res = await portalAuthenticatedFetch(`/api/tournament-portal/search-platform-users?q=${encodeURIComponent(importQ)}&type=${importType}`);
     const d = await res.json();
     setImportRes(d.results || []);
     setSearching(false);
   };
 
   const importAsTeam = async (r: PResult) => {
-    const res = await fetch('/api/tournament-portal/import-team', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tournament_id:id, name:r.name, city:r.city||null, contact_phone:r.phone||null, logo_url:r.logo_url||null, notes:copy.importNote.replace('{type}',r.account_type||r.type) }) });
+    const res = await portalAuthenticatedFetch('/api/tournament-portal/import-team', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tournament_id:id, name:r.name, city:r.city||null, contact_phone:r.phone||null, logo_url:r.logo_url||null, notes:copy.importNote.replace('{type}',r.account_type||r.type) }) });
     const d = await res.json();
     if (!res.ok) { toast.error(d.error); return; }
     toast.success(copy.imported.replace('{name}',r.name));
@@ -157,7 +157,7 @@ export default function RegistrationsPage() {
   const importAsPlayer = async (r: PResult, teamId: string) => {
     const key = r.platform_player_id || r.name;
     setImportingId(key);
-    const res = await fetch('/api/tournament-portal/team-players', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ team_id:teamId, tournament_id:id, player_name:r.name, position:r.position||null, date_of_birth:r.date_of_birth||null, phone:r.phone||null, platform_player_id:r.platform_player_id||null }) });
+    const res = await portalAuthenticatedFetch('/api/tournament-portal/team-players', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ team_id:teamId, tournament_id:id, player_name:r.name, position:r.position||null, date_of_birth:r.date_of_birth||null, phone:r.phone||null, platform_player_id:r.platform_player_id||null }) });
     const d = await res.json();
     if (!res.ok) toast.error(d.error);
     else { setPlayerMap(p => ({ ...p, [teamId]:[...(p[teamId]||[]), d.player||{id:Date.now().toString(),player_name:r.name}] })); toast.success(copy.playerAdded.replace('{name}',r.name)); setImportRes(p=>p.filter(x=>x.name!==r.name)); }
@@ -167,14 +167,14 @@ export default function RegistrationsPage() {
   const searchGlobal = async () => {
     if (globalQ.length < 2) return;
     setGlobalSearch(true);
-    const res = await fetch(`/api/tournament-portal/search-platform-users?q=${encodeURIComponent(globalQ)}&type=${globalType}`);
+    const res = await portalAuthenticatedFetch(`/api/tournament-portal/search-platform-users?q=${encodeURIComponent(globalQ)}&type=${globalType}`);
     const d = await res.json();
     setGlobalRes(d.results || []);
     setGlobalSearch(false);
   };
 
   const importGlobal = async (r: PResult) => {
-    const res = await fetch('/api/tournament-portal/import-team', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tournament_id:id, name:r.name, city:r.city||null, contact_phone:r.phone||null, logo_url:r.logo_url||null, category_id:selCatId||null, notes:copy.importNote.replace('{type}',r.account_type||r.type) }) });
+    const res = await portalAuthenticatedFetch('/api/tournament-portal/import-team', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ tournament_id:id, name:r.name, city:r.city||null, contact_phone:r.phone||null, logo_url:r.logo_url||null, category_id:selCatId||null, notes:copy.importNote.replace('{type}',r.account_type||r.type) }) });
     const d = await res.json();
     if (!res.ok) { toast.error(d.error); return; }
     toast.success(copy.imported.replace('{name}',r.name));

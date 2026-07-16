@@ -1,22 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { sendEmail, EmailType } from '@/lib/email/sender';
-
-async function verifyAdmin(request: NextRequest): Promise<boolean> {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) return false;
-
-  const token = authHeader.split('Bearer ')[1];
-  try {
-    const db = getSupabaseAdmin();
-    const { data, error } = await db.auth.getUser(token);
-    return !error && !!data?.user;
-  } catch {
-    return false;
-  }
-}
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export async function POST(request: NextRequest) {
+  const authorization = await authorizeAdmin(request);
+  if (!authorization.ok) return authorization.response;
   try {
     const body = await request.json();
     let { to, subject, html, type, text, template } = body;

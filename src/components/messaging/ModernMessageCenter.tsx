@@ -61,6 +61,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from 'sonner';
 import SimpleEmojiPicker from './SimpleEmojiPicker';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 interface Message {
     id: string;
@@ -620,7 +621,7 @@ const ModernMessageCenter: React.FC = () => {
 
             toast.info('جاري رفع الرسالة الصوتية...');
 
-            const uploadResponse = await fetch('/api/upload-voice', {
+            const uploadResponse = await authenticatedFetch('/api/upload-voice', {
                 method: 'POST',
                 body: formData,
             });

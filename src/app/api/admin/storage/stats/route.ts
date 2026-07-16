@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export async function GET(request: NextRequest) {
     try {
-        const accountId = process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID;
-        const accessKeyId = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCESS_KEY_ID;
-        const secretAccessKey = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+        const authorization = await authorizeAdmin(request);
+        if (!authorization.user) return authorization.response;
+
+        const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID;
+        const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID;
+        const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_SECRET_ACCESS_KEY;
         const mainBucket = 'el7lmplatform';
 
         if (!accountId || !accessKeyId || !secretAccessKey) {

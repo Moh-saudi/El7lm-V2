@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/lib/supabase/config';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 export interface AdminNotification {
   id?: string;
@@ -150,7 +151,7 @@ class AdminNotificationService {
 
   private async sendEmailNotification(notification: AdminNotification): Promise<void> {
     try {
-      await fetch('/api/admin/send-email', {
+      await authenticatedFetch('/api/admin/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

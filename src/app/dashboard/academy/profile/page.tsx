@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase/config';
 import { useTranslation } from '@/lib/i18n';
 import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 interface Branch {
   name: string;
@@ -278,7 +279,7 @@ export default function AcademyProfilePage() {
       formData.append('path', `${user.id}/${fileName}`);
       formData.append('contentType', file.type);
 
-      const res = await fetch('/api/storage/upload', { method: 'POST', body: formData });
+      const res = await authenticatedFetch('/api/storage/upload', { method: 'POST', body: formData });
       if (!res.ok) throw new Error(copy.uploadFailed);
       const { publicUrl } = await res.json();
 
@@ -750,7 +751,7 @@ export default function AcademyProfilePage() {
                       formData.append('bucket', 'academies');
                       formData.append('path', `${user.id}/tech_director_${Date.now()}.${file.name.split('.').pop()}`);
                       formData.append('contentType', file.type);
-                      const res = await fetch('/api/storage/upload', { method: 'POST', body: formData });
+                      const res = await authenticatedFetch('/api/storage/upload', { method: 'POST', body: formData });
                       if (res.ok) {
                         const { publicUrl } = await res.json();
                         handleChange('photo', publicUrl, 'technical_director');
@@ -805,7 +806,7 @@ export default function AcademyProfilePage() {
                       formData.append('bucket', 'academies');
                       formData.append('path', `${user.id}/director_${Date.now()}.${file.name.split('.').pop()}`);
                       formData.append('contentType', file.type);
-                      const res = await fetch('/api/storage/upload', { method: 'POST', body: formData });
+                      const res = await authenticatedFetch('/api/storage/upload', { method: 'POST', body: formData });
                       if (res.ok) {
                         const { publicUrl } = await res.json();
                         handleChange('photo', publicUrl, 'director');

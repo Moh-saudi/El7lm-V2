@@ -3,6 +3,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeUser } from '@/lib/api/user-auth';
 
 // الأعمدة الموجودة فعلاً في الجدول
 const DB_COLUMNS = new Set([
@@ -53,13 +54,18 @@ export async function GET(request: NextRequest) {
     let query = db.from('opportunities').select('*');
 
     if (id) {
-      query = query.eq('id', id) as typeof query;
+      query = query.eq('id', id).eq('status', 'active').eq('isActive', true) as typeof query;
     } else if (explore) {
       // Public explore: only active opportunities
       query = query.eq('status', 'active').eq('isActive', true) as typeof query;
       if (type) query = query.eq('opportunityType', type) as typeof query;
       if (country) query = query.eq('country', country) as typeof query;
     } else if (organizerId) {
+      const authorization = await authorizeUser(request);
+      if (!authorization.ok) return authorization.response;
+      if (organizerId !== authorization.user.id) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
       // Publisher view: my opportunities
       query = query.eq('organizerId', organizerId) as typeof query;
       if (status) query = query.eq('status', status) as typeof query;
@@ -83,12 +89,22 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const authorization = await authorizeUser(request);
+  if (!authorization.ok) return authorization.response;
   try {
     const body = await request.json();
     const db = getSupabaseAdmin();
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
-    const raw = { id, ...body, currentApplicants: 0, viewCount: 0, createdAt: now, updatedAt: now };
+    const raw = {
+      id,
+      ...body,
+      organizerId: authorization.user.id,
+      currentApplicants: 0,
+      viewCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
     const payload = buildPayload(raw);
     const { error } = await db.from('opportunities').insert(payload);
     if (error) {
@@ -102,13 +118,21 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const authorization = await authorizeUser(request);
+  if (!authorization.ok) return authorization.response;
   try {
-    const { id, ...updates } = await request.json();
+    const { id, organizerId: _ignoredOrganizerId, ...updates } = await request.json();
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
     const db = getSupabaseAdmin();
     const payload = buildPayload({ ...updates, updatedAt: new Date().toISOString() });
-    const { error } = await db.from('opportunities').update(payload).eq('id', id);
+    const { data, error } = await db
+      .from('opportunities')
+      .update(payload)
+      .eq('id', id)
+      .eq('organizerId', authorization.user.id)
+      .select('id');
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!data?.length) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -116,13 +140,21 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const authorization = await authorizeUser(request);
+  if (!authorization.ok) return authorization.response;
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
     const db = getSupabaseAdmin();
-    const { error } = await db.from('opportunities').delete().eq('id', id);
+    const { data, error } = await db
+      .from('opportunities')
+      .delete()
+      .eq('id', id)
+      .eq('organizerId', authorization.user.id)
+      .select('id');
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!data?.length) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

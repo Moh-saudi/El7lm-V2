@@ -4,7 +4,7 @@ import { TeamLogo as LogoImg } from '../../_components/TeamLogo';
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { createPortalClient, portalAuthenticatedFetch } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { useTranslation } from '@/lib/i18n';
 
@@ -48,7 +48,7 @@ export default function GroupsPage() {
   const loadData = useCallback(async () => {
     if (!selCat) return;
     const [gj, sr] = await Promise.all([
-      fetch(`${API}?tournament_id=${id}&category_id=${selCat}`).then(r=>r.json()),
+      portalAuthenticatedFetch(`${API}?tournament_id=${id}&category_id=${selCat}`).then(r=>r.json()),
       supabase.from('tournament_standings').select('*,team:tournament_teams(name,logo_url)').eq('tournament_id',id).eq('category_id',selCat).order('points',{ascending:false}).order('goal_diff',{ascending:false}),
     ]);
     setGroups(gj.groups||[]);
@@ -60,7 +60,7 @@ export default function GroupsPage() {
   const createGroups = async () => {
     if (count<2) return;
     setCreating(true);
-    const res = await fetch(API,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ tournament_id:id, category_id:selCat, count }) });
+    const res = await portalAuthenticatedFetch(API,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ tournament_id:id, category_id:selCat, count }) });
     const d = await res.json();
     if (!res.ok) toast.error(d.error); else { setGroups(d.groups||[]); toast.success(copy.created.replace('{count}', count)); }
     setCreating(false);
@@ -69,21 +69,21 @@ export default function GroupsPage() {
   const addGroup = async () => {
     const name = newName.trim() || `${copy.group} ${groups.length + 1}`;
     setAdding(true);
-    const res = await fetch(API,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ tournament_id:id, category_id:selCat, name }) });
+    const res = await portalAuthenticatedFetch(API,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ tournament_id:id, category_id:selCat, name }) });
     const d = await res.json();
     if (!res.ok) toast.error(d.error); else { setNewName(''); setGroups(p=>[...p,d.group]); toast.success(copy.added); }
     setAdding(false);
   };
 
   const deleteGroup = async (gid:string) => {
-    const res = await fetch(`${API}?id=${gid}`,{ method:'DELETE' });
+    const res = await portalAuthenticatedFetch(`${API}?id=${gid}&tournament_id=${id}`,{ method:'DELETE' });
     if (!res.ok) { const d=await res.json(); toast.error(d.error); return; }
     setGroups(p=>p.filter(g=>g.id!==gid)); toast.success(copy.deleted);
   };
 
   const saveGroupName = async (gid:string) => {
     if (!editName.trim()) return;
-    const res = await fetch(API,{ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ id:gid, name:editName.trim() }) });
+    const res = await portalAuthenticatedFetch(API,{ method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ tournament_id:id, id:gid, name:editName.trim() }) });
     if (!res.ok) { const d=await res.json(); toast.error(d.error); return; }
     setGroups(p=>p.map(g=>g.id===gid?{...g,name:editName.trim()}:g)); setEditId(null); toast.success(copy.updated);
   };
