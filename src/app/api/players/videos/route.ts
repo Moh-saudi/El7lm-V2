@@ -11,15 +11,32 @@ export async function GET() {
     const db = getSupabaseAdmin();
     const { data, error } = await db
       .from('players')
-      .select('id, full_name, name, videos, age, birth_date, primary_position, position, country, nationality, profile_image_url, profile_image, image');
+      .select('*');
 
     if (error) {
       console.error('[/api/players/videos] error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Filter deleted players in JS (isDeleted may be null for old records)
-    const players = (data ?? []).filter((p: any) => p.isDeleted !== true);
+    // Read the row first because this legacy table has different column sets between
+    // environments, then return an explicit public allow-list so PII never leaves the API.
+    const players = (data ?? [])
+      .filter((p: any) => p.isDeleted !== true && p.is_deleted !== true)
+      .map((p: any) => ({
+        id: p.id,
+        full_name: p.full_name,
+        name: p.name,
+        videos: p.videos,
+        age: p.age,
+        birth_date: p.birth_date ?? p.birthDate,
+        primary_position: p.primary_position,
+        position: p.position,
+        country: p.country,
+        nationality: p.nationality,
+        profile_image_url: p.profile_image_url,
+        profile_image: p.profile_image,
+        image: p.image,
+      }));
     return NextResponse.json({ data: players });
   } catch (err: any) {
     console.error('[/api/players/videos] unexpected error:', err);
