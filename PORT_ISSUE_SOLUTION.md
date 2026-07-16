@@ -69,8 +69,6 @@ Error: fetch failed
 6. **SMS**: تحقق من وصول الرسالة العادية
 7. **WhatsApp**: تحقق من وصول الرسالة العادية
 
-### **2. صفحة اختبار BeOn:**
-1. اذهب إلى `http://localhost:3002/test-beon-api`
 2. اختبر SMS و WhatsApp
 3. تحقق من النتائج
 

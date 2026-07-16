@@ -24,7 +24,6 @@ ENABLE_WHATSAPP_SIMULATION=false
 if (process.env.NODE_ENV === 'development' && process.env.ENABLE_SMS_SIMULATION === 'true') {
   // محاكاة (لن تعمل الآن)
 } else {
-  // إرسال فعلي عبر BeOn API
 }
 ```
 
@@ -34,7 +33,6 @@ if (process.env.NODE_ENV === 'development' && process.env.ENABLE_SMS_SIMULATION 
 if (process.env.NODE_ENV === 'development' && process.env.ENABLE_WHATSAPP_SIMULATION === 'true') {
   // محاكاة (لن تعمل الآن)
 } else {
-  // إرسال فعلي عبر BeOn API
 }
 ```
 
@@ -103,12 +101,8 @@ if (process.env.NODE_ENV === 'development' && process.env.ENABLE_WHATSAPP_SIMULA
    ```
 
 2. **تحقق من الـ Tokens:**
-   - `BEON_SMS_TOKEN`
-   - `BEON_WHATSAPP_TOKEN`
 
 3. **تحقق من الـ Endpoints:**
-   - SMS: `https://beon.chat/api/send/message/sms`
-   - WhatsApp: `https://beon.chat/api/send/message/sms`
 
 4. **تحقق من تنسيق رقم الهاتف:**
    - يجب أن يكون: `+201017799580`
@@ -117,19 +111,12 @@ if (process.env.NODE_ENV === 'development' && process.env.ENABLE_WHATSAPP_SIMULA
 
 | الميزة | التطوير (المحاكاة) | الإنتاج (الفعلي) |
 |--------|-------------------|------------------|
-| **SMS** | رسالة محاكاة | إرسال فعلي عبر BeOn |
-| **WhatsApp** | رسالة محاكاة | إرسال فعلي عبر BeOn |
 | **السرعة** | فورية | حسب سرعة الشبكة |
-| **التكلفة** | مجاني | حسب تعرفة BeOn |
-| **التتبع** | Console Logs | Console Logs + BeOn Dashboard |
 
 ### 🎉 **النتيجة:**
 
 **النظام الآن في وضع الإنتاج الكامل!**
 
-- ✅ SMS: إرسال فعلي عبر BeOn API
-- ✅ WhatsApp: إرسال فعلي عبر BeOn API
-- ✅ OTP: إرسال فعلي عبر BeOn API
 - ✅ تتبع مفصل في Console Logs
 - ✅ معالجة الأخطاء
 

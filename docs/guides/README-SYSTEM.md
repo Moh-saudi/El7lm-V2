@@ -39,7 +39,6 @@
 - **Firebase Auth** - المصادقة
 
 ### خدمات خارجية
-- **BeOn SMS** - إرسال OTP
 - **Firebase** - البنية التحتية
 
 ## 📁 هيكل المشروع
@@ -67,7 +66,6 @@ src/
     │   ├── admin.ts
     │   ├── config.ts
     │   └── auth-provider.tsx
-    └── beon/
         └── sms-service.ts
 ```
 
@@ -77,7 +75,6 @@ src/
 - Node.js 18+
 - npm أو yarn
 - حساب Firebase
-- حساب BeOn SMS
 
 ### 2. تثبيت التبعيات
 ```bash
@@ -102,9 +99,6 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
 NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your-measurement-id
 
-# BeOn SMS
-BEON_SMS_TOKEN=your-beon-token
-BEON_SENDER_NAME=your-sender-name
 ```
 
 ### 4. تشغيل الخادم
@@ -192,7 +186,6 @@ firebase.googleapis.com/v1alpha/projects/-/apps/... Failed to load resource: 400
 ```
 Failed to send OTP
 ```
-**الحل:** تأكد من صحة BeOn SMS Token
 
 #### 3. خطأ Firestore
 ```

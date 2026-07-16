@@ -6,15 +6,12 @@
 
 ## 🔍 **الاكتشاف**
 
-بعد التحقق من صفحة `/test-beon-api` التي تعمل بشكل صحيح، اكتشفنا أن هناك APIs مختلفة:
 
 ### ✅ **APIs الصحيحة للرسائل العادية:**
 - **SMS**: `/api/notifications/sms/send` ✅
 - **WhatsApp**: `/api/notifications/whatsapp/send` ❌ (لا يعمل)
 
 ### ❌ **APIs الخاطئة (OTP):**
-- **SMS**: `/api/notifications/sms/beon` ❌
-- **WhatsApp**: `/api/notifications/whatsapp/beon` ❌
 
 ## 📊 **نتائج الاختبار**
 

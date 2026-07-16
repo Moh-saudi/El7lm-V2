@@ -59,14 +59,6 @@ export async function POST(request: NextRequest) {
     const { error } = await supabase.from('interaction_notifications').insert(notificationData);
     if (error) throw error;
 
-    if (body.type === 'profile_view' && body.profileOwnerId) {
-      try {
-        await sendSMSNotification(body.profileOwnerId, notificationData.message);
-      } catch (smsError) {
-        console.warn('⚠️ فشل في إرسال SMS:', smsError);
-      }
-    }
-
     return NextResponse.json({ success: true, message: 'تم إرسال الإشعار بنجاح', notificationId: id, type: body.type });
   } catch (error) {
     console.error('❌ خطأ في إرسال الإشعار:', error);
@@ -145,23 +137,5 @@ function getDefaultActionUrl(type: NotificationType, profileOwnerId?: string, vi
     case 'connection_request': return '/dashboard/player/messages';
     case 'message_sent': return '/dashboard/player/messages';
     default: return '/dashboard/player';
-  }
-}
-
-async function sendSMSNotification(profileOwnerId: string, message: string) {
-  try {
-    const { data } = await supabase.from('users').select('phone').eq('id', profileOwnerId).limit(1);
-    if (!data?.length) return;
-
-    const phoneNumber = (data[0] as Record<string, unknown>).phone;
-    if (!phoneNumber) return;
-
-    await fetch('/api/notifications/sms/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phoneNumber, message, type: 'interaction_notification' }),
-    });
-  } catch (error) {
-    console.error('❌ خطأ في إرسال SMS:', error);
   }
 }

@@ -10,7 +10,6 @@
 
 - الموجود حالياً (مختصر):
   - Next.js 14 (App Router) + TypeScript + Tailwind.
-  - بنية API Routes متكاملة: مصادقة عبر Firebase Auth/Admin، قاعدة بيانات Firestore، تخزين/SSR عبر Supabase، مدفوعات Geidea، OTP عبر BeOn/WhatsApp.
   - جاهزية تشغيل عبر Docker/Vercel + مهمة مجدولة لتحديث أسعار العملات.
 
 - الفجوات:
@@ -31,7 +30,6 @@ graph TD
   C --> E["Firebase Admin + Firestore"]
   C --> F["Supabase (Storage/SSR)"]
   C --> G["Geidea Payments (Sessions/Webhooks)"]
-  C --> H["BeOn SMS (OTP)"]
   C --> I["WhatsApp API (OTP)"]
   K["Vercel (Build/Dev/Cron)"] --> B
   K --> L["Cron: /api/update-currency-rates"]

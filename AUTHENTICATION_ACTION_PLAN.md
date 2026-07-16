@@ -15,7 +15,6 @@
 - **Firebase Auth** - مفعل ويعمل (Email/Password)
 - **Firebase Phone Auth** - متاح ولكن غير مفعل
 - **Google Sign-In** - غير مفعل حالياً
-- **BeOn SMS** - موجود كخيار بديل
 
 ---
 
@@ -170,7 +169,6 @@ BABASERVICE_WEBHOOK_URL
 | **Google Sign-In** | $0 | $0 |
 | **Firebase Phone Auth** | $0 (مجاني) | $0 (ضمن الحد المجاني) |
 | **Babaservice WhatsApp** | ~$50-100 | ~$500-1000 |
-| **BeOn SMS** | ~$20-50 | ~$200-500 |
 
 ---
 
@@ -180,13 +178,11 @@ BABASERVICE_WEBHOOK_URL
 1. **تطبيق Google Sign-In فوراً** - الأسرع والأسهل
 2. **إضافة Firebase Phone Auth** - كخيار بديل
 3. **إزالة Babaservice** - تنظيف الكود
-4. **الإبقاء على BeOn SMS** - كـ fallback للحالات الخاصة
 
 ### لماذا هذا الترتيب؟
 - Google Sign-In يمكن تطبيقه في ساعة واحدة
 - يغطي 80%+ من المستخدمين
 - Firebase Phone Auth للذين يفضلون رقم الهاتف
-- BeOn SMS للحالات الطارئة فقط
 
 ---
 

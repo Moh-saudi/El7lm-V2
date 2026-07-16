@@ -23,8 +23,6 @@ WHATSAPP_PHONE_ID=your_whatsapp_phone_id
 GREEN_API_TOKEN=your_green_api_token
 GREEN_API_INSTANCE=your_green_api_instance
 
-# BeOn WhatsApp (بديل آخر)
-BEON_WHATSAPP_TOKEN=your_beon_whatsapp_token
 ```
 
 2. **الحصول على بيانات الاعتماد:**
@@ -40,9 +38,7 @@ BEON_WHATSAPP_TOKEN=your_beon_whatsapp_token
 - أنشئ حساب جديد
 - احصل على Instance ID و API Token
 
-#### BeOn WhatsApp:
 - استخدم نفس token المستخدم في SMS
-- أو احصل على token خاص بالواتساب من BeOn
 
 ### 2. مشكلة إرسال الرسائل
 
@@ -125,9 +121,7 @@ http://localhost:3000/test-whatsapp-complete
 # اضغط على "فحص التكوين"
 ```
 
-### 2. اختبار BeOn WhatsApp (الأسهل)
 ```bash
-# اضغط على "اختبار BeOn WhatsApp"
 # استخدم نفس token المستخدم في SMS
 ```
 
@@ -145,7 +139,6 @@ http://localhost:3000/test-whatsapp-complete
 
 ## التوصيات
 
-### 1. البدء بـ BeOn WhatsApp
 - الأسهل في الإعداد
 - يستخدم نفس token المستخدم في SMS
 - لا يحتاج موافقات إضافية
@@ -164,7 +157,6 @@ http://localhost:3000/test-whatsapp-complete
 
 - [Meta for Developers](https://developers.facebook.com/)
 - [Green API Documentation](https://green-api.com/docs/)
-- [BeOn Chat API](https://beon.chat/)
 - [WhatsApp Business API Guide](https://developers.facebook.com/docs/whatsapp)
 
 ## دعم فني

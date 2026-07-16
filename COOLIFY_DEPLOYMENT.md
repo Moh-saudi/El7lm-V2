@@ -44,12 +44,6 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_app_id
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_firebase_measurement_id
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-BEON_API_TOKEN=your_beon_api_token
-BEON_BASE_URL=your_beon_base_url
-BEON_SMS_TOKEN=your_beon_sms_token
-BEON_WHATSAPP_TOKEN=your_beon_whatsapp_token
-BEON_OTP_TOKEN=your_beon_otp_token
-BEON_SENDER_NAME=your_beon_sender_name
 ```
 
 #### ج. إعداد البناء:

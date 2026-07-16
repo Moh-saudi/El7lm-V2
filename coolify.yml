@@ -19,12 +19,6 @@ services:
       - NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=${NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID}
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-      - BEON_API_TOKEN=${BEON_API_TOKEN}
-      - BEON_BASE_URL=${BEON_BASE_URL}
-      - BEON_SMS_TOKEN=${BEON_SMS_TOKEN}
-      - BEON_WHATSAPP_TOKEN=${BEON_WHATSAPP_TOKEN}
-      - BEON_OTP_TOKEN=${BEON_OTP_TOKEN}
-      - BEON_SENDER_NAME=${BEON_SENDER_NAME}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "--timeout=10", "http://localhost:3000/api/health"]

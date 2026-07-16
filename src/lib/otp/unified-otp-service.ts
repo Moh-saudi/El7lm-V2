@@ -136,7 +136,7 @@ async function sendOTPViaWhatsApp(
 }
 
 /**
- * إرسال OTP عبر SMS (BeOn API)
+ * إرسال OTP عبر SMS
  * ملاحظة: هذا الـ route غير موجود حالياً - نرجع خطأ واضح
  */
 async function sendOTPViaSMS(

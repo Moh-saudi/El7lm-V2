@@ -65,14 +65,12 @@ const result = await sendOTP({
 | القناة | الدول المدعومة | التكلفة | السرعة | الموثوقية |
 |--------|----------------|---------|---------|-----------|
 | **WhatsApp (Babaservice)** | ✅ جميع الدول | متوسط | سريع | عالي |
-| **SMS (BeOn)** | ✅ جميع الدول | منخفض | متوسط | عالي |
 | **Firebase Phone Auth** | ⚠️ معظم الدول | منخفض | سريع | عالي جداً |
 
 ## 🚀 التوصيات
 
 ### للدول العربية:
 1. **الأولوية**: WhatsApp (Babaservice) - الأكثر شعبية
-2. **Fallback**: SMS (BeOn) - إذا فشل WhatsApp
 3. **Firebase Phone Auth**: كخيار احتياطي
 
 ### للدول الأخرى:
@@ -97,11 +95,8 @@ BABASERVICE_INSTANCE_ID=your_instance_id
 BABASERVICE_BASE_URL=https://wbot.babaservice.online/api
 ```
 
-### 3. BeOn SMS (مفعل حالياً)
 ```typescript
 // في .env.local:
-BEON_SMS_TOKEN=your_token
-BEON_BASE_URL=your_base_url
 ```
 
 ## 📝 ملاحظات مهمة
@@ -116,7 +111,6 @@ BEON_BASE_URL=your_base_url
    - يتطلب ربط Instance ID بـ WhatsApp Business
    - قد يحتاج QR Code scan
 
-3. **BeOn SMS**:
    - يدعم جميع الدول
    - قد يكون أبطأ من WhatsApp
    - تكلفة أقل

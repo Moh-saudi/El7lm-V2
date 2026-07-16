@@ -9,18 +9,10 @@
 ### ✅ **صفحات محدثة بالفعل:**
 
 #### 1. **صفحة إرسال الإشعارات** (`/dashboard/admin/send-notifications`)
-- ✅ **SMS**: يستخدم `/api/notifications/sms/beon`
-- ✅ **WhatsApp**: يستخدم `/api/notifications/whatsapp/beon`
-- ✅ **الحالة**: محدثة ومتسقة مع BeOn API
 
 #### 2. **صفحة نسيان كلمة المرور** (`/auth/forgot-password`)
-- ✅ **OTP**: يستخدم `/api/notifications/sms/beon`
-- ✅ **الحالة**: محدثة ومتسقة مع BeOn API
 
 #### 3. **مركز الرسائل** (`EnhancedMessageCenter`)
-- ✅ **SMS**: يستخدم `/api/notifications/sms/beon`
-- ✅ **WhatsApp**: يستخدم `/api/notifications/whatsapp/beon`
-- ✅ **الحالة**: محدثة ومتسقة مع BeOn API
 
 ### ⚠️ **صفحات تحتاج تحديث:**
 
@@ -58,7 +50,6 @@
 // مثال على الخدمة الموحدة
 const notificationService = {
   sendSMS: async (phone, message) => {
-    return fetch('/api/notifications/sms/beon', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -73,7 +64,6 @@ const notificationService = {
   },
   
   sendWhatsApp: async (phone, message) => {
-    return fetch('/api/notifications/whatsapp/beon', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -101,9 +91,7 @@ const notificationService = {
 ## 💡 **الفوائد المتوقعة**
 
 ### **بعد التحديث:**
-- ✅ **اتساق كامل**: جميع الصفحات تستخدم نفس BeOn API
 - ✅ **سهولة الصيانة**: تحديث واحد يؤثر على كل شيء
-- ✅ **موثوقية عالية**: BeOn API يعمل بشكل مثالي
 - ✅ **تجربة مستخدم محسنة**: إشعارات فورية لجميع العمليات
 
 ### **قبل التحديث:**
@@ -118,7 +106,6 @@ const notificationService = {
 
 **التوصية**: البدء بتحديث صفحة إدارة الفيديوهات وصفحة إدارة المدفوعات أولاً، ثم إنشاء نظام موحد لجميع الصفحات.
 
-**الهدف**: نظام إشعارات موحد ومتسق يستخدم BeOn API في جميع أنحاء التطبيق.
 
 ---
 

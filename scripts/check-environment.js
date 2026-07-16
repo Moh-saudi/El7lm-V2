@@ -18,15 +18,6 @@ console.log('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET:', process.env.NEXT_PUBLIC_FIRE
 console.log('NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID:', process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ? '✅ Set' : '❌ Missing');
 console.log('NEXT_PUBLIC_FIREBASE_APP_ID:', process.env.NEXT_PUBLIC_FIREBASE_APP_ID ? '✅ Set' : '❌ Missing');
 
-// فحص متغيرات BeOn SMS
-console.log('\n📋 BeOn SMS Variables:');
-console.log('BEON_SMS_TOKEN:', process.env.BEON_SMS_TOKEN ? '✅ Set' : '❌ Missing');
-console.log('BEON_SENDER_NAME:', process.env.BEON_SENDER_NAME ? '✅ Set' : '❌ Missing');
-
-// فحص متغيرات WhatsApp
-console.log('\n📋 WhatsApp Variables:');
-console.log('BEON_WHATSAPP_TOKEN:', process.env.BEON_WHATSAPP_TOKEN ? '✅ Set' : '❌ Missing');
-
 // فحص إعدادات أخرى
 console.log('\n📋 Other Variables:');
 console.log('NODE_ENV:', process.env.NODE_ENV || 'development');

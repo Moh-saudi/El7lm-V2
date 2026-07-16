@@ -17,7 +17,6 @@ const requiredFiles = [
   'src/app/auth/login/page.tsx',
   'src/components/shared/UnifiedOTPVerification.tsx',
   'src/components/shared/SMSOTPVerification.tsx',
-  'src/lib/beon/sms-service.ts',
   'firestore.rules',
   '.env.local'
 ];

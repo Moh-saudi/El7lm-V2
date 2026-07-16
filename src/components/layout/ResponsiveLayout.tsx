@@ -439,7 +439,6 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       'admin-clarity': 'canViewReports',
       'admin-support': 'canViewSupport',
       'admin-system': 'canManageEmployees', // Requires employee management permission
-      'admin-beon-v3': 'canManageEmployees',
       'admin-whatsapp-test': 'canManageSupport',
       'admin-tournaments': 'canManageContent',
       'admin-dream-academy-categories': 'canManageContent',

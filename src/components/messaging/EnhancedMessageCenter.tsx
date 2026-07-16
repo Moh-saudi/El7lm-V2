@@ -46,7 +46,6 @@ import {
   Smile,
   Mail,
   MessageCircle,
-  Smartphone,
   Share2,
   Copy,
   Check,
@@ -103,7 +102,7 @@ interface Message {
 
 interface SendMessageForm {
   message: string;
-  sendVia: 'app' | 'sms' | 'whatsapp' | 'email' | 'all';
+  sendVia: 'app' | 'whatsapp' | 'email' | 'all';
   priority: 'normal' | 'high' | 'urgent';
   includeAttachment: boolean;
   attachmentType: 'image' | 'document' | 'video';
@@ -120,7 +119,6 @@ const USER_TYPES = {
 
 const SEND_OPTIONS = [
   { value: 'app', label: 'التطبيق', icon: MessageSquare, color: 'text-blue-600', bgColor: 'bg-blue-50' },
-  { value: 'sms', label: 'رسالة نصية', icon: Smartphone, color: 'text-green-600', bgColor: 'bg-green-50' },
   { value: 'whatsapp', label: 'واتساب', icon: MessageCircle, color: 'text-green-600', bgColor: 'bg-green-50' },
   { value: 'email', label: 'البريد الإلكتروني', icon: Mail, color: 'text-purple-600', bgColor: 'bg-purple-50' },
   { value: 'all', label: 'جميع الطرق', icon: Share2, color: 'text-orange-600', bgColor: 'bg-orange-50' }
@@ -410,28 +408,6 @@ const EnhancedMessageCenter: React.FC = () => {
       // إرسال عبر التطبيق
       if (sendVia === 'app' || sendVia === 'all') {
         await sendMessage();
-      }
-
-      // إرسال عبر SMS
-      if ((sendVia === 'sms' || sendVia === 'all') && contact.phone) {
-        try {
-          const smsResponse = await fetch('/api/beon/sms', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              singlePhone: contact.phone,
-              message: message
-            })
-          });
-          
-          if (smsResponse.ok) {
-            console.log('✅ SMS أُرسل بنجاح إلى:', contact.phone);
-          } else {
-            console.error('❌ فشل في إرسال SMS:', await smsResponse.text());
-          }
-        } catch (error) {
-          console.error('❌ خطأ في إرسال SMS:', error);
-        }
       }
 
       // إرسال عبر WhatsApp

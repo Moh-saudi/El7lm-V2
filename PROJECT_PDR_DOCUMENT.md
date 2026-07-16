@@ -136,7 +136,6 @@ Payments:
 - Apple Pay Integration
 
 Notifications:
-- BeOn SMS/WhatsApp API
 - Firebase Cloud Messaging
 ```
 
@@ -427,7 +426,6 @@ POST /api/notifications/whatsapp/send
 - **الميزات**: مدفوعات متعددة العملات، Apple Pay
 - **الأمان**: تشفير SSL، توقيع الطلبات
 
-#### 2. BeOn SMS/WhatsApp API
 - **التكامل**: REST API
 - **الميزات**: إرسال SMS وWhatsApp
 - **التحقق**: نظام OTP متكامل

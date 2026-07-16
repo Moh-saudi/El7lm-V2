@@ -51,7 +51,6 @@ npm run dev
 - ✅ Google Analytics & Tag Manager
 - ✅ Microsoft Clarity Analytics
 - ✅ Supabase Storage
-- ✅ BeOn SMS/WhatsApp API
 - ✅ Geidea Payment Gateway
 - ✅ YouTube API Integration
 
@@ -70,8 +69,6 @@ npm run dev
 - اختبار عملية الدفع عبر Geidea
 
 ### الإشعارات:
-- إرسال SMS عبر BeOn
-- إرسال WhatsApp عبر BeOn
 
 ## 6. استكشاف الأخطاء
 
@@ -91,7 +88,6 @@ npm run dev
 ### متغيرات حساسة:
 - `FIREBASE_PRIVATE_KEY` - لا تشاركها أبداً
 - `GEIDEA_API_PASSWORD` - لا تشاركها أبداً
-- `BEON_V3_TOKEN` - لا تشاركها أبداً
 
 ### متغيرات آمنة للمشاركة:
 - جميع المتغيرات التي تبدأ بـ `NEXT_PUBLIC_`

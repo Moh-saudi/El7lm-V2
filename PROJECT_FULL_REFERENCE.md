@@ -67,7 +67,6 @@
 |---|---|
 | Resend | البريد الإلكتروني |
 | Chataman | WhatsApp التسويقي |
-| BEON SMS | رسائل SMS / OTP |
 
 ### واجهة المستخدم
 | المكتبة | الاستخدام |
@@ -241,8 +240,6 @@ SKIPCASH_MODE=production
 ### تواصل
 ```env
 RESEND_API_KEY=                         # بريد إلكتروني
-BEON_API_TOKEN=                         # SMS
-BEON_WHATSAPP_TOKEN=                    # WhatsApp
 BABASERVICE_ACCESS_TOKEN=               # WhatsApp بديل
 CHATAMAN_API_KEY=                       # WhatsApp تسويقي
 ```

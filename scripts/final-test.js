@@ -17,7 +17,6 @@ const requiredFiles = [
   'src/app/auth/login/page.tsx',
   'src/components/shared/UnifiedOTPVerification.tsx',
   'src/components/shared/SMSOTPVerification.tsx',
-  'src/lib/beon/sms-service.ts',
   'firestore.rules',
   '.env.local'
 ];
@@ -78,7 +77,6 @@ if (fs.existsSync(envPath)) {
     console.log('- تأكد من أن Firebase Project ID صحيح');
     console.log('- تأكد من أن Service Account Key صحيح');
     console.log('- تأكد من أن Firestore Rules تم نشرها');
-    console.log('- تأكد من أن BeOn SMS Token صحيح');
   } else {
     console.log('\n⚠️ هناك مشاكل تحتاج إلى إصلاح:');
     if (!allFilesExist) console.log('- بعض الملفات مفقودة');

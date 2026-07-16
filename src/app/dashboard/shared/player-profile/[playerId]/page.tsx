@@ -2621,7 +2621,7 @@ function PlayerReportPage() {
     }
   }, [player, targetPlayerId]);
 
-  // تم إزالة إشعار SMS (Beon) - نستخدم فقط WhatsApp الآن
+  // نستخدم إشعارات WhatsApp فقط
 
   // تم دمج هذه الـ useEffect في الـ useEffect السابق لتجنب التكرار
 

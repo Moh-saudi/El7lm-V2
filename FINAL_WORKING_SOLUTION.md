@@ -6,14 +6,12 @@
 
 ## 🔍 **الاكتشاف**
 
-بعد التحقق الشامل، اكتشفنا أن **BeOn API الحالي مخصص لـ OTP فقط** وليس للرسائل العادية.
 
 ## ✅ **الحل النهائي العامل**
 
 ### **1. SMS - استخدام OTP API:**
 ```typescript
 // إرسال SMS باستخدام OTP API
-await fetch('/api/notifications/sms/beon', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -95,7 +93,6 @@ window.open(whatsappUrl, '_blank');
 ## 💡 **الفوائد:**
 
 ### **1. SMS OTP:**
-- ✅ **يعمل بشكل مثالي**: BeOn API يدعم OTP
 - ✅ **موثوقية عالية**: لا توجد مشاكل في الإرسال
 - ✅ **تكلفة منخفضة**: OTP أرخص من الرسائل العادية
 

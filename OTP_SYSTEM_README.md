@@ -7,12 +7,10 @@
 ## الميزات الرئيسية
 
 ### 🌍 تحديد تلقائي حسب الدولة
-- **الدول العربية**: تستخدم SMS عبر BeOn
 - **الدول الأخرى**: تستخدم WhatsApp Business API
 - **التبديل التلقائي**: إمكانية التبديل بين الطريقتين عند الحاجة
 
 ### 📱 دعم متعدد للخدمات
-- **SMS**: عبر BeOn للدول العربية
 - **WhatsApp Business API**: للدول الأخرى
 - **WhatsApp Green API**: كبديل للـ Business API
 
@@ -32,7 +30,6 @@ src/lib/utils/otp-service-selector.ts         # محدد نوع OTP حسب ال�
 
 ### صفحات الاختبار
 ```
-src/app/test-beon-new-api/page.tsx            # اختبار API الجديد لـ BeOn
 ```
 
 ### المكونات
@@ -56,13 +53,6 @@ src/app/test-unified-otp/page.tsx             # صفحة اختبار النظا
 ### متغيرات البيئة المطلوبة
 
 ```bash
-# BeOn SMS Configuration
-BEON_SMS_TOKEN=vSCuMzZwLjDxzR882YphwEgW
-BEON_SMS_TOKEN_REGULAR=SPb4sgedfe
-BEON_SMS_TOKEN_TEMPLATE=SPb4sbemr5bwb7sjzCqTcL
-BEON_SMS_TOKEN_BULK=nzQ7ytW8q6yfQdJRFM57yRfR
-BEON_SENDER_NAME=El7lm
-BEON_TEMPLATE_ID=133
 
 # WhatsApp Configuration
 WHATSAPP_ACCESS_TOKEN=your_whatsapp_access_token
@@ -273,19 +263,15 @@ http://localhost:3000/test-whatsapp-otp
 - [ ] إضافة المزيد من الاختبارات
 - [ ] تحسين معالجة الأخطاء
 
-## API الجديد لـ BeOn
 
 ### تفاصيل API
-- **Base URL**: `https://beon.chat/api/send/message/otp`
 - **Method**: POST
 - **Content-Type**: `multipart/form-data`
 - **Token**: `vSCuMzZwLjDxzR882YphwEgW`
 
 ### مثال cURL
 ```bash
-curl -X POST "https://beon.chat/api/send/message/otp" \
      -H "Content-Type: multipart/form-data" \
-     -H "beon-token: vSCuMzZwLjDxzR882YphwEgW" \
      -F "phoneNumber=+201122652572" \
      -F "name=gouda" \
      -F "type=sms" \
@@ -311,16 +297,12 @@ curl -X POST "https://beon.chat/api/send/message/otp" \
 
 ### صفحة الاختبار
 ```
-http://localhost:3000/test-beon-new-api
 ```
 
-## جميع خدمات BeOn
 
 ### 1. إرسال OTP (API الجديد)
 ```bash
-curl -X POST "https://beon.chat/api/send/message/otp" \
      -H "Content-Type: multipart/form-data" \
-     -H "beon-token: vSCuMzZwLjDxzR882YphwEgW" \
      -F "phoneNumber=+201122652572" \
      -F "name=gouda" \
      -F "type=sms" \
@@ -330,21 +312,15 @@ curl -X POST "https://beon.chat/api/send/message/otp" \
 
 ### 2. إرسال SMS عادي
 ```bash
-curl -X POST "https://beon.chat/api/send/message/sms" \
      -H "Content-Type: application/json" \
-     -H "beon-token: SPb4sgedfe" \
      -d '{
-       "name": "BeOn Sales",
        "phoneNumber": "+201022337332",
-       "message": "test beon"
      }'
 ```
 
 ### 3. إرسال SMS Template
 ```bash
-curl -X POST "https://beon.chat/api/send/message/sms/template" \
      -H "Content-Type: application/json" \
-     -H "beon-token: SPb4sbemr5bwb7sjzCqTcL" \
      -d '{
        "template_id": 133,
        "phoneNumber": "+20112",
@@ -355,18 +331,14 @@ curl -X POST "https://beon.chat/api/send/message/sms/template" \
 
 ### 4. إرسال Bulk SMS
 ```bash
-curl -X POST "https://beon.chat/api/send/message/sms/bulk" \
      -H "Content-Type: application/json" \
-     -H "beon-token: nzQ7ytW8q6yfQdJRFM57yRfR" \
      -d '{
        "phoneNumbers": ["+201122652572"],
-       "message": "hello from beon sms api"
      }'
 ```
 
 ### صفحة الاختبار الشاملة
 ```
-http://localhost:3000/test-beon-complete
 ```
 
 ## الدعم

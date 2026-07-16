@@ -80,15 +80,9 @@
 
 ---
 
-### الخيار 2: استخدام BeOn API (البديل الحالي) ✅
 
-**لديك بالفعل تكامل مع BeOn API يعمل!**
 
-#### إعدادات BeOn الحالية:
 ```bash
-BEON_V3_TOKEN=Yt3A3RwMQHx49trsz1EMgSKP8qOD0CSVJXdJxy6IqNNtcYblsYWtfVAtaJpv
-BEON_V3_BASE_URL=https://v3.api.beon.chat
-BEON_SENDER_NAME=El7lm
 ```
 
 #### المميزات:
@@ -97,20 +91,15 @@ BEON_SENDER_NAME=El7lm
 - ✅ **مُختبر ومُجرّب** - تستخدمه بالفعل
 
 #### كيفية الاستخدام:
-يمكنك استخدام BeOn API لإرسال رسائل واتساب حتى تحصل على توثيق ChatAman.
 
 **مثال:**
 ```typescript
-// استخدام BeOn API لإرسال رسالة
 const sendWhatsAppMessage = async (phone: string, message: string) => {
-  const response = await fetch(`${process.env.BEON_V3_BASE_URL}/send`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.BEON_V3_TOKEN}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      sender: process.env.BEON_SENDER_NAME,
       phone: phone,
       message: message
     })
@@ -216,11 +205,9 @@ curl -X POST http://localhost:3000/api/chataman/test \
 
 ---
 
-## 🎯 البديل الفوري: استخدام BeOn
 
 **إذا كنت بحاجة لإرسال رسائل واتساب الآن:**
 
-1. ✅ استخدم BeOn API الموجود حالياً
 2. ✅ لديك بالفعل Token وإعدادات جاهزة
 3. ✅ يعمل بشكل موثوق
 
@@ -239,8 +226,6 @@ curl -X POST http://localhost:3000/api/chataman/test \
 - 📞 الهاتف: +201098080958
 - 🔑 Access Tokens: https://chataman.com/developer-tools/access-tokens
 
-### BeOn (البديل الحالي)
-- 🌐 API: https://v3.api.beon.chat
 - 🔑 Token: موجود في `.env.local`
 - ✅ الحالة: يعمل
 
@@ -254,7 +239,6 @@ curl -X POST http://localhost:3000/api/chataman/test \
 3. ✅ توثيق شامل بالعربية
 4. ✅ أمثلة عملية
 5. ✅ API endpoint للاختبار
-6. ✅ بديل يعمل (BeOn API)
 
 ### ⏳ ما تحتاجه:
 1. ⏰ **التوثيق الرسمي** من ChatAman
@@ -268,4 +252,3 @@ curl -X POST http://localhost:3000/api/chataman/test \
 
 **تم التحديث:** 2025-12-10  
 **الحالة:** في انتظار التوثيق من ChatAman  
-**البديل:** BeOn API (يعمل)

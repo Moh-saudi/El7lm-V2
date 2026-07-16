@@ -7,9 +7,7 @@
 ## 🔍 **السبب**
 
 ### **المشكلة الأساسية:**
-- **API Routes القديمة** كانت تستخدم `/api/notifications/sms/beon` و `/api/notifications/whatsapp/beon`
 - هذه الـ APIs مخصصة لـ **OTP فقط** وليس للرسائل العادية
-- **Endpoint المستخدم**: `https://beon.chat/api/send/message/otp` (مخصص لـ OTP)
 - **Tokens المستخدمة**: OTP tokens وليس bulk tokens
 
 ### **النتيجة:**
@@ -23,15 +21,11 @@
 
 #### **SMS Bulk API** (`/api/notifications/sms/bulk`)
 ```typescript
-// Endpoint: https://beon.chat/api/send/message (ليس OTP)
-// Token: BEON_SMS_TEMPLATE_TOKEN أو BEON_SMS_TOKEN_REGULAR
 // Type: 'bulk' (ليس 'sms')
 ```
 
 #### **WhatsApp Bulk API** (`/api/notifications/whatsapp/bulk`)
 ```typescript
-// Endpoint: https://beon.chat/api/send/message (ليس OTP)
-// Token: BEON_WHATSAPP_TOKEN
 // Type: 'bulk' (ليس 'whatsapp')
 ```
 
@@ -40,7 +34,6 @@
 #### **صفحة إرسال الإشعارات:**
 ```typescript
 // قبل التحديث
-await fetch('/api/notifications/sms/beon', {
   body: JSON.stringify({
     type: 'sms',
     otp_length: 4,
@@ -59,7 +52,6 @@ await fetch('/api/notifications/sms/bulk', {
 #### **مركز الرسائل:**
 ```typescript
 // قبل التحديث
-await fetch('/api/notifications/sms/beon', {
   body: JSON.stringify({
     type: 'sms',
     otp_length: 4,
@@ -85,8 +77,6 @@ await fetch('/api/notifications/sms/bulk', {
 
 ### **OTP Messages** (القديمة):
 ```typescript
-// Endpoint: https://beon.chat/api/send/message/otp
-// Token: BEON_OTP_TOKEN
 // Type: 'sms' أو 'whatsapp'
 // Content: رموز تحقق عشوائية
 // Purpose: التحقق من الهوية
@@ -94,8 +84,6 @@ await fetch('/api/notifications/sms/bulk', {
 
 ### **Bulk Messages** (الجديدة):
 ```typescript
-// Endpoint: https://beon.chat/api/send/message
-// Token: BEON_SMS_TEMPLATE_TOKEN أو BEON_WHATSAPP_TOKEN
 // Type: 'bulk'
 // Content: الرسائل الفعلية
 // Purpose: إرسال رسائل عادية
@@ -109,7 +97,6 @@ await fetch('/api/notifications/sms/bulk', {
 3. **صفحة اختبار** - `/test-bulk-notifications`
 
 ### ⚠️ **ما زال يستخدم OTP:**
-1. **صفحة نسيان كلمة المرور** - `/api/notifications/sms/beon` (هذا صحيح لـ OTP)
 2. **صفحة التسجيل** - OTP APIs (هذا صحيح لـ OTP)
 
 ## 🧪 **للاختبار**

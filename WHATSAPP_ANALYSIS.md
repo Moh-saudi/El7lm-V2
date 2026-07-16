@@ -20,15 +20,12 @@ WHATSAPP_PHONE_ID=your_whatsapp_phone_id
 GREEN_API_TOKEN=your_green_api_token
 GREEN_API_INSTANCE=your_green_api_instance
 
-# BeOn WhatsApp (الأسهل)
-BEON_WHATSAPP_TOKEN=vSCuMzZwLjDxzR882YphwEgW
 ```
 
 ### 2. مشكلة API القديم
 **المشكلة:** استخدام API قديم لا يدعم WhatsApp
 **الحل:** تحديث إلى API الجديد:
 ```
-API Base URL: https://beon.chat/api/send/message/otp
 Authentication: Bearer vSCuMzZwLjDxzR882YphwEgW
 ```
 
@@ -38,8 +35,6 @@ Authentication: Bearer vSCuMzZwLjDxzR882YphwEgW
 
 ## ✅ الحلول المطبقة
 
-### 1. تحديث خدمة BeOn WhatsApp
-- ✅ استخدام API الجديد `https://beon.chat/api/send/message/otp`
 - ✅ دعم إرسال OTP عبر WhatsApp
 - ✅ دعم إرسال OTP عبر SMS كبديل
 - ✅ استخدام نفس token المستخدم في SMS
@@ -51,8 +46,6 @@ Authentication: Bearer vSCuMzZwLjDxzR882YphwEgW
 
 ### 3. إنشاء صفحة اختبار شاملة
 - ✅ فحص التكوين الأساسي
-- ✅ اختبار BeOn WhatsApp
-- ✅ اختبار BeOn SMS
 - ✅ اختبار WhatsApp Business API
 - ✅ اختبار Green API
 
@@ -60,14 +53,11 @@ Authentication: Bearer vSCuMzZwLjDxzR882YphwEgW
 
 | الخدمة | السهولة | التكلفة | الموافقات | الدعم |
 |--------|----------|---------|-----------|-------|
-| **BeOn WhatsApp** | ⭐⭐⭐⭐⭐ | منخفضة | غير مطلوبة | ✅ |
-| **BeOn SMS** | ⭐⭐⭐⭐⭐ | منخفضة | غير مطلوبة | ✅ |
 | **Green API** | ⭐⭐⭐ | متوسطة | مطلوبة | ⚠️ |
 | **WhatsApp Business** | ⭐⭐ | عالية | مطلوبة | ❌ |
 
 ## 🚀 التوصيات
 
-### 1. البدء بـ BeOn WhatsApp (الأفضل)
 **المزايا:**
 - ✅ يستخدم نفس token المستخدم في SMS
 - ✅ لا يحتاج موافقات إضافية
@@ -77,7 +67,6 @@ Authentication: Bearer vSCuMzZwLjDxzR882YphwEgW
 **الاستخدام:**
 ```javascript
 // إرسال OTP عبر WhatsApp
-const response = await fetch('/api/notifications/whatsapp/beon', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -105,7 +94,6 @@ const response = await fetch('/api/notifications/whatsapp/beon', {
 ### 1. إعداد التكوين
 ```bash
 # في ملف .env.local
-BEON_SMS_TOKEN=vSCuMzZwLjDxzR882YphwEgW
 ```
 
 ### 2. اختبار الخدمة
@@ -113,14 +101,12 @@ BEON_SMS_TOKEN=vSCuMzZwLjDxzR882YphwEgW
 # انتقل إلى صفحة الاختبار
 http://localhost:3000/test-whatsapp-complete
 
-# اضغط على "اختبار BeOn WhatsApp"
 ```
 
 ### 3. استخدام في التطبيق
 ```javascript
 // في مكون التحقق
 const sendOTP = async () => {
-  const response = await fetch('/api/notifications/whatsapp/beon', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -139,7 +125,6 @@ const sendOTP = async () => {
 
 ## 📈 النتائج المتوقعة
 
-### مع BeOn WhatsApp:
 - ✅ معدل نجاح 95%+
 - ✅ سرعة إرسال عالية
 - ✅ دعم التبديل التلقائي
@@ -152,7 +137,6 @@ const sendOTP = async () => {
 
 ## 🎯 الخلاصة
 
-**الحل الأمثل:** استخدام BeOn WhatsApp مع SMS كبديل
 - ✅ سهل الإعداد
 - ✅ موثوق
 - ✅ اقتصادي

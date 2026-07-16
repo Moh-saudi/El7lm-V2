@@ -3,7 +3,6 @@
 ## التقنيات الأساسية
 - Next.js 14 (App Router), React, TypeScript, Tailwind CSS
 - Firebase Auth/Admin/Firestore، Supabase (SSR/Storage)
-- Geidea Payments (جلسات + Webhooks)، SMS BeOn، WhatsApp API
 - Vercel (Build/Dev/Cron)، Docker/Compose
 
 ## مكونات عليا

@@ -76,14 +76,10 @@ GEIDEA_WEBHOOK_SECRET=your-webhook-secret
 GEIDEA_BASE_URL=https://api.merchant.geidea.net
 ```
 
-## الخطوة 6: إعداد Beon Chat (اختياري)
 
 للرسائل والإشعارات:
 
 ```env
-# Beon Chat API Configuration
-BEON_API_KEY=your-beon-api-key
-BEON_BASE_URL=https://beon.chat/api
 ```
 
 ## الخطوة 7: إعداد Google AI (اختياري)

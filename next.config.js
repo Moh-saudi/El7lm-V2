@@ -2,12 +2,6 @@
 const nextConfig = {
     // إعداد متغيرات البيئة لـ Vercel
     env: {
-        BEON_API_TOKEN: process.env.BEON_API_TOKEN,
-        BEON_BASE_URL: process.env.BEON_BASE_URL,
-        BEON_SMS_TOKEN: process.env.BEON_SMS_TOKEN,
-        BEON_WHATSAPP_TOKEN: process.env.BEON_WHATSAPP_TOKEN,
-        BEON_OTP_TOKEN: process.env.BEON_OTP_TOKEN,
-        BEON_SENDER_NAME: process.env.BEON_SENDER_NAME,
         ENABLE_SMS_SIMULATION: process.env.ENABLE_SMS_SIMULATION,
         // Babaservice WhatsApp API Configuration
         BABASERVICE_BASE_URL: process.env.BABASERVICE_BASE_URL,

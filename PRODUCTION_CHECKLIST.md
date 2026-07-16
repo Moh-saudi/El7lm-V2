@@ -5,9 +5,6 @@
 ### 🔧 **إعدادات البيئة (.env.local):**
 - ✅ `ENABLE_SMS_SIMULATION=false` - تم تعطيل محاكاة SMS
 - ✅ `ENABLE_WHATSAPP_SIMULATION=false` - تم تعطيل محاكاة WhatsApp
-- ✅ `BEON_SMS_TOKEN=vSCuMzZwLjDxzR882YphwEgW` - Token صحيح
-- ✅ `BEON_WHATSAPP_TOKEN=vSCuMzZwLjDxzR882YphwEgW` - Token صحيح
-- ✅ `BEON_WHATSAPP_OTP_TOKEN=vSCuMzZwLjDxzR882YphwEgW` - Token صحيح
 
 ### 📱 **ملفات API:**
 - ✅ `src/app/api/notifications/sms/send/route.ts` - جاهز للإنتاج
@@ -15,10 +12,6 @@
 - ✅ `src/app/api/notifications/whatsapp/otp/route.ts` - جاهز للإنتاج
 
 ### ⚙️ **ملفات التكوين:**
-- ✅ `src/lib/beon/config.ts` - إعدادات صحيحة
-- ✅ `src/lib/beon/sms-service.ts` - جاهز للإنتاج
-- ✅ `src/lib/beon/whatsapp-service.ts` - جاهز للإنتاج
-- ✅ `src/lib/beon/whatsapp-otp-service.ts` - جاهز للإنتاج
 
 ### 🎯 **ميزات الاختبار:**
 - ✅ زر "اختبار OTP" في صفحة الإشعارات
@@ -79,11 +72,9 @@
 1. **تحقق من Console Logs**
 2. **تحقق من الـ Tokens في .env.local**
 3. **تحقق من اتصال الإنترنت**
-4. **تحقق من BeOn Dashboard**
 
 ### **إذا نجح الإرسال ولكن لم تصل الرسالة:**
 1. **تحقق من رقم الهاتف**
-2. **تحقق من BeOn Dashboard**
 3. **تحقق من إعدادات الهاتف**
 
 ## 🎉 **النتيجة النهائية:**

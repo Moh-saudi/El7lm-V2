@@ -53,7 +53,6 @@ const MENU_ITEM_PERMISSIONS: Record<string, keyof RolePermissions> = {
   'admin-clarity': 'canViewReports',
   'admin-support': 'canViewSupport',
   'admin-system': 'canManageEmployees',
-  'admin-beon-v3': 'canManageEmployees',
   'admin-whatsapp-test': 'canManageSupport',
   'admin-tournaments': 'canManageContent',
   'admin-dream-academy-categories': 'canManageContent',

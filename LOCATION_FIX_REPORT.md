@@ -33,7 +33,6 @@ TypeError: Cannot redefine property: location
 - `src/lib/utils/url-validator.ts`
 - `src/lib/utils/secure-console.ts`
 - `src/lib/geidea-client.ts`
-- `src/lib/beon/debug.ts`
 
 ### 4. تهيئة الإصلاح
 - إنشاء `initialize-location-fix.ts` للتهيئة التلقائية
@@ -53,7 +52,6 @@ TypeError: Cannot redefine property: location
 - ✅ `src/lib/utils/url-validator.ts` (محدث)
 - ✅ `src/lib/utils/secure-console.ts` (محدث)
 - ✅ `src/lib/geidea-client.ts` (محدث)
-- ✅ `src/lib/beon/debug.ts` (محدث)
 
 ## الاختبار
 يجب اختبار التطبيق للتأكد من:

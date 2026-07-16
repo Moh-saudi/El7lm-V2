@@ -101,7 +101,6 @@ setExternalNotificationsEnabled(true);
 
 #### **استخدم صفحة الاختبار:**
 ```
-http://localhost:3000/test-beon-api
 ```
 
 #### **اختبر API مباشرة:**

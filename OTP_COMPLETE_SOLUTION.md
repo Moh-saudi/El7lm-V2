@@ -112,7 +112,6 @@ if (verifyResult.success) {
 ### WhatsApp (Babaservice):
 - ✅ **جميع الدول** بدون قيود
 
-### SMS (BeOn):
 - ✅ **جميع الدول** بدون قيود
 
 ### Firebase Phone Auth:

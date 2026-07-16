@@ -135,18 +135,14 @@
 ## 🔧 **استكشاف الأخطاء**
 
 ### **إذا فشل SMS OTP:**
-- تحقق من `BEON_SMS_TOKEN`
 - تحقق من endpoint `/api/notifications/sms/send`
 - تحقق من تنسيق رقم الهاتف
 
 ### **إذا فشل WhatsApp OTP:**
-- تحقق من `BEON_WHATSAPP_OTP_TOKEN`
 - تحقق من endpoint `/api/notifications/whatsapp/otp`
-- تحقق من `BEON_CALLBACK_URL`
 
 ### **إذا فشل كلاهما:**
 - تحقق من اتصال الإنترنت
-- تحقق من `BEON_CONFIG`
 - تحقق من Console Logs للتفاصيل
 
 ## 🎉 **النتيجة**

@@ -10,7 +10,6 @@
 
 ### ✅ نقاط القوة الرئيسية
 1. **بنية قوية**: Next.js 14 مع App Router، TypeScript، React 18
-2. **تكاملات متعددة**: Firebase، Supabase، Geidea Payments، BeOn SMS/WhatsApp
 3. **أمان أساسي**: CSP Headers، Firebase Auth، نظام OTP
 4. **وثائق شاملة**: أكثر من 200 ملف توثيق
 5. **معالجة أخطاء**: Error Boundaries متعددة، معالجات أخطاء مخصصة
