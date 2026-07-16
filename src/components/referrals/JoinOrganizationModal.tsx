@@ -132,14 +132,17 @@ export default function JoinOrganizationModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-md" dir={isRTL ? 'rtl' : 'ltr'}>
+            <DialogContent
+                className="w-[calc(100%-2rem)] max-w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto p-5 sm:w-full sm:max-w-lg sm:p-6 md:max-w-xl md:rounded-2xl md:p-8"
+                dir={isRTL ? 'rtl' : 'ltr'}
+            >
                 <DialogHeader>
                     <DialogTitle className="text-xl font-bold text-center">
                         {verifiedOrg ? `✅ ${rt('confirmJoin')}` : `🔍 ${rt('joinOrganization')}`}
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4 py-4">
+                <div className="space-y-4 py-3 sm:py-4 md:space-y-5">
                     {!verifiedOrg ? (
                         // مرحلة إدخال الكود
                         <>
@@ -149,12 +152,12 @@ export default function JoinOrganizationModal({
                                 </p>
                             </div>
 
-                            <div className="space-y-3">
+                            <div className="space-y-3 md:flex md:items-stretch md:gap-3 md:space-y-0">
                                 <Input
                                     placeholder={rt('codePlaceholder')}
                                     value={referralCode}
                                     onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                                    className="text-center text-lg font-mono"
+                                    className="h-12 text-center text-lg font-mono md:flex-1"
                                     disabled={isVerifying}
                                     onKeyPress={(e) => {
                                         if (e.key === 'Enter') {
@@ -166,7 +169,7 @@ export default function JoinOrganizationModal({
                                 <Button
                                     onClick={handleVerifyCode}
                                     disabled={isVerifying || !referralCode.trim()}
-                                    className="w-full bg-emerald-600 hover:bg-emerald-700"
+                                    className="h-12 w-full bg-emerald-600 hover:bg-emerald-700 md:w-auto md:min-w-[11rem]"
                                     size="lg"
                                 >
                                     {isVerifying ? (
