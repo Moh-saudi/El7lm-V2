@@ -2,6 +2,19 @@ import { supabase } from '@/lib/supabase/config';
 import { OrganizationReferral, PlayerJoinRequest, JoinRequestNotification } from '@/types/organization-referral';
 
 class OrganizationReferralService {
+  private normalizeReferralCode(referralCode: string): string {
+    return String(referralCode || '').trim().toUpperCase().replace(/\s+/g, '');
+  }
+
+  private isReferralUsable(referral: OrganizationReferral): boolean {
+    if (referral.isActive !== true) return false;
+    const expiresAt = referral.expiresAt ? new Date(referral.expiresAt as string | Date) : null;
+    if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) return false;
+    const maxUsage = referral.maxUsage == null ? null : Number(referral.maxUsage);
+    const currentUsage = Number(referral.currentUsage || 0);
+    return maxUsage == null || !Number.isFinite(maxUsage) || currentUsage < maxUsage;
+  }
+
   // توليد كود إحالة فريد للمنظمة
   generateOrganizationReferralCode(orgType: string): string {
     const prefix = this.getOrgPrefix(orgType);
@@ -35,19 +48,26 @@ class OrganizationReferralService {
     }
   ): Promise<OrganizationReferral> {
     try {
-      const referralCode = this.generateOrganizationReferralCode(organizationType);
+      if (!organizationId || !organizationName) throw new Error('بيانات المنظمة غير مكتملة');
+      let referralCode = '';
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const candidate = this.generateOrganizationReferralCode(organizationType);
+        const { data: existing, error: lookupError } = await supabase
+          .from('organization_referrals')
+          .select('id')
+          .eq('referralCode', candidate)
+          .limit(1);
+        if (lookupError) throw lookupError;
+        if (!existing?.length) {
+          referralCode = candidate;
+          break;
+        }
+      }
+      if (!referralCode) throw new Error('تعذر إنشاء كود فريد، حاول مرة أخرى');
+      const maxUsage = options?.maxUsage == null ? undefined : Math.max(0, Math.floor(Number(options.maxUsage)));
+      if (maxUsage !== undefined && !Number.isFinite(maxUsage)) throw new Error('الحد الأقصى للاستخدام غير صحيح');
 
       // التحقق من عدم وجود الكود مسبقاً
-      const { data: existing } = await supabase
-        .from('organization_referrals')
-        .select('id')
-        .eq('referralCode', referralCode)
-        .limit(1);
-
-      if (existing?.length) {
-        return this.createOrganizationReferral(organizationId, organizationType, organizationName, options);
-      }
-
       const now = new Date().toISOString();
       const id = crypto.randomUUID();
       const referralData: OrganizationReferral = {
@@ -56,22 +76,23 @@ class OrganizationReferralService {
         organizationType: organizationType as OrganizationReferral['organizationType'],
         organizationName,
         referralCode,
-        inviteLink: `${process.env.NEXT_PUBLIC_APP_URL}/join/org/${referralCode}`,
+        inviteLink: `${process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || ''}/join/org/${referralCode}`,
         description: options?.description || `انضم إلى ${organizationName}`,
         isActive: true,
-        maxUsage: options?.maxUsage,
+        maxUsage,
         currentUsage: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
         expiresAt: options?.expiresAt
       };
 
-      await supabase.from('organization_referrals').insert({
+      const { error: insertError } = await supabase.from('organization_referrals').insert({
         ...referralData,
         createdAt: now,
         updatedAt: now,
         expiresAt: options?.expiresAt?.toISOString() || null,
       });
+      if (insertError) throw insertError;
 
       return referralData;
     } catch (error) {
@@ -83,16 +104,18 @@ class OrganizationReferralService {
   // البحث عن كود الإحالة
   async findReferralByCode(referralCode: string): Promise<OrganizationReferral | null> {
     try {
-      const normalized = (referralCode || '').toString().trim().toUpperCase();
-      const { data } = await supabase
+      const normalized = this.normalizeReferralCode(referralCode);
+      if (!normalized) return null;
+      const { data, error } = await supabase
         .from('organization_referrals')
         .select('*')
         .eq('referralCode', normalized)
         .eq('isActive', true)
         .limit(1);
 
-      if (!data?.length) return null;
-      return data[0] as OrganizationReferral;
+      if (error || !data?.length) return null;
+      const referral = data[0] as OrganizationReferral;
+      return this.isReferralUsable(referral) ? referral : null;
     } catch (error) {
       console.error('خطأ في البحث عن كود الإحالة:', error);
       return null;
@@ -111,14 +134,20 @@ class OrganizationReferralService {
     referralCode: string
   ): Promise<PlayerJoinRequest> {
     try {
-      const referral = await this.findReferralByCode(referralCode);
+      const normalizedCode = this.normalizeReferralCode(referralCode);
+      const referral = await this.findReferralByCode(normalizedCode);
+
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user || authData.user.id !== playerId) {
+        throw new Error('يجب استخدام حساب اللاعب الحالي لإرسال طلب الانضمام');
+      }
 
       if (!referral) {
         throw new Error('كود الإحالة غير صحيح أو منتهي الصلاحية');
       }
 
-      if (typeof referral.maxUsage === 'number' && referral.maxUsage >= 0) {
-        if ((referral.currentUsage || 0) >= referral.maxUsage) {
+      if (referral.maxUsage != null && Number(referral.currentUsage || 0) >= Number(referral.maxUsage)) {
+        if ((referral.currentUsage || 0) >= Number(referral.maxUsage)) {
           throw new Error('تم الوصول إلى الحد الأقصى لاستخدام هذا الكود');
         }
       }
@@ -164,7 +193,7 @@ class OrganizationReferralService {
         organizationId: referral.organizationId,
         organizationType: referral.organizationType,
         organizationName: referral.organizationName,
-        referralCode,
+        referralCode: normalizedCode,
         status: 'pending',
         requestedAt: new Date(),
         playerData: {
@@ -175,7 +204,10 @@ class OrganizationReferralService {
         }
       };
 
-      await supabase.from('player_join_requests').insert({ ...joinRequest, requestedAt: now });
+      const { error: requestError } = await supabase
+        .from('player_join_requests')
+        .insert({ ...joinRequest, requestedAt: now });
+      if (requestError) throw requestError;
 
       // تحديث عداد الاستخدام
       const { data: currentReferral } = await supabase
@@ -184,10 +216,18 @@ class OrganizationReferralService {
         .eq('id', referral.id)
         .limit(1);
       const currentUsage = Number((currentReferral?.[0] as Record<string, unknown>)?.currentUsage || 0);
-      await supabase.from('organization_referrals').update({
-        currentUsage: currentUsage + 1,
-        updatedAt: now,
-      }).eq('id', referral.id);
+      let usageUpdate = supabase.from('organization_referrals')
+        .update({ currentUsage: currentUsage + 1, updatedAt: now })
+        .eq('id', referral.id)
+        .eq('currentUsage', currentUsage)
+        .eq('isActive', true);
+      const maxUsage = referral.maxUsage == null ? null : Number(referral.maxUsage);
+      if (maxUsage != null && Number.isFinite(maxUsage)) usageUpdate = usageUpdate.lt('currentUsage', maxUsage);
+      const { data: usageRows, error: usageError } = await usageUpdate.select('id');
+      if (usageError || !usageRows?.length) {
+        await supabase.from('player_join_requests').delete().eq('id', id);
+        throw new Error('Referral code usage could not be reserved; please try again');
+      }
 
       // إنشاء إشعار للمنظمة
       await this.createJoinRequestNotification(joinRequest);
@@ -230,6 +270,10 @@ class OrganizationReferralService {
     notes?: string
   ): Promise<void> {
     try {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user || authData.user.id !== approvedBy) {
+        throw new Error('Authenticated user does not match the approver');
+      }
       const { data: requestRows } = await supabase
         .from('player_join_requests')
         .select('*')
@@ -243,12 +287,13 @@ class OrganizationReferralService {
       if (requestData.status !== 'pending') throw new Error('طلب الانضمام تم معالجته مسبقاً');
 
       const now = new Date().toISOString();
-      await supabase.from('player_join_requests').update({
+      const { error: updateError } = await supabase.from('player_join_requests').update({
         status: 'approved',
         processedAt: now,
         processedBy: approvedBy,
         notes: notes || '',
       }).eq('id', requestId);
+      if (updateError) throw updateError;
 
       await this.linkPlayerToOrganization({ ...requestData, processedBy: approvedBy } as PlayerJoinRequest & { processedBy: string });
       await this.createPlayerNotification(requestData, 'approved', approverName);
@@ -261,10 +306,16 @@ class OrganizationReferralService {
   // ربط اللاعب بالمنظمة
   private async linkPlayerToOrganization(requestData: PlayerJoinRequest & { processedBy?: string }): Promise<void> {
     try {
-      const orgIdField = `${requestData.organizationType}_id`;
+      const organizationIdFields: Record<string, string[]> = {
+        club: ['club_id', 'clubId'],
+        academy: ['academy_id', 'academyId'],
+        trainer: ['trainer_id', 'trainerId'],
+        agent: ['agent_id', 'agentId'],
+      };
+      const orgIdFields = organizationIdFields[requestData.organizationType];
+      if (!orgIdFields) throw new Error('نوع المنظمة غير مدعوم');
       const now = new Date().toISOString();
       const updateData: Record<string, unknown> = {
-        [orgIdField]: requestData.organizationId,
         organizationId: requestData.organizationId,
         organizationType: requestData.organizationType,
         organizationName: requestData.organizationName,
@@ -276,12 +327,14 @@ class OrganizationReferralService {
         organizationApprovedBy: { userId: requestData.processedBy, approvedAt: now },
         updatedAt: now,
       };
+      for (const field of orgIdFields) updateData[field] = requestData.organizationId;
 
       // البحث عن اللاعب في مجموعتين
       for (const tableName of ['players', 'player']) {
         const { data } = await supabase.from(tableName).select('id').eq('id', requestData.playerId).limit(1);
         if (data?.length) {
-          await supabase.from(tableName).update(updateData).eq('id', requestData.playerId);
+          const { error: updateError } = await supabase.from(tableName).update(updateData).eq('id', requestData.playerId);
+          if (updateError) throw updateError;
           break;
         }
       }
@@ -325,13 +378,18 @@ class OrganizationReferralService {
     reason?: string
   ): Promise<void> {
     try {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user || authData.user.id !== rejectedBy) {
+        throw new Error('Authenticated user does not match the rejector');
+      }
       const now = new Date().toISOString();
-      await supabase.from('player_join_requests').update({
+      const { error: updateError } = await supabase.from('player_join_requests').update({
         status: 'rejected',
         processedAt: now,
         processedBy: rejectedBy,
         notes: reason || '',
       }).eq('id', requestId);
+      if (updateError) throw updateError;
 
       const { data } = await supabase.from('player_join_requests').select('*').eq('id', requestId).limit(1);
       if (data?.length) {
