@@ -19,6 +19,14 @@ const languages: LanguageOption[] = [
   { code: 'pt', name: 'Portuguese', flag: '🇵🇹', localName: 'Português' },
 ];
 
+function FlagIcon({ code, className = 'h-4 w-6' }: { code: Locale; className?: string }) {
+  const common = { className, viewBox: '0 0 24 16', role: 'img' as const, 'aria-hidden': true };
+  if (code === 'ar') return <svg {...common}><rect width="24" height="16" rx="2" fill="#16853d" /><path d="M5 8h14" stroke="#fff" strokeWidth="1.3" /><path d="M8 10.5h8" stroke="#fff" strokeWidth=".8" /></svg>;
+  if (code === 'en') return <svg {...common}><rect width="24" height="16" rx="2" fill="#1f3f95" /><path d="M0 0l24 16M24 0L0 16" stroke="#fff" strokeWidth="3" /><path d="M0 0l24 16M24 0L0 16" stroke="#d62035" strokeWidth="1" /><path d="M12 0v16M0 8h24" stroke="#fff" strokeWidth="5" /><path d="M12 0v16M0 8h24" stroke="#d62035" strokeWidth="2" /></svg>;
+  if (code === 'es') return <svg {...common}><rect width="24" height="16" rx="2" fill="#c60b1e" /><rect y="4" width="24" height="8" fill="#ffc400" /></svg>;
+  return <svg {...common}><rect width="24" height="16" rx="2" fill="#046a38" /><rect width="8" height="16" fill="#d7141a" /><path d="M8 8l3-3 3 3-3 3z" fill="#ffdf00" /></svg>;
+}
+
 export default function LanguageSwitcher({ variant = 'dark', compact = false }: { variant?: 'light' | 'dark'; compact?: boolean }) {
   const { locale, changeLanguage } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -44,7 +52,7 @@ export default function LanguageSwitcher({ variant = 'dark', compact = false }: 
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>
       <button type="button" onClick={() => setIsOpen((open) => !open)} className={buttonClasses} aria-label={currentLang.localName} aria-expanded={isOpen}>
-        <span className="text-lg leading-none" role="img" aria-label={currentLang.name}>{currentLang.flag}</span>
+        <FlagIcon code={currentLang.code} className="h-4 w-6 shrink-0 sm:h-5 sm:w-7" />
         <span className="hidden text-xs font-medium sm:inline sm:text-sm">{currentLang.localName}</span>
         <ChevronDown className={`hidden h-4 w-4 text-slate-400 transition-transform duration-300 sm:block ${isOpen ? 'rotate-180' : ''}`} />
       </button>
@@ -59,7 +67,7 @@ export default function LanguageSwitcher({ variant = 'dark', compact = false }: 
                 const itemClasses = selected
                   ? (variant === 'dark' ? 'bg-emerald-500/10 text-emerald-400 font-medium' : 'bg-emerald-50 text-emerald-600 font-semibold')
                   : (variant === 'dark' ? 'text-slate-300 hover:bg-slate-800/70 hover:text-white' : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900');
-                return <button key={lang.code} type="button" onClick={() => { changeLanguage(lang.code); setIsOpen(false); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-all duration-150 ${itemClasses}`} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}><span className="flex items-center gap-2.5"><span className="text-xl leading-none" role="img" aria-label={lang.name}>{lang.flag}</span><span className="flex flex-col items-start leading-tight"><span className="text-sm font-medium">{lang.localName}</span><span className={`text-[10px] font-normal ${variant === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>{lang.name}</span></span></span>{selected && <Check className="h-4 w-4 text-emerald-400" />}</button>;
+                return <button key={lang.code} type="button" onClick={() => { changeLanguage(lang.code); setIsOpen(false); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-all duration-150 ${itemClasses}`} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}><span className="flex items-center gap-2.5"><FlagIcon code={lang.code} className="h-4 w-6 shrink-0" /><span className="flex flex-col items-start leading-tight"><span className="text-sm font-medium">{lang.localName}</span><span className={`text-[10px] font-normal ${variant === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>{lang.name}</span></span></span>{selected && <Check className="h-4 w-4 text-emerald-400" />}</button>;
               })}
             </div>
           </motion.div>
