@@ -16,7 +16,10 @@ import {
   Users,
   Calendar,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
   MapPin,
+  Sparkles,
 } from 'lucide-react';
 import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
 import { useAuth } from '@/lib/firebase/auth-provider';
@@ -61,6 +64,15 @@ export default function PlayerDashboard() {
 
   // State for Phone Modal
   const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [welcomeMessageIndex, setWelcomeMessageIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setWelcomeMessageIndex((current) => (current + 1) % 4);
+    }, 8000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   // Check for missing phone number
   useEffect(() => {
@@ -113,6 +125,14 @@ export default function PlayerDashboard() {
     return null;
   }
 
+  const playerFirstName = String(
+    userData?.full_name?.split(' ')[0] ||
+    userData?.name?.split(' ')[0] ||
+    user?.user_metadata?.full_name?.split(' ')[0] ||
+    t('dashboard.player')
+  );
+  const welcomeMessages = [0, 1, 2, 3].map((index) => t(`dashboard.welcomeMessages.${index}`));
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Referral Welcome Modal - Only show if Phone Modal is NOT showing */}
@@ -133,30 +153,63 @@ export default function PlayerDashboard() {
         />
       )}
 
-      {/* Header Section */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h1 className="text-xl md:text-3xl font-bold text-gray-900">
-                {t('dashboard.welcomePlayer')}
-              </h1>
-              <p className="mt-1 md:mt-2 text-gray-600 text-sm md:text-base">
-                {t('dashboard.manageProfileSub')}
-              </p>
-            </div>
-
-            <div className="hidden md:flex items-center space-x-4">
-              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold">E</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        {/* Rotating Welcome Banner */}
+        <section className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-900 px-4 py-5 text-white shadow-xl sm:px-6 md:mb-8 md:px-8 md:py-7">
+          <div className="absolute -left-16 -top-20 h-48 w-48 rounded-full bg-cyan-400/20 blur-3xl" />
+          <div className="absolute -bottom-24 right-0 h-56 w-56 rounded-full bg-fuchsia-400/20 blur-3xl" />
+          <div className="relative flex items-center gap-3 md:gap-5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-2xl shadow-inner ring-1 ring-white/20 md:h-16 md:w-16 md:text-4xl">
+              {['👋', '⚽', '🚀', '🏆'][welcomeMessageIndex]}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">
+                {t('dashboard.welcomeLabel')}
+              </p>
+              <h1 className="truncate text-xl font-black md:text-3xl">
+                {t('dashboard.welcomePlayer')}, {playerFirstName}!
+              </h1>
+              <p className="mt-1 text-sm font-medium leading-6 text-white/80 md:text-base">
+                {welcomeMessages[welcomeMessageIndex]}
+              </p>
+            </div>
+            <Sparkles className="hidden h-8 w-8 shrink-0 text-yellow-300 md:block" />
+          </div>
+
+          <div className="relative mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+            <div className="flex items-center gap-1.5" aria-label={t('dashboard.welcomeMessageControls')}>
+              {welcomeMessages.map((_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  aria-label={`${t('dashboard.welcomeMessage')} ${index + 1}`}
+                  onClick={() => setWelcomeMessageIndex(index)}
+                  className={`h-1.5 rounded-full transition-all ${index === welcomeMessageIndex ? 'w-7 bg-yellow-300' : 'w-1.5 bg-white/40 hover:bg-white/70'}`}
+                />
+              ))}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                aria-label={t('dashboard.previousWelcomeMessage')}
+                onClick={() => setWelcomeMessageIndex((welcomeMessageIndex + 3) % 4)}
+                className="rounded-full p-1.5 text-white/70 transition hover:bg-white/10 hover:text-white"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                aria-label={t('dashboard.nextWelcomeMessage')}
+                onClick={() => setWelcomeMessageIndex((welcomeMessageIndex + 1) % 4)}
+                className="rounded-full p-1.5 text-white/70 transition hover:bg-white/10 hover:text-white"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </section>
+
         {/* Profile Completion Section - NEW */}
         <div className="mb-6 md:mb-8">
           <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-xl md:rounded-2xl shadow-xl">

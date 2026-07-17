@@ -628,6 +628,17 @@
     "player": "Jugador",
     "welcomePlayer": "Bienvenido al Panel del Jugador",
     "manageProfileSub": "Gestione su perfil y siga su progreso deportivo",
+    "welcomeLabel": "Un nuevo camino comienza hoy",
+    "welcomeMessages": [
+      "¡Bienvenido, campeón! Tu primer paso hacia un futuro deportivo más grande comienza aquí.",
+      "Tu talento merece ser visto: actualiza tu perfil y deja que las oportunidades te encuentren.",
+      "Cada gran logro comienza con un pequeño paso. Sigue avanzando y confía en tus capacidades.",
+      "¡Nos alegra tenerte con nosotros! Prepárate para descubrir tu próxima oportunidad."
+    ],
+    "welcomeMessage": "Mensaje de bienvenida",
+    "welcomeMessageControls": "Controles de mensajes de bienvenida",
+    "previousWelcomeMessage": "Mensaje de bienvenida anterior",
+    "nextWelcomeMessage": "Siguiente mensaje de bienvenida",
     "completeProfileTitle": "¡Complete su perfil! 🚀",
     "completeProfileDesc": "Haga su perfil profesional y aumente su visibilidad",
     "profileCompletion": "Compleción del Perfil",

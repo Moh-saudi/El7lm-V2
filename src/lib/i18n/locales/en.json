@@ -628,6 +628,17 @@
     "player": "Player",
     "welcomePlayer": "Welcome to Player Dashboard",
     "manageProfileSub": "Manage your profile and track your athletic progress",
+    "welcomeLabel": "A new journey starts today",
+    "welcomeMessages": [
+      "Welcome, champion! Your first step toward a bigger athletic future starts here.",
+      "Your talent deserves to be seen — update your profile and let opportunities find you.",
+      "Every great achievement starts with one small step. Keep moving forward and trust your abilities.",
+      "We are excited to have you with us! Get ready to discover your next opportunity."
+    ],
+    "welcomeMessage": "Welcome message",
+    "welcomeMessageControls": "Welcome message controls",
+    "previousWelcomeMessage": "Previous welcome message",
+    "nextWelcomeMessage": "Next welcome message",
     "completeProfileTitle": "Complete your profile! 🚀",
     "completeProfileDesc": "Make your profile professional and increase visibility",
     "profileCompletion": "Profile Completion",
