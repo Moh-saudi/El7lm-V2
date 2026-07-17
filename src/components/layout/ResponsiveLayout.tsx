@@ -209,8 +209,8 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
   // Account type information
   const ACCOUNT_TYPE_INFO = {
     player: {
-      title: 'منصة اللاعب',
-      subtitle: 'لاعب',
+      title: '\u0645\u0646\u0635\u0629 \u0627\u0644\u0644\u0627\u0639\u0628',
+      subtitle: '\u0644\u0627\u0639\u0628',
       icon: User,
       color: 'from-blue-500 to-blue-600',
       bgColor: 'bg-blue-50',
@@ -479,7 +479,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
         // Group 1: Control Panel
         {
           id: 'main',
-          title: 'لوحة التحكم',
+          title: '\u0644\u0648\u062d\u0629 \u0627\u0644\u062a\u062d\u0643\u0645',
           icon: Home,
           items: [
             { id: 'dashboard', label: 'الرئيسية', icon: Home, href: `/dashboard/player`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
@@ -494,7 +494,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
         // Group 2: Finance & Subscriptions
         {
           id: 'finance',
-          title: 'المالية والاشتراكات',
+          title: '\u0627\u0644\u0645\u0627\u0644\u064a\u0629 \u0648\u0627\u0644\u0627\u0634\u062a\u0631\u0627\u0643\u0627\u062a',
           icon: CreditCard,
           items: [
             { id: 'subscription-status', label: 'حالة اشتراكي', icon: Clock, href: '/dashboard/shared/subscription-status', color: 'text-amber-600', bgColor: 'bg-amber-50' },
@@ -505,7 +505,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
         // Group 3: Discovery
         {
           id: 'discovery',
-          title: 'اكتشاف الفرص',
+          title: '\u0627\u0643\u062a\u0634\u0627\u0641 \u0627\u0644\u0641\u0631\u0635',
           icon: Search,
           items: [
             { id: 'search-opps', label: 'البحث عن الفرص والأندية', icon: Search, href: `/dashboard/player/search`, color: 'text-blue-600', bgColor: 'bg-blue-50' },
@@ -517,7 +517,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
         // Group 4: Academy (Renamed to Dream School)
         {
           id: 'academy',
-          title: 'مدرسة الحلم',
+          title: '\u0645\u062f\u0631\u0633\u0629 \u0627\u0644\u062d\u0644\u0645',
           icon: GraduationCap,
           items: [
             { id: 'lessons', label: 'الدروس والتدريبات', icon: GraduationCap, href: `/dashboard/dream-academy`, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
