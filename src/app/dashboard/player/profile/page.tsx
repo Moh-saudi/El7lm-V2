@@ -207,7 +207,7 @@ export default function PlayerProfilePage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
 
-              <div className="sticky top-20 z-40 space-y-4 pt-4 pb-2 bg-gray-50/50 backdrop-blur-xl">
+              <div className="space-y-4 pt-4 pb-2">
                 <div className="bg-white rounded-xl border shadow-sm px-6 py-4 flex items-center justify-between">
                   <div>
                     <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t('profile.title')}</h1>
@@ -254,6 +254,7 @@ export default function PlayerProfilePage() {
                     </div>
                   )}
                 </div>
+                <div className="sticky top-16 z-30 bg-gray-50/95 pb-1 backdrop-blur-xl">
                 <div className="bg-white p-1.5 rounded-xl border shadow-sm">
                   <div className="overflow-x-auto no-scrollbar -mx-1.5 px-1.5">
                     <TabsList className="inline-flex w-auto justify-start h-auto gap-2 bg-transparent p-0">
@@ -282,6 +283,7 @@ export default function PlayerProfilePage() {
                       ))}
                     </TabsList>
                   </div>
+                </div>
                 </div>
               </div>
 
