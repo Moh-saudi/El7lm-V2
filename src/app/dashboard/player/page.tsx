@@ -268,8 +268,8 @@ export default function PlayerDashboard() {
               </div>
 
               {/* Benefits Grid */}
-              <div className="grid grid-cols-2 gap-2 mb-4 md:grid-cols-3">
-                <div className="col-span-2 flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-lg p-2.5 border border-white/20 md:col-span-1">
+              <div className="grid grid-cols-3 gap-1.5 mb-4 md:gap-2">
+                <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md rounded-lg p-2 md:gap-2 md:p-2.5">
                   <CheckCircle className="w-4 h-4 text-green-300 flex-shrink-0" />
                   <div>
                     <p className="text-white font-bold text-xs md:text-sm">{t('dashboard.betterVisibility')}</p>
