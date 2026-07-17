@@ -46,11 +46,11 @@ export default function LanguageSwitcher({ variant = 'dark', compact = false }: 
     : `flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 transition-all duration-200 hover:border-slate-350 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${compact ? 'px-2 py-1' : 'px-2 py-1 sm:px-3 sm:py-1.5'}`;
 
   const dropdownClasses = variant === 'dark'
-    ? `absolute z-[9999] mt-2 w-48 rounded-xl border border-slate-700/80 bg-slate-950/90 p-1.5 shadow-2xl backdrop-blur-xl ${locale === 'ar' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'}`
-    : `absolute z-[9999] mt-2 w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl ${locale === 'ar' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'}`;
+    ? `absolute top-full z-[9999] mt-2 w-48 rounded-xl border border-slate-700/80 bg-slate-950/90 p-1.5 shadow-2xl backdrop-blur-xl ${locale === 'ar' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'}`
+    : `absolute top-full z-[9999] mt-2 w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl ${locale === 'ar' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'}`;
 
   return (
-    <div className="relative inline-block text-left" ref={dropdownRef}>
+    <div className="relative z-[100] inline-block text-left" ref={dropdownRef}>
       <button type="button" onClick={() => setIsOpen((open) => !open)} className={buttonClasses} aria-label={currentLang.localName} aria-expanded={isOpen}>
         <FlagIcon code={currentLang.code} className="h-4 w-6 shrink-0 sm:h-5 sm:w-7" />
         <span className="hidden text-xs font-medium sm:inline sm:text-sm">{currentLang.localName}</span>
