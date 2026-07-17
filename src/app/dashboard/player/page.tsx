@@ -1,30 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
-  User,
-  FileText,
-  Video,
-  MessageSquare,
-  CreditCard,
-  CheckCircle,
-  Star,
-  TrendingUp,
-  Trophy,
-  Target,
-  Users,
-  Calendar,
   ArrowRight,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
   MapPin,
   Sparkles,
+  Star,
+  TrendingUp,
+  Trophy,
+  User,
 } from 'lucide-react';
 import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
 import { useAuth } from '@/lib/firebase/auth-provider';
-import { useTranslation } from '@/lib/i18n';
 import { getExploreOpportunities } from '@/lib/firebase/opportunities';
+import { useTranslation } from '@/lib/i18n';
 import { OPPORTUNITY_TYPES } from '@/lib/opportunities/config';
 import { Opportunity } from '@/types/opportunities';
 import ReferralWelcomeModal from '@/components/referrals/ReferralWelcomeModal';
@@ -33,109 +26,76 @@ import PhoneCollectionModal from '@/components/player/PhoneCollectionModal';
 
 export default function PlayerDashboard() {
   const { t } = useTranslation();
-  // التحقق من نوع الحساب - السماح فقط للاعبين وأولياء الأمور
   const { isAuthorized, isCheckingAuth } = useAccountTypeAuth({
     allowedTypes: ['player', 'parent'],
-    redirectTo: '/dashboard'
+    redirectTo: '/dashboard',
   });
-
   const { user, userData } = useAuth();
-  const [isMobile, setIsMobile] = useState(false);
-  const [isTablet, setIsTablet] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-
-  useEffect(() => {
-    getExploreOpportunities().then(list => setOpportunities(list.slice(0, 3))).catch(() => {});
-  }, []);
-
-  // كشف نوع الجهاز
-  useEffect(() => {
-    const checkDevice = () => {
-      const width = window.innerWidth;
-      setIsMobile(width < 768);
-      setIsTablet(width >= 768 && width < 1024);
-    };
-
-    checkDevice();
-    window.addEventListener('resize', checkDevice);
-    return () => window.removeEventListener('resize', checkDevice);
-  }, []);
-
-  // State for Phone Modal
   const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [welcomeMessageIndex, setWelcomeMessageIndex] = useState(0);
+
+  useEffect(() => {
+    getExploreOpportunities().then((list) => setOpportunities(list.slice(0, 6))).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       setWelcomeMessageIndex((current) => (current + 1) % 4);
     }, 8000);
-
     return () => window.clearInterval(timer);
   }, []);
 
-  // Check for missing phone number
   useEffect(() => {
-    if (userData && !isCheckingAuth) {
-      // Check if phone is missing OR an update is requested
-      if (!userData.phone || userData.profileUpdateRequested) {
-        // Slight delay to ensure smooth rendering
-        const timer = setTimeout(() => {
-          setShowPhoneModal(true);
-        }, 1500);
-        return () => clearTimeout(timer);
-      }
-    }
+    if (!userData || isCheckingAuth || (userData.phone && !userData.profileUpdateRequested)) return;
+    const timer = window.setTimeout(() => setShowPhoneModal(true), 1500);
+    return () => window.clearTimeout(timer);
   }, [userData, isCheckingAuth]);
 
-  // عرض Modal الترحيب عند الدخول أول مرة
   useEffect(() => {
-    if (user && userData && userData.accountType === 'player') {
-      // تحقق إذا اختار المستخدم "لا تظهر مرة أخرى"
-      const neverShow = localStorage.getItem(`never_show_referral_modal_${user.id}`);
-      if (neverShow === 'true') {
-        return; // لا تظهر المودال أبداً
-      }
-
-      // تحقق إذا لم يتم عرض Modal من قبل
-      const hasSeenWelcome = localStorage.getItem(`welcome_modal_${user.id}`);
-      if (!hasSeenWelcome) {
-        setTimeout(() => {
-          setShowWelcomeModal(true);
-          localStorage.setItem(`welcome_modal_${user.id}`, 'true');
-        }, 1000); // انتظر ثانية بعد التحميل
-      }
-    }
+    if (!user || !userData || userData.accountType !== 'player') return;
+    if (localStorage.getItem(`never_show_referral_modal_${user.id}`) === 'true') return;
+    if (localStorage.getItem(`welcome_modal_${user.id}`)) return;
+    const timer = window.setTimeout(() => {
+      setShowWelcomeModal(true);
+      localStorage.setItem(`welcome_modal_${user.id}`, 'true');
+    }, 1000);
+    return () => window.clearTimeout(timer);
   }, [user, userData]);
 
-  // عرض شاشة التحميل أثناء التحقق
   if (isCheckingAuth) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 border-4 border-blue-200 rounded-full border-t-blue-600 animate-spin"></div>
-          <p className="text-gray-600 text-sm md:text-base">{t('dashboard.checkingAuth')}</p>
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+          <p className="text-sm text-gray-600 md:text-base">{t('dashboard.checkingAuth')}</p>
         </div>
       </div>
     );
   }
 
-  // إذا لم يكن مصرح له، سيتم التوجيه تلقائياً
-  if (!isAuthorized) {
-    return null;
-  }
+  if (!isAuthorized) return null;
 
   const playerFirstName = String(
     userData?.full_name?.split(' ')[0] ||
-    userData?.name?.split(' ')[0] ||
-    user?.user_metadata?.full_name?.split(' ')[0] ||
-    t('dashboard.player')
+      userData?.name?.split(' ')[0] ||
+      user?.user_metadata?.full_name?.split(' ')[0] ||
+      t('dashboard.player')
   );
   const welcomeMessages = [0, 1, 2, 3].map((index) => t(`dashboard.welcomeMessages.${index}`));
+  const recommendedOpportunities = opportunities.filter((opp) => {
+    const playerPos = userData?.position || userData?.playing_position || '';
+    const playerCountry = userData?.country || '';
+    return Boolean(
+      (playerPos && opp.targetPositions?.includes(playerPos)) ||
+        (playerCountry && opp.country === playerCountry)
+    );
+  });
+  const visibleOpportunities = (recommendedOpportunities.length ? recommendedOpportunities : opportunities).slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Referral Welcome Modal - Only show if Phone Modal is NOT showing */}
+    <div className="min-h-screen bg-slate-50">
       {showWelcomeModal && !showPhoneModal && user && (
         <ReferralWelcomeModal
           playerId={user.id}
@@ -143,41 +103,26 @@ export default function PlayerDashboard() {
           onClose={() => setShowWelcomeModal(false)}
         />
       )}
-
-      {/* Phone Collection Modal */}
       {showPhoneModal && (
-        <PhoneCollectionModal
-          isOpen={showPhoneModal}
-          onClose={() => setShowPhoneModal(false)}
-          forceOpen={true}
-        />
+        <PhoneCollectionModal isOpen={showPhoneModal} onClose={() => setShowPhoneModal(false)} forceOpen />
       )}
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-        {/* Rotating Welcome Banner */}
-        <section className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-900 px-4 py-5 text-white shadow-xl sm:px-6 md:mb-8 md:px-8 md:py-7">
+      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-6 lg:px-8">
+        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-900 p-4 text-white shadow-xl sm:p-6 md:p-8">
           <div className="absolute -left-16 -top-20 h-48 w-48 rounded-full bg-cyan-400/20 blur-3xl" />
           <div className="absolute -bottom-24 right-0 h-56 w-56 rounded-full bg-fuchsia-400/20 blur-3xl" />
           <div className="relative flex items-center gap-3 md:gap-5">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-2xl shadow-inner ring-1 ring-white/20 md:h-16 md:w-16 md:text-4xl">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-2xl ring-1 ring-white/20 md:h-16 md:w-16 md:text-4xl">
               {['👋', '⚽', '🚀', '🏆'][welcomeMessageIndex]}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">
-                {t('dashboard.welcomeLabel')}
-              </p>
-              <h1 className="truncate text-xl font-black md:text-3xl">
-                {t('dashboard.welcomePlayer')}, {playerFirstName}!
-              </h1>
-              <p className="mt-1 text-sm font-medium leading-6 text-white/80 md:text-base">
-                {welcomeMessages[welcomeMessageIndex]}
-              </p>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200 sm:text-xs">{t('dashboard.welcomeLabel')}</p>
+              <h1 className="truncate text-xl font-black sm:text-2xl md:text-3xl">{t('dashboard.welcomePlayer')}, {playerFirstName}!</h1>
+              <p className="mt-1 text-sm leading-6 text-white/80 sm:text-base">{welcomeMessages[welcomeMessageIndex]}</p>
             </div>
             <Sparkles className="hidden h-8 w-8 shrink-0 text-yellow-300 md:block" />
           </div>
-
-          <div className="relative mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+          <div className="relative mt-4 flex items-center justify-between border-t border-white/10 pt-3">
             <div className="flex items-center gap-1.5" aria-label={t('dashboard.welcomeMessageControls')}>
               {welcomeMessages.map((_, index) => (
                 <button
@@ -189,443 +134,61 @@ export default function PlayerDashboard() {
                 />
               ))}
             </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                aria-label={t('dashboard.previousWelcomeMessage')}
-                onClick={() => setWelcomeMessageIndex((welcomeMessageIndex + 3) % 4)}
-                className="rounded-full p-1.5 text-white/70 transition hover:bg-white/10 hover:text-white"
-              >
+            <div className="flex gap-1">
+              <button type="button" aria-label={t('dashboard.previousWelcomeMessage')} onClick={() => setWelcomeMessageIndex((welcomeMessageIndex + 3) % 4)} className="rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-white">
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <button
-                type="button"
-                aria-label={t('dashboard.nextWelcomeMessage')}
-                onClick={() => setWelcomeMessageIndex((welcomeMessageIndex + 1) % 4)}
-                className="rounded-full p-1.5 text-white/70 transition hover:bg-white/10 hover:text-white"
-              >
+              <button type="button" aria-label={t('dashboard.nextWelcomeMessage')} onClick={() => setWelcomeMessageIndex((welcomeMessageIndex + 1) % 4)} className="rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-white">
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>
         </section>
 
-        {/* Profile Completion Section - NEW */}
-        <div className="mb-6 md:mb-8">
-          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-xl md:rounded-2xl shadow-xl">
-            {/* Animated Background Pattern */}
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 left-0 w-40 h-40 bg-white rounded-full blur-3xl"></div>
-              <div className="absolute bottom-0 right-0 w-60 h-60 bg-white rounded-full blur-3xl"></div>
+        <section className="mt-4 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 p-4 text-white shadow-lg sm:mt-6 sm:p-6">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-white p-2.5 shadow-md"><Star className="h-5 w-5 fill-yellow-400 text-yellow-400" /></div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-black sm:text-xl">{t('dashboard.completeProfileTitle')}</h2>
+              <p className="mt-1 text-xs text-white/80 sm:text-sm">{t('dashboard.completeProfileDesc')}</p>
             </div>
-
-            <div className="relative p-4 md:p-5">
-              {/* Header with Icon */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-yellow-300 rounded-full blur-lg opacity-50 animate-pulse"></div>
-                    <div className="relative bg-white p-2.5 rounded-xl shadow-lg">
-                      <Star className="w-5 h-5 md:w-6 md:h-6 text-yellow-500 fill-yellow-500" />
-                    </div>
-                  </div>
-                  <div>
-                    <h2 className="text-lg md:text-xl font-black text-white mb-1">
-                      {t('dashboard.completeProfileTitle')}
-                    </h2>
-                    <p className="text-white/90 text-xs md:text-sm font-medium">
-                      {t('dashboard.completeProfileDesc')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="mb-3">
-                <div className="flex items-center justify-between text-white/90 text-[11px] md:text-xs font-semibold mb-1.5">
-                  <span>{t('dashboard.profileCompletion')}</span>
-                  <span className="text-yellow-300">45%</span>
-                </div>
-                <div className="h-2.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-                  <div
-                    className="h-full bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 rounded-full transition-all duration-1000 ease-out shadow-lg"
-                    style={{ width: '45%' }}
-                  >
-                    <div className="h-full w-full bg-white/30 animate-pulse"></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Benefits Grid */}
-              <div className="flex items-stretch gap-1.5 mb-4 md:gap-2">
-                <div className="min-w-0 flex-1 flex items-center gap-1 bg-white/10 backdrop-blur-md rounded-lg p-1.5 md:gap-2 md:p-2">
-                  <CheckCircle className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-300 flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="truncate text-white font-bold text-[10px] md:text-sm">{t('dashboard.betterVisibility')}</p>
-                    <p className="truncate text-white/70 text-[9px] md:text-[11px]">{t('dashboard.inSearchResults')}</p>
-                  </div>
-                </div>
-                <div className="min-w-0 flex-1 flex items-center gap-1 bg-white/10 backdrop-blur-md rounded-lg p-1.5 border border-white/20 md:gap-2 md:p-2">
-                  <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-300 flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="truncate text-white font-bold text-[10px] md:text-sm">{t('dashboard.moreOpportunities')}</p>
-                    <p className="truncate text-white/70 text-[9px] md:text-[11px]">{t('dashboard.toContactYou')}</p>
-                  </div>
-                </div>
-                <div className="min-w-0 flex-1 flex items-center gap-1 bg-white/10 backdrop-blur-md rounded-lg p-1.5 border border-white/20 md:gap-2 md:p-2">
-                  <Trophy className="w-3.5 h-3.5 md:w-4 md:h-4 text-yellow-300 flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="truncate text-white font-bold text-[10px] md:text-sm">{t('dashboard.professionalLook')}</p>
-                    <p className="truncate text-white/70 text-[9px] md:text-[11px]">{t('dashboard.catchesAttention')}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* CTA Button */}
-              <Link
-                href="/dashboard/player/profile"
-                className="group relative inline-flex items-center justify-center gap-2 w-full md:w-auto px-5 py-3 bg-white text-purple-600 rounded-lg font-bold text-sm shadow-lg hover:shadow-yellow-500/50 hover:scale-[1.02] transition-all duration-300 overflow-hidden"
-              >
-                {/* Animated background */}
-                <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-300 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-                <User className="w-4 h-4 relative z-10 group-hover:rotate-12 transition-transform" />
-                <span className="relative z-10">{t('dashboard.completeProfileBtn')}</span>
-                <ArrowRight className="w-4 h-4 relative z-10 group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
+            <span className="text-xl font-black text-yellow-300 sm:text-2xl">45%</span>
           </div>
-        </div>
-
-        {/* Player Organization Card - الارتباطات */}
-        {user && (
-          <div className="mb-6 md:mb-8">
-            <PlayerOrganizationCard playerId={user.id} playerName={String(userData?.full_name || userData?.name || user.email || '')} />
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/20"><div className="h-full w-[45%] rounded-full bg-yellow-300" /></div>
+          <div className="mt-4 grid grid-cols-3 gap-1.5 sm:gap-2">
+            <div className="rounded-lg bg-white/10 p-2 text-center"><CheckCircle className="mx-auto h-4 w-4 text-green-300" /><p className="mt-1 truncate text-[10px] font-bold sm:text-xs">{t('dashboard.betterVisibility')}</p></div>
+            <div className="rounded-lg bg-white/10 p-2 text-center"><TrendingUp className="mx-auto h-4 w-4 text-blue-300" /><p className="mt-1 truncate text-[10px] font-bold sm:text-xs">{t('dashboard.moreOpportunities')}</p></div>
+            <div className="rounded-lg bg-white/10 p-2 text-center"><Trophy className="mx-auto h-4 w-4 text-yellow-300" /><p className="mt-1 truncate text-[10px] font-bold sm:text-xs">{t('dashboard.professionalLook')}</p></div>
           </div>
-        )}
+          <Link href="/dashboard/player/profile" className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-purple-700 shadow-md transition hover:bg-yellow-300 sm:w-auto">
+            <User className="h-4 w-4" />{t('dashboard.completeProfileBtn')}<ArrowRight className="h-4 w-4" />
+          </Link>
+        </section>
 
-        {/* Tournament Registration Section */}
-        <div className="mb-6 md:mb-8">
-          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-4 md:p-6">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-yellow-100 rounded-full">
-                  <Trophy className="h-6 w-6 md:h-8 md:w-8 text-yellow-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-1">{t('dashboard.tournamentRegistration')}</h3>
-                  <p className="text-sm md:text-base text-gray-600">{t('dashboard.tournamentRegistrationDesc')}</p>
-                </div>
-              </div>
-              <Link
-                href="/tournaments/unified-registration"
-                className="inline-flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-yellow-500 to-orange-600 text-white rounded-lg hover:from-yellow-600 hover:to-orange-700 transition-all duration-300 hover:scale-105 shadow-lg text-sm md:text-base"
-              >
-                <Trophy className="h-4 w-4 md:h-5 md:w-5" />
-                {t('dashboard.registerInTournamentsBtn')}
-                <ArrowRight className="h-3 w-3 md:h-4 md:w-4" />
-              </Link>
-            </div>
+        {user && <section className="mt-4 sm:mt-6"><PlayerOrganizationCard playerId={user.id} playerName={String(userData?.full_name || userData?.name || user.email || '')} /></section>}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mt-4 md:mt-6">
-              <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg">
-                <Users className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
-                <div>
-                  <p className="font-semibold text-gray-900 text-sm md:text-base">{t('dashboard.individualRegistration')}</p>
-                  <p className="text-xs md:text-sm text-gray-600">{t('dashboard.registerYourselfDesc')}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg">
-                <Calendar className="h-4 w-4 md:h-5 md:w-5 text-green-600" />
-                <div>
-                  <p className="font-semibold text-gray-900 text-sm md:text-base">{t('dashboard.availableTournaments')}</p>
-                  <p className="text-xs md:text-sm text-gray-600">{t('dashboard.activeTournamentsDesc')}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg">
-                <Trophy className="h-4 w-4 md:h-5 md:w-5 text-purple-600" />
-                <div>
-                  <p className="font-semibold text-gray-900 text-sm md:text-base">{t('dashboard.securePayment')}</p>
-                  <p className="text-xs md:text-sm text-gray-600">{t('dashboard.multiplePaymentMethods')}</p>
-                </div>
-              </div>
-            </div>
+        <section className="mt-6 sm:mt-8">
+          <div className="mb-3 flex items-center justify-between sm:mb-4">
+            <div><p className="text-xs font-semibold uppercase tracking-wider text-green-600">{recommendedOpportunities.length ? t('dashboard.recommendedForYou') : t('dashboard.latestOpportunities')}</p><h2 className="text-lg font-black text-slate-900 sm:text-2xl">{t('dashboard.latestOpportunities')}</h2></div>
+            <Link href="/dashboard/player/search" className="text-xs font-bold text-green-600 hover:text-green-700 sm:text-sm">{t('dashboard.viewAll')}</Link>
           </div>
-        </div>
-
-        {/* Opportunities Section */}
-        {opportunities.length > 0 && (
-          <div className="mb-6 md:mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg md:text-2xl font-semibold text-gray-900">{t('dashboard.latestOpportunities')}</h2>
-              <Link href="/dashboard/player/search" className="text-sm text-green-600 font-semibold hover:text-green-700">
-                {t('dashboard.viewAll')}
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {opportunities.map(opp => {
+          {visibleOpportunities.length > 0 ? (
+            <div className="flex snap-x gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible">
+              {visibleOpportunities.map((opp) => {
                 const cfg = OPPORTUNITY_TYPES[opp.opportunityType] ?? { label: opp.opportunityType, emoji: '📌', color: '#6B7280' };
-                return (
-                  <Link
-                    key={opp.id}
-                    href={`/dashboard/player/explore-opportunities?opportunity=${opp.id}`}
-                    className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-                  >
-                    {opp.coverImage ? (
-                      <div className="h-36 overflow-hidden bg-gray-100">
-                        <img src={opp.coverImage} alt={opp.title} className="h-full w-full object-cover" />
-                      </div>
-                    ) : opp.promoVideo ? (
-                      <div className="h-36 overflow-hidden bg-black">
-                        <video src={opp.promoVideo} className="h-full w-full object-cover" muted playsInline preload="metadata" />
-                      </div>
-                    ) : null}
-                    <div className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold text-white"
-                        style={{ backgroundColor: cfg.color }}
-                      >
-                        {cfg.emoji} {cfg.label}
-                      </span>
-                    </div>
-                    <h3 className="font-bold text-sm text-gray-900 line-clamp-2 mb-1">{opp.title}</h3>
-                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                      <MapPin className="w-3 h-3" /> {opp.organizerName}
-                    </p>
-                    </div>
-                  </Link>
-                );
+                return <Link key={opp.id} href={`/dashboard/player/explore-opportunities?opportunity=${opp.id}`} className="min-w-[82%] snap-start overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:min-w-0">
+                  {opp.coverImage ? <div className="h-32 overflow-hidden bg-slate-100"><img src={opp.coverImage} alt={opp.title} className="h-full w-full object-cover" /></div> : opp.promoVideo ? <div className="h-32 overflow-hidden bg-black"><video src={opp.promoVideo} className="h-full w-full object-cover" muted playsInline preload="metadata" /></div> : <div className="h-3 bg-gradient-to-r from-green-400 to-cyan-500" />}
+                  <div className="p-4"><span className="inline-flex rounded-full px-2 py-1 text-[10px] font-bold text-white" style={{ backgroundColor: cfg.color }}>{cfg.emoji} {cfg.label}</span><h3 className="mt-2 line-clamp-2 text-sm font-bold text-slate-900">{opp.title}</h3><p className="mt-2 flex items-center gap-1 text-xs text-slate-500"><MapPin className="h-3 w-3" />{opp.organizerName}</p></div>
+                </Link>;
               })}
             </div>
-          </div>
-        )}
+          ) : <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">{t('dashboard.noOpportunities')}</div>}
+        </section>
 
-        {/* Recommended Opportunities Section */}
-        {(() => {
-          const playerPos = userData?.position || userData?.playing_position || '';
-          const playerCountry = userData?.country || '';
-          const recommended = opportunities.filter(opp => {
-            const posMatch = playerPos && opp.targetPositions?.includes(playerPos);
-            const countryMatch = playerCountry && opp.country === playerCountry;
-            return posMatch || countryMatch;
-          }).slice(0, 3);
-          if (recommended.length === 0) return null;
-          return (
-            <div className="mb-6 md:mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg md:text-2xl font-semibold text-gray-900">{t('dashboard.recommendedForYou')}</h2>
-                <Link href="/dashboard/player/search" className="text-sm text-green-600 font-semibold hover:text-green-700">
-                  {t('dashboard.viewAll')}
-                </Link>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {recommended.map(opp => {
-                  const cfg = OPPORTUNITY_TYPES[opp.opportunityType] ?? { label: opp.opportunityType, emoji: '📌', color: '#6B7280' };
-                  return (
-                    <Link
-                      key={opp.id}
-                      href={`/dashboard/player/explore-opportunities?opportunity=${opp.id}`}
-                      className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow relative"
-                    >
-                      {opp.coverImage ? (
-                        <div className="h-36 overflow-hidden bg-gray-100">
-                          <img src={opp.coverImage} alt={opp.title} className="h-full w-full object-cover" />
-                        </div>
-                      ) : opp.promoVideo ? (
-                        <div className="h-36 overflow-hidden bg-black">
-                          <video src={opp.promoVideo} className="h-full w-full object-cover" muted playsInline preload="metadata" />
-                        </div>
-                      ) : null}
-                      <div className="p-4">
-                      <span className="absolute top-2 left-2 text-xs font-bold bg-green-500 text-white px-2 py-0.5 rounded-full">
-                        {t('dashboard.suitableForYou')}
-                      </span>
-                      <div className="flex items-center gap-2 mb-2 mt-4">
-                        <span
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold text-white"
-                          style={{ backgroundColor: cfg.color }}
-                        >
-                          {cfg.emoji} {cfg.label}
-                        </span>
-                      </div>
-                      <h3 className="font-bold text-sm text-gray-900 line-clamp-2 mb-1">{opp.title}</h3>
-                      <p className="text-xs text-gray-500 flex items-center gap-1">
-                        <MapPin className="w-3 h-3" /> {opp.organizerName}
-                      </p>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Recent Activity */}
-        <div className="mb-6 md:mb-8">
-          <h2 className="text-lg md:text-2xl font-semibold text-gray-900 mb-4 md:mb-6">
-            {t('dashboard.recentActivity')}
-          </h2>
-          <div className="bg-white rounded-xl md:rounded-2xl shadow-sm overflow-hidden">
-            <div className="p-4 md:p-6">
-              <div className="space-y-4">
-                {[
-                  {
-                    title: t('dashboard.profileUpdated'),
-                    description: t('dashboard.profileUpdatedDesc'),
-                    time: t('dashboard.twoHoursAgo'),
-                    icon: User,
-                    color: 'text-blue-500'
-                  },
-                  {
-                    title: t('dashboard.newReportSent'),
-                    description: t('dashboard.weeklyReportDesc'),
-                    time: t('dashboard.oneDayAgo'),
-                    icon: FileText,
-                    color: 'text-green-500'
-                  },
-                  {
-                    title: t('dashboard.newMessage'),
-                    description: t('dashboard.coachMessageDesc'),
-                    time: t('dashboard.twoDaysAgo'),
-                    icon: MessageSquare,
-                    color: 'text-orange-500'
-                  }
-                ].map((activity, index) => (
-                  <div key={index} className="flex items-start space-x-3 md:space-x-4 p-3 md:p-4 bg-gray-50 rounded-lg">
-                    <activity.icon className={`w-5 h-5 md:w-6 md:h-6 mt-1 ${activity.color}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm md:text-base font-medium text-gray-900">
-                        {activity.title}
-                      </p>
-                      <p className="text-xs md:text-sm text-gray-600 mt-1">
-                        {activity.description}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-2">
-                        {activity.time}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Upcoming Events */}
-        <div className="mb-6 md:mb-8">
-          <h2 className="text-lg md:text-2xl font-semibold text-gray-900 mb-4 md:mb-6">
-            {t('dashboard.upcomingEvents')}
-          </h2>
-          <div className="bg-white rounded-xl md:rounded-2xl shadow-sm overflow-hidden">
-            <div className="p-4 md:p-6">
-              <div className="space-y-4">
-                {[
-                  {
-                    title: t('dashboard.trainingMatch'),
-                    date: t('dashboard.tomorrow4pm'),
-                    location: t('dashboard.clubField'),
-                    type: 'training'
-                  },
-                  {
-                    title: t('dashboard.performanceAnalysisSession'),
-                    date: t('dashboard.thursday6pm'),
-                    location: t('dashboard.meetingRoom'),
-                    type: 'analysis'
-                  },
-                  {
-                    title: t('dashboard.officialMatch'),
-                    date: t('dashboard.saturday8pm'),
-                    location: t('dashboard.mainField'),
-                    type: 'match'
-                  }
-                ].map((event, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 md:p-4 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <h3 className="text-sm md:text-base font-medium text-gray-900">
-                        {event.title}
-                      </h3>
-                      <p className="text-xs md:text-sm text-gray-600 mt-1">
-                        {event.date}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {event.location}
-                      </p>
-                    </div>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${event.type === 'match' ? 'bg-red-100 text-red-800' :
-                      event.type === 'training' ? 'bg-blue-100 text-blue-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                      {event.type === 'match' ? t('dashboard.match') :
-                        event.type === 'training' ? t('dashboard.training') : t('dashboard.analysis')}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-          {/* Performance Chart */}
-          <div className="bg-white p-4 md:p-6 rounded-xl md:rounded-2xl shadow-sm">
-            <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
-              {t('dashboard.performanceProgress')}
-            </h3>
-            <div className="space-y-3">
-              {[
-                { label: t('dashboard.speed'), value: 85, color: 'bg-blue-500' },
-                { label: t('dashboard.strength'), value: 72, color: 'bg-green-500' },
-                { label: t('dashboard.accuracy'), value: 90, color: 'bg-purple-500' },
-                { label: t('dashboard.endurance'), value: 78, color: 'bg-orange-500' }
-              ].map((skill) => (
-                <div key={skill.label} className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">{skill.label}</span>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-20 md:w-24 bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${skill.color}`}
-                        style={{ width: `${skill.value}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-sm font-medium text-gray-900 w-8 text-left">
-                      {skill.value}%
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Recent Achievements */}
-          <div className="bg-white p-4 md:p-6 rounded-xl md:rounded-2xl shadow-sm">
-            <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
-              {t('dashboard.recentAchievements')}
-            </h3>
-            <div className="space-y-3">
-              {[
-                { title: t('dashboard.manOfTheMatch'), date: t('dashboard.lastWeek'), icon: Trophy },
-                { title: t('dashboard.speedImprovement'), date: t('dashboard.twoWeeksAgo'), icon: TrendingUp },
-                { title: t('dashboard.firstOfficialGoal'), date: t('dashboard.oneMonthAgo'), icon: Target }
-              ].map((achievement, index) => (
-                <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <achievement.icon className="w-5 h-5 text-yellow-500" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">
-                      {achievement.title}
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      {achievement.date}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+        <section className="mt-6 overflow-hidden rounded-2xl border border-yellow-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 sm:mt-8 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-3"><div className="rounded-xl bg-yellow-100 p-3"><Trophy className="h-6 w-6 text-yellow-600" /></div><div><h2 className="text-base font-black text-slate-900 sm:text-lg">{t('dashboard.tournamentRegistration')}</h2><p className="mt-1 text-xs text-slate-600 sm:text-sm">{t('dashboard.tournamentRegistrationDesc')}</p></div></div><Link href="/tournaments/unified-registration" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-600 px-4 py-3 text-sm font-bold text-white shadow-md transition hover:from-yellow-600 hover:to-orange-700 sm:w-auto">{t('dashboard.registerInTournamentsBtn')}<ArrowRight className="h-4 w-4" /></Link></div>
+        </section>
+      </main>
     </div>
   );
 }
