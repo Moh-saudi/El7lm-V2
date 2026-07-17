@@ -7,7 +7,6 @@ import {
   FileText,
   Video,
   Search,
-  BarChart3,
   MessageSquare,
   CreditCard,
   CheckCircle,
@@ -143,37 +142,6 @@ export default function PlayerDashboard() {
       icon: MessageSquare,
       href: '/dashboard/player/messages',
       color: 'bg-orange-500'
-    }
-  ];
-
-  const stats = [
-    {
-      title: t('dashboard.matches'),
-      value: '12',
-      change: '+3',
-      changeType: 'positive',
-      icon: BarChart3
-    },
-    {
-      title: t('dashboard.goals'),
-      value: '8',
-      change: '+2',
-      changeType: 'positive',
-      icon: CheckCircle
-    },
-    {
-      title: t('dashboard.assists'),
-      value: '5',
-      change: '+1',
-      changeType: 'positive',
-      icon: CheckCircle
-    },
-    {
-      title: t('dashboard.rating'),
-      value: '8.5',
-      change: '+0.3',
-      changeType: 'positive',
-      icon: Star
     }
   ];
 
@@ -314,32 +282,6 @@ export default function PlayerDashboard() {
             <PlayerOrganizationCard playerId={user.id} playerName={String(userData?.full_name || userData?.name || user.email || '')} />
           </div>
         )}
-
-        {/* Stats Overview */}
-        <div className="mb-6 md:mb-8">
-          <h2 className="text-lg md:text-2xl font-semibold text-gray-900 mb-4 md:mb-6">
-            {t('dashboard.performanceOverview')}
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
-            {stats.map((stat) => (
-              <div key={stat.title} className="bg-white p-4 md:p-6 rounded-xl md:rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-2">
-                  <stat.icon className="w-5 h-5 text-gray-400" />
-                  <span className={`text-xs md:text-sm font-medium ${stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                    {stat.change}
-                  </span>
-                </div>
-                <div className="text-2xl md:text-3xl font-bold text-gray-900">
-                  {stat.value}
-                </div>
-                <div className="text-xs md:text-sm text-gray-600">
-                  {stat.title}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
         {/* Tournament Registration Section */}
         <div className="mb-6 md:mb-8">
