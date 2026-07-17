@@ -42,7 +42,7 @@ export default function LanguageSwitcher({ variant = 'dark', compact = false }: 
   }, []);
 
   const buttonClasses = variant === 'dark'
-    ? `flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/60 text-slate-200 transition-all duration-200 hover:border-slate-500 hover:bg-slate-800/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 backdrop-blur-md ${compact ? 'px-2 py-1' : 'px-2 py-1 sm:px-3 sm:py-1.5'}`
+    ? `flex items-center gap-2 rounded-lg border border-transparent bg-transparent text-slate-200 transition-all duration-200 hover:border-white/20 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${compact ? 'px-2 py-1' : 'px-2 py-1 sm:px-3 sm:py-1.5'}`
     : `flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 transition-all duration-200 hover:border-slate-350 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${compact ? 'px-2 py-1' : 'px-2 py-1 sm:px-3 sm:py-1.5'}`;
 
   const dropdownClasses = variant === 'dark'
