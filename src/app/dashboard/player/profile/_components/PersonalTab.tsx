@@ -28,9 +28,28 @@ import { ProfileFormValues } from "../schemas/profile";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
+import { getCountryByName, getTranslatedCountryName } from "@/lib/constants/countries";
+
+const CITY_TRANSLATIONS: Record<string, Record<string, string>> = {
+    en: {
+        "الخرطوم": "Khartoum", "أم درمان": "Omdurman", "بحري": "Bahri", "مدني": "Wad Madani",
+        "القضارف": "Gedaref", "كسلا": "Kassala", "الأبيض": "El Obeid", "نيالا": "Nyala",
+        "الفاشر": "El Fasher", "زالنجي": "Zalingei", "الجنينة": "Geneina", "بورتسودان": "Port Sudan",
+    },
+    es: {
+        "الخرطوم": "Jartum", "أم درمان": "Omdurmán", "بحري": "Bahri", "مدني": "Wad Madani",
+        "القضارف": "Gedaref", "كسلا": "Kassala", "الأبيض": "El Obeid", "نيالا": "Nyala",
+        "الفاشر": "El Fasher", "زالنجي": "Zalingei", "الجنينة": "Geneina", "بورتسودان": "Puerto Sudán",
+    },
+    pt: {
+        "الخرطوم": "Cartum", "أم درمان": "Omdurman", "بحري": "Bahri", "مدني": "Wad Madani",
+        "القضارف": "Gedaref", "كسلا": "Kassala", "الأبيض": "El Obeid", "نيالا": "Nyala",
+        "الفاشر": "El Fasher", "زالنجي": "Zalingei", "الجنينة": "Geneina", "بورتسودان": "Port Sudan",
+    },
+};
 
 export function PersonalTab() {
-    const { t } = useTranslation();
+    const { t, locale } = useTranslation();
     const form = useFormContext<ProfileFormValues>();
     const { watch, setValue, control } = form;
 
@@ -40,6 +59,11 @@ export function PersonalTab() {
     const [age, setAge] = useState<number>(0);
     const [cities, setCities] = useState<string[]>([]);
     const isMinor = age > 0 && age < 18;
+    const localizeCountry = (country: string) => {
+        const match = getCountryByName(country);
+        return match ? getTranslatedCountryName(match.code, locale) : country;
+    };
+    const localizeCity = (city: string) => CITY_TRANSLATIONS[locale]?.[city] || city;
 
     // Calculate Age
     useEffect(() => {
@@ -147,7 +171,7 @@ export function PersonalTab() {
                                     <SelectContent className="max-h-[300px]">
                                         {/* Using Supported Countries for Nationality as well for consistency, or generic list */}
                                         {SUPPORTED_COUNTRIES.map((country) => (
-                                            <SelectItem key={country} value={country}>{country}</SelectItem>
+                                            <SelectItem key={country} value={country}>{localizeCountry(country)}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -301,7 +325,7 @@ export function PersonalTab() {
                                     </FormControl>
                                     <SelectContent className="max-h-[300px]">
                                         {SUPPORTED_COUNTRIES.map((country) => (
-                                            <SelectItem key={country} value={country}>{country}</SelectItem>
+                                            <SelectItem key={country} value={country}>{localizeCountry(country)}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -330,7 +354,7 @@ export function PersonalTab() {
                                     </FormControl>
                                     <SelectContent className="max-h-[300px]">
                                         {cities.map((city) => (
-                                            <SelectItem key={city} value={city}>{city}</SelectItem>
+                                            <SelectItem key={city} value={city}>{localizeCity(city)}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
