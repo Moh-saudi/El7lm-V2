@@ -43,6 +43,53 @@ const transliterateArabic = (value: string) => value
     .replace(/\s+/g, ' ')
     .trim();
 
+// Use real names in each supported language; transliteration is only a final
+// fallback for locations that are not yet present in the local catalogue.
+const COUNTRY_TRANSLATIONS: Record<string, Record<'en' | 'es' | 'pt', string>> = {
+    '\u0627\u0644\u0633\u0639\u0648\u062f\u064a\u0629': { en: 'Saudi Arabia', es: 'Arabia Saudí', pt: 'Arábia Saudita' },
+    '\u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062a': { en: 'United Arab Emirates', es: 'Emiratos Árabes Unidos', pt: 'Emirados Árabes Unidos' },
+    '\u0627\u0644\u0643\u0648\u064a\u062a': { en: 'Kuwait', es: 'Kuwait', pt: 'Kuwait' },
+    '\u0642\u0637\u0631': { en: 'Qatar', es: 'Catar', pt: 'Catar' },
+    '\u0627\u0644\u0628\u062d\u0631\u064a\u0646': { en: 'Bahrain', es: 'Baréin', pt: 'Bahrein' },
+    '\u0639\u0645\u0627\u0646': { en: 'Oman', es: 'Omán', pt: 'Omã' },
+    '\u0645\u0635\u0631': { en: 'Egypt', es: 'Egipto', pt: 'Egito' },
+    '\u0627\u0644\u0623\u0631\u062f\u0646': { en: 'Jordan', es: 'Jordania', pt: 'Jordânia' },
+    '\u0644\u0628\u0646\u0627\u0646': { en: 'Lebanon', es: 'Líbano', pt: 'Líbano' },
+    '\u0627\u0644\u0639\u0631\u0627\u0642': { en: 'Iraq', es: 'Irak', pt: 'Iraque' },
+    '\u0633\u0648\u0631\u064a\u0627': { en: 'Syria', es: 'Siria', pt: 'Síria' },
+    '\u0627\u0644\u0645\u063a\u0631\u0628': { en: 'Morocco', es: 'Marruecos', pt: 'Marrocos' },
+    '\u0627\u0644\u062c\u0632\u0627\u0626\u0631': { en: 'Algeria', es: 'Argelia', pt: 'Argélia' },
+    '\u062a\u0648\u0646\u0633': { en: 'Tunisia', es: 'Túnez', pt: 'Tunísia' },
+    '\u0644\u064a\u0628\u064a\u0627': { en: 'Libya', es: 'Libia', pt: 'Líbia' },
+    '\u0627\u0644\u0633\u0648\u062f\u0627\u0646': { en: 'Sudan', es: 'Sudán', pt: 'Sudão' },
+    '\u0627\u0644\u0633\u0646\u063a\u0627\u0644': { en: 'Senegal', es: 'Senegal', pt: 'Senegal' },
+    '\u0633\u0627\u062d\u0644 \u0627\u0644\u0639\u0627\u062c': { en: 'Ivory Coast', es: 'Costa de Marfil', pt: 'Costa do Marfim' },
+    '\u062c\u064a\u0628\u0648\u062a\u064a': { en: 'Djibouti', es: 'Yibuti', pt: 'Djibuti' },
+    '\u0625\u0633\u0628\u0627\u0646\u064a\u0627': { en: 'Spain', es: 'España', pt: 'Espanha' },
+    '\u0641\u0631\u0646\u0633\u0627': { en: 'France', es: 'Francia', pt: 'França' },
+    '\u0625\u0646\u062c\u0644\u062a\u0631\u0627': { en: 'England', es: 'Inglaterra', pt: 'Inglaterra' },
+    '\u0627\u0644\u0628\u0631\u062a\u063a\u0627\u0644': { en: 'Portugal', es: 'Portugal', pt: 'Portugal' },
+    '\u0625\u064a\u0637\u0627\u0644\u064a\u0627': { en: 'Italy', es: 'Italia', pt: 'Itália' },
+    '\u062a\u0631\u0643\u064a\u0627': { en: 'Turkey', es: 'Turquía', pt: 'Turquia' },
+    '\u0627\u0644\u064a\u0645\u0646': { en: 'Yemen', es: 'Yemen', pt: 'Iêmen' },
+    '\u0623\u0645\u0631\u064a\u0643\u0627': { en: 'United States', es: 'Estados Unidos', pt: 'Estados Unidos' },
+};
+
+const CITY_TRANSLATIONS_BY_LOCALE: Record<'en' | 'es' | 'pt', Record<string, string>> = {
+    en: {
+        '\u0627\u0644\u0642\u0627\u0647\u0631\u0629': 'Cairo', '\u0627\u0644\u062c\u064a\u0632\u0629': 'Giza', '\u0627\u0644\u0625\u0633\u0643\u0646\u062f\u0631\u064a\u0629': 'Alexandria',
+        '\u0627\u0644\u062e\u0631\u0637\u0648\u0645': 'Khartoum', '\u0623\u0645 \u062f\u0631\u0645\u0627\u0646': 'Omdurman', '\u0628\u062d\u0631\u064a': 'Bahri', '\u0645\u062f\u0646\u064a': 'Wad Madani',
+    },
+    es: {
+        '\u0627\u0644\u0642\u0627\u0647\u0631\u0629': 'El Cairo', '\u0627\u0644\u062c\u064a\u0632\u0629': 'Guiza', '\u0627\u0644\u0625\u0633\u0643\u0646\u062f\u0631\u064a\u0629': 'Alejandría',
+        '\u0627\u0644\u062e\u0631\u0637\u0648\u0645': 'Jartum', '\u0623\u0645 \u062f\u0631\u0645\u0627\u0646': 'Omdurmán', '\u0628\u062d\u0631\u064a': 'Bahri', '\u0645\u062f\u0646\u064a': 'Wad Madani',
+    },
+    pt: {
+        '\u0627\u0644\u0642\u0627\u0647\u0631\u0629': 'Cairo', '\u0627\u0644\u062c\u064a\u0632\u0629': 'Giza', '\u0627\u0644\u0625\u0633\u0643\u0646\u062f\u0631\u064a\u0629': 'Alexandria',
+        '\u0627\u0644\u062e\u0631\u0637\u0648\u0645': 'Cartum', '\u0623\u0645 \u062f\u0631\u0645\u0627\u0646': 'Omdurman', '\u0628\u062d\u0631\u064a': 'Bahri', '\u0645\u062f\u0646\u064a': 'Wad Madani',
+    },
+};
+
 const CITY_TRANSLATIONS: Record<string, Record<string, string>> = {
     en: {
         "الخرطوم": "Khartoum", "أم درمان": "Omdurman", "بحري": "Bahri", "مدني": "Wad Madani",
@@ -72,8 +119,12 @@ export function PersonalTab() {
     const [age, setAge] = useState<number>(0);
     const [cities, setCities] = useState<string[]>([]);
     const isMinor = age > 0 && age < 18;
-    const localizeCountry = (country: string) => locale === 'ar' ? country : transliterateArabic(country);
-    const localizeCity = (city: string) => locale === 'ar' ? city : transliterateArabic(city);
+    const localizeCountry = (country: string) => locale === 'ar'
+        ? country
+        : COUNTRY_TRANSLATIONS[country]?.[locale as 'en' | 'es' | 'pt'] ?? country;
+    const localizeCity = (city: string) => locale === 'ar'
+        ? city
+        : CITY_TRANSLATIONS_BY_LOCALE[locale as 'en' | 'es' | 'pt']?.[city] ?? transliterateArabic(city);
     const supportedCountries = COUNTRIES_FROM_REGISTER
         .map((country) => country.name)
         .sort((a, b) => a.localeCompare(b));
