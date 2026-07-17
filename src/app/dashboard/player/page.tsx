@@ -268,26 +268,26 @@ export default function PlayerDashboard() {
               </div>
 
               {/* Benefits Grid */}
-              <div className="grid grid-cols-3 gap-1.5 mb-4 md:gap-2">
-                <div className="flex items-center gap-1.5 bg-white/10 backdrop-blur-md rounded-lg p-2 md:gap-2 md:p-2.5">
-                  <CheckCircle className="w-4 h-4 text-green-300 flex-shrink-0" />
-                  <div>
-                    <p className="text-white font-bold text-xs md:text-sm">{t('dashboard.betterVisibility')}</p>
-                    <p className="text-white/70 text-[11px]">{t('dashboard.inSearchResults')}</p>
+              <div className="flex items-stretch gap-1.5 mb-4 md:gap-2">
+                <div className="min-w-0 flex-1 flex items-center gap-1 bg-white/10 backdrop-blur-md rounded-lg p-1.5 md:gap-2 md:p-2">
+                  <CheckCircle className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-300 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="truncate text-white font-bold text-[10px] md:text-sm">{t('dashboard.betterVisibility')}</p>
+                    <p className="truncate text-white/70 text-[9px] md:text-[11px]">{t('dashboard.inSearchResults')}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-lg p-2.5 border border-white/20">
-                  <TrendingUp className="w-4 h-4 text-blue-300 flex-shrink-0" />
-                  <div>
-                    <p className="text-white font-bold text-xs md:text-sm">{t('dashboard.moreOpportunities')}</p>
-                    <p className="text-white/70 text-[11px]">{t('dashboard.toContactYou')}</p>
+                <div className="min-w-0 flex-1 flex items-center gap-1 bg-white/10 backdrop-blur-md rounded-lg p-1.5 border border-white/20 md:gap-2 md:p-2">
+                  <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-300 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="truncate text-white font-bold text-[10px] md:text-sm">{t('dashboard.moreOpportunities')}</p>
+                    <p className="truncate text-white/70 text-[9px] md:text-[11px]">{t('dashboard.toContactYou')}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-lg p-2.5 border border-white/20">
-                  <Trophy className="w-4 h-4 text-yellow-300 flex-shrink-0" />
-                  <div>
-                    <p className="text-white font-bold text-xs md:text-sm">{t('dashboard.professionalLook')}</p>
-                    <p className="text-white/70 text-[11px]">{t('dashboard.catchesAttention')}</p>
+                <div className="min-w-0 flex-1 flex items-center gap-1 bg-white/10 backdrop-blur-md rounded-lg p-1.5 border border-white/20 md:gap-2 md:p-2">
+                  <Trophy className="w-3.5 h-3.5 md:w-4 md:h-4 text-yellow-300 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="truncate text-white font-bold text-[10px] md:text-sm">{t('dashboard.professionalLook')}</p>
+                    <p className="truncate text-white/70 text-[9px] md:text-[11px]">{t('dashboard.catchesAttention')}</p>
                   </div>
                 </div>
               </div>
