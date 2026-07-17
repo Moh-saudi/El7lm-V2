@@ -21,10 +21,10 @@ const languages: LanguageOption[] = [
 
 function FlagIcon({ code, className = 'h-4 w-6' }: { code: Locale; className?: string }) {
   const common = { className, viewBox: '0 0 24 16', role: 'img' as const, 'aria-hidden': true };
-  if (code === 'ar') return <svg {...common}><rect width="24" height="16" rx="2" fill="#16853d" /><path d="M5 8h14" stroke="#fff" strokeWidth="1.3" /><path d="M8 10.5h8" stroke="#fff" strokeWidth=".8" /></svg>;
-  if (code === 'en') return <svg {...common}><rect width="24" height="16" rx="2" fill="#1f3f95" /><path d="M0 0l24 16M24 0L0 16" stroke="#fff" strokeWidth="3" /><path d="M0 0l24 16M24 0L0 16" stroke="#d62035" strokeWidth="1" /><path d="M12 0v16M0 8h24" stroke="#fff" strokeWidth="5" /><path d="M12 0v16M0 8h24" stroke="#d62035" strokeWidth="2" /></svg>;
-  if (code === 'es') return <svg {...common}><rect width="24" height="16" rx="2" fill="#c60b1e" /><rect y="4" width="24" height="8" fill="#ffc400" /></svg>;
-  return <svg {...common}><rect width="24" height="16" rx="2" fill="#046a38" /><rect width="8" height="16" fill="#d7141a" /><path d="M8 8l3-3 3 3-3 3z" fill="#ffdf00" /></svg>;
+  if (code === 'ar') return <svg {...common}><rect width="24" height="16" rx="2" fill="#165b33" /><text x="12" y="6.8" textAnchor="middle" fill="#fff" fontSize="2.15" fontFamily="Arial">لا إله إلا الله</text><path d="M6 10.5h12" stroke="#fff" strokeWidth=".65" strokeLinecap="round" /><path d="M7 9.5h10" stroke="#fff" strokeWidth=".35" strokeLinecap="round" /></svg>;
+  if (code === 'en') return <svg {...common}><rect width="24" height="16" rx="2" fill="#23408e" /><path d="M0 0l24 16M24 0L0 16" stroke="#fff" strokeWidth="3.6" /><path d="M0 0l24 16M24 0L0 16" stroke="#c8102e" strokeWidth="1.4" /><path d="M12 0v16M0 8h24" stroke="#fff" strokeWidth="5.2" /><path d="M12 0v16M0 8h24" stroke="#c8102e" strokeWidth="2.6" /></svg>;
+  if (code === 'es') return <svg {...common}><rect width="24" height="16" rx="2" fill="#aa151b" /><rect y="3.5" width="24" height="9" fill="#f1bf00" /><circle cx="6" cy="8" r="1.15" fill="#aa151b" opacity=".85" /></svg>;
+  return <svg {...common}><rect width="24" height="16" rx="2" fill="#046a38" /><rect width="9.2" height="16" fill="#d7141a" /><circle cx="9.2" cy="8" r="3.25" fill="#ffdf00" /><path d="M9.2 4.75a3.25 3.25 0 0 1 0 6.5 2.6 2.6 0 0 0 0-6.5z" fill="#d7141a" /></svg>;
 }
 
 export default function LanguageSwitcher({ variant = 'dark', compact = false }: { variant?: 'light' | 'dark'; compact?: boolean }) {
