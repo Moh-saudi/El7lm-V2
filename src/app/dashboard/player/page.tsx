@@ -11,8 +11,6 @@ import {
   MessageSquare,
   CreditCard,
   CheckCircle,
-  Menu,
-  X,
   Star,
   TrendingUp,
   Trophy,
@@ -43,7 +41,6 @@ export default function PlayerDashboard() {
   const { user, userData } = useAuth();
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
 
@@ -213,14 +210,6 @@ export default function PlayerDashboard() {
               </p>
             </div>
 
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors touch-target"
-            >
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-
             <div className="hidden md:flex items-center space-x-4">
               <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white font-bold">E</span>
@@ -229,25 +218,6 @@ export default function PlayerDashboard() {
           </div>
         </div>
       </div>
-
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-white border-b border-gray-200">
-          <div className="px-4 py-2 space-y-2">
-            {quickActions.map((action) => (
-              <Link
-                key={action.title}
-                href={action.href}
-                className="flex items-center p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors touch-target"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <action.icon className="w-5 h-5 mr-3" />
-                <span className="text-sm font-medium">{action.title}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
