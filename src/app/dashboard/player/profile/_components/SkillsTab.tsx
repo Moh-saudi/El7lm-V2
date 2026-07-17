@@ -82,7 +82,7 @@ const StarRating = ({ name, label }: { name: string, label: string }) => {
                                             onClick={() => field.onChange(star)}
                                             className={cn("transition-all hover:scale-110 focus:outline-none", star <= value ? "text-yellow-400 fill-yellow-400" : "text-gray-200")}
                                         >
-                                            <Star className={cn("w-8 h-8", star <= value ? "fill-current" : "")} />
+                                            <Star className={cn("w-6 h-6", star <= value ? "fill-current" : "")} />
                                         </button>
                                     ))}
                                 </div>
@@ -108,14 +108,14 @@ export function SkillsTab() {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-12 lg:gap-6">
                 {/* 1. Technical & Physical */}
-                <Card className="border-blue-100 shadow-sm md:col-span-2">
+                <Card className="border-blue-100 shadow-sm md:col-span-2 lg:col-span-8">
                     <CardHeader className="flex flex-row items-center gap-3 bg-blue-50/50 pb-4">
                         <div className="p-2 bg-blue-100 rounded-lg text-blue-600"><Zap className="w-5 h-5" /></div>
                         <CardTitle className="text-lg text-blue-900">{t('profile.skillsTab.technicalPhysical')}</CardTitle>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 p-6">
+                    <CardContent className="grid grid-cols-1 gap-x-6 gap-y-6 p-5 md:grid-cols-2 lg:grid-cols-3">
                         <StatSlider name="stats_pace" label={t('profile.skillsTab.pace')} icon={Activity} />
                         <StatSlider name="stats_shooting" label={t('profile.skillsTab.shooting')} icon={Target} />
                         <StatSlider name="stats_passing" label={t('profile.skillsTab.passing')} icon={Brain} />
@@ -126,12 +126,12 @@ export function SkillsTab() {
                 </Card>
 
                 {/* 2. Mental Attributes */}
-                <Card className="border-purple-100 shadow-sm">
+                <Card className="border-purple-100 shadow-sm md:col-span-1 lg:col-span-4">
                     <CardHeader className="flex flex-row items-center gap-3 bg-purple-50/50 pb-4">
                         <div className="p-2 bg-purple-100 rounded-lg text-purple-600"><Brain className="w-5 h-5" /></div>
                         <CardTitle className="text-lg text-purple-900">{t('profile.skillsTab.mentalCapacity')}</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-6 p-6">
+                    <CardContent className="space-y-4 p-5 lg:space-y-3">
                         <StatSlider name="mentality_vision" label={t('profile.skillsTab.vision')} icon={Brain} />
                         <StatSlider name="mentality_leadership" label={t('profile.skillsTab.leadership')} icon={Star} />
                         <StatSlider name="mentality_composure" label={t('profile.skillsTab.composure')} icon={Activity} />
@@ -141,20 +141,20 @@ export function SkillsTab() {
                 </Card>
 
                 {/* 3. Advanced Skills */}
-                <Card className="border-amber-100 shadow-sm">
+                <Card className="border-amber-100 shadow-sm md:col-span-1 lg:col-span-12">
                     <CardHeader className="flex flex-row items-center gap-3 bg-amber-50/50 pb-4">
                         <div className="p-2 bg-amber-100 rounded-lg text-amber-600"><Star className="w-5 h-5" /></div>
                         <CardTitle className="text-lg text-amber-900">{t('profile.skillsTab.advancedSkills')}</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-8 p-6">
-                        <div className="grid grid-cols-2 gap-8">
+                    <CardContent className="space-y-6 p-5">
+                        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                             <StarRating name="skill_moves" label={t('profile.skillsTab.skillMoves')} />
                             <StarRating name="weak_foot" label={t('profile.skillsTab.weakFoot')} />
                         </div>
 
                         <div className="h-px bg-gray-100" />
 
-                        <div className="grid grid-cols-2 gap-8">
+                        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                             <FormField
                                 control={useFormContext().control}
                                 name="work_rate_attack"
