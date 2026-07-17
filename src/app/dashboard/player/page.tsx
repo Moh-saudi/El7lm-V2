@@ -117,7 +117,7 @@ export default function PlayerDashboard() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200 sm:text-xs">{t('dashboard.welcomeLabel')}</p>
-              <h1 className="truncate text-xl font-black sm:text-2xl md:text-3xl">{t('dashboard.welcomePlayer')}, {playerFirstName}!</h1>
+              <h1 className="truncate text-base font-black sm:text-xl md:text-2xl">{t('dashboard.welcomePlayer')}, {playerFirstName}!</h1>
               <p className="mt-1 text-sm leading-6 text-white/80 sm:text-base">{welcomeMessages[welcomeMessageIndex]}</p>
             </div>
             <Sparkles className="hidden h-8 w-8 shrink-0 text-yellow-300 md:block" />
