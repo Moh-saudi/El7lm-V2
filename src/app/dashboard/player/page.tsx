@@ -130,23 +130,23 @@ export default function PlayerDashboard() {
                   type="button"
                   aria-label={`${t('dashboard.welcomeMessage')} ${index + 1}`}
                   onClick={() => setWelcomeMessageIndex(index)}
-                  className={`h-1 rounded-full transition-all ${index === welcomeMessageIndex ? 'w-3 bg-yellow-300' : 'w-1 bg-white/40 hover:bg-white/70'}`}
+                  className={`!min-h-0 !min-w-0 !p-0 h-1 rounded-full transition-all ${index === welcomeMessageIndex ? 'w-3 bg-yellow-300' : 'w-1 bg-white/40 hover:bg-white/70'}`}
                 />
               ))}
             </div>
             <div className="flex gap-1">
-              <button type="button" aria-label={t('dashboard.previousWelcomeMessage')} onClick={() => setWelcomeMessageIndex((welcomeMessageIndex + 3) % 4)} className="rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-white">
-                <ChevronLeft className="h-4 w-4" />
+              <button type="button" aria-label={t('dashboard.previousWelcomeMessage')} onClick={() => setWelcomeMessageIndex((welcomeMessageIndex + 3) % 4)} className="!h-6 !min-h-0 !min-w-0 !w-6 !p-0 rounded-full text-white/70 hover:bg-white/10 hover:text-white">
+                <ChevronLeft className="h-3.5 w-3.5" />
               </button>
-              <button type="button" aria-label={t('dashboard.nextWelcomeMessage')} onClick={() => setWelcomeMessageIndex((welcomeMessageIndex + 1) % 4)} className="rounded-full p-1.5 text-white/70 hover:bg-white/10 hover:text-white">
-                <ChevronRight className="h-4 w-4" />
+              <button type="button" aria-label={t('dashboard.nextWelcomeMessage')} onClick={() => setWelcomeMessageIndex((welcomeMessageIndex + 1) % 4)} className="!h-6 !min-h-0 !min-w-0 !w-6 !p-0 rounded-full text-white/70 hover:bg-white/10 hover:text-white">
+                <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
         </section>
 
-        <div className="mt-4 grid grid-cols-2 items-stretch gap-2 sm:mt-6 sm:gap-4 lg:grid-cols-2">
-        <section className="min-w-0 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 p-3 text-white shadow-lg sm:p-6">
+        <div className="mt-4 flex flex-row items-stretch gap-2 sm:mt-6 sm:gap-4">
+        <section className="w-1/2 min-w-0 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 p-3 text-white shadow-lg sm:flex-1 sm:p-6">
           <div className="flex items-start gap-3">
             <div className="rounded-xl bg-white p-2.5 shadow-md"><Star className="h-5 w-5 fill-yellow-400 text-yellow-400" /></div>
             <div className="min-w-0 flex-1">
@@ -166,7 +166,7 @@ export default function PlayerDashboard() {
           </Link>
         </section>
 
-        {user && <section className="min-w-0"><PlayerOrganizationCard playerId={user.id} playerName={String(userData?.full_name || userData?.name || user.email || '')} /></section>}
+        {user && <section className="w-1/2 min-w-0 sm:flex-1"><PlayerOrganizationCard playerId={user.id} playerName={String(userData?.full_name || userData?.name || user.email || '')} /></section>}
         </div>
 
         <section className="mt-6 sm:mt-8">
