@@ -6,7 +6,6 @@ import {
   User,
   FileText,
   Video,
-  Search,
   MessageSquare,
   CreditCard,
   CheckCircle,
@@ -113,37 +112,6 @@ export default function PlayerDashboard() {
   if (!isAuthorized) {
     return null;
   }
-
-  const quickActions = [
-    {
-      title: t('dashboard.profile'),
-      description: t('dashboard.manageProfileDesc'),
-      icon: User,
-      href: '/dashboard/player/profile',
-      color: 'bg-blue-500'
-    },
-    {
-      title: t('dashboard.reports'),
-      description: t('dashboard.viewReportsDesc'),
-      icon: FileText,
-      href: '/dashboard/player/reports',
-      color: 'bg-green-500'
-    },
-    {
-      title: t('dashboard.searchOpportunities'),
-      description: t('dashboard.searchOpportunitiesDesc'),
-      icon: Search,
-      href: '/dashboard/player/search',
-      color: 'bg-purple-500'
-    },
-    {
-      title: t('dashboard.messages'),
-      description: t('dashboard.manageMessagesDesc'),
-      icon: MessageSquare,
-      href: '/dashboard/player/messages',
-      color: 'bg-orange-500'
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -440,36 +408,6 @@ export default function PlayerDashboard() {
             </div>
           );
         })()}
-
-        {/* Quick Actions */}
-        <div className="mb-6 md:mb-8">
-          <h2 className="text-lg md:text-2xl font-semibold text-gray-900 mb-4 md:mb-6">
-            {t('dashboard.quickAccess')}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-            {quickActions.map((action) => (
-              <Link
-                key={action.title}
-                href={action.href}
-                className="group bg-white p-4 md:p-6 rounded-xl md:rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 touch-target"
-              >
-                <div className="flex items-center mb-3 md:mb-4">
-                  <div className={`w-10 h-10 md:w-12 md:h-12 ${action.color} rounded-lg flex items-center justify-center mr-3 md:mr-4 group-hover:scale-110 transition-transform`}>
-                    <action.icon className="w-5 h-5 md:w-6 md:h-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm md:text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                      {action.title}
-                    </h3>
-                    <p className="text-xs md:text-sm text-gray-600 mt-1">
-                      {action.description}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
 
         {/* Recent Activity */}
         <div className="mb-6 md:mb-8">
