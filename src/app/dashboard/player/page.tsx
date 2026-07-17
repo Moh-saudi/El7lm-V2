@@ -130,7 +130,7 @@ export default function PlayerDashboard() {
                   type="button"
                   aria-label={`${t('dashboard.welcomeMessage')} ${index + 1}`}
                   onClick={() => setWelcomeMessageIndex(index)}
-                  className={`h-1.5 rounded-full transition-all ${index === welcomeMessageIndex ? 'w-7 bg-yellow-300' : 'w-1.5 bg-white/40 hover:bg-white/70'}`}
+                  className={`h-1 rounded-full transition-all ${index === welcomeMessageIndex ? 'w-3 bg-yellow-300' : 'w-1 bg-white/40 hover:bg-white/70'}`}
                 />
               ))}
             </div>
@@ -145,12 +145,13 @@ export default function PlayerDashboard() {
           </div>
         </section>
 
-        <section className="mt-4 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 p-4 text-white shadow-lg sm:mt-6 sm:p-6">
+        <div className="mt-4 grid grid-cols-2 items-stretch gap-2 sm:mt-6 sm:gap-4 lg:grid-cols-2">
+        <section className="min-w-0 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 p-3 text-white shadow-lg sm:p-6">
           <div className="flex items-start gap-3">
             <div className="rounded-xl bg-white p-2.5 shadow-md"><Star className="h-5 w-5 fill-yellow-400 text-yellow-400" /></div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-base font-black sm:text-xl">{t('dashboard.completeProfileTitle')}</h2>
-              <p className="mt-1 text-xs text-white/80 sm:text-sm">{t('dashboard.completeProfileDesc')}</p>
+              <h2 className="text-sm font-black sm:text-xl">{t('dashboard.completeProfileTitle')}</h2>
+              <p className="mt-1 hidden text-xs text-white/80 sm:block sm:text-sm">{t('dashboard.completeProfileDesc')}</p>
             </div>
             <span className="text-xl font-black text-yellow-300 sm:text-2xl">45%</span>
           </div>
@@ -160,12 +161,13 @@ export default function PlayerDashboard() {
             <div className="rounded-lg bg-white/10 p-2 text-center"><TrendingUp className="mx-auto h-4 w-4 text-blue-300" /><p className="mt-1 truncate text-[10px] font-bold sm:text-xs">{t('dashboard.moreOpportunities')}</p></div>
             <div className="rounded-lg bg-white/10 p-2 text-center"><Trophy className="mx-auto h-4 w-4 text-yellow-300" /><p className="mt-1 truncate text-[10px] font-bold sm:text-xs">{t('dashboard.professionalLook')}</p></div>
           </div>
-          <Link href="/dashboard/player/profile" className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-purple-700 shadow-md transition hover:bg-yellow-300 sm:w-auto">
-            <User className="h-4 w-4" />{t('dashboard.completeProfileBtn')}<ArrowRight className="h-4 w-4" />
+          <Link href="/dashboard/player/profile" className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-xl bg-white px-2 py-2.5 text-[11px] font-bold text-purple-700 shadow-md transition hover:bg-yellow-300 sm:mt-4 sm:w-auto sm:gap-2 sm:px-4 sm:py-3 sm:text-sm">
+            <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />{t('dashboard.completeProfileBtn')}<ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Link>
         </section>
 
-        {user && <section className="mt-4 sm:mt-6"><PlayerOrganizationCard playerId={user.id} playerName={String(userData?.full_name || userData?.name || user.email || '')} /></section>}
+        {user && <section className="min-w-0"><PlayerOrganizationCard playerId={user.id} playerName={String(userData?.full_name || userData?.name || user.email || '')} /></section>}
+        </div>
 
         <section className="mt-6 sm:mt-8">
           <div className="mb-3 flex items-center justify-between sm:mb-4">
