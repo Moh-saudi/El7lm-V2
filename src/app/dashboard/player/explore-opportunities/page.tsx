@@ -253,10 +253,17 @@ export default function SearchPage() {
 
   useEffect(() => {
     getExploreOpportunities()
-      .then(list => setOpportunities(list))
+      .then(list => {
+        setOpportunities(list);
+        const requestedId = searchParams.get('opportunity');
+        if (requestedId) {
+          const requestedOpportunity = list.find((opportunity) => opportunity.id === requestedId);
+          if (requestedOpportunity) setDetailOpp(requestedOpportunity);
+        }
+      })
       .catch(() => {})
       .finally(() => setOppLoading(false));
-  }, []);
+  }, [searchParams]);
 
   // جلب طلبات اللاعب مع حالتها
   useEffect(() => {

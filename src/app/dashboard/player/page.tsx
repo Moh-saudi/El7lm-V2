@@ -405,7 +405,7 @@ export default function PlayerDashboard() {
                 return (
                   <Link
                     key={opp.id}
-                    href={`/dashboard/opportunities/${opp.id}`}
+                    href={`/dashboard/player/explore-opportunities?opportunity=${opp.id}`}
                     className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                   >
                     {opp.coverImage ? (
@@ -462,7 +462,7 @@ export default function PlayerDashboard() {
                   return (
                     <Link
                       key={opp.id}
-                      href={`/dashboard/opportunities/${opp.id}`}
+                      href={`/dashboard/player/explore-opportunities?opportunity=${opp.id}`}
                       className="bg-white rounded-xl border border-green-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow relative"
                     >
                       {opp.coverImage ? (
