@@ -23,12 +23,25 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { SUPPORTED_COUNTRIES, getCitiesByCountry } from "@/lib/cities-data";
+import { COUNTRIES_FROM_REGISTER, getCitiesByCountry } from "@/data/countries-from-register";
 import { ProfileFormValues } from "../schemas/profile";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/i18n";
-import { getCountryByName, getTranslatedCountryName } from "@/lib/constants/countries";
+const ARABIC_TO_LATIN: Record<string, string> = {
+    '\u0627': 'a', '\u0623': 'a', '\u0625': 'i', '\u0622': 'aa', '\u0628': 'b', '\u062a': 't', '\u062b': 'th',
+    '\u062c': 'j', '\u062d': 'h', '\u062e': 'kh', '\u062f': 'd', '\u0630': 'dh', '\u0631': 'r', '\u0632': 'z',
+    '\u0633': 's', '\u0634': 'sh', '\u0635': 's', '\u0636': 'd', '\u0637': 't', '\u0638': 'z', '\u0639': 'a',
+    '\u063a': 'gh', '\u0641': 'f', '\u0642': 'q', '\u0643': 'k', '\u0644': 'l', '\u0645': 'm', '\u0646': 'n',
+    '\u0647': 'h', '\u0648': 'w', '\u064a': 'y', '\u0649': 'a', '\u0629': 'a', '\u0621': '', '\u0624': 'w', '\u0626': 'y',
+};
+
+const transliterateArabic = (value: string) => value
+    .split('')
+    .map((character) => ARABIC_TO_LATIN[character] ?? character)
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const CITY_TRANSLATIONS: Record<string, Record<string, string>> = {
     en: {
@@ -59,11 +72,11 @@ export function PersonalTab() {
     const [age, setAge] = useState<number>(0);
     const [cities, setCities] = useState<string[]>([]);
     const isMinor = age > 0 && age < 18;
-    const localizeCountry = (country: string) => {
-        const match = getCountryByName(country);
-        return match ? getTranslatedCountryName(match.code, locale) : country;
-    };
-    const localizeCity = (city: string) => CITY_TRANSLATIONS[locale]?.[city] || city;
+    const localizeCountry = (country: string) => locale === 'ar' ? country : transliterateArabic(country);
+    const localizeCity = (city: string) => locale === 'ar' ? city : transliterateArabic(city);
+    const supportedCountries = COUNTRIES_FROM_REGISTER
+        .map((country) => country.name)
+        .sort((a, b) => a.localeCompare(b));
 
     // Calculate Age
     useEffect(() => {
@@ -170,7 +183,7 @@ export function PersonalTab() {
                                     </FormControl>
                                     <SelectContent className="max-h-[300px]">
                                         {/* Using Supported Countries for Nationality as well for consistency, or generic list */}
-                                        {SUPPORTED_COUNTRIES.map((country) => (
+                                        {supportedCountries.map((country) => (
                                             <SelectItem key={country} value={country}>{localizeCountry(country)}</SelectItem>
                                         ))}
                                     </SelectContent>
@@ -324,7 +337,7 @@ export function PersonalTab() {
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent className="max-h-[300px]">
-                                        {SUPPORTED_COUNTRIES.map((country) => (
+                                        {supportedCountries.map((country) => (
                                             <SelectItem key={country} value={country}>{localizeCountry(country)}</SelectItem>
                                         ))}
                                     </SelectContent>
