@@ -108,6 +108,136 @@ const CITY_TRANSLATIONS: Record<string, Record<string, string>> = {
     },
 };
 
+const COUNTRY_REGION_BY_NAME: Record<string, string> = {
+    'السعودية': 'SA',
+    'الإمارات': 'AE',
+    'الكويت': 'KW',
+    'قطر': 'QA',
+    'البحرين': 'BH',
+    'عمان': 'OM',
+    'مصر': 'EG',
+    'الأردن': 'JO',
+    'لبنان': 'LB',
+    'العراق': 'IQ',
+    'سوريا': 'SY',
+    'المغرب': 'MA',
+    'الجزائر': 'DZ',
+    'تونس': 'TN',
+    'ليبيا': 'LY',
+    'السودان': 'SD',
+    'السنغال': 'SN',
+    'ساحل العاج': 'CI',
+    'جيبوتي': 'DJ',
+    'إسبانيا': 'ES',
+    'فرنسا': 'FR',
+    'إنجلترا': 'GB',
+    'البرتغال': 'PT',
+    'إيطاليا': 'IT',
+    'اليونان': 'GR',
+    'قبرص': 'CY',
+    'تركيا': 'TR',
+    'تايلاند': 'TH',
+    'اليمن': 'YE',
+    'أمريكا': 'US',
+    'الفلبين': 'PH',
+    'اليابان': 'JP',
+    'الهند': 'IN',
+    'الصين': 'CN',
+    'كوريا': 'KR',
+    'إيران': 'IR',
+    'باكستان': 'PK',
+    'أوزبكستان': 'UZ',
+    'أفغانستان': 'AF',
+    'روسيا': 'RU',
+    'أوكرانيا': 'UA',
+    'ألمانيا': 'DE',
+    'هولندا': 'NL',
+    'بلجيكا': 'BE',
+    'سويسرا': 'CH',
+    'النمسا': 'AT',
+    'السويد': 'SE',
+    'النرويج': 'NO',
+    'الدنمارك': 'DK',
+    'فنلندا': 'FI',
+    'بولندا': 'PL',
+    'التشيك': 'CZ',
+    'المجر': 'HU',
+    'رومانيا': 'RO',
+    'بلغاريا': 'BG',
+    'كرواتيا': 'HR',
+    'صربيا': 'RS',
+    'ألبانيا': 'AL',
+    'كندا': 'CA',
+    'المكسيك': 'MX',
+    'البرازيل': 'BR',
+    'الأرجنتين': 'AR',
+    'تشيلي': 'CL',
+    'كولومبيا': 'CO',
+    'بيرو': 'PE',
+    'فنزويلا': 'VE',
+    'أستراليا': 'AU',
+    'نيوزيلندا': 'NZ',
+    'جنوب أفريقيا': 'ZA',
+    'كينيا': 'KE',
+    'نيجيريا': 'NG',
+    'غانا': 'GH',
+    'تنزانيا': 'TZ',
+    'أوغندا': 'UG',
+    'إثيوبيا': 'ET',
+    'إندونيسيا': 'ID',
+    'ماليزيا': 'MY',
+    'سنغافورة': 'SG',
+    'فيتنام': 'VN',
+    'كمبوديا': 'KH',
+    'لاوس': 'LA',
+    'ميانمار': 'MM',
+    'بنغلاديش': 'BD',
+    'سريلانكا': 'LK',
+    'نيبال': 'NP',
+    'بوتان': 'BT',
+    'منغوليا': 'MN',
+    'كازاخستان': 'KZ',
+    'قيرغيزستان': 'KG',
+    'طاجيكستان': 'TJ',
+    'تركمانستان': 'TM',
+    'أذربيجان': 'AZ',
+    'أرمينيا': 'AM',
+    'جورجيا': 'GE',
+    'بيلاروسيا': 'BY',
+    'مولدوفا': 'MD',
+    'ليتوانيا': 'LT',
+    'لاتفيا': 'LV',
+    'إستونيا': 'EE',
+    'سلوفاكيا': 'SK',
+    'سلوفينيا': 'SI',
+    'البوسنة والهرسك': 'BA',
+    'الجبل الأسود': 'ME',
+    'مقدونيا': 'MK',
+    'أيسلندا': 'IS',
+    'أيرلندا': 'IE',
+    'لوكسمبورغ': 'LU',
+    'مالطا': 'MT',
+};
+
+const SPECIAL_COUNTRY_LABELS: Record<string, Record<'en' | 'es' | 'pt', string>> = {
+    'إنجلترا': { en: 'England', es: 'Inglaterra', pt: 'Inglaterra' },
+};
+
+const CITY_LABELS: Record<string, Record<'en' | 'es' | 'pt', string>> = {
+    'فاليتا': { en: 'Valletta', es: 'La Valeta', pt: 'Valeta' },
+    'بيركيركارا': { en: 'Birkirkara', es: 'Birkirkara', pt: 'Birkirkara' },
+    'مستون': { en: 'Mosta', es: 'Mosta', pt: 'Mosta' },
+    'زابار': { en: 'Zabbar', es: 'Zabbar', pt: 'Zabbar' },
+    'سليما': { en: 'Sliema', es: 'Sliema', pt: 'Sliema' },
+    'سانت جوليان': { en: "St Julian's", es: 'San Julián', pt: 'Saint Julian' },
+    slyma: { en: 'Sliema', es: 'Sliema', pt: 'Sliema' },
+    sliema: { en: 'Sliema', es: 'Sliema', pt: 'Sliema' },
+};
+
+const titleCaseLatin = (value: string) => value.replace(/\b\p{L}/gu, (char) => char.toLocaleUpperCase());
+
+const hasArabic = (value: string) => /[\u0600-\u06FF]/.test(value);
+
 export function PersonalTab() {
     const { t, locale } = useTranslation();
     const form = useFormContext<ProfileFormValues>();
@@ -119,12 +249,40 @@ export function PersonalTab() {
     const [age, setAge] = useState<number>(0);
     const [cities, setCities] = useState<string[]>([]);
     const isMinor = age > 0 && age < 18;
-    const localizeCountry = (country: string) => locale === 'ar'
-        ? country
-        : COUNTRY_TRANSLATIONS[country]?.[locale as 'en' | 'es' | 'pt'] ?? country;
-    const localizeCity = (city: string) => locale === 'ar'
-        ? city
-        : CITY_TRANSLATIONS_BY_LOCALE[locale as 'en' | 'es' | 'pt']?.[city] ?? transliterateArabic(city);
+    const localizeCountry = (country: string) => {
+        if (!country || locale === 'ar') return country;
+        const targetLocale = locale as 'en' | 'es' | 'pt';
+        const regionCode = COUNTRY_REGION_BY_NAME[country];
+        const specialLabel = SPECIAL_COUNTRY_LABELS[country]?.[targetLocale];
+
+        if (specialLabel) return specialLabel;
+
+        if (regionCode) {
+            try {
+                return new Intl.DisplayNames([targetLocale], { type: 'region' }).of(regionCode) || country;
+            } catch {
+                return COUNTRY_TRANSLATIONS[country]?.[targetLocale] ?? country;
+            }
+        }
+
+        return COUNTRY_TRANSLATIONS[country]?.[targetLocale] ?? country;
+    };
+
+    const localizeCity = (city: string) => {
+        if (!city || locale === 'ar') return city;
+        const targetLocale = locale as 'en' | 'es' | 'pt';
+        const normalizedCity = city.trim().toLowerCase();
+
+        return CITY_LABELS[city]?.[targetLocale]
+            ?? CITY_LABELS[normalizedCity]?.[targetLocale]
+            ?? CITY_TRANSLATIONS_BY_LOCALE[targetLocale]?.[city]
+            ?? (hasArabic(city) ? transliterateArabic(city) : titleCaseLatin(city.trim()));
+    };
+
+    const cityOptions = Array.from(new Set([
+        ...cities,
+        ...(form.getValues("city") ? [form.getValues("city") as string] : []),
+    ].filter(Boolean)));
     const supportedCountries = COUNTRIES_FROM_REGISTER
         .map((country) => country.name)
         .sort((a, b) => a.localeCompare(b));
@@ -417,7 +575,7 @@ export function PersonalTab() {
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent className="max-h-[300px]">
-                                        {cities.map((city) => (
+                                        {cityOptions.map((city) => (
                                             <SelectItem key={city} value={city}>{localizeCity(city)}</SelectItem>
                                         ))}
                                     </SelectContent>
