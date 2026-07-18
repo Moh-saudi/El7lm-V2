@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation, Locale } from '@/lib/i18n';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Check } from 'lucide-react';
@@ -31,10 +32,21 @@ export default function LanguageSwitcher({ variant = 'dark', compact = false }: 
   const { locale, changeLanguage } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, right: 0 });
   const currentLang = languages.find((lang) => lang.code === locale) || languages[0];
+
+  const toggleMenu = () => {
+    if (!isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPosition({ top: rect.bottom + 8, left: rect.left, right: window.innerWidth - rect.right });
+    }
+    setIsOpen((open) => !open);
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      if ((event.target as HTMLElement).closest('[data-language-menu]')) return;
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setIsOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -51,15 +63,15 @@ export default function LanguageSwitcher({ variant = 'dark', compact = false }: 
 
   return (
     <div className="relative z-[100] inline-block text-left" ref={dropdownRef}>
-      <button type="button" onClick={() => setIsOpen((open) => !open)} className={buttonClasses} aria-label={currentLang.localName} aria-expanded={isOpen}>
+      <button ref={buttonRef} type="button" onClick={toggleMenu} className={buttonClasses} aria-label={currentLang.localName} aria-expanded={isOpen}>
         <FlagIcon code={currentLang.code} className="h-4 w-6 shrink-0 sm:h-5 sm:w-7" />
         <span className="hidden text-xs font-medium sm:inline sm:text-sm">{currentLang.localName}</span>
         <ChevronDown className={`hidden h-4 w-4 text-slate-400 transition-transform duration-300 sm:block ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       <AnimatePresence>
-        {isOpen && (
-          <motion.div initial={{ opacity: 0, y: 8, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.95 }} transition={{ duration: 0.15, ease: 'easeOut' }} className={dropdownClasses}>
+        {isOpen && typeof document !== 'undefined' && createPortal(
+          <motion.div initial={{ opacity: 0, y: 8, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.95 }} transition={{ duration: 0.15, ease: 'easeOut' }} data-language-menu="true" className={dropdownClasses.replace('absolute top-full', 'fixed')} style={locale === 'ar' ? { top: menuPosition.top, left: menuPosition.left } : { top: menuPosition.top, right: menuPosition.right }}>
             <div className={`mb-1 px-3 py-1 text-xs font-semibold ${variant === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{locale === 'ar' ? 'اختر اللغة' : 'Select Language'}</div>
             <div className="flex flex-col gap-0.5">
               {languages.map((lang) => {
@@ -70,7 +82,7 @@ export default function LanguageSwitcher({ variant = 'dark', compact = false }: 
                 return <button key={lang.code} type="button" onClick={() => { changeLanguage(lang.code); setIsOpen(false); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-all duration-150 ${itemClasses}`} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}><span className="flex items-center gap-2.5"><FlagIcon code={lang.code} className="h-4 w-6 shrink-0" /><span className="flex flex-col items-start leading-tight"><span className="text-sm font-medium">{lang.localName}</span><span className={`text-[10px] font-normal ${variant === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>{lang.name}</span></span></span>{selected && <Check className="h-4 w-4 text-emerald-400" />}</button>;
               })}
             </div>
-          </motion.div>
+          </motion.div>, document.body
         )}
       </AnimatePresence>
     </div>
