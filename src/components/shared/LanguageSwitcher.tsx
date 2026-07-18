@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation, Locale } from '@/lib/i18n';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Check } from 'lucide-react';
 
 interface LanguageOption {
@@ -31,18 +30,46 @@ function FlagIcon({ code, className = 'h-4 w-6' }: { code: Locale; className?: s
 export default function LanguageSwitcher({ variant = 'dark', compact = false }: { variant?: 'light' | 'dark'; compact?: boolean }) {
   const { locale, changeLanguage } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, right: 0 });
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const currentLang = languages.find((lang) => lang.code === locale) || languages[0];
 
+  const updateMenuPosition = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const menuWidth = 192;
+    const viewportPadding = 8;
+    const preferredLeft = locale === 'ar' ? rect.left : rect.right - menuWidth;
+    const left = Math.min(
+      Math.max(preferredLeft, viewportPadding),
+      window.innerWidth - menuWidth - viewportPadding,
+    );
+    setMenuPosition({ top: rect.bottom + 8, left });
+  }, [locale]);
+
   const toggleMenu = () => {
-    if (!isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      setMenuPosition({ top: rect.bottom + 8, left: rect.left, right: window.innerWidth - rect.right });
-    }
+    updateMenuPosition();
     setIsOpen((open) => !open);
   };
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    updateMenuPosition();
+
+    const handleViewportChange = () => updateMenuPosition();
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', handleViewportChange, true);
+    return () => {
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('scroll', handleViewportChange, true);
+    };
+  }, [isOpen, updateMenuPosition]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -58,8 +85,8 @@ export default function LanguageSwitcher({ variant = 'dark', compact = false }: 
     : `flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 transition-all duration-200 hover:border-slate-350 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 ${compact ? 'px-2 py-1' : 'px-2 py-1 sm:px-3 sm:py-1.5'}`;
 
   const dropdownClasses = variant === 'dark'
-    ? `absolute top-full z-[9999] mt-2 w-48 rounded-xl border border-slate-700/80 bg-slate-950/90 p-1.5 shadow-2xl backdrop-blur-xl ${locale === 'ar' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'}`
-    : `absolute top-full z-[9999] mt-2 w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl ${locale === 'ar' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'}`;
+    ? 'fixed z-[2147483647] w-48 rounded-xl border border-slate-700/80 bg-slate-950/95 p-1.5 shadow-2xl backdrop-blur-xl'
+    : 'fixed z-[2147483647] w-48 rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl';
 
   return (
     <div className="relative z-[100] inline-block text-left" ref={dropdownRef}>
@@ -69,9 +96,8 @@ export default function LanguageSwitcher({ variant = 'dark', compact = false }: 
         <ChevronDown className={`hidden h-4 w-4 text-slate-400 transition-transform duration-300 sm:block ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
-      <AnimatePresence>
-        {isOpen && typeof document !== 'undefined' && createPortal(
-          <motion.div initial={{ opacity: 0, y: 8, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.95 }} transition={{ duration: 0.15, ease: 'easeOut' }} data-language-menu="true" className={dropdownClasses.replace('absolute top-full', 'fixed')} style={locale === 'ar' ? { top: menuPosition.top, left: menuPosition.left } : { top: menuPosition.top, right: menuPosition.right }}>
+      {isOpen && mounted && createPortal(
+          <div data-language-menu="true" className={dropdownClasses} style={{ top: menuPosition.top, left: menuPosition.left }}>
             <div className={`mb-1 px-3 py-1 text-xs font-semibold ${variant === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{locale === 'ar' ? 'اختر اللغة' : 'Select Language'}</div>
             <div className="flex flex-col gap-0.5">
               {languages.map((lang) => {
@@ -82,9 +108,8 @@ export default function LanguageSwitcher({ variant = 'dark', compact = false }: 
                 return <button key={lang.code} type="button" onClick={() => { changeLanguage(lang.code); setIsOpen(false); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-all duration-150 ${itemClasses}`} style={{ direction: locale === 'ar' ? 'rtl' : 'ltr' }}><span className="flex items-center gap-2.5"><FlagIcon code={lang.code} className="h-4 w-6 shrink-0" /><span className="flex flex-col items-start leading-tight"><span className="text-sm font-medium">{lang.localName}</span><span className={`text-[10px] font-normal ${variant === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>{lang.name}</span></span></span>{selected && <Check className="h-4 w-4 text-emerald-400" />}</button>;
               })}
             </div>
-          </motion.div>, document.body
+          </div>, document.body
         )}
-      </AnimatePresence>
     </div>
   );
 }
