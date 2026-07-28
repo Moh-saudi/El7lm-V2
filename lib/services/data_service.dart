@@ -15,6 +15,41 @@ class DataService {
   final AuthService _auth;
 
   Future<List<Player>> fetchPlayers() async {
+    if (AppConfig.hasSupabaseConfiguration && _auth.hasSession) {
+      try {
+        final client = Supabase.instance.client;
+        final playerRows = await client.from('players').select();
+        List<Map<String, dynamic>> userRows = const [];
+        try {
+          final rows = await client
+              .from('users')
+              .select()
+              .eq('accountType', 'player');
+          userRows = rows.map(Map<String, dynamic>.from).toList();
+        } catch (_) {
+          // Player records alone still contain the complete sports profile.
+        }
+        final merged = <String, Map<String, dynamic>>{};
+
+        for (final row in userRows) {
+          final data = row;
+          final id = '${data['id'] ?? data['uid'] ?? ''}';
+          if (id.isNotEmpty && !_isDeleted(data)) merged[id] = data;
+        }
+        for (final row in playerRows) {
+          final data = Map<String, dynamic>.from(row);
+          final id = '${data['id'] ?? data['uid'] ?? ''}';
+          if (id.isEmpty || _isDeleted(data)) continue;
+          merged[id] = _mergeMissing(data, merged[id]);
+        }
+        if (merged.isNotEmpty) {
+          return merged.values.map(Player.fromJson).toList();
+        }
+      } catch (_) {
+        // The public API remains a safe fallback if RLS limits full-table reads.
+      }
+    }
+
     final response = await _api.get('/api/players/videos');
     final data = response['data'];
     if (data is! List) return const [];
@@ -22,6 +57,47 @@ class DataService {
         .whereType<Map>()
         .map((row) => Player.fromJson(Map<String, dynamic>.from(row)))
         .toList();
+  }
+
+  Future<Player> fetchPlayerById(String playerId) async {
+    _requireSupabase();
+    final client = Supabase.instance.client;
+    Map<String, dynamic>? player;
+    Map<String, dynamic>? user;
+
+    player = await client
+        .from('players')
+        .select()
+        .eq('id', playerId)
+        .maybeSingle();
+    player ??= await client
+        .from('players')
+        .select()
+        .eq('uid', playerId)
+        .maybeSingle();
+    try {
+      user = await client
+          .from('users')
+          .select()
+          .eq('id', playerId)
+          .maybeSingle();
+      user ??= await client
+          .from('users')
+          .select()
+          .eq('uid', playerId)
+          .maybeSingle();
+    } catch (_) {
+      // The sports profile remains authoritative if users access is limited.
+    }
+
+    final data = _mergeMissing(player ?? const {}, user);
+    if (data.isEmpty) {
+      throw const ApiException(
+        'Player profile was not found.',
+        translationKey: 'playerNotFound',
+      );
+    }
+    return Player.fromJson(data);
   }
 
   Future<List<Opportunity>> fetchOpportunities() async {
@@ -200,6 +276,23 @@ class DataService {
     AccountType.trainer => 'trainers',
     AccountType.marketer => 'marketers',
   };
+
+  static bool _isDeleted(Map<String, dynamic> data) =>
+      data['isDeleted'] == true || data['is_deleted'] == true;
+
+  static Map<String, dynamic> _mergeMissing(
+    Map<String, dynamic> preferred,
+    Map<String, dynamic>? fallback,
+  ) {
+    final result = <String, dynamic>{...?fallback, ...preferred};
+    for (final entry in (fallback ?? const <String, dynamic>{}).entries) {
+      final current = result[entry.key];
+      if (current == null || '$current'.trim().isEmpty) {
+        result[entry.key] = entry.value;
+      }
+    }
+    return result;
+  }
 
   void _requireSupabase() {
     if (!AppConfig.hasSupabaseConfiguration) {
