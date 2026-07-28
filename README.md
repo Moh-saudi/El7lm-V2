@@ -31,11 +31,23 @@
 ```bash
 flutter pub get
 flutter run \
-  --dart-define=API_BASE_URL=https://el7lm.com \
-  --dart-define=WEB_BASE_URL=https://el7lm.com \
+  --dart-define=API_BASE_URL=https://www.el7lm.com \
+  --dart-define=WEB_BASE_URL=https://www.el7lm.com \
   --dart-define=SUPABASE_URL=https://PROJECT.supabase.co \
   --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
 ```
+
+للتجربة المحلية على Windows، يشغّل السكربت التالي نسخة الويب ويقرأ مفتاح
+Supabase العام تلقائيًا من ملف المنصة الرئيسي `.env.local` دون نسخه إلى
+مستودع تطبيق الموبايل:
+
+```powershell
+node .\tool\local_api_proxy.mjs
+.\tool\run_web_local.ps1
+```
+
+الوسيط المحلي مخصص للتطوير فقط؛ أما نسخة الإنتاج فتستخدم نطاق
+`https://www.el7lm.com` مباشرة.
 
 لا تضع `service_role` أو أي مفتاح سري في تطبيق الموبايل. المفتاح المسموح هو
 المفتاح العام `publishable` فقط.

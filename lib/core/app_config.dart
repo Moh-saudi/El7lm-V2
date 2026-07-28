@@ -3,11 +3,11 @@ class AppConfig {
 
   static const apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://el7lm.com',
+    defaultValue: 'https://www.el7lm.com',
   );
   static const webBaseUrl = String.fromEnvironment(
     'WEB_BASE_URL',
-    defaultValue: 'https://el7lm.com',
+    defaultValue: 'https://www.el7lm.com',
   );
   static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   static const supabasePublishableKey = String.fromEnvironment(
