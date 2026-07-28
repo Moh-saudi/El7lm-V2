@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'controllers/session_controller.dart';
 import 'core/app_theme.dart';
+import 'l10n/app_localizations.dart';
+import 'l10n/locale_controller.dart';
 import 'screens/auth/account_type_screen.dart';
 import 'screens/auth/phone_auth_screen.dart';
 import 'screens/home/app_shell.dart';
@@ -35,16 +38,19 @@ class _El7lmAppState extends State<El7lmApp> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: session,
+      animation: Listenable.merge([session, LocaleController.instance]),
       builder: (context, _) => MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'منصة الحلم',
+        onGenerateTitle: (context) => context.tr('appName'),
         theme: buildAppTheme(),
-        locale: const Locale('ar'),
-        builder: (context, child) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: child ?? const SizedBox.shrink(),
-        ),
+        locale: LocaleController.instance.locale,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         home: switch (session.stage) {
           AppStage.loading => const _BootScreen(),
           AppStage.onboarding => OnboardingScreen(

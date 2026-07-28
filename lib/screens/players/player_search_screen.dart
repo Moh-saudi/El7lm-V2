@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/player.dart';
 import '../../services/data_service.dart';
 import '../../widgets/async_state_view.dart';
@@ -36,9 +37,9 @@ class _PlayerSearchScreenState extends State<PlayerSearchScreen> {
           child: TextField(
             onChanged: (value) =>
                 setState(() => query = value.trim().toLowerCase()),
-            decoration: const InputDecoration(
-              hintText: 'ابحث بالاسم أو المركز أو الدولة',
-              prefixIcon: Icon(Icons.search),
+            decoration: InputDecoration(
+              hintText: context.tr('searchHint'),
+              prefixIcon: const Icon(Icons.search),
             ),
           ),
         ),
@@ -56,9 +57,9 @@ class _PlayerSearchScreenState extends State<PlayerSearchScreen> {
                 }).toList();
                 if (filtered.isEmpty) {
                   return ListView(
-                    children: const [
-                      SizedBox(height: 140),
-                      Center(child: Text('لا توجد نتائج مطابقة')),
+                    children: [
+                      const SizedBox(height: 140),
+                      Center(child: Text(context.tr('noSearchResults'))),
                     ],
                   );
                 }
@@ -115,7 +116,7 @@ class _PlayerCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  player.name,
+                  player.name.isEmpty ? context.tr('dreamPlayer') : player.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w900),
@@ -136,13 +137,15 @@ class _PlayerCard extends StatelessWidget {
                     const Icon(Icons.play_circle_outline, size: 16),
                     const SizedBox(width: 4),
                     Text(
-                      '${player.videos.length} فيديو',
+                      context.tr('videosCount', {
+                        'count': player.videos.length,
+                      }),
                       style: const TextStyle(fontSize: 11),
                     ),
                     const Spacer(),
                     if (player.age != null)
                       Text(
-                        '${player.age} سنة',
+                        context.tr('ageYears', {'age': player.age}),
                         style: const TextStyle(fontSize: 11),
                       ),
                   ],

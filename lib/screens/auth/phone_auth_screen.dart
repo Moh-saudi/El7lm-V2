@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/account_type.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/brand_logo.dart';
+import '../../widgets/language_switcher.dart';
 import 'otp_screen.dart';
 
 class PhoneAuthScreen extends StatefulWidget {
@@ -56,15 +58,15 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   Future<void> submit() async {
     final digits = phone.text.replaceAll(RegExp(r'\D'), '');
     if (digits.length < 7) {
-      setState(() => error = 'أدخل رقم هاتف صحيحًا.');
+      setState(() => error = context.tr('invalidPhone'));
       return;
     }
     if (registration && name.text.trim().length < 3) {
-      setState(() => error = 'أدخل الاسم الكامل.');
+      setState(() => error = context.tr('nameRequired'));
       return;
     }
     if (registration && !agreed) {
-      setState(() => error = 'يجب الموافقة على الشروط وسياسة الخصوصية.');
+      setState(() => error = context.tr('termsRequired'));
       return;
     }
 
@@ -106,12 +108,22 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
           padding: const EdgeInsets.all(20),
           children: [
             const SizedBox(height: 10),
-            const BrandLogo(size: 78),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                BrandLogo(size: 78),
+                SizedBox(width: 12),
+                LanguageSwitcher(compact: true),
+              ],
+            ),
             const SizedBox(height: 28),
             SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: false, label: Text('تسجيل الدخول')),
-                ButtonSegment(value: true, label: Text('إنشاء حساب')),
+              segments: [
+                ButtonSegment(value: false, label: Text(context.tr('login'))),
+                ButtonSegment(
+                  value: true,
+                  label: Text(context.tr('createAccount')),
+                ),
               ],
               selected: {registration},
               onSelectionChanged: (value) {
@@ -135,13 +147,15 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'متابعة كـ${widget.accountType.arabicName}',
+                    context.tr('continueAs', {
+                      'type': widget.accountType.localizedName(context),
+                    }),
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ),
                 TextButton(
                   onPressed: widget.onChangeAccountType,
-                  child: const Text('تغيير'),
+                  child: Text(context.tr('change')),
                 ),
               ],
             ),
@@ -150,9 +164,9 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
               TextField(
                 controller: name,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'الاسم الكامل',
-                  prefixIcon: Icon(Icons.person_outline),
+                decoration: InputDecoration(
+                  labelText: context.tr('fullName'),
+                  prefixIcon: const Icon(Icons.person_outline),
                 ),
               ),
               const SizedBox(height: 12),
@@ -164,7 +178,9 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                   width: 118,
                   child: DropdownButtonFormField<String>(
                     initialValue: countryCode,
-                    decoration: const InputDecoration(labelText: 'الدولة'),
+                    decoration: InputDecoration(
+                      labelText: context.tr('country'),
+                    ),
                     items: countries.entries
                         .map(
                           (entry) => DropdownMenuItem(
@@ -184,19 +200,19 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                     controller: phone,
                     keyboardType: TextInputType.phone,
                     textDirection: TextDirection.ltr,
-                    decoration: const InputDecoration(
-                      labelText: 'رقم الهاتف',
+                    decoration: InputDecoration(
+                      labelText: context.tr('phone'),
                       hintText: '1012345678',
-                      prefixIcon: Icon(Icons.phone_iphone),
+                      prefixIcon: const Icon(Icons.phone_iphone),
                     ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            const Text(
-              'سنرسل رمز تأكيد من 6 أرقام عبر WhatsApp أو SMS.',
-              style: TextStyle(color: AppColors.muted, fontSize: 12),
+            Text(
+              context.tr('otpDeliveryHelp'),
+              style: const TextStyle(color: AppColors.muted, fontSize: 12),
             ),
             if (registration) ...[
               const SizedBox(height: 12),
@@ -205,9 +221,9 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                 onChanged: (value) => setState(() => agreed = value ?? false),
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.leading,
-                title: const Text(
-                  'أوافق على الشروط وسياسة الخصوصية',
-                  style: TextStyle(fontSize: 13),
+                title: Text(
+                  context.tr('acceptTerms'),
+                  style: const TextStyle(fontSize: 13),
                 ),
               ),
             ],
@@ -225,13 +241,13 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.sms_outlined),
-              label: Text(loading ? 'جاري الإرسال...' : 'إرسال رمز التأكيد'),
+              label: Text(context.tr(loading ? 'sending' : 'sendOtp')),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'جميع الحسابات مجانية حاليًا.',
+            Text(
+              context.tr('allAccountsFree'),
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppColors.green,
                 fontWeight: FontWeight.w700,
               ),

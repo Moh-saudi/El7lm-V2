@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/account_type.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/brand_logo.dart';
@@ -54,7 +55,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
   Future<void> verify() async {
     if (code.text.trim().length != 6) {
-      setState(() => error = 'أدخل الرمز المكوّن من 6 أرقام.');
+      setState(() => error = context.tr('invalidOtp'));
       return;
     }
     setState(() {
@@ -103,14 +104,17 @@ class _OtpScreenState extends State<OtpScreen> {
           const BrandLogo(size: 68),
           const SizedBox(height: 30),
           Text(
-            'تأكيد رقم الهاتف',
+            context.tr('verifyPhone'),
             textAlign: TextAlign.center,
             style: Theme.of(
               context,
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 8),
-          Text('أرسلنا الرمز إلى ${widget.phone}', textAlign: TextAlign.center),
+          Text(
+            context.tr('otpSentTo', {'phone': widget.phone}),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 26),
           TextField(
             controller: code,
@@ -141,15 +145,15 @@ class _OtpScreenState extends State<OtpScreen> {
           const SizedBox(height: 18),
           FilledButton(
             onPressed: loading ? null : verify,
-            child: Text(loading ? 'جاري التحقق...' : 'تأكيد ومتابعة'),
+            child: Text(context.tr(loading ? 'verifying' : 'verifyContinue')),
           ),
           const SizedBox(height: 12),
           TextButton(
             onPressed: remaining == 0 ? resend : null,
             child: Text(
               remaining == 0
-                  ? 'إعادة إرسال الرمز'
-                  : 'إعادة الإرسال بعد $remaining ث',
+                  ? context.tr('resendOtp')
+                  : context.tr('resendAfter', {'seconds': remaining}),
             ),
           ),
         ],

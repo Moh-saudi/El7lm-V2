@@ -27,8 +27,8 @@ class Opportunity {
     final positionData = json['positions'] ?? json['targetPositions'];
     return Opportunity(
       id: '${json['id'] ?? ''}',
-      title: '${json['title'] ?? 'فرصة رياضية'}',
-      organizerName: '${json['organizerName'] ?? 'جهة موثقة'}',
+      title: '${json['title'] ?? ''}',
+      organizerName: '${json['organizerName'] ?? ''}',
       description: '${json['description'] ?? ''}',
       country: '${json['country'] ?? ''}',
       city: '${json['city'] ?? ''}',

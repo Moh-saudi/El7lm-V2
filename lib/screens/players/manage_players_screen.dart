@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/account_type.dart';
 import '../../services/data_service.dart';
 
@@ -35,18 +36,22 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
   Future<void> createInvite() async {
     setState(() => generating = true);
     try {
+      final organizationName = widget.organizationName.trim().isEmpty
+          ? widget.accountType.localizedName(context)
+          : widget.organizationName.trim();
       final result = await widget.dataService.createInviteCode(
         accountType: widget.accountType,
-        organizationName: widget.organizationName.trim().isEmpty
-            ? widget.accountType.arabicName
-            : widget.organizationName.trim(),
+        organizationName: organizationName,
+        description: context.tr('inviteDescription', {
+          'name': organizationName,
+        }),
       );
       setState(() => invitation = result);
     } catch (exception) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('$exception')));
+      ).showSnackBar(SnackBar(content: Text(context.errorText(exception))));
     } finally {
       if (mounted) setState(() => generating = false);
     }
@@ -72,18 +77,18 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.qr_code_2_rounded,
                         color: AppColors.green,
                         size: 32,
                       ),
-                      SizedBox(width: 10),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'دعوة لاعب جديد',
-                          style: TextStyle(
+                          context.tr('invitePlayer'),
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w900,
                           ),
@@ -92,16 +97,18 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'أنشئ كودًا فريدًا وأرسله للاعب. بعد تسجيله وطلب الانضمام سيظهر ضمن لاعبيك.',
-                    style: TextStyle(color: AppColors.muted, height: 1.6),
+                  Text(
+                    context.tr('inviteHelp'),
+                    style: const TextStyle(color: AppColors.muted, height: 1.6),
                   ),
                   const SizedBox(height: 16),
                   FilledButton.icon(
                     onPressed: generating ? null : createInvite,
                     icon: const Icon(Icons.add_link),
                     label: Text(
-                      generating ? 'جاري الإنشاء...' : 'إنشاء كود دعوة',
+                      context.tr(
+                        generating ? 'generating' : 'createInviteCode',
+                      ),
                     ),
                   ),
                   if (invitation != null) ...[
@@ -115,9 +122,9 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
                       ),
                       child: Column(
                         children: [
-                          const Text(
-                            'كود الدعوة',
-                            style: TextStyle(fontSize: 12),
+                          Text(
+                            context.tr('inviteCode'),
+                            style: const TextStyle(fontSize: 12),
                           ),
                           SelectableText(
                             '${invitation!['referralCode']}',
@@ -137,13 +144,13 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
                               );
                               if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('تم نسخ رابط الدعوة.'),
+                                SnackBar(
+                                  content: Text(context.tr('inviteCopied')),
                                 ),
                               );
                             },
                             icon: const Icon(Icons.copy),
-                            label: const Text('نسخ رابط الدعوة'),
+                            label: Text(context.tr('copyInvite')),
                           ),
                         ],
                       ),
@@ -155,7 +162,7 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
           ),
           const SizedBox(height: 20),
           Text(
-            'اللاعبون التابعون',
+            context.tr('managedPlayers'),
             style: Theme.of(
               context,
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -174,24 +181,25 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
                 return Card(
                   child: Padding(
                     padding: const EdgeInsets.all(18),
-                    child: Text('${snapshot.error}'),
+                    child: Text(context.errorText(snapshot.error)),
                   ),
                 );
               }
               final players = snapshot.data ?? const [];
               if (players.isEmpty) {
-                return const Card(
+                return Card(
                   child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(
-                      child: Text('لا يوجد لاعبون مرتبطون بهذا الحساب بعد.'),
-                    ),
+                    padding: const EdgeInsets.all(24),
+                    child: Center(child: Text(context.tr('noManagedPlayers'))),
                   ),
                 );
               }
               return Column(
                 children: players.map((player) {
-                  final name = player['full_name'] ?? player['name'] ?? 'لاعب';
+                  final name =
+                      player['full_name'] ??
+                      player['name'] ??
+                      context.tr('player');
                   final position =
                       player['primary_position'] ?? player['position'] ?? '';
                   return Card(

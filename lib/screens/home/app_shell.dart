@@ -3,8 +3,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_config.dart';
 import '../../core/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/account_type.dart';
 import '../../services/data_service.dart';
+import '../../widgets/language_switcher.dart';
 import '../cinema/player_cinema_screen.dart';
 import '../opportunities/opportunities_screen.dart';
 import '../players/manage_players_screen.dart';
@@ -33,10 +35,11 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int selectedIndex = 0;
 
-  List<_Destination> get destinations => widget.accountType.isPlayer
+  List<_Destination> destinations(BuildContext context) =>
+      widget.accountType.isPlayer
       ? [
           _Destination(
-            'الرئيسية',
+            context.tr('home'),
             Icons.home_rounded,
             DashboardScreen(
               accountType: widget.accountType,
@@ -45,29 +48,29 @@ class _AppShellState extends State<AppShell> {
             ),
           ),
           _Destination(
-            'اللاعبون',
+            context.tr('players'),
             Icons.groups_rounded,
             PlayerSearchScreen(dataService: widget.dataService),
           ),
           _Destination(
-            'السينما',
+            context.tr('cinema'),
             Icons.smart_display_rounded,
             PlayerCinemaScreen(dataService: widget.dataService),
           ),
           _Destination(
-            'الفرص',
+            context.tr('opportunities'),
             Icons.explore_rounded,
             OpportunitiesScreen(dataService: widget.dataService),
           ),
           _Destination(
-            'ملفي',
+            context.tr('myProfile'),
             Icons.person_rounded,
             PlayerProfileScreen(dataService: widget.dataService),
           ),
         ]
       : [
           _Destination(
-            'الرئيسية',
+            context.tr('home'),
             Icons.home_rounded,
             DashboardScreen(
               accountType: widget.accountType,
@@ -76,7 +79,7 @@ class _AppShellState extends State<AppShell> {
             ),
           ),
           _Destination(
-            'إدارة اللاعبين',
+            context.tr('managePlayers'),
             Icons.group_add_rounded,
             ManagePlayersScreen(
               accountType: widget.accountType,
@@ -90,15 +93,15 @@ class _AppShellState extends State<AppShell> {
     final uri = Uri.parse('${AppConfig.webBaseUrl}$path');
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
         mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر فتح صفحة الويب الآن.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('openWebFailed'))));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final items = destinations;
+    final items = destinations(context);
     if (selectedIndex >= items.length) selectedIndex = 0;
     return Scaffold(
       appBar: AppBar(
@@ -107,9 +110,10 @@ class _AppShellState extends State<AppShell> {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
+          const LanguageSwitcher(compact: true),
           Builder(
             builder: (context) => IconButton(
-              tooltip: 'كل الأقسام',
+              tooltip: context.tr('allSections'),
               onPressed: () => Scaffold.of(context).openEndDrawer(),
               icon: const Icon(Icons.grid_view_rounded),
             ),
@@ -166,13 +170,13 @@ class _WebMenuDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     final base = '/dashboard/${accountType.value}';
     final links = [
-      ('الرسائل', Icons.chat_bubble_outline, '$base/messages'),
-      ('الإشعارات', Icons.notifications_none, '$base/notifications'),
-      ('التقارير والإحصاءات', Icons.analytics_outlined, '$base/reports'),
-      ('البطولات', Icons.emoji_events_outlined, '$base/tournaments'),
-      ('الأكاديمية', Icons.school_outlined, '$base/academy'),
-      ('المتجر', Icons.storefront_outlined, '$base/store'),
-      ('الإعدادات', Icons.settings_outlined, '$base/settings'),
+      ('messages', Icons.chat_bubble_outline, '$base/messages'),
+      ('notifications', Icons.notifications_none, '$base/notifications'),
+      ('reports', Icons.analytics_outlined, '$base/reports'),
+      ('tournaments', Icons.emoji_events_outlined, '$base/tournaments'),
+      ('academy', Icons.school_outlined, '$base/academy'),
+      ('store', Icons.storefront_outlined, '$base/store'),
+      ('settings', Icons.settings_outlined, '$base/settings'),
     ];
 
     return Drawer(
@@ -184,21 +188,21 @@ class _WebMenuDrawer extends StatelessWidget {
                 children: [
                   Image.asset('assets/images/el7lm-logo.png', width: 68),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'كل أقسام الحلم',
-                          style: TextStyle(
+                          context.tr('allDreamSections'),
+                          style: const TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: 18,
                           ),
                         ),
                         Text(
-                          'تُفتح الأقسام التالية على الويب مؤقتًا',
-                          style: TextStyle(
+                          context.tr('webTemporary'),
+                          style: const TextStyle(
                             color: AppColors.muted,
                             fontSize: 12,
                           ),
@@ -216,7 +220,7 @@ class _WebMenuDrawer extends StatelessWidget {
                   ...links.map(
                     (link) => ListTile(
                       leading: Icon(link.$2),
-                      title: Text(link.$1),
+                      title: Text(context.tr(link.$1)),
                       trailing: const Icon(Icons.open_in_new, size: 17),
                       onTap: () {
                         Navigator.pop(context);
@@ -230,7 +234,7 @@ class _WebMenuDrawer extends StatelessWidget {
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('تسجيل الخروج'),
+              title: Text(context.tr('signOut')),
               onTap: () async {
                 Navigator.pop(context);
                 await onSignOut();

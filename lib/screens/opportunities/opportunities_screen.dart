@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/opportunity.dart';
 import '../../services/data_service.dart';
 import '../../widgets/async_state_view.dart';
@@ -29,7 +30,7 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('تم إرسال طلبك بنجاح.')));
+      ).showSnackBar(SnackBar(content: Text(context.tr('applicationSent'))));
     } catch (exception) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -44,7 +45,7 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
       future: future,
       builder: (context, opportunities) {
         if (opportunities.isEmpty) {
-          return const Center(child: Text('لا توجد فرص متاحة الآن'));
+          return Center(child: Text(context.tr('noOpportunities')));
         }
         return ListView.separated(
           padding: const EdgeInsets.all(16),
@@ -74,14 +75,18 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                item.title,
+                                item.title.isEmpty
+                                    ? context.tr('sportsOpportunity')
+                                    : item.title,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 16,
                                 ),
                               ),
                               Text(
-                                item.organizerName,
+                                item.organizerName.isEmpty
+                                    ? context.tr('verifiedOrganization')
+                                    : item.organizerName,
                                 style: const TextStyle(
                                   color: AppColors.muted,
                                   fontSize: 12,
@@ -119,7 +124,7 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
                     const SizedBox(height: 16),
                     FilledButton(
                       onPressed: () => apply(item),
-                      child: const Text('التقديم على الفرصة'),
+                      child: Text(context.tr('applyOpportunity')),
                     ),
                   ],
                 ),

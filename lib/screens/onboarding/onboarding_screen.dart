@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../widgets/brand_logo.dart';
+import '../../widgets/language_switcher.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key, required this.onDone});
@@ -19,28 +21,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   static const items = [
     (
       icon: Icons.auto_awesome,
-      title: 'موهبتك تستحق أن تُرى',
-      text: 'ابنِ ملفًا رياضيًا احترافيًا يضع مهاراتك أمام الجهات المناسبة.',
+      titleKey: 'onboarding1Title',
+      textKey: 'onboarding1Text',
     ),
     (
       icon: Icons.smart_display_rounded,
-      title: 'سينما اللاعبين',
-      text: 'اعرض أفضل لقطاتك في تجربة سريعة وممتعة صُممت لاكتشاف المواهب.',
+      titleKey: 'onboarding2Title',
+      textKey: 'onboarding2Text',
     ),
     (
       icon: Icons.travel_explore,
-      title: 'اكتشف فرصتك التالية',
-      text: 'تصفح التجارب والاختبارات والفرص، ثم قدّم من هاتفك في خطوات واضحة.',
+      titleKey: 'onboarding3Title',
+      textKey: 'onboarding3Text',
     ),
     (
       icon: Icons.groups_rounded,
-      title: 'مكان واحد لكل المنظومة',
-      text: 'لاعبون وأندية وأكاديميات ومدربون ووكلاء يعملون ببيانات موحدة.',
+      titleKey: 'onboarding4Title',
+      textKey: 'onboarding4Text',
     ),
     (
       icon: Icons.verified_user_rounded,
-      title: 'رحلتك تبدأ بأمان',
-      text: 'حساب واحد، تحقق برقم الهاتف، وبياناتك متزامنة مع منصة الحلم.',
+      titleKey: 'onboarding5Title',
+      textKey: 'onboarding5Text',
     ),
   ];
 
@@ -67,9 +69,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const BrandLogo(size: 52, showName: false),
-                  TextButton(
-                    onPressed: widget.onDone,
-                    child: const Text('تخطي'),
+                  Row(
+                    children: [
+                      const LanguageSwitcher(compact: true),
+                      TextButton(
+                        onPressed: widget.onDone,
+                        child: Text(context.tr('skip')),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -110,14 +117,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                         const SizedBox(height: 42),
                         Text(
-                          item.title,
+                          context.tr(item.titleKey),
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.headlineSmall
                               ?.copyWith(fontWeight: FontWeight.w900),
                         ),
                         const SizedBox(height: 14),
                         Text(
-                          item.text,
+                          context.tr(item.textKey),
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodyLarge
                               ?.copyWith(color: AppColors.muted, height: 1.8),
@@ -150,7 +157,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               padding: const EdgeInsets.all(20),
               child: FilledButton(
                 onPressed: next,
-                child: Text(index == items.length - 1 ? 'ابدأ الآن' : 'التالي'),
+                child: Text(
+                  context.tr(index == items.length - 1 ? 'startNow' : 'next'),
+                ),
               ),
             ),
           ],

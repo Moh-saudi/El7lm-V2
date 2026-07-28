@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key, this.size = 92, this.showName = true});
 
@@ -20,7 +22,7 @@ class BrandLogo extends StatelessWidget {
         if (showName) ...[
           const SizedBox(height: 8),
           Text(
-            'منصة الحلم',
+            context.tr('appName'),
             style: Theme.of(
               context,
             ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),

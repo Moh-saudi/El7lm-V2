@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/account_type.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -36,8 +37,8 @@ class DashboardScreen extends StatelessWidget {
             children: [
               Text(
                 displayName.isEmpty
-                    ? 'أهلًا بك في الحلم'
-                    : 'أهلًا $displayName',
+                    ? context.tr('welcomeDream')
+                    : context.tr('welcomeName', {'name': displayName}),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -47,8 +48,8 @@ class DashboardScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 player
-                    ? 'كل خطوة تكملها في ملفك تقرّب موهبتك من الفرصة المناسبة.'
-                    : 'أدر لاعبيك وشارك كود الدعوة من مكان واحد.',
+                    ? context.tr('playerWelcomeText')
+                    : context.tr('managerWelcomeText'),
                 style: const TextStyle(color: Colors.white70, height: 1.6),
               ),
               const SizedBox(height: 18),
@@ -59,14 +60,16 @@ class DashboardScreen extends StatelessWidget {
                   minimumSize: const Size(0, 44),
                 ),
                 onPressed: () => onNavigate(player ? 4 : 1),
-                child: Text(player ? 'أكمل ملفك الرياضي' : 'إدارة اللاعبين'),
+                child: Text(
+                  context.tr(player ? 'completeProfile' : 'managePlayers'),
+                ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 20),
         Text(
-          player ? 'ابدأ من هنا' : 'لوحة الحساب',
+          context.tr(player ? 'startHere' : 'accountDashboard'),
           style: Theme.of(
             context,
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -82,26 +85,26 @@ class DashboardScreen extends StatelessWidget {
             childAspectRatio: 1.15,
             children: [
               _QuickCard(
-                title: 'البحث عن لاعبين',
-                subtitle: 'اكتشف المواهب',
+                title: context.tr('searchPlayers'),
+                subtitle: context.tr('discoverTalent'),
                 icon: Icons.groups_rounded,
                 onTap: () => onNavigate(1),
               ),
               _QuickCard(
-                title: 'سينما اللاعبين',
-                subtitle: 'شاهد أبرز اللقطات',
+                title: context.tr('onboarding2Title'),
+                subtitle: context.tr('watchHighlights'),
                 icon: Icons.smart_display_rounded,
                 onTap: () => onNavigate(2),
               ),
               _QuickCard(
-                title: 'الفرص',
-                subtitle: 'قدّم الآن',
+                title: context.tr('opportunities'),
+                subtitle: context.tr('applyNow'),
                 icon: Icons.explore_rounded,
                 onTap: () => onNavigate(3),
               ),
               _QuickCard(
-                title: 'ملفي الرياضي',
-                subtitle: 'السيرة والبيانات',
+                title: context.tr('sportsProfile'),
+                subtitle: context.tr('cvAndData'),
                 icon: Icons.badge_outlined,
                 onTap: () => onNavigate(4),
               ),
@@ -109,8 +112,8 @@ class DashboardScreen extends StatelessWidget {
           )
         else
           _QuickCard(
-            title: 'إدارة اللاعبين',
-            subtitle: 'قائمة اللاعبين وإنشاء كود دعوة جديد',
+            title: context.tr('managePlayers'),
+            subtitle: context.tr('managePlayersSubtitle'),
             icon: Icons.group_add_rounded,
             onTap: () => onNavigate(1),
           ),
@@ -132,17 +135,20 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'كل المزايا مجانية الآن',
-                        style: TextStyle(fontWeight: FontWeight.w800),
+                        context.tr('allFeaturesFree'),
+                        style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                       Text(
-                        'لا توجد رسوم على أي نوع حساب في هذه المرحلة.',
-                        style: TextStyle(color: AppColors.muted, fontSize: 12),
+                        context.tr('noFees'),
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),

@@ -23,9 +23,8 @@ class Player {
     final rawVideos = json['videos'];
     return Player(
       id: '${json['id'] ?? json['uid'] ?? ''}',
-      name: '${json['full_name'] ?? json['name'] ?? 'لاعب الحلم'}',
-      position:
-          '${json['primary_position'] ?? json['position'] ?? 'لاعب كرة قدم'}',
+      name: '${json['full_name'] ?? json['name'] ?? ''}',
+      position: '${json['primary_position'] ?? json['position'] ?? ''}',
       country: '${json['country'] ?? json['nationality'] ?? ''}',
       age: _asInt(json['age']),
       imageUrl:
@@ -36,8 +35,7 @@ class Player {
                 .map(
                   (item) => PlayerVideo.fromJson(
                     Map<String, dynamic>.from(item),
-                    playerName:
-                        '${json['full_name'] ?? json['name'] ?? 'لاعب الحلم'}',
+                    playerName: '${json['full_name'] ?? json['name'] ?? ''}',
                   ),
                 )
                 .toList()
@@ -77,7 +75,7 @@ class PlayerVideo {
     url: '${json['url'] ?? json['video_url'] ?? json['videoUrl'] ?? ''}',
     thumbnailUrl:
         '${json['thumbnail'] ?? json['thumbnailUrl'] ?? json['poster'] ?? ''}',
-    title: '${json['title'] ?? json['description'] ?? 'مهارة جديدة'}',
+    title: '${json['title'] ?? json['description'] ?? ''}',
     playerName: playerName,
     rawPayload: Map<String, dynamic>.from(json),
   );

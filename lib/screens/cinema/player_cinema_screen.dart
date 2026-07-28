@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/player.dart';
 import '../../services/data_service.dart';
 import '../../widgets/async_state_view.dart';
@@ -34,10 +35,10 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
         future: future,
         builder: (context, videos) {
           if (videos.isEmpty) {
-            return const Center(
+            return Center(
               child: Text(
-                'لا توجد فيديوهات منشورة حاليًا',
-                style: TextStyle(color: Colors.white),
+                context.tr('noVideos'),
+                style: const TextStyle(color: Colors.white),
               ),
             );
           }
@@ -145,7 +146,9 @@ class _CinemaVideoState extends State<_CinemaVideo> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                widget.video.playerName,
+                widget.video.playerName.isEmpty
+                    ? context.tr('dreamPlayer')
+                    : widget.video.playerName,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
@@ -154,7 +157,9 @@ class _CinemaVideoState extends State<_CinemaVideo> {
               ),
               const SizedBox(height: 5),
               Text(
-                widget.video.title,
+                widget.video.title.isEmpty
+                    ? context.tr('newSkill')
+                    : widget.video.title,
                 style: const TextStyle(color: Colors.white70),
               ),
             ],
@@ -165,9 +170,18 @@ class _CinemaVideoState extends State<_CinemaVideo> {
           bottom: 28,
           child: Column(
             children: [
-              _CinemaAction(icon: Icons.favorite_border, label: 'إعجاب'),
-              _CinemaAction(icon: Icons.bookmark_border, label: 'حفظ'),
-              _CinemaAction(icon: Icons.share_outlined, label: 'مشاركة'),
+              _CinemaAction(
+                icon: Icons.favorite_border,
+                label: context.tr('like'),
+              ),
+              _CinemaAction(
+                icon: Icons.bookmark_border,
+                label: context.tr('save'),
+              ),
+              _CinemaAction(
+                icon: Icons.share_outlined,
+                label: context.tr('share'),
+              ),
             ],
           ),
         ),

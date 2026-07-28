@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
+
 class AsyncStateView<T> extends StatelessWidget {
   const AsyncStateView({
     super.key,
     required this.future,
     required this.builder,
-    this.emptyMessage = 'لا توجد بيانات حاليًا',
+    this.emptyMessage,
   });
 
   final Future<T> future;
   final Widget Function(BuildContext context, T data) builder;
-  final String emptyMessage;
+  final String? emptyMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +32,7 @@ class AsyncStateView<T> extends StatelessWidget {
                   const Icon(Icons.cloud_off_outlined, size: 44),
                   const SizedBox(height: 12),
                   Text(
-                    '${snapshot.error}',
+                    context.errorText(snapshot.error),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),

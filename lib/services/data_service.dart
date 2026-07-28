@@ -147,12 +147,18 @@ class DataService {
   Future<Map<String, dynamic>> createInviteCode({
     required AccountType accountType,
     required String organizationName,
+    required String description,
   }) async {
     _requireSupabase();
     final client = Supabase.instance.client;
     // RLS requires organizationId to match auth.uid().
     final organizationId = _auth.authUserId;
-    if (organizationId == null) throw const ApiException('تعذر تحديد الحساب.');
+    if (organizationId == null) {
+      throw const ApiException(
+        'Could not identify the account.',
+        translationKey: 'accountUnavailable',
+      );
+    }
 
     final prefix = switch (accountType) {
       AccountType.club => 'CLB',
@@ -176,7 +182,7 @@ class DataService {
       'organizationName': organizationName,
       'referralCode': code,
       'inviteLink': '${AppConfig.webBaseUrl}/join/org/$code',
-      'description': 'انضم إلى $organizationName',
+      'description': description,
       'isActive': true,
       'currentUsage': 0,
       'createdAt': now,
@@ -198,7 +204,8 @@ class DataService {
   void _requireSupabase() {
     if (!AppConfig.hasSupabaseConfiguration) {
       throw const ApiException(
-        'أضف SUPABASE_URL وSUPABASE_PUBLISHABLE_KEY عند تشغيل التطبيق.',
+        'Database connection settings are incomplete.',
+        translationKey: 'supabaseMissing',
       );
     }
   }

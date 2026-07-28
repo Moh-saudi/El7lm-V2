@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/account_type.dart';
 import '../../models/user_profile.dart';
 import '../../services/data_service.dart';
@@ -33,7 +34,7 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
         }
         if (snapshot.hasError) {
           return _ProfileError(
-            message: '${snapshot.error}',
+            message: context.errorText(snapshot.error),
             onRetry: () => setState(
               () =>
                   future = widget.dataService.fetchProfile(AccountType.player),
@@ -124,7 +125,9 @@ class _ProfileFormState extends State<_ProfileForm> {
       } else if (_numericFields.contains(entry.key)) {
         result[entry.key] = num.tryParse(value);
       } else if (_booleanFields.contains(entry.key)) {
-        result[entry.key] = value == 'true' || value == 'نعم';
+        result[entry.key] =
+            value.toLowerCase() == 'true' ||
+            value.toLowerCase() == context.tr('yes').toLowerCase();
       } else {
         result[entry.key] = value;
       }
@@ -146,9 +149,9 @@ class _ProfileFormState extends State<_ProfileForm> {
       );
       widget.onSaved(updated);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ الملف الرياضي بنجاح.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('profileSaved'))));
     } catch (exception) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -196,15 +199,15 @@ class _ProfileFormState extends State<_ProfileForm> {
                         Text(
                           controllers['name']?.text.isNotEmpty == true
                               ? controllers['name']!.text
-                              : 'ملف اللاعب',
+                              : context.tr('playerProfile'),
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const Text(
-                          'السيرة الذاتية والبيانات الرياضية',
-                          style: TextStyle(
+                        Text(
+                          context.tr('profileSubtitle'),
+                          style: const TextStyle(
                             color: AppColors.muted,
                             fontSize: 12,
                           ),
@@ -217,18 +220,18 @@ class _ProfileFormState extends State<_ProfileForm> {
             ),
           ),
           const SizedBox(height: 14),
-          const Card(
+          Card(
             child: Padding(
-              padding: EdgeInsets.all(14),
+              padding: const EdgeInsets.all(14),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.sync, color: AppColors.green),
-                  SizedBox(width: 10),
+                  const Icon(Icons.sync, color: AppColors.green),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'لا يحذف التطبيق أي حقول لا يعرضها. تُحفظ بيانات الويب الأصلية وتُدمج معها التعديلات فقط.',
-                      style: TextStyle(fontSize: 12, height: 1.5),
+                      context.tr('preserveFields'),
+                      style: const TextStyle(fontSize: 12, height: 1.5),
                     ),
                   ),
                 ],
@@ -243,7 +246,10 @@ class _ProfileFormState extends State<_ProfileForm> {
                 initiallyExpanded: section == profileSections.first,
                 leading: Icon(section.icon, color: AppColors.green),
                 title: Text(
-                  section.title,
+                  context.trOr(
+                    'profile.section.${section.fields.first.key}',
+                    section.title,
+                  ),
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
                 childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
@@ -260,14 +266,22 @@ class _ProfileFormState extends State<_ProfileForm> {
                                   field.keyboardType ==
                                       TextInputType.emailAddress
                               ? TextDirection.ltr
-                              : TextDirection.rtl,
+                              : null,
                           decoration: InputDecoration(
-                            labelText: field.label,
-                            helperText: field.helper,
+                            labelText: context.trOr(
+                              'profile.field.${field.key}',
+                              field.label,
+                            ),
+                            helperText: field.helper == null
+                                ? null
+                                : context.trOr(
+                                    'profile.helper.${field.key}',
+                                    field.helper!,
+                                  ),
                           ),
                           validator: field.required
                               ? (value) => value == null || value.trim().isEmpty
-                                    ? 'هذا الحقل مطلوب'
+                                    ? context.tr('requiredField')
                                     : null
                               : null,
                         ),
@@ -286,7 +300,7 @@ class _ProfileFormState extends State<_ProfileForm> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.save_outlined),
-            label: Text(saving ? 'جاري الحفظ...' : 'حفظ كل التغييرات'),
+            label: Text(context.tr(saving ? 'saving' : 'saveAll')),
           ),
         ],
       ),
@@ -312,10 +326,7 @@ class _ProfileError extends StatelessWidget {
             const SizedBox(height: 12),
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 16),
-            FilledButton(
-              onPressed: onRetry,
-              child: const Text('إعادة المحاولة'),
-            ),
+            FilledButton(onPressed: onRetry, child: Text(context.tr('retry'))),
           ],
         ),
       ),

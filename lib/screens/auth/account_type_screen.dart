@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/account_type.dart';
 import '../../widgets/brand_logo.dart';
+import '../../widgets/language_switcher.dart';
 
 class AccountTypeScreen extends StatelessWidget {
   const AccountTypeScreen({super.key, required this.onSelected});
@@ -15,10 +17,20 @@ class AccountTypeScreen extends StatelessWidget {
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            const SliverToBoxAdapter(
+            SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.only(top: 24),
-                child: BrandLogo(size: 74),
+                padding: const EdgeInsets.only(top: 16),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const BrandLogo(size: 74),
+                    const PositionedDirectional(
+                      end: 16,
+                      top: 0,
+                      child: LanguageSwitcher(compact: true),
+                    ),
+                  ],
+                ),
               ),
             ),
             SliverToBoxAdapter(
@@ -28,14 +40,17 @@ class AccountTypeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'ما نوع حسابك؟',
+                      context.tr('accountTypeTitle'),
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(fontWeight: FontWeight.w900),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
-                      'سنجهز لك تجربة تناسب دورك، ويمكنك الوصول إلى بقية أقسام الويب من داخل التطبيق.',
-                      style: TextStyle(color: AppColors.muted, height: 1.6),
+                    Text(
+                      context.tr('accountTypeText'),
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        height: 1.6,
+                      ),
                     ),
                   ],
                 ),
@@ -71,14 +86,14 @@ class AccountTypeScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    type.arabicName,
+                                    type.localizedName(context),
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 16,
                                     ),
                                   ),
                                   Text(
-                                    type.description,
+                                    type.localizedDescription(context),
                                     style: const TextStyle(
                                       color: AppColors.muted,
                                       fontSize: 12,

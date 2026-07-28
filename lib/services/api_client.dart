@@ -6,10 +6,11 @@ import 'package:http/http.dart' as http;
 import '../core/app_config.dart';
 
 class ApiException implements Exception {
-  const ApiException(this.message, {this.statusCode});
+  const ApiException(this.message, {this.statusCode, this.translationKey});
 
   final String message;
   final int? statusCode;
+  final String? translationKey;
 
   @override
   String toString() => message;
@@ -64,8 +65,9 @@ class ApiClient {
       decoded = jsonDecode(utf8.decode(response.bodyBytes));
     } catch (_) {
       throw ApiException(
-        'تعذر قراءة استجابة الخادم.',
+        'Could not read the server response.',
         statusCode: response.statusCode,
+        translationKey: 'serverReadError',
       );
     }
     final payload = decoded is Map
@@ -73,8 +75,11 @@ class ApiClient {
         : <String, dynamic>{'data': decoded};
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException(
-        '${payload['error'] ?? payload['message'] ?? 'حدث خطأ في الاتصال'}',
+        '${payload['error'] ?? payload['message'] ?? 'A connection error occurred'}',
         statusCode: response.statusCode,
+        translationKey: payload['error'] == null && payload['message'] == null
+            ? 'connectionError'
+            : null,
       );
     }
     return payload;
