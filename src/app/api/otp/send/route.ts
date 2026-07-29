@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sendOTP, SendOTPOptions } from '@/lib/otp/unified-otp-service';
+import { isPlayReviewPhone } from '@/lib/otp/play-review-otp';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,6 +25,14 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'رقم الهاتف مطلوب'
       }, { status: 400 });
+    }
+
+    if (await isPlayReviewPhone(phoneNumber)) {
+      return NextResponse.json({
+        success: true,
+        message: 'Use the permanent review code supplied in Google Play Console.',
+        channel: 'review',
+      });
     }
 
     const options: SendOTPOptions = {

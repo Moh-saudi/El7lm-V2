@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyOTPInFirestore } from '@/lib/otp/firestore-otp-manager';
+import { verifyPlayReviewOTP } from '@/lib/otp/play-review-otp';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber, generatePhoneVariants } from '@/lib/validation/phone-validation';
 
@@ -19,7 +20,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. التحقق من OTP
-    const otpResult = await verifyOTPInFirestore(phoneNumber, otp);
+    const reviewResult = await verifyPlayReviewOTP(phoneNumber, otp);
+    const otpResult = reviewResult.isReviewAccount
+      ? reviewResult
+      : await verifyOTPInFirestore(phoneNumber, otp);
     if (!otpResult.success) {
       return NextResponse.json({
         success: false,
