@@ -44,6 +44,24 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
     });
   }
 
+  String _formatJoinDate(BuildContext context, dynamic dateValue) {
+    if (dateValue == null) return '';
+    final str = '$dateValue'.trim();
+    if (str.isEmpty || str == 'null') return '';
+    final dt = DateTime.tryParse(str);
+    if (dt == null) return str;
+    final local = dt.toLocal();
+    final lang = Localizations.localeOf(context).languageCode;
+    if (lang == 'ar') {
+      final months = [
+        'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+        'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+      ];
+      return '${local.day} ${months[local.month - 1]} ${local.year}';
+    }
+    return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
+  }
+
   Future<void> _showCreateInviteModal(BuildContext context) async {
     final titleController = TextEditingController();
     final maxUsageController = TextEditingController();
@@ -868,6 +886,13 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
                         player['guardian_approved'] == true;
                     final isPending = !isApproved && approvalStatus != 'rejected';
 
+                    final rawJoinDate = player['joinedAt'] ??
+                        player['organizationJoinedAt'] ??
+                        player['requestedAt'] ??
+                        player['created_at'] ??
+                        player['createdAt'];
+                    final joinDateText = _formatJoinDate(context, rawJoinDate);
+
                     return Card(
                       margin: const EdgeInsets.only(bottom: 9),
                       child: Padding(
@@ -906,16 +931,39 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   if (position.toString().isNotEmpty) Text('$position'),
-                                  if (joinCode.isNotEmpty)
+                                  if (joinCode.isNotEmpty || joinDateText.isNotEmpty)
                                     Padding(
-                                      padding: const EdgeInsets.only(top: 2),
-                                      child: Text(
-                                        context.tr('joinCodeLabel', {'code': joinCode}),
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          color: AppColors.navy,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                      padding: const EdgeInsets.only(top: 3),
+                                      child: Wrap(
+                                        spacing: 8,
+                                        runSpacing: 2,
+                                        children: [
+                                          if (joinCode.isNotEmpty)
+                                            Text(
+                                              context.tr('joinCodeLabel', {'code': joinCode}),
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: AppColors.navy,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          if (joinDateText.isNotEmpty)
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(Icons.calendar_today_rounded, size: 11, color: AppColors.muted),
+                                                const SizedBox(width: 3),
+                                                Text(
+                                                  joinDateText,
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    color: AppColors.muted,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                        ],
                                       ),
                                     ),
                                 ],
