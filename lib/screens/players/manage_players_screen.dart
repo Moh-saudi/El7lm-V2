@@ -53,169 +53,345 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      showDragHandle: false,
+      backgroundColor: Colors.transparent,
       builder: (sheetContext) => StatefulBuilder(
         builder: (ctx, setModalState) {
-          return Padding(
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
             padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 10,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.qr_code_2_rounded, color: AppColors.green, size: 28),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        context.tr('issueNewInviteCode'),
+                // ── Drag Handle ──────────────────────────────────────────
+                const SizedBox(height: 12),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+
+                // ── Gradient Header ───────────────────────────────────────
+                Container(
+                  margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.navy, Color(0xFF1E3A5F)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.gold.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.qr_code_2_rounded, color: AppColors.gold, size: 26),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              context.tr('issueNewInviteCode'),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              context.tr('tapCodeToViewQr'),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // ── Form Fields ───────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Description Field
+                      Text(
+                        context.tr('ambassadorNameOrDescription'),
                         style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
                           color: AppColors.navy,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  context.tr('ambassadorNameOrDescription'),
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: titleController,
-                  decoration: InputDecoration(
-                    hintText: context.tr('enterInviteDescriptionHint'),
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  context.tr('usageLimit'),
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    ChoiceChip(
-                      label: Text(context.tr('unlimitedUsage')),
-                      selected: isUnlimited,
-                      selectedColor: AppColors.green.withValues(alpha: 0.2),
-                      onSelected: (val) {
-                        setModalState(() {
-                          isUnlimited = true;
-                          maxUsageController.clear();
-                        });
-                      },
-                    ),
-                    const SizedBox(width: 10),
-                    ChoiceChip(
-                      label: Text(context.tr('maxUsageCount')),
-                      selected: !isUnlimited,
-                      selectedColor: AppColors.green.withValues(alpha: 0.2),
-                      onSelected: (val) {
-                        setModalState(() => isUnlimited = false);
-                      },
-                    ),
-                  ],
-                ),
-                if (!isUnlimited) ...[
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: maxUsageController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: InputDecoration(
-                      hintText: context.tr('enterMaxUsesHint'),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: titleController,
+                        textDirection: TextDirection.rtl,
+                        decoration: InputDecoration(
+                          hintText: context.tr('enterInviteDescriptionHint'),
+                          hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
+                          prefixIcon: const Icon(Icons.edit_note_rounded, color: AppColors.green, size: 22),
+                          filled: true,
+                          fillColor: const Color(0xFFF5F7FA),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: AppColors.green, width: 1.5),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: FilledButton.icon(
-                    onPressed: isSubmitting
-                        ? null
-                        : () async {
-                            final title = titleController.text.trim();
-                            int? maxUsage;
-                            if (!isUnlimited && maxUsageController.text.trim().isNotEmpty) {
-                              maxUsage = int.tryParse(maxUsageController.text.trim());
-                            }
 
-                            setModalState(() => isSubmitting = true);
-                            try {
-                              final orgName = widget.organizationName.trim().isEmpty
-                                  ? widget.accountType.localizedName(context)
-                                  : widget.organizationName.trim();
+                      const SizedBox(height: 18),
 
-                              await widget.dataService.createInviteCode(
-                                accountType: widget.accountType,
-                                organizationName: orgName,
-                                description: title.isNotEmpty ? title : 'انضم إلى $orgName',
-                                maxUsage: maxUsage,
-                              );
-
-                              if (ctx.mounted) Navigator.pop(ctx);
-                              _refreshData();
-
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(context.tr('inviteCodeCreatedSuccess')),
-                                    backgroundColor: AppColors.green,
+                      // Usage Limit Section
+                      Text(
+                        context.tr('usageLimit'),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setModalState(() {
+                                isUnlimited = true;
+                                maxUsageController.clear();
+                              }),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: isUnlimited
+                                      ? AppColors.green.withValues(alpha: 0.12)
+                                      : const Color(0xFFF5F7FA),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isUnlimited ? AppColors.green : Colors.transparent,
+                                    width: 1.5,
                                   ),
-                                );
-                              }
-                            } catch (e) {
-                              setModalState(() => isSubmitting = false);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Error: $e')),
-                                );
-                              }
-                            }
-                          },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.navy,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    icon: isSubmitting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                          )
-                        : const Icon(Icons.check_circle_rounded),
-                    label: Text(
-                      isSubmitting ? context.tr('issuing') : context.tr('generateInviteCode'),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.all_inclusive_rounded,
+                                      color: isUnlimited ? AppColors.green : Colors.grey,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      context.tr('unlimitedUsage'),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: isUnlimited ? AppColors.green : Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => setModalState(() => isUnlimited = false),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: !isUnlimited
+                                      ? AppColors.navy.withValues(alpha: 0.1)
+                                      : const Color(0xFFF5F7FA),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: !isUnlimited ? AppColors.navy : Colors.transparent,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.pin_rounded,
+                                      color: !isUnlimited ? AppColors.navy : Colors.grey,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      context.tr('maxUsageCount'),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: !isUnlimited ? AppColors.navy : Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Max Usage Input (animated)
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                        child: !isUnlimited
+                            ? Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: TextField(
+                                  controller: maxUsageController,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                  decoration: InputDecoration(
+                                    hintText: context.tr('enterMaxUsesHint'),
+                                    hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
+                                    prefixIcon: const Icon(Icons.group_rounded, color: AppColors.navy, size: 20),
+                                    filled: true,
+                                    fillColor: const Color(0xFFF5F7FA),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(color: AppColors.navy, width: 1.5),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                  ),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Submit Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: FilledButton(
+                          onPressed: isSubmitting
+                              ? null
+                              : () async {
+                                  final title = titleController.text.trim();
+                                  int? maxUsage;
+                                  if (!isUnlimited && maxUsageController.text.trim().isNotEmpty) {
+                                    maxUsage = int.tryParse(maxUsageController.text.trim());
+                                  }
+
+                                  setModalState(() => isSubmitting = true);
+                                  try {
+                                    final orgName = widget.organizationName.trim().isEmpty
+                                        ? widget.accountType.localizedName(context)
+                                        : widget.organizationName.trim();
+
+                                    await widget.dataService.createInviteCode(
+                                      accountType: widget.accountType,
+                                      organizationName: orgName,
+                                      description: title.isNotEmpty ? title : 'انضم إلى $orgName',
+                                      maxUsage: maxUsage,
+                                    );
+
+                                    if (ctx.mounted) Navigator.pop(ctx);
+                                    _refreshData();
+
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Row(
+                                            children: [
+                                              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                              const SizedBox(width: 8),
+                                              Text(context.tr('inviteCodeCreatedSuccess'),
+                                                  style: const TextStyle(fontWeight: FontWeight.bold)),
+                                            ],
+                                          ),
+                                          backgroundColor: AppColors.green,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        ),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    setModalState(() => isSubmitting = false);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(e.toString().replaceAll('Exception: ', '')),
+                                          backgroundColor: Colors.red.shade800,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.green,
+                            disabledBackgroundColor: AppColors.green.withValues(alpha: 0.5),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          child: isSubmitting
+                              ? const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text('جارٍ الإصدار...', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                  ],
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.qr_code_rounded, size: 22),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      context.tr('generateInviteCode'),
+                                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
