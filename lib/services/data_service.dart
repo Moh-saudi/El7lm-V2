@@ -1168,13 +1168,23 @@ class DataService {
     }
 
     if (refRows.isEmpty) {
-      throw Exception('كود الدعوة غير موجود أو تم حذفه سابقاً.');
+      try {
+        final res = await client
+            .from('organization_referrals')
+            .select()
+            .eq('code', referralId);
+        refRows = List<Map<String, dynamic>>.from(res);
+      } catch (_) {}
     }
 
-    final row = refRows.first;
-    final targetId = '${row['id']}';
-    final code = '${row['referralCode'] ?? row['code'] ?? ''}';
-    final currentUsage = (row['currentUsage'] as num? ?? row['usage'] as num? ?? 0).toInt();
+    // Fallback if not found in table by ID
+    final targetId = refRows.isNotEmpty ? '${refRows.first['id']}' : referralId;
+    final code = refRows.isNotEmpty
+        ? '${refRows.first['referralCode'] ?? refRows.first['code'] ?? ''}'
+        : referralId;
+    final currentUsage = refRows.isNotEmpty
+        ? (refRows.first['currentUsage'] as num? ?? refRows.first['usage'] as num? ?? 0).toInt()
+        : 0;
 
     // 2. Count linked players in players & player_join_requests tables
     var linkedCount = 0;
@@ -1198,15 +1208,46 @@ class DataService {
 
     final totalLinked = currentUsage > linkedCount ? currentUsage : linkedCount;
 
-    // 3. Block deletion if any player is linked
+    // 3. Block deletion if any player is linked to this code
     if (totalLinked > 0) {
       throw Exception(
         'لا يمكن حذف كود الدعوة لأنه مرتبط بالفعل بـ $totalLinked لاعب(ين) مسجلين عبره.',
       );
     }
 
-    // 4. Perform deletion if no players are linked
-    await client.from('organization_referrals').delete().eq('id', targetId);
+    // 4. Perform robust multi-table deletion (organization_referrals & invite_codes)
+    bool deletedAny = false;
+
+    try {
+      await client.from('organization_referrals').delete().eq('id', targetId);
+      deletedAny = true;
+    } catch (_) {}
+
+    if (code.isNotEmpty) {
+      try {
+        await client.from('organization_referrals').delete().eq('referralCode', code);
+        deletedAny = true;
+      } catch (_) {}
+
+      try {
+        await client.from('organization_referrals').delete().eq('code', code);
+        deletedAny = true;
+      } catch (_) {}
+
+      try {
+        await client.from('invite_codes').delete().eq('code', code);
+        deletedAny = true;
+      } catch (_) {}
+    }
+
+    try {
+      await client.from('invite_codes').delete().eq('id', targetId);
+      deletedAny = true;
+    } catch (_) {}
+
+    if (!deletedAny && refRows.isEmpty) {
+      throw Exception('كود الدعوة غير موجود أو تم حذفه سابقاً.');
+    }
   }
 
   Future<Map<String, dynamic>?> fetchJoinedOrganization() async {
