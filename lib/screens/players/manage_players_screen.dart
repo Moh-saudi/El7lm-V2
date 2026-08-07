@@ -260,17 +260,17 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        title: const Text('حذف كود الدعوة'),
-        content: const Text('هل أنت أخيرًا متأكد من رغبتك في حذف كود الدعوة هذا؟'),
+        title: Text(context.tr('deleteInviteCode')),
+        content: Text(context.tr('deleteInviteConfirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx, false),
-            child: const Text('إلغاء'),
+            child: Text(context.tr('cancel')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(dialogCtx, true),
-            child: const Text('نعم، حذف الكود'),
+            child: Text(context.tr('deleteInviteCode')),
           ),
         ],
       ),
@@ -282,13 +282,34 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
         _refreshData();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم حذف كود الدعوة بنجاح')),
+            const SnackBar(
+              content: Text('تم حذف كود الدعوة بنجاح ✅'),
+              backgroundColor: AppColors.green,
+            ),
           );
         }
       } catch (e) {
         if (mounted) {
+          final msg = e.toString().replaceAll('Exception: ', '').trim();
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('تعذر حذف الكود: $e')),
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      msg,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red.shade800,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              duration: const Duration(seconds: 5),
+            ),
           );
         }
       }

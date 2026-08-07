@@ -1146,7 +1146,67 @@ class DataService {
   Future<void> deleteReferralCode(String referralId) async {
     _requireSupabase();
     final client = Supabase.instance.client;
-    await client.from('organization_referrals').delete().eq('id', referralId);
+
+    // 1. Fetch referral details
+    var refRows = <Map<String, dynamic>>[];
+    try {
+      final res = await client
+          .from('organization_referrals')
+          .select()
+          .eq('id', referralId);
+      refRows = List<Map<String, dynamic>>.from(res);
+    } catch (_) {}
+
+    if (refRows.isEmpty) {
+      try {
+        final res = await client
+            .from('organization_referrals')
+            .select()
+            .eq('referralCode', referralId);
+        refRows = List<Map<String, dynamic>>.from(res);
+      } catch (_) {}
+    }
+
+    if (refRows.isEmpty) {
+      throw Exception('كود الدعوة غير موجود أو تم حذفه سابقاً.');
+    }
+
+    final row = refRows.first;
+    final targetId = '${row['id']}';
+    final code = '${row['referralCode'] ?? row['code'] ?? ''}';
+    final currentUsage = (row['currentUsage'] as num? ?? row['usage'] as num? ?? 0).toInt();
+
+    // 2. Count linked players in players & player_join_requests tables
+    var linkedCount = 0;
+    if (code.isNotEmpty) {
+      try {
+        final pRows = await client
+            .from('players')
+            .select('id')
+            .eq('referralCodeUsed', code);
+        linkedCount += pRows.length;
+      } catch (_) {}
+
+      try {
+        final reqRows = await client
+            .from('player_join_requests')
+            .select('id')
+            .eq('referralCode', code);
+        linkedCount += reqRows.length;
+      } catch (_) {}
+    }
+
+    final totalLinked = currentUsage > linkedCount ? currentUsage : linkedCount;
+
+    // 3. Block deletion if any player is linked
+    if (totalLinked > 0) {
+      throw Exception(
+        'لا يمكن حذف كود الدعوة لأنه مرتبط بالفعل بـ $totalLinked لاعب(ين) مسجلين عبره.',
+      );
+    }
+
+    // 4. Perform deletion if no players are linked
+    await client.from('organization_referrals').delete().eq('id', targetId);
   }
 
   Future<Map<String, dynamic>?> fetchJoinedOrganization() async {
