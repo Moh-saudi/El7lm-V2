@@ -547,17 +547,60 @@ class DataService {
             final status = map['status'] ?? 'pending';
             if (onlyApproved && status != 'approved') continue;
 
-            final id = map['playerId'] ?? map['id'];
-            if (seen.add('$id')) {
-              players.add({
-                'id': id,
-                'full_name': map['playerName'] ?? 'لاعب جديد',
-                'primary_position': map['position'] ?? 'لاعب',
+            final reqPlayerId = map['playerId'] ?? map['id'];
+            final reqEmail = map['playerEmail'] ?? '';
+            final reqPhone = map['playerPhone'] ?? '';
+
+            Map<String, dynamic>? fullPlayerRecord;
+
+            if (reqPlayerId != null && '$reqPlayerId'.isNotEmpty) {
+              try {
+                final pRes = await client
+                    .from('players')
+                    .select()
+                    .eq('id', reqPlayerId)
+                    .maybeSingle();
+                if (pRes != null) fullPlayerRecord = Map<String, dynamic>.from(pRes);
+              } catch (_) {}
+            }
+
+            if (fullPlayerRecord == null && reqEmail.toString().isNotEmpty) {
+              try {
+                final pRes = await client
+                    .from('players')
+                    .select()
+                    .eq('email', reqEmail)
+                    .maybeSingle();
+                if (pRes != null) fullPlayerRecord = Map<String, dynamic>.from(pRes);
+              } catch (_) {}
+            }
+
+            if (fullPlayerRecord == null && reqPhone.toString().isNotEmpty) {
+              try {
+                final pRes = await client
+                    .from('players')
+                    .select()
+                    .eq('phone', reqPhone)
+                    .maybeSingle();
+                if (pRes != null) fullPlayerRecord = Map<String, dynamic>.from(pRes);
+              } catch (_) {}
+            }
+
+            final effectivePlayerId = fullPlayerRecord?['id'] ?? reqPlayerId;
+            if (seen.add('$effectivePlayerId')) {
+              final playerMap = <String, dynamic>{
+                ...?fullPlayerRecord,
+                'id': effectivePlayerId,
+                'full_name': fullPlayerRecord?['full_name'] ?? map['playerName'] ?? 'لاعب جديد',
+                'primary_position': fullPlayerRecord?['primary_position'] ?? map['position'] ?? 'لاعب',
                 'guardian_approval': status == 'approved',
+                'approval_status': status,
                 'status': status,
                 'is_pending': status == 'pending',
                 'requestedAt': map['requestedAt'],
-              });
+                'join_code': map['referralCode'] ?? '',
+              };
+              players.add(playerMap);
             }
           }
         } catch (_) {}
@@ -1060,33 +1103,82 @@ class DataService {
     }
 
     final nowIso = DateTime.now().toIso8601String();
+    final userEmail = Supabase.instance.client.auth.currentUser?.email ?? '';
+    final userPhone = Supabase.instance.client.auth.currentUser?.phone ?? '';
+
+    final orgSnakeField = switch (orgType) {
+      'club' => 'club_id',
+      'academy' => 'academy_id',
+      'trainer' => 'trainer_id',
+      'agent' => 'agent_id',
+      _ => 'organizationId',
+    };
+    final orgCamelField = switch (orgType) {
+      'club' => 'clubId',
+      'academy' => 'academyId',
+      'trainer' => 'trainerId',
+      'agent' => 'agentId',
+      _ => 'organizationId',
+    };
+
     final updates = <String, dynamic>{
       'organizationId': orgId,
       'organizationType': orgType,
       'organization_name': orgName,
+      'organizationName': orgName,
+      orgSnakeField: orgId,
+      orgCamelField: orgId,
       'referralCodeUsed': effectiveCode,
       'joinedViaReferral': true,
       'joinedAt': nowIso,
+      'status': 'active',
+      'joinRequestStatus': 'approved',
     };
 
-    // Update players table
-    try {
-      await client.from('players').update(updates).eq('id', userId);
-    } catch (_) {}
+    // 1. Update players table across all possible player identifier fields
+    for (final field in ['id', 'uid', 'firebaseUid']) {
+      try {
+        await client.from('players').update(updates).eq(field, userId);
+      } catch (_) {}
+    }
+    if (userEmail.isNotEmpty) {
+      try {
+        await client.from('players').update(updates).eq('email', userEmail);
+      } catch (_) {}
+    }
+    if (userPhone.isNotEmpty) {
+      final cleanPhone = userPhone.replaceAll('+', '').trim();
+      try {
+        await client.from('players').update(updates).eq('phone', userPhone);
+      } catch (_) {}
+      if (cleanPhone.isNotEmpty) {
+        try {
+          await client.from('players').update(updates).eq('phone', cleanPhone);
+        } catch (_) {}
+      }
+    }
 
-    // Update users table
-    try {
-      await client.from('users').update(updates).eq('id', userId);
-    } catch (_) {}
+    // 2. Update users table across all possible user identifier fields
+    for (final field in ['id', 'uid', 'firebaseUid']) {
+      try {
+        await client.from('users').update(updates).eq(field, userId);
+      } catch (_) {}
+    }
+    if (userEmail.isNotEmpty) {
+      try {
+        await client.from('users').update(updates).eq('email', userEmail);
+      } catch (_) {}
+    }
 
-    // Insert into player_join_requests for Web compatibility
+    // 3. Insert into player_join_requests for Web & Manager compatibility
     try {
       final reqId = 'req_${DateTime.now().millisecondsSinceEpoch}_${userId.length > 6 ? userId.substring(0, 6) : userId}';
       await client.from('player_join_requests').insert({
         'id': reqId,
         'playerId': userId,
         'playerName': _auth.currentDisplayName.isNotEmpty ? _auth.currentDisplayName : 'لاعب جديد',
-        'playerEmail': Supabase.instance.client.auth.currentUser?.email ?? '',
+        'playerEmail': userEmail,
+        'playerPhone': userPhone,
         'organizationId': orgId,
         'organizationType': orgType,
         'organizationName': orgName,
