@@ -656,8 +656,8 @@ class DataService {
         : token.substring(token.length - 6);
     final code = '$prefix$suffix';
     final now = DateTime.now().toUtc().toIso8601String();
+    // Do NOT send 'id' — let Supabase auto-generate a UUID so delete-by-id works reliably.
     final payload = <String, dynamic>{
-      'id': '${DateTime.now().microsecondsSinceEpoch}-$code',
       'organizationId': organizationId,
       'organizationType': accountType.value,
       'organizationName': organizationName,
@@ -670,7 +670,11 @@ class DataService {
       'createdAt': now,
       'updatedAt': now,
     };
-    await client.from('organization_referrals').insert(payload);
+    // Use .select() to get back the Supabase-generated UUID id
+    final res = await client.from('organization_referrals').insert(payload).select();
+    if (res.isNotEmpty) {
+      payload['id'] = res.first['id'];
+    }
     return payload;
   }
 
@@ -1147,54 +1151,46 @@ class DataService {
     _requireSupabase();
     final client = Supabase.instance.client;
 
-    // 1. Fetch referral details
-    var refRows = <Map<String, dynamic>>[];
+    // 1. Fetch referral record — try by UUID id first, then by referralCode string
+    Map<String, dynamic>? refRow;
+
     try {
       final res = await client
           .from('organization_referrals')
           .select()
-          .eq('id', referralId);
-      refRows = List<Map<String, dynamic>>.from(res);
+          .eq('id', referralId)
+          .maybeSingle();
+      if (res != null) refRow = Map<String, dynamic>.from(res);
     } catch (_) {}
 
-    if (refRows.isEmpty) {
+    if (refRow == null) {
       try {
         final res = await client
             .from('organization_referrals')
             .select()
-            .eq('referralCode', referralId);
-        refRows = List<Map<String, dynamic>>.from(res);
+            .eq('referralCode', referralId)
+            .maybeSingle();
+        if (res != null) refRow = Map<String, dynamic>.from(res);
       } catch (_) {}
     }
 
-    if (refRows.isEmpty) {
-      try {
-        final res = await client
-            .from('organization_referrals')
-            .select()
-            .eq('code', referralId);
-        refRows = List<Map<String, dynamic>>.from(res);
-      } catch (_) {}
+    if (refRow == null) {
+      throw Exception('كود الدعوة غير موجود أو تم حذفه سابقاً.');
     }
 
-    // Fallback if not found in table by ID
-    final targetId = refRows.isNotEmpty ? '${refRows.first['id']}' : referralId;
-    final code = refRows.isNotEmpty
-        ? '${refRows.first['referralCode'] ?? refRows.first['code'] ?? ''}'
-        : referralId;
-    final currentUsage = refRows.isNotEmpty
-        ? (refRows.first['currentUsage'] as num? ?? refRows.first['usage'] as num? ?? 0).toInt()
-        : 0;
+    final dbId    = '${refRow['id']}';
+    final code    = '${refRow['referralCode'] ?? refRow['code'] ?? ''}';
+    final currentUsage = (refRow['currentUsage'] as num? ?? 0).toInt();
 
-    // 2. Count linked players in players & player_join_requests tables
-    var linkedCount = 0;
+    // 2. Count players linked to this code
+    var linkedCount = currentUsage;
     if (code.isNotEmpty) {
       try {
         final pRows = await client
             .from('players')
             .select('id')
             .eq('referralCodeUsed', code);
-        linkedCount += pRows.length;
+        if (pRows.length > linkedCount) linkedCount = pRows.length;
       } catch (_) {}
 
       try {
@@ -1206,48 +1202,18 @@ class DataService {
       } catch (_) {}
     }
 
-    final totalLinked = currentUsage > linkedCount ? currentUsage : linkedCount;
-
-    // 3. Block deletion if any player is linked to this code
-    if (totalLinked > 0) {
+    // 3. Block deletion if players are linked
+    if (linkedCount > 0) {
       throw Exception(
-        'لا يمكن حذف كود الدعوة لأنه مرتبط بالفعل بـ $totalLinked لاعب(ين) مسجلين عبره.',
+        'لا يمكن حذف كود الدعوة لأنه مرتبط بالفعل بـ $linkedCount لاعب(ين) مسجلين عبره.',
       );
     }
 
-    // 4. Perform robust multi-table deletion (organization_referrals & invite_codes)
-    bool deletedAny = false;
-
-    try {
-      await client.from('organization_referrals').delete().eq('id', targetId);
-      deletedAny = true;
-    } catch (_) {}
-
-    if (code.isNotEmpty) {
-      try {
-        await client.from('organization_referrals').delete().eq('referralCode', code);
-        deletedAny = true;
-      } catch (_) {}
-
-      try {
-        await client.from('organization_referrals').delete().eq('code', code);
-        deletedAny = true;
-      } catch (_) {}
-
-      try {
-        await client.from('invite_codes').delete().eq('code', code);
-        deletedAny = true;
-      } catch (_) {}
-    }
-
-    try {
-      await client.from('invite_codes').delete().eq('id', targetId);
-      deletedAny = true;
-    } catch (_) {}
-
-    if (!deletedAny && refRows.isEmpty) {
-      throw Exception('كود الدعوة غير موجود أو تم حذفه سابقاً.');
-    }
+    // 4. Delete using the real DB uuid id (most reliable)
+    await client
+        .from('organization_referrals')
+        .delete()
+        .eq('id', dbId);
   }
 
   Future<Map<String, dynamic>?> fetchJoinedOrganization() async {
