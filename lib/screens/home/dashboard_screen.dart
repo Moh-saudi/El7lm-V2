@@ -1190,33 +1190,50 @@ class _ManagerDashboard extends StatelessWidget {
 
         // 5. Feature Spotlight Card
         Card(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.gold.withValues(alpha: 0.4), width: 1.5),
+            ),
             child: Row(
               children: [
                 const CircleAvatar(
-                  radius: 26,
-                  backgroundColor: Color(0xFFFFF3F1),
-                  child: Icon(Icons.star_rounded, color: AppColors.gold, size: 30),
+                  radius: 24,
+                  backgroundColor: Color(0x22FFD700),
+                  child: Icon(Icons.star_rounded, color: AppColors.gold, size: 28),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        context.tr('scoutTalentsTitle'),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.gold,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          context.tr('scoutTalentsTitle'),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.ink,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(
                         context.tr('scoutTalentsSubtitle'),
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Theme.of(context).textTheme.bodySmall?.color,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
                         ),
                       ),
                     ],
