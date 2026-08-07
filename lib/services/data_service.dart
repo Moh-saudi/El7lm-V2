@@ -494,8 +494,9 @@ class DataService {
   }
 
   Future<List<Map<String, dynamic>>> fetchManagedPlayers(
-    AccountType accountType,
-  ) async {
+    AccountType accountType, {
+    bool onlyApproved = false,
+  }) async {
     _requireSupabase();
     final client = Supabase.instance.client;
     final authId = _auth.authUserId;
@@ -526,6 +527,10 @@ class DataService {
                 .eq(field, organizationId);
             for (final row in rows) {
               final map = Map<String, dynamic>.from(row);
+              final approvalStatus = map['approval_status'] ?? map['status'] ?? 'approved';
+              if (onlyApproved && (approvalStatus == 'pending' || map['is_pending'] == true)) {
+                continue;
+              }
               if (seen.add('${map['id']}')) players.add(map);
             }
           } catch (_) {}
@@ -539,13 +544,18 @@ class DataService {
               .eq('organizationId', organizationId);
           for (final row in rows) {
             final map = Map<String, dynamic>.from(row);
+            final status = map['status'] ?? 'pending';
+            if (onlyApproved && status != 'approved') continue;
+
             final id = map['playerId'] ?? map['id'];
             if (seen.add('$id')) {
               players.add({
                 'id': id,
                 'full_name': map['playerName'] ?? 'لاعب جديد',
                 'primary_position': map['position'] ?? 'لاعب',
-                'guardian_approval': map['status'] == 'approved',
+                'guardian_approval': status == 'approved',
+                'status': status,
+                'is_pending': status == 'pending',
                 'requestedAt': map['requestedAt'],
               });
             }

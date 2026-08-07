@@ -1848,7 +1848,10 @@ class _PlayersHorizontalSliderState extends State<_PlayersHorizontalSlider> {
   @override
   void initState() {
     super.initState();
-    _managedFuture = widget.dataService.fetchManagedPlayers(widget.accountType);
+    _managedFuture = widget.dataService.fetchManagedPlayers(
+      widget.accountType,
+      onlyApproved: true,
+    );
     _allPlayersFuture = widget.dataService.fetchPlayers();
   }
 
