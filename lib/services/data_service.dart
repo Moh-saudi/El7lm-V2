@@ -645,8 +645,9 @@ class DataService {
         : token.substring(token.length - 6);
     final code = '$prefix$suffix';
     final now = DateTime.now().toUtc().toIso8601String();
-    // Do NOT send 'id' — let Supabase auto-generate a UUID so delete-by-id works reliably.
+    final refId = 'ref_${DateTime.now().microsecondsSinceEpoch}_$code';
     final payload = <String, dynamic>{
+      'id': refId,
       'organizationId': organizationId,
       'organizationType': accountType.value,
       'organizationName': organizationName,
@@ -659,11 +660,7 @@ class DataService {
       'createdAt': now,
       'updatedAt': now,
     };
-    // Use .select() to get back the Supabase-generated UUID id
-    final res = await client.from('organization_referrals').insert(payload).select();
-    if (res.isNotEmpty) {
-      payload['id'] = res.first['id'];
-    }
+    await client.from('organization_referrals').insert(payload);
     return payload;
   }
 
