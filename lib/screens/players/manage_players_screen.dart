@@ -823,22 +823,6 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
                 ],
               );
             },
-          ),'),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: isGuardianApproved ? Colors.green : Colors.orange,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ],
-              );
-            },
           ),
         ],
       ),
