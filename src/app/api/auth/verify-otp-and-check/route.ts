@@ -8,8 +8,9 @@ import { verifyOTPInFirestore } from '@/lib/otp/firestore-otp-manager';
 import { verifyPlayReviewOTP } from '@/lib/otp/play-review-otp';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber, generatePhoneVariants } from '@/lib/validation/phone-validation';
+import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
 
-const SEARCH_COLLECTIONS = ['players', 'clubs', 'academies', 'trainers', 'agents', 'marketers', 'admins', 'users'];
+const SEARCH_COLLECTIONS = ['clubs', 'academies', 'trainers', 'agents', 'marketers', 'admins', 'players', 'users'];
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,6 +62,15 @@ export async function POST(request: NextRequest) {
         }
       }
       if (userId) break;
+    }
+
+    const resolvedAccount = await findAccountByPhone(phoneNumber);
+    if (resolvedAccount.found) {
+      userId = resolvedAccount.id;
+      userName = resolvedAccount.name;
+      accountType = resolvedAccount.accountType;
+      userEmail = resolvedAccount.email;
+      cachedSupabaseUid = resolvedAccount.uid;
     }
 
     if (!userId) {

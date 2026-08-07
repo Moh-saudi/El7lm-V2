@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendOTP, SendOTPOptions } from '@/lib/otp/unified-otp-service';
 import { isPlayReviewPhone } from '@/lib/otp/play-review-otp';
+import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,6 +26,23 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'رقم الهاتف مطلوب'
       }, { status: 400 });
+    }
+
+    const account = await findAccountByPhone(phoneNumber);
+    if (purpose === 'login' && !account.found) {
+      return NextResponse.json({
+        success: false,
+        code: 'ACCOUNT_NOT_FOUND',
+        error: 'This phone number is not registered. Create an account first.',
+      }, { status: 404 });
+    }
+    if (purpose === 'registration' && account.found) {
+      return NextResponse.json({
+        success: false,
+        code: 'ACCOUNT_ALREADY_EXISTS',
+        accountType: account.accountType,
+        error: 'This phone number is already registered. Sign in instead.',
+      }, { status: 409 });
     }
 
     if (await isPlayReviewPhone(phoneNumber)) {

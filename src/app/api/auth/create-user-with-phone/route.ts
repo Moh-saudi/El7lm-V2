@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber } from '@/lib/validation/phone-validation';
+import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
 
 const COLLECTION_MAP: Record<string, string> = {
   player: 'players',
@@ -50,6 +51,16 @@ export async function POST(request: NextRequest) {
     const e164Phone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
     const constructedEmail = `${cleanDigits}@el7lm.com`;
     const password = `${cleanDigits}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+
+    const existingAccount = await findAccountByPhone(phoneNumber);
+    if (existingAccount.found) {
+      return NextResponse.json({
+        success: false,
+        code: 'ACCOUNT_ALREADY_EXISTS',
+        accountType: existingAccount.accountType,
+        error: 'This phone number is already registered. Sign in instead.',
+      }, { status: 409 });
+    }
 
     // التحقق من عدم وجود الهاتف مسبقاً
     const tableName = COLLECTION_MAP[accountType] || 'users';

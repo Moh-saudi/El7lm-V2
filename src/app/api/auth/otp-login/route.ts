@@ -8,9 +8,10 @@ import { verifyOTPInFirestore } from '@/lib/otp/firestore-otp-manager';
 import { verifyPlayReviewOTP } from '@/lib/otp/play-review-otp';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber, generatePhoneVariants } from '@/lib/validation/phone-validation';
+import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
 import crypto from 'crypto';
 
-const SEARCH_COLLECTIONS = ['players', 'clubs', 'academies', 'users', 'trainers', 'agents', 'admins'];
+const SEARCH_COLLECTIONS = ['clubs', 'academies', 'trainers', 'agents', 'marketers', 'admins', 'players', 'users'];
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isUUID = (v: unknown): v is string => typeof v === 'string' && UUID_REGEX.test(v);
@@ -71,6 +72,19 @@ export async function POST(request: NextRequest) {
           break outer;
         }
       }
+    }
+
+    // The centralized lookup is authoritative. In particular, it preserves
+    // accountType when the matching record is found in the shared users table.
+    const resolvedAccount = await findAccountByPhone(phoneNumber);
+    if (resolvedAccount.found) {
+      userId = resolvedAccount.id;
+      userName = resolvedAccount.name;
+      accountType = resolvedAccount.accountType;
+      userEmail = resolvedAccount.email;
+      cachedSupabaseUid = isUUID(resolvedAccount.uid)
+        ? resolvedAccount.uid
+        : null;
     }
 
     if (!userId) {
