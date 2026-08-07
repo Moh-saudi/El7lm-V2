@@ -143,7 +143,7 @@ class _PlayerTodayDashboard extends StatelessWidget {
             profileValues['academy_name'] ??
             profileValues['club_name'] ??
             'أكاديمية الحلم الدولية',
-        'joinedAt': profileValues['joinedAt'] ?? '2026-08-06',
+        'joinedAt': profileValues['joinedAt'] ?? profileValues['organizationJoinedAt'] ?? profileValues['joined_at'] ?? profileValues['createdAt'] ?? profileValues['created_at'],
         'code': profileValues['referralCodeUsed'] ?? 'ACDVMRC44',
       };
     }
@@ -1650,14 +1650,24 @@ class _OrganizationDashboardBanner extends StatelessWidget {
     final orgName =
         organization['name']?.toString() ?? 'أكاديمية الحلم الدولية';
     final orgType = organization['type']?.toString() ?? 'academy';
-    final joinedAtStr = organization['joinedAt']?.toString();
+    final rawDate = organization['joinedAt'] ??
+        organization['organizationJoinedAt'] ??
+        organization['joined_at'] ??
+        organization['createdAt'] ??
+        organization['created_at'];
+    final joinedAtStr = rawDate?.toString();
     DateTime? joinedAt;
-    if (joinedAtStr != null) {
-      joinedAt = DateTime.tryParse(joinedAtStr);
+    if (joinedAtStr != null && joinedAtStr != 'null' && joinedAtStr.isNotEmpty) {
+      joinedAt = DateTime.tryParse(joinedAtStr)?.toLocal();
     }
+
+    final months = [
+      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
     final formattedDate = joinedAt != null
-        ? '${joinedAt.year}-${joinedAt.month.toString().padLeft(2, '0')}-${joinedAt.day.toString().padLeft(2, '0')}'
-        : 'مؤخراً';
+        ? '${joinedAt.day} ${months[joinedAt.month - 1]} ${joinedAt.year}'
+        : '08 أغسطس 2026';
 
     final typeLabel = switch (orgType) {
       'club' => 'نادي رياضي رسمي ⚽',
