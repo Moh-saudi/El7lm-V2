@@ -564,17 +564,6 @@ class DataService {
       }
     }
 
-    // Fallback: If no specific managed players found, query platform players
-    if (players.isEmpty) {
-      try {
-        final rows = await client.from('players').select().limit(10);
-        for (final row in rows) {
-          final map = Map<String, dynamic>.from(row);
-          if (seen.add('${map['id']}')) players.add(map);
-        }
-      } catch (_) {}
-    }
-
     return players;
   }
 
