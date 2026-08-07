@@ -27,7 +27,7 @@ class AppLocalizations {
     for (final entry in values.entries) {
       result = result.replaceAll('{${entry.key}}', '${entry.value ?? ''}');
     }
-    return result;
+    return _formatResult(result);
   }
 
   String textOr(
@@ -38,6 +38,29 @@ class AppLocalizations {
     var result = _values[key] ?? fallback;
     for (final entry in values.entries) {
       result = result.replaceAll('{${entry.key}}', '${entry.value ?? ''}');
+    }
+    return _formatResult(result);
+  }
+
+  String _formatResult(String result) {
+    if (locale.languageCode == 'en' && !result.contains('\n') && !result.contains('http') && result.length < 120) {
+      const minorWords = {'a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'nor', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'yet', 'with'};
+      final words = result.split(' ');
+      final titleWords = <String>[];
+      for (var i = 0; i < words.length; i++) {
+        final w = words[i];
+        if (w.isEmpty || w.startsWith('{') || w.startsWith('(') || w.startsWith('http')) {
+          titleWords.add(w);
+          continue;
+        }
+        final lower = w.toLowerCase();
+        if (i > 0 && i < words.length - 1 && minorWords.contains(lower)) {
+          titleWords.add(lower);
+        } else {
+          titleWords.add(w[0].toUpperCase() + w.substring(1));
+        }
+      }
+      return titleWords.join(' ');
     }
     return result;
   }
@@ -84,9 +107,14 @@ extension AppTranslationContext on BuildContext {
   ]) => l10n.textOr(key, fallback, values);
 
   String errorText(Object? error) {
+    return tr(errorTranslationKey(error));
+  }
+
+  String errorTranslationKey(Object? error) {
     if (error is ApiException && error.translationKey != null) {
-      return tr(error.translationKey!);
+      return error.translationKey!;
     }
-    return '$error';
+    // Never expose English SDK/server exception text in the localized UI.
+    return 'requestFailed';
   }
 }
