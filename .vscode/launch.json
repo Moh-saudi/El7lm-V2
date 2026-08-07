@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "el7lm_mobile (Supabase)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--dart-define=API_BASE_URL=https://www.el7lm.com",
+        "--dart-define=WEB_BASE_URL=https://www.el7lm.com",
+        "--dart-define=SUPABASE_URL=https://mjuaefipdzxfqazzbyke.supabase.co",
+        "--dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_aHNOh4BJvrL3CWDkXUA2qA_QnHvx_ew"
+      ]
+    }
+  ]
+}
