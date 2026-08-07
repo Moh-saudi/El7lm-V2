@@ -2056,12 +2056,9 @@ class _PlayerSquareCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white60,
-                  fontSize: 9,
-                ),
               ),
-          ],
+            ],
+          ),
         ),
       ),
     );
