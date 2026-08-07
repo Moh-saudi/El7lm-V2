@@ -1826,7 +1826,7 @@ class _OrganizationDashboardBanner extends StatelessWidget {
   }
 }
 
-class _PlayersHorizontalSlider extends StatelessWidget {
+class _PlayersHorizontalSlider extends StatefulWidget {
   const _PlayersHorizontalSlider({
     required this.dataService,
     required this.accountType,
@@ -1838,10 +1838,63 @@ class _PlayersHorizontalSlider extends StatelessWidget {
   final ValueChanged<int> onNavigate;
 
   @override
+  State<_PlayersHorizontalSlider> createState() => _PlayersHorizontalSliderState();
+}
+
+class _PlayersHorizontalSliderState extends State<_PlayersHorizontalSlider> {
+  late Future<List<Map<String, dynamic>>> _managedFuture;
+  late Future<List<Player>> _allPlayersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _managedFuture = widget.dataService.fetchManagedPlayers(widget.accountType);
+    _allPlayersFuture = widget.dataService.fetchPlayers();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: dataService.fetchManagedPlayers(accountType),
+      future: _managedFuture,
       builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.gold.withValues(alpha: 0.5), width: 1.5),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.stars_rounded, size: 18, color: AppColors.gold),
+                    const SizedBox(width: 6),
+                    Text(
+                      context.tr('loading'),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              const SizedBox(
+                height: 115,
+                child: _SliderLoadingSkeleton(),
+              ),
+            ],
+          );
+        }
+
         final rawManaged = snapshot.data ?? [];
         final managedPlayers = rawManaged.map((m) => Player.fromJson(m)).toList();
         final hasManaged = managedPlayers.isNotEmpty;
@@ -1891,7 +1944,7 @@ class _PlayersHorizontalSlider extends StatelessWidget {
                     foregroundColor: AppColors.gold,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   ),
-                  onPressed: () => onNavigate(2),
+                  onPressed: () => widget.onNavigate(2),
                   icon: const Icon(Icons.arrow_forward_rounded, size: 14),
                   label: Text(
                     context.tr('viewAll'),
@@ -1914,20 +1967,23 @@ class _PlayersHorizontalSlider extends StatelessWidget {
                       separatorBuilder: (context, _) => const SizedBox(width: 10),
                       itemBuilder: (context, index) {
                         if (index == managedPlayers.length) {
-                          return _AddPlayerSquareCard(onTap: () => onNavigate(2));
+                          return _AddPlayerSquareCard(onTap: () => widget.onNavigate(2));
                         }
                         return _PlayerSquareCard(
                           player: managedPlayers[index],
-                          dataService: dataService,
+                          dataService: widget.dataService,
                         );
                       },
                     )
                   : FutureBuilder<List<Player>>(
-                      future: dataService.fetchPlayers(),
+                      future: _allPlayersFuture,
                       builder: (context, allSnapshot) {
+                        if (allSnapshot.connectionState == ConnectionState.waiting) {
+                          return const _SliderLoadingSkeleton();
+                        }
                         final allPlayers = allSnapshot.data ?? [];
                         if (allPlayers.isEmpty) {
-                          return _AddPlayerSquareCard(onTap: () => onNavigate(2));
+                          return _AddPlayerSquareCard(onTap: () => widget.onNavigate(2));
                         }
                         return ListView.separated(
                           scrollDirection: Axis.horizontal,
@@ -1935,11 +1991,11 @@ class _PlayersHorizontalSlider extends StatelessWidget {
                           separatorBuilder: (context, _) => const SizedBox(width: 10),
                           itemBuilder: (context, index) {
                             if (index == math.min(allPlayers.length, 12)) {
-                              return _AddPlayerSquareCard(onTap: () => onNavigate(2));
+                              return _AddPlayerSquareCard(onTap: () => widget.onNavigate(2));
                             }
                             return _PlayerSquareCard(
                               player: allPlayers[index],
-                              dataService: dataService,
+                              dataService: widget.dataService,
                             );
                           },
                         );
@@ -1949,6 +2005,50 @@ class _PlayersHorizontalSlider extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _SliderLoadingSkeleton extends StatelessWidget {
+  const _SliderLoadingSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      scrollDirection: Axis.horizontal,
+      itemCount: 5,
+      separatorBuilder: (_, __) => const SizedBox(width: 10),
+      itemBuilder: (_, __) => Container(
+        width: 88,
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B).withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white10,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: 60,
+              height: 10,
+              decoration: BoxDecoration(
+                color: Colors.white10,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
