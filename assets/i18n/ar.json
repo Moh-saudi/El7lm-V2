@@ -606,5 +606,10 @@
   "heightWeightLabel": "الطول / الوزن",
   "verificationStatusLabel": "حالة التوثيق",
   "shareReportLink": "مشاركة رابط التقرير الموثق",
-  "verifiedTechnicalDossier": "رمز التحقق الفني المعتمد (VERIFIED DOSSIER)"
+  "verifiedTechnicalDossier": "رمز التحقق الفني المعتمد (VERIFIED DOSSIER)",
+  "pendingApproval": "في انتظار موافقة المنظمة",
+  "approvePlayer": "قبول اللاعب",
+  "rejectPlayer": "رفض الطلب",
+  "playerApprovedSuccess": "تم قبول انضمام اللاعب بنجاح! 🟢",
+  "playerRejectedSuccess": "تم رفض طلب انضمام اللاعب"
 }

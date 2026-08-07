@@ -606,5 +606,10 @@
   "heightWeightLabel": "Altura / Peso",
   "verificationStatusLabel": "Estado de Verificación",
   "shareReportLink": "Compartir enlace del informe verificado",
-  "verifiedTechnicalDossier": "CÓDIGO DE DOSSIER TÉCNICO VERIFICADO"
+  "verifiedTechnicalDossier": "CÓDIGO DE DOSSIER TÉCNICO VERIFICADO",
+  "pendingApproval": "Pendiente de Aprobación",
+  "approvePlayer": "Aprobar Jugador",
+  "rejectPlayer": "Rechazar Solicitud",
+  "playerApprovedSuccess": "¡Jugador aprobado con éxito! 🟢",
+  "playerRejectedSuccess": "Solicitud de jugador rechazada"
 }

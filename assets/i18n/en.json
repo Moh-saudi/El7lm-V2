@@ -606,5 +606,10 @@
   "heightWeightLabel": "Height / Weight",
   "verificationStatusLabel": "Verification Status",
   "shareReportLink": "Share Verified Report Link",
-  "verifiedTechnicalDossier": "VERIFIED TECHNICAL DOSSIER CODE"
+  "verifiedTechnicalDossier": "VERIFIED TECHNICAL DOSSIER CODE",
+  "pendingApproval": "Pending Approval",
+  "approvePlayer": "Approve Player",
+  "rejectPlayer": "Reject Request",
+  "playerApprovedSuccess": "Player approved successfully! 🟢",
+  "playerRejectedSuccess": "Player join request rejected"
 }
