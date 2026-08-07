@@ -586,10 +586,10 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
                       onPressed: () async {
                         final message = _buildFormattedShareMessage(code, link, description);
                         await Clipboard.setData(ClipboardData(text: message));
-                        if (!sheetCtx.mounted) return;
+                        if (!sheetCtx.mounted || !mounted) return;
                         ScaffoldMessenger.of(sheetCtx).showSnackBar(
                           SnackBar(
-                            content: Text(context.tr('copyInviteMessageSuccess')),
+                            content: Text(sheetCtx.tr('copyInviteMessageSuccess')),
                             backgroundColor: AppColors.green,
                           ),
                         );
