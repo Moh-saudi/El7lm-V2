@@ -678,31 +678,22 @@ class DataService {
     }.whereType<String>().where((value) => value.isNotEmpty).toList();
 
     try {
-      if (organizationIds.isNotEmpty) {
-        final seen = <String>{};
-        final list = <Map<String, dynamic>>[];
-        for (final orgId in organizationIds) {
-          final rows = await client
-              .from('organization_referrals')
-              .select()
-              .eq('organizationId', orgId)
-              .order('createdAt', ascending: false);
-          for (final row in rows) {
-            final map = Map<String, dynamic>.from(row);
-            if (seen.add('${map['id']}')) list.add(map);
-          }
-        }
-        if (list.isNotEmpty) return list;
-      }
+      if (organizationIds.isEmpty) return const [];
 
-      // Fallback: Query all active referrals
-      final rows = await client
-          .from('organization_referrals')
-          .select()
-          .eq('isActive', true)
-          .order('createdAt', ascending: false)
-          .limit(20);
-      return (rows as List).map((e) => Map<String, dynamic>.from(e)).toList();
+      final seen = <String>{};
+      final list = <Map<String, dynamic>>[];
+      for (final orgId in organizationIds) {
+        final rows = await client
+            .from('organization_referrals')
+            .select()
+            .eq('organizationId', orgId)
+            .order('createdAt', ascending: false);
+        for (final row in rows) {
+          final map = Map<String, dynamic>.from(row);
+          if (seen.add('${map['id']}')) list.add(map);
+        }
+      }
+      return list;
     } catch (_) {
       return const [];
     }
