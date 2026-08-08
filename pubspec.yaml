@@ -1,7 +1,7 @@
 name: el7lm_mobile
 description: "El7lm mobile MVP for Android and iOS."
 publish_to: 'none'
-version: 1.0.2+3
+version: 1.0.3+10
 
 environment:
   sdk: ^3.12.2
