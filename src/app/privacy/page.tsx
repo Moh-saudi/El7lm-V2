@@ -32,8 +32,7 @@ import {
   Moon,
   Home,
   ArrowRight,
-  ArrowLeft,
-  Languages
+  ArrowLeft
 } from 'lucide-react';
 
 export default function PrivacyPage() {
@@ -359,7 +358,7 @@ export default function PrivacyPage() {
                           : 'text-slate-500 hover:text-slate-900 bg-slate-100'
                       } ${isRTL ? 'left-3' : 'right-3'}`}
                     >
-                      مسح
+                      {privacyData.clearSearchLabel}
                     </button>
                   )}
                 </div>
@@ -385,7 +384,7 @@ export default function PrivacyPage() {
                     }`}
                   >
                     <FileText className="w-4 h-4 text-rose-500" />
-                    <span>حذف الحساب والبيانات</span>
+                    <span>{privacyData.deleteDataButton}</span>
                   </Link>
                 </div>
               </div>
@@ -477,10 +476,10 @@ export default function PrivacyPage() {
                         isDarkMode ? 'text-white' : 'text-slate-900'
                       }`}>{privacyData.tocTitle}</h3>
                     </div>
-                    <span className={`text-xs font-extrabold px-2 py-0.5 rounded-full ${
+                    <span className={`text-xs font-extrabold px-2.5 py-1 rounded-full ${
                       isDarkMode ? 'text-slate-400 bg-slate-800' : 'text-slate-600 bg-slate-100'
                     }`}>
-                      14 بند
+                      {privacyData.sectionsCountLabel}
                     </span>
                   </div>
 
@@ -529,13 +528,13 @@ export default function PrivacyPage() {
                   }`}>
                     <p className={`text-xs mb-2 font-medium ${
                       isDarkMode ? 'text-slate-400' : 'text-slate-600'
-                    }`}>لديك استفسار حول بياناتك؟</p>
+                    }`}>{privacyData.haveQuestionLabel}</p>
                     <a
                       href="#contact"
                       className="inline-flex items-center justify-center gap-1.5 text-xs font-extrabold text-indigo-600 dark:text-emerald-400 hover:underline"
                     >
                       <Mail className="w-3.5 h-3.5" />
-                      <span>تواصل مع مسؤول حماية البيانات</span>
+                      <span>{privacyData.contactOfficerLabel}</span>
                     </a>
                   </div>
                 </div>
@@ -557,7 +556,7 @@ export default function PrivacyPage() {
                       onClick={() => setSearchQuery('')}
                       className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
                     >
-                      عرض جميع بنود السياسة
+                      {privacyData.viewAllSectionsLabel}
                     </button>
                   </div>
                 ) : (
@@ -584,7 +583,7 @@ export default function PrivacyPage() {
                             {sectionIcons[section.id] || <FileText className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />}
                           </div>
                           <div>
-                            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">البند {section.number}</span>
+                            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">{privacyData.sectionPrefix} {section.number}</span>
                             <h2 className={`text-xl sm:text-2xl font-bold ${
                               isDarkMode ? 'text-white' : 'text-slate-900'
                             }`}>{section.title}</h2>
@@ -723,12 +722,12 @@ export default function PrivacyPage() {
                               {copiedKey === 'email' ? (
                                 <>
                                   <Check className="w-3.5 h-3.5 text-emerald-500" />
-                                  <span className="text-emerald-500 font-bold">تم النسخ!</span>
+                                  <span className="text-emerald-500 font-bold">{privacyData.copiedLabel}</span>
                                 </>
                               ) : (
                                 <>
                                   <Copy className="w-3.5 h-3.5" />
-                                  <span>نسخ البريد</span>
+                                  <span>{privacyData.copyEmailLabel}</span>
                                 </>
                               )}
                             </button>
@@ -754,12 +753,12 @@ export default function PrivacyPage() {
                               {copiedKey === 'address' ? (
                                 <>
                                   <Check className="w-3.5 h-3.5 text-emerald-500" />
-                                  <span className="text-emerald-500 font-bold">تم النسخ!</span>
+                                  <span className="text-emerald-500 font-bold">{privacyData.copiedLabel}</span>
                                 </>
                               ) : (
                                 <>
                                   <Copy className="w-3.5 h-3.5" />
-                                  <span>نسخ العنوان</span>
+                                  <span>{privacyData.copyAddressLabel}</span>
                                 </>
                               )}
                             </button>
@@ -783,7 +782,7 @@ export default function PrivacyPage() {
                               className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
                             >
                               <Phone className="w-3.5 h-3.5" />
-                              <span>اتصال مباشر</span>
+                              <span>{privacyData.directCallLabel}</span>
                             </a>
                           </div>
 
@@ -805,7 +804,7 @@ export default function PrivacyPage() {
                               className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline"
                             >
                               <Phone className="w-3.5 h-3.5" />
-                              <span>اتصال مباشر</span>
+                              <span>{privacyData.directCallLabel}</span>
                             </a>
                           </div>
                         </div>

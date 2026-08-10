@@ -25,10 +25,20 @@ export interface PrivacyPolicyData {
   lastUpdated: string;
   referenceNotice: string;
   searchPlaceholder: string;
+  clearSearchLabel: string;
   noResultsText: string;
+  viewAllSectionsLabel: string;
   tocTitle: string;
+  sectionsCountLabel: string;
   printButton: string;
-  downloadPdfButton: string;
+  deleteDataButton: string;
+  haveQuestionLabel: string;
+  contactOfficerLabel: string;
+  sectionPrefix: string;
+  copyEmailLabel: string;
+  copyAddressLabel: string;
+  copiedLabel: string;
+  directCallLabel: string;
   pillarsTitle: string;
   pillarsSubtitle: string;
   pillars: {
@@ -58,10 +68,20 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
     lastUpdated: "10 أغسطس 2026",
     referenceNotice: "النسخة العربية هي النص المرجعي المعتمد عند أي تعارض بين اللغات",
     searchPlaceholder: "ابحث في بنود سياسة الخصوصية...",
+    clearSearchLabel: "مسح",
     noResultsText: "لم يتم العثور على نتائج تطابق بحثك.",
+    viewAllSectionsLabel: "عرض جميع بنود السياسة",
     tocTitle: "فهرس السياسة",
+    sectionsCountLabel: "14 بند",
     printButton: "طباعة السياسة",
-    downloadPdfButton: "تحميل نسق PDF",
+    deleteDataButton: "حذف الحساب والبيانات",
+    haveQuestionLabel: "لديك استفسار حول بياناتك؟",
+    contactOfficerLabel: "تواصل مع مسؤول حماية البيانات",
+    sectionPrefix: "البند",
+    copyEmailLabel: "نسخ البريد",
+    copyAddressLabel: "نسخ العنوان",
+    copiedLabel: "تم النسخ!",
+    directCallLabel: "اتصال مباشر",
     pillarsTitle: "ركائز حماية البيانات في منصة الحُلم",
     pillarsSubtitle: "نحن نضع أمان بياناتك وحماية موهبتك الرياضية في مقدمة أولوياتنا وفق معايير عالمية",
     pillars: [
@@ -101,7 +121,7 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
       {
         id: "intro",
         number: "1",
-        title: "مقدمة",
+        title: "1. مقدمة",
         paragraphs: [
           "تلتزم منصة \"الحُلم\" (El7lm)، التابعة لشركة مسك القابضة (\"المنصة\"، \"نحن\")، بحماية خصوصية وبيانات مستخدميها. توضح هذه السياسة نوع البيانات الشخصية التي نجمعها من مستخدمي منصة الحُلم وتطبيقها على الهواتف المحمولة (يُشار إليهما مجتمعين بـ\"الخدمات\")، وأسباب جمعها، وكيفية استخدامها وحمايتها، والجهات التي نشاركها معها، والحقوق التي تملكونها تجاه بياناتكم.",
           "تسري هذه السياسة على جميع مستخدمي الخدمات، بمن فيهم اللاعبون وأولياء أمورهم، والأندية، والأكاديميات، والوكلاء الرياضيون، والمدربون، ومنظمو البطولات. باستخدامكم للخدمات أو إنشاء حساب عليها، فإنكم تقرّون بأنكم قرأتم هذه السياسة وفهمتموها ووافقتم عليها."
@@ -110,7 +130,7 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
       {
         id: "data-collected",
         number: "2",
-        title: "البيانات التي نجمعها",
+        title: "2. البيانات التي نجمعها",
         description: "نجمع البيانات الضرورية لتقديم الخدمات الرياضية الرقمية وتسهيل الربط بين اللاعبين والأندية:",
         subsections: [
           {
@@ -163,7 +183,7 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
       {
         id: "minors-consent",
         number: "3",
-        title: "القُصّر وموافقة ولي الأمر والموافقة على عرض الصور والفيديوهات",
+        title: "3. القُصّر وموافقة ولي الأمر والموافقة على عرض الصور والفيديوهات",
         callout: {
           type: "important",
           title: "شرط أساسي لحماية اللاعبين القُصّر",
@@ -182,7 +202,7 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
       {
         id: "how-we-use",
         number: "4",
-        title: "كيف نستخدم بياناتك",
+        title: "4. كيف نستخدم بياناتك",
         bullets: [
           "إنشاء الحساب والتحقق منه وإدارته",
           "تشغيل المنصة وتطوير ميزاتها المتجددة",
@@ -199,7 +219,7 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
       {
         id: "legal-basis",
         number: "5",
-        title: "الأساس القانوني لمعالجة البيانات",
+        title: "5. الأساس القانوني لمعالجة البيانات",
         bullets: [
           "الموافقة: كموافقة ولي الأمر الموضحة في القسم 3، أو الموافقة على تلقي رسائل تسويقية.",
           "تنفيذ العقد: لتقديم الخدمات المشترك بها، بما يشمل عرض البروفايل ومعالجة المدفوعات.",
@@ -210,7 +230,7 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
       {
         id: "data-sharing",
         number: "6",
-        title: "مشاركة البيانات وظهور البروفايل",
+        title: "6. مشاركة البيانات وظهور البروفايل",
         description: "لا نبيع ولا نؤجر بياناتك الشخصية لأي طرف. نشارك البيانات فقط في الحالات التوضيحية التالية:",
         bullets: [
           "ظهور البروفايل على المنصة: يظهر البروفايل الرياضي للاعب (بياناته، صوره، ومقاطع الفيديو الخاصة به) لجميع الحسابات الأخرى المسجّلة على المنصة، سواء المدفوعة أو المجانية، ومنها: كشافو الأندية، المدربون، الأكاديميات، والوكلاء/المسوقون الرياضيون، وذلك بعد الحصول على موافقة ولي الأمر الموضحة في القسم 3.",
@@ -224,7 +244,7 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
       {
         id: "international-transfers",
         number: "7",
-        title: "النقل الدولي للبيانات",
+        title: "7. النقل الدولي للبيانات",
         paragraphs: [
           "نقدّم خدماتنا حاليًا لمستخدمين في المغرب والجزائر ومصر والسعودية والإمارات والبحرين والكويت وإسبانيا والبرتغال، وقد يتم استضافة بعض بياناتك لدى مزودي خدمة يقع مقرهم أو بنيتهم التحتية خارج قطر. في هذه الحالات، نتخذ إجراءات معقولة لضمان حماية بياناتك بمستوى مكافئ، بما يشمل التعاقد مع مزودين حاصلين على شهادات أمان معترف بها دوليًا."
         ]
@@ -232,7 +252,7 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
       {
         id: "data-security",
         number: "8",
-        title: "أمان البيانات",
+        title: "8. أمان البيانات",
         bullets: [
           "تشفير البيانات أثناء النقل (TLS/HTTPS) وأثناء التخزين (AES-256)",
           "مراقبة مستمرة على مدار الساعة 24/7 لرصد أي نشاط غير معتاد",
@@ -245,7 +265,7 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
       {
         id: "retention",
         number: "9",
-        title: "مدة الاحتفاظ بالبيانات",
+        title: "9. مدة الاحتفاظ بالبيانات",
         bullets: [
           "مدة الحساب النشط: نحتفظ ببياناتك طالما حسابك نشط أو حسب الحاجة لتقديم الخدمة.",
           "عند حذف الحساب: يتم حذف أو إخفاء البروفايل والبيانات الرياضية والصور ومقاطع الفيديو خلال 90 يومًا من تاريخ الحذف.",
@@ -256,7 +276,7 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
       {
         id: "your-rights",
         number: "10",
-        title: "حقوقك",
+        title: "10. حقوقك",
         description: "وفقًا للأنظمة والمعايير المعمول بها، لك الحقوق التالية تجاه بياناتك الشخصية:",
         bullets: [
           "الوصول: طلب نسخة من بياناتك الشخصية المحفوظة لدينا.",
@@ -274,7 +294,7 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
       {
         id: "cookies",
         number: "11",
-        title: "ملفات تعريف الارتباط (الكوكيز)",
+        title: "11. ملفات تعريف الارتباط (الكوكيز)",
         subsections: [
           {
             title: "أنواع الكوكيز المستخمة",
@@ -293,7 +313,7 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
       {
         id: "governing-law",
         number: "12",
-        title: "القانون الحاكم والجهة التنظيمية",
+        title: "12. القانون الحاكم والجهة التنظيمية",
         paragraphs: [
           "تخضع هذه السياسة لقوانين حماية البيانات في دولة قطر، وتحديدًا القانون رقم 13 لسنة 2016 بشأن حماية خصوصية البيانات الشخصية. إذا كنت مقيمًا في دولة أخرى، فقد تسري عليك حقوق إضافية بموجب قوانين تلك الدولة. يحق لك تقديم شكوى إلى الجهة التنظيمية المختصة بحماية البيانات في قطر أو في بلد إقامتك."
         ]
@@ -301,7 +321,7 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
       {
         id: "changes",
         number: "13",
-        title: "التعديلات على هذه السياسة",
+        title: "13. التعديلات على هذه السياسة",
         paragraphs: [
           "قد نقوم بتحديث سياسة الخصوصية من وقت لآخر لأسباب تشغيلية أو قانونية أو تنظيمية. سنُخطرك بأي تعديلات جوهرية عبر البريد الإلكتروني أو إشعار داخل المنصة قبل سريانها. استمرارك في استخدام الخدمات بعد سريان التعديلات يُعد موافقة منك على السياسة المحدّثة."
         ]
@@ -309,7 +329,7 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
       {
         id: "contact",
         number: "14",
-        title: "تواصل معنا",
+        title: "14. تواصل معنا",
         description: "للاستفسار عن هذه السياسة أو ممارسة حقوقك المتعلقة ببياناتك، يسر فريق الحُلم تواصلكم معنا عبر القنوات التالية:"
       }
     ]
@@ -322,16 +342,25 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
     lastUpdated: "August 10, 2026",
     referenceNotice: "In case of any conflict between language versions, the Arabic version prevails.",
     searchPlaceholder: "Search Privacy Policy terms...",
+    clearSearchLabel: "Clear",
     noResultsText: "No section matches your search criteria.",
+    viewAllSectionsLabel: "View All Policy Sections",
     tocTitle: "Table of Contents",
+    sectionsCountLabel: "14 Sections",
     printButton: "Print Policy",
-    downloadPdfButton: "Download PDF",
+    deleteDataButton: "Delete Account & Data",
+    haveQuestionLabel: "Have a question about your data?",
+    contactOfficerLabel: "Contact Data Protection Officer",
+    sectionPrefix: "Section",
+    copyEmailLabel: "Copy Email",
+    copyAddressLabel: "Copy Address",
+    copiedLabel: "Copied!",
+    directCallLabel: "Direct Call",
     pillarsTitle: "Core Data Protection Pillars at El7lm",
     pillarsSubtitle: "We prioritize your privacy and talent data protection following international standards.",
     pillars: [
       {
         title: "Minors & Player Safety",
-        topAge: "10+ Age Requirement",
         desc: "Accounts for players under 18 require an electronically signed Parental Consent Declaration before display.",
         badge: "Family Security"
       },
@@ -585,10 +614,20 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
     lastUpdated: "10 de agosto de 2026",
     referenceNotice: "En caso de conflicto entre las versiones lingüísticas, prevalece la versión en árabe.",
     searchPlaceholder: "Buscar términos en la política de privacidad...",
+    clearSearchLabel: "Borrar",
     noResultsText: "No se encontraron secciones que coincidan con tu búsqueda.",
+    viewAllSectionsLabel: "Ver Todas las Secciones",
     tocTitle: "Índice de la Política",
+    sectionsCountLabel: "14 Secciones",
     printButton: "Imprimir Política",
-    downloadPdfButton: "Descargar PDF",
+    deleteDataButton: "Eliminar Cuenta y Datos",
+    haveQuestionLabel: "¿Tienes preguntas sobre tus datos?",
+    contactOfficerLabel: "Contactar con el Delegado de Protección de Datos",
+    sectionPrefix: "Sección",
+    copyEmailLabel: "Copiar Correo",
+    copyAddressLabel: "Copiar Dirección",
+    copiedLabel: "¡Copiado!",
+    directCallLabel: "Llamada Directa",
     pillarsTitle: "Pilares de Protección de Datos en El7lm",
     pillarsSubtitle: "Priorizamos la privacidad y seguridad de tu talento deportivo bajo estándares internacionales.",
     pillars: [
@@ -847,10 +886,20 @@ export const PRIVACY_POLICY_DATA: Record<'ar' | 'en' | 'es' | 'pt', PrivacyPolic
     lastUpdated: "10 de agosto de 2026",
     referenceNotice: "Em caso de conflito entre as versões linguísticas, prevalece a versão em árabe.",
     searchPlaceholder: "Pesquisar termos na política de privacidade...",
+    clearSearchLabel: "Limpar",
     noResultsText: "Nenhuma secção corresponde à sua pesquisa.",
+    viewAllSectionsLabel: "Ver Todas as Secções",
     tocTitle: "Índice da Política",
+    sectionsCountLabel: "14 Secções",
     printButton: "Imprimir Política",
-    downloadPdfButton: "Descarregar PDF",
+    deleteDataButton: "Eliminar Conta e Dados",
+    haveQuestionLabel: "Tem dúvidas sobre os seus dados?",
+    contactOfficerLabel: "Contactar Encarregado de Proteção de Dados",
+    sectionPrefix: "Secção",
+    copyEmailLabel: "Copiar E-mail",
+    copyAddressLabel: "Copiar Endereço",
+    copiedLabel: "Copiado!",
+    directCallLabel: "Chamada Direta",
     pillarsTitle: "Pilares de Proteção de Dados na El7lm",
     pillarsSubtitle: "Priorizamos a privacidade e a segurança do seu talento desportivo segundo padrões internacionais.",
     pillars: [
