@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PublicLandingShell } from '@/components/layout/PublicLandingShell';
-import { useTranslation } from '@/lib/i18n';
+import { useTranslation, Locale } from '@/lib/i18n';
 import { PRIVACY_POLICY_DATA } from '@/data/privacy-policy-translations';
 import {
   ShieldCheck,
@@ -32,12 +32,13 @@ import {
   Moon,
   Home,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  Languages
 } from 'lucide-react';
 
 export default function PrivacyPage() {
   const router = useRouter();
-  const { locale, isRTL } = useTranslation();
+  const { locale, isRTL, changeLanguage } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSectionId, setActiveSectionId] = useState<string>('intro');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -70,16 +71,24 @@ export default function PrivacyPage() {
     }
   };
 
+  // Language options list
+  const availableLanguages: Array<{ code: Locale; label: string; flag: string }> = [
+    { code: 'ar', label: 'العربية', flag: '🇸🇦' },
+    { code: 'en', label: 'English', flag: '🇬🇧' },
+    { code: 'es', label: 'Español', flag: '🇪🇸' },
+    { code: 'pt', label: 'Português', flag: '🇵🇹' },
+  ];
+
   // Get localized dataset (fallback to Arabic if locale not found)
   const currentLocale = (locale in PRIVACY_POLICY_DATA ? locale : 'ar') as 'ar' | 'en' | 'es' | 'pt';
   const privacyData = PRIVACY_POLICY_DATA[currentLocale];
 
   // Navigation labels by locale
   const navLabels = {
-    ar: { home: 'العودة للرئيسية', back: 'رجوع', lightMode: 'الوضع النهاري', darkMode: 'الوضع الليلي' },
-    en: { home: 'Back to Home', back: 'Back', lightMode: 'Light Mode', darkMode: 'Dark Mode' },
-    es: { home: 'Volver al Inicio', back: 'Volver', lightMode: 'Modo Claro', darkMode: 'Modo Oscuro' },
-    pt: { home: 'Voltar ao Início', back: 'Voltar', lightMode: 'Modo Claro', darkMode: 'Modo Escuro' },
+    ar: { home: 'العودة للرئيسية', back: 'رجوع', lightMode: 'الوضع النهاري', darkMode: 'الوضع الليلي', selectLang: 'اختر اللغة' },
+    en: { home: 'Back to Home', back: 'Back', lightMode: 'Light Mode', darkMode: 'Dark Mode', selectLang: 'Select Language' },
+    es: { home: 'Volver al Inicio', back: 'Volver', lightMode: 'Modo Claro', darkMode: 'Modo Oscuro', selectLang: 'Idioma' },
+    pt: { home: 'Voltar ao Início', back: 'Voltar', lightMode: 'Modo Claro', darkMode: 'Modo Escuro', selectLang: 'Idioma' },
   }[currentLocale];
 
   // Filter sections based on search query
@@ -166,10 +175,10 @@ export default function PrivacyPage() {
       >
         
         {/* ========================================================================= */}
-        {/* HERO SECTION WITH TOP NAVIGATION BAR */}
+        {/* HERO SECTION WITH TOP NAVIGATION BAR & LANGUAGE SWITCHER */}
         {/* ========================================================================= */}
         <section
-          className={`relative overflow-hidden border-b py-12 lg:py-16 transition-colors duration-300 ${
+          className={`relative overflow-hidden border-b py-10 lg:py-16 transition-colors duration-300 ${
             isDarkMode
               ? 'border-slate-800/80 bg-gradient-to-b from-slate-950 via-slate-900 to-indigo-950/40'
               : 'border-slate-200/90 bg-gradient-to-b from-indigo-50/80 via-white to-slate-50'
@@ -185,7 +194,7 @@ export default function PrivacyPage() {
 
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             
-            {/* TOP NAVIGATION & CONTROLS TOOLBAR */}
+            {/* TOP NAVIGATION & CONTROLS TOOLBAR WITH LANGUAGE SWITCHER */}
             <div className="flex flex-wrap items-center justify-between gap-4 mb-8 pb-4 border-b border-slate-200/60 dark:border-slate-800/60">
               
               {/* Back to Home & History Back Buttons */}
@@ -215,28 +224,63 @@ export default function PrivacyPage() {
                 </button>
               </div>
 
-              {/* Theme Switcher Toggle (Day/Night) */}
-              <button
-                onClick={toggleTheme}
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold border transition shadow-sm ${
-                  isDarkMode
-                    ? 'bg-slate-900 text-amber-400 border-slate-700 hover:bg-slate-800'
-                    : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50 shadow-indigo-50'
-                }`}
-                title={isDarkMode ? navLabels.lightMode : navLabels.darkMode}
-              >
-                {isDarkMode ? (
-                  <>
-                    <Sun className="w-4 h-4 text-amber-400" />
-                    <span>{navLabels.lightMode}</span>
-                  </>
-                ) : (
-                  <>
-                    <Moon className="w-4 h-4 text-indigo-600" />
-                    <span>{navLabels.darkMode}</span>
-                  </>
-                )}
-              </button>
+              {/* Right Controls: 4-Language Switcher + Day/Night Theme Switcher */}
+              <div className="flex flex-wrap items-center gap-3">
+                
+                {/* DIRECT 4-LANGUAGE SELECTOR PILL BAR */}
+                <div
+                  className={`flex items-center gap-1 rounded-2xl border p-1 shadow-inner ${
+                    isDarkMode
+                      ? 'bg-slate-900 border-slate-800'
+                      : 'bg-slate-200/60 border-slate-300/80'
+                  }`}
+                  aria-label={navLabels.selectLang}
+                >
+                  {availableLanguages.map((lang) => {
+                    const isSelected = locale === lang.code;
+                    return (
+                      <button
+                        key={lang.code}
+                        onClick={() => changeLanguage(lang.code)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 scale-105'
+                            : isDarkMode
+                              ? 'text-slate-400 hover:text-white hover:bg-slate-800'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+                        }`}
+                      >
+                        <span className="text-sm">{lang.flag}</span>
+                        <span>{lang.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Theme Switcher Toggle (Day/Night) */}
+                <button
+                  onClick={toggleTheme}
+                  className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold border transition shadow-sm ${
+                    isDarkMode
+                      ? 'bg-slate-900 text-amber-400 border-slate-700 hover:bg-slate-800'
+                      : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50 shadow-indigo-50'
+                  }`}
+                  title={isDarkMode ? navLabels.lightMode : navLabels.darkMode}
+                >
+                  {isDarkMode ? (
+                    <>
+                      <Sun className="w-4 h-4 text-amber-400" />
+                      <span className="hidden sm:inline">{navLabels.lightMode}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="w-4 h-4 text-indigo-600" />
+                      <span className="hidden sm:inline">{navLabels.darkMode}</span>
+                    </>
+                  )}
+                </button>
+
+              </div>
 
             </div>
 
