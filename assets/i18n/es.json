@@ -644,5 +644,8 @@
   "uploadPhoto": "Subir foto",
   "jpgPngDesc": "Imagen JPG o PNG",
   "uploadingMediaWait": "Subiendo contenido, espera por favor...",
-  "mediaUploadedSuccess": "Contenido subido correctamente."
+  "mediaUploadedSuccess": "Contenido subido correctamente.",
+  "continueToWebTitle": "Continuar a la plataforma web",
+  "continueToWebMessage": "La página «{page}» se abrirá en la plataforma web de El7lm. Es posible que debas iniciar sesión en el navegador.",
+  "continueToWebAction": "Continuar a la web"
 }

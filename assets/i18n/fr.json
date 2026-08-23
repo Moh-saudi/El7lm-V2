@@ -277,5 +277,9 @@
   "uploadPhoto": "Ajouter une photo",
   "jpgPngDesc": "Image JPG ou PNG",
   "uploadingMediaWait": "Importation en cours, veuillez patienter...",
-  "mediaUploadedSuccess": "Média ajouté avec succès."
+  "mediaUploadedSuccess": "Média ajouté avec succès.",
+  "playerVideos": "Vidéos des joueurs",
+  "continueToWebTitle": "Continuer vers la plateforme web",
+  "continueToWebMessage": "La page « {page} » s’ouvrira sur la plateforme web El7lm. Vous devrez peut-être vous connecter dans le navigateur.",
+  "continueToWebAction": "Continuer sur le web"
 }

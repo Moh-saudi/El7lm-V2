@@ -667,5 +667,8 @@
   "mp4FormatsDesc": "فيديو MP4 لعرض مهاراتك",
   "jpgPngDesc": "صورة بصيغة JPG أو PNG",
   "uploadingMediaWait": "جاري رفع الوسائط، يرجى الانتظار...",
-  "mediaUploadedSuccess": "تم رفع الوسائط بنجاح."
+  "mediaUploadedSuccess": "تم رفع الوسائط بنجاح.",
+  "continueToWebTitle": "الانتقال إلى منصة الويب",
+  "continueToWebMessage": "سيتم فتح صفحة «{page}» في منصة الحلم على الويب. قد يُطلب منك تسجيل الدخول في المتصفح.",
+  "continueToWebAction": "متابعة إلى الويب"
 }

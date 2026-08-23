@@ -644,5 +644,8 @@
   "uploadPhoto": "Carregar foto",
   "jpgPngDesc": "Imagem JPG ou PNG",
   "uploadingMediaWait": "Carregando mídia, aguarde...",
-  "mediaUploadedSuccess": "Mídia carregada com sucesso."
+  "mediaUploadedSuccess": "Mídia carregada com sucesso.",
+  "continueToWebTitle": "Continuar para a plataforma web",
+  "continueToWebMessage": "A página «{page}» será aberta na plataforma web El7lm. Poderá ser necessário iniciar sessão no navegador.",
+  "continueToWebAction": "Continuar para a web"
 }

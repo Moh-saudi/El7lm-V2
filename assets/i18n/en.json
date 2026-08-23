@@ -644,5 +644,8 @@
   "uploadPhoto": "Upload photo",
   "jpgPngDesc": "JPG or PNG image",
   "uploadingMediaWait": "Uploading media, please wait...",
-  "mediaUploadedSuccess": "Media uploaded successfully."
+  "mediaUploadedSuccess": "Media uploaded successfully.",
+  "continueToWebTitle": "Continue to the web platform",
+  "continueToWebMessage": "The {page} page will open on the El7lm web platform. You may need to sign in in your browser.",
+  "continueToWebAction": "Continue to web"
 }

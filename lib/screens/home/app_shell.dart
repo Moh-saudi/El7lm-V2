@@ -537,13 +537,8 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> openWeb(String path) async {
-    final session = widget.dataService.authService.hasSession
-        ? widget.dataService.authService.accessToken
-        : null;
     final base = AppConfig.webBaseUrl;
-
     final params = <String, String>{'mobile_source': 'flutter_app'};
-    if (session != null) params['access_token'] = session;
     final target = Uri.parse(base).replace(path: path, queryParameters: params);
 
     try {
@@ -584,16 +579,33 @@ class _WebMenuDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base = '/dashboard/${accountType.value}';
-    final links = [
-      ('messages', Icons.chat_bubble_outline, '$base/messages'),
-      ('notifications', Icons.notifications_none, '$base/notifications'),
-      ('reports', Icons.analytics_outlined, '$base/reports'),
-      ('tournaments', Icons.emoji_events_outlined, '$base/tournaments'),
-      if (accountType == AccountType.academy)
-        ('academy', Icons.school_outlined, '$base/academy'),
-      ('store', Icons.storefront_outlined, '$base/store'),
-      ('settings', Icons.settings_outlined, '$base/settings'),
-    ];
+    // Every path in this list has a real page under src/app/dashboard.
+    // Player settings are native and are intentionally not duplicated here.
+    final links = accountType.isPlayer
+        ? [
+            ('messages', Icons.chat_bubble_outline, '$base/messages'),
+            ('notifications', Icons.notifications_none, '$base/notifications'),
+            ('reports', Icons.analytics_outlined, '$base/reports'),
+            ('tournaments', Icons.emoji_events_outlined, '$base/tournaments'),
+            ('store', Icons.storefront_outlined, '$base/store'),
+          ]
+        : [
+            ('messages', Icons.chat_bubble_outline, '$base/messages'),
+            ('notifications', Icons.notifications_none, '$base/notifications'),
+            ('players', Icons.groups_outlined, '$base/players'),
+            (
+              'searchPlayers',
+              Icons.person_search_outlined,
+              '$base/search-players',
+            ),
+            (
+              'playerVideos',
+              Icons.video_library_outlined,
+              '$base/player-videos',
+            ),
+            ('store', Icons.storefront_outlined, '$base/store'),
+            ('myProfile', Icons.account_circle_outlined, '$base/profile'),
+          ];
 
     return Drawer(
       child: SafeArea(
@@ -638,9 +650,44 @@ class _WebMenuDrawer extends StatelessWidget {
                       leading: Icon(link.$2),
                       title: Text(context.tr(link.$1)),
                       trailing: const Icon(Icons.open_in_new, size: 17),
-                      onTap: () {
+                      onTap: () async {
+                        final pageTitle = context.tr(link.$1);
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (dialogContext) => AlertDialog(
+                            icon: const Icon(
+                              Icons.open_in_browser_rounded,
+                              color: AppColors.green,
+                              size: 34,
+                            ),
+                            title: Text(
+                              context.tr('continueToWebTitle'),
+                              textAlign: TextAlign.center,
+                            ),
+                            content: Text(
+                              context.tr('continueToWebMessage', {
+                                'page': pageTitle,
+                              }),
+                              textAlign: TextAlign.center,
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, false),
+                                child: Text(context.tr('cancel')),
+                              ),
+                              FilledButton.icon(
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, true),
+                                icon: const Icon(Icons.open_in_new_rounded),
+                                label: Text(context.tr('continueToWebAction')),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed != true || !context.mounted) return;
                         Navigator.pop(context);
-                        onOpen(link.$3);
+                        await onOpen(link.$3);
                       },
                     ),
                   ),
