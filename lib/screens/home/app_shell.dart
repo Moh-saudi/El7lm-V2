@@ -369,7 +369,7 @@ class _AppShellState extends State<AppShell> {
         ),
         actions: [
           if (!isCinema) const LanguageSwitcher(compact: true),
-          if (!isCinema && !widget.accountType.isPlayer)
+          if (!isCinema)
             IconButton(
               tooltip: context.tr('settings'),
               onPressed: () => Navigator.of(context).push(

@@ -636,5 +636,13 @@
   "contactTournamentWhatsApp": "Contact tournaments via WhatsApp",
   "contactTournamentEmail": "Email the tournament team",
   "tournamentWhatsAppMessage": "Hello, I would like to ask about registering for El7lm tournaments.",
-  "tournamentEmailSubject": "El7lm tournament registration enquiry"
+  "tournamentEmailSubject": "El7lm tournament registration enquiry",
+  "uploadSkillsMedia": "Upload skills media",
+  "mediaSelectChoice": "Choose the type of media to add to your profile.",
+  "uploadVideoClip": "Upload video clip",
+  "mp4FormatsDesc": "MP4 video showcasing your skills",
+  "uploadPhoto": "Upload photo",
+  "jpgPngDesc": "JPG or PNG image",
+  "uploadingMediaWait": "Uploading media, please wait...",
+  "mediaUploadedSuccess": "Media uploaded successfully."
 }

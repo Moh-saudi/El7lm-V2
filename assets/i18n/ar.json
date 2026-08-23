@@ -660,5 +660,12 @@
   "contactTournamentWhatsApp": "التواصل مع إدارة البطولات عبر واتساب",
   "contactTournamentEmail": "مراسلة إدارة البطولات بالبريد",
   "tournamentWhatsAppMessage": "مرحباً، أريد الاستفسار عن التسجيل في بطولات منصة الحلم.",
-  "tournamentEmailSubject": "استفسار عن التسجيل في بطولات منصة الحلم"
+  "tournamentEmailSubject": "استفسار عن التسجيل في بطولات منصة الحلم",
+  "uploadSkillsMedia": "رفع وسائط المهارات",
+  "mediaSelectChoice": "اختر نوع الوسائط التي تريد إضافتها إلى ملفك.",
+  "uploadVideoClip": "رفع مقطع فيديو",
+  "mp4FormatsDesc": "فيديو MP4 لعرض مهاراتك",
+  "jpgPngDesc": "صورة بصيغة JPG أو PNG",
+  "uploadingMediaWait": "جاري رفع الوسائط، يرجى الانتظار...",
+  "mediaUploadedSuccess": "تم رفع الوسائط بنجاح."
 }

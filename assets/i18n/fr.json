@@ -269,5 +269,13 @@
   "contactTournamentWhatsApp": "Contacter les tournois sur WhatsApp",
   "contactTournamentEmail": "Écrire à l’équipe des tournois",
   "tournamentWhatsAppMessage": "Bonjour, je souhaite obtenir des informations sur l’inscription aux tournois El7lm.",
-  "tournamentEmailSubject": "Demande d’inscription aux tournois El7lm"
+  "tournamentEmailSubject": "Demande d’inscription aux tournois El7lm",
+  "uploadSkillsMedia": "Ajouter des médias de compétences",
+  "mediaSelectChoice": "Choisissez le type de média à ajouter à votre profil.",
+  "uploadVideoClip": "Ajouter une vidéo",
+  "mp4FormatsDesc": "Vidéo MP4 présentant vos compétences",
+  "uploadPhoto": "Ajouter une photo",
+  "jpgPngDesc": "Image JPG ou PNG",
+  "uploadingMediaWait": "Importation en cours, veuillez patienter...",
+  "mediaUploadedSuccess": "Média ajouté avec succès."
 }

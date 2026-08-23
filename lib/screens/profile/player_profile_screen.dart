@@ -12,7 +12,6 @@ import '../../models/account_type.dart';
 import '../../models/player.dart';
 import '../../models/user_profile.dart';
 import '../../services/data_service.dart';
-import '../../services/in_app_notification_service.dart';
 import '../../services/profile_answer_validator.dart';
 import '../../widgets/parental_consent_dialog.dart';
 import '../../widgets/player_share_modal.dart';
@@ -486,7 +485,8 @@ class _ProfileFormState extends State<_ProfileForm>
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                   children: [
                     ..._buildSectionFields(context, s),
-                    // Show media + settings only in the last tab (professional)
+                    // Media belongs to the professional tab. Notification and
+                    // account settings live on their own settings screen.
                     if (s.key == 'professional') ...[
                       _MediaSection(
                         profile: widget.profile,
@@ -497,8 +497,6 @@ class _ProfileFormState extends State<_ProfileForm>
                         videos: _memoVideos,
                         onDelete: _handleDeleteMedia,
                       ),
-                      const SizedBox(height: 16),
-                      const _NotificationSettingsCard(),
                     ],
                     if (editing) _buildSaveBar(context),
                   ],
@@ -2546,112 +2544,6 @@ String resolvePlayerMediaUrl(String value) {
   final result = '$r2DevBase/$cleanPath';
   debugPrint('MEDIA_URL_RESOLVED: "$value" -> "$result"');
   return result;
-}
-
-class _NotificationSettingsCard extends StatefulWidget {
-  const _NotificationSettingsCard();
-
-  @override
-  State<_NotificationSettingsCard> createState() =>
-      _NotificationSettingsCardState();
-}
-
-class _NotificationSettingsCardState extends State<_NotificationSettingsCard> {
-  final _service = InAppNotificationService();
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.volume_up_rounded,
-                  color: AppColors.green,
-                  size: 22,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  context.tr('notificationSoundSettings'),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                context.tr('enableChatSound'),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              subtitle: const Text(
-                'تشغيل صوت خاص عند وصول رسالة شات جديدة',
-                style: TextStyle(fontSize: 12, color: AppColors.muted),
-              ),
-              value: _service.chatSoundEnabled,
-              activeTrackColor: AppColors.green,
-              onChanged: (val) async {
-                await _service.setChatSoundEnabled(val);
-                if (mounted) setState(() {});
-              },
-            ),
-            const Divider(height: 1),
-            SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                context.tr('enableNotificationSound'),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              subtitle: const Text(
-                'تشغيل صوت تنبيه خاص عند وصول إشعار جديد',
-                style: TextStyle(fontSize: 12, color: AppColors.muted),
-              ),
-              value: _service.notificationSoundEnabled,
-              activeTrackColor: AppColors.green,
-              onChanged: (val) async {
-                await _service.setNotificationSoundEnabled(val);
-                if (mounted) setState(() {});
-              },
-            ),
-            const Divider(height: 1),
-            SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                context.tr('enableInAppPopups'),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              subtitle: const Text(
-                'عرض إشعار منبثق فخم أعلى الشاشة فور وصول الرسائل والإشعارات',
-                style: TextStyle(fontSize: 12, color: AppColors.muted),
-              ),
-              value: _service.inAppPopupEnabled,
-              activeTrackColor: AppColors.green,
-              onChanged: (val) async {
-                await _service.setInAppPopupEnabled(val);
-                if (mounted) setState(() {});
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _CompactActionTilesRow extends StatelessWidget {

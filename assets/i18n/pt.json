@@ -636,5 +636,13 @@
   "contactTournamentWhatsApp": "Contactar torneios pelo WhatsApp",
   "contactTournamentEmail": "Enviar email à equipa de torneios",
   "tournamentWhatsAppMessage": "Olá, gostaria de obter informações sobre o registo nos torneios El7lm.",
-  "tournamentEmailSubject": "Pedido de informação sobre torneios El7lm"
+  "tournamentEmailSubject": "Pedido de informação sobre torneios El7lm",
+  "uploadSkillsMedia": "Carregar mídia de habilidades",
+  "mediaSelectChoice": "Escolha o tipo de mídia para adicionar ao seu perfil.",
+  "uploadVideoClip": "Carregar vídeo",
+  "mp4FormatsDesc": "Vídeo MP4 mostrando suas habilidades",
+  "uploadPhoto": "Carregar foto",
+  "jpgPngDesc": "Imagem JPG ou PNG",
+  "uploadingMediaWait": "Carregando mídia, aguarde...",
+  "mediaUploadedSuccess": "Mídia carregada com sucesso."
 }
