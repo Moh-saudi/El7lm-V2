@@ -97,6 +97,21 @@ export async function POST(request: NextRequest) {
     let supabaseUserId: string | null = cachedSupabaseUid;
     let authEmail = constructedEmail;
 
+    // A cached uid can point to an existing Auth user whose login email is
+    // different from the profile email. Always return the actual Auth email;
+    // otherwise the password is updated for one user and used with another
+    // email, which produces invalid_credentials after a valid OTP.
+    if (supabaseUserId) {
+      const { data: cachedAuthData, error: cachedAuthError } =
+        await db.auth.admin.getUserById(supabaseUserId);
+      if (cachedAuthError || !cachedAuthData.user) {
+        console.warn('[OTP Login] Cached Auth uid is stale; resolving again.');
+        supabaseUserId = null;
+      } else if (cachedAuthData.user.email) {
+        authEmail = cachedAuthData.user.email;
+      }
+    }
+
     if (!supabaseUserId) {
       // نبحث في Auth عن طريق listUsers (محاطة بـ try-catch للأمان)
       try {
