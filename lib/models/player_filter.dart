@@ -1,4 +1,5 @@
 import 'player.dart';
+import '../screens/profile/player_profile_data.dart';
 
 class PlayerFilter {
   const PlayerFilter({
@@ -72,15 +73,20 @@ class PlayerFilter {
     }
 
     if (position.isNotEmpty &&
-        !_normalize(player.position).contains(_normalize(position))) {
+        canonicalProfileOptionValue('position', player.position) !=
+            canonicalProfileOptionValue('position', position)) {
       return false;
     }
     if (country.isNotEmpty) {
-      final place = _normalize('${player.country} ${player.nationality}');
-      if (!place.contains(_normalize(country))) return false;
+      final wanted = canonicalProfileOptionValue('country', country);
+      final playerCountries = [player.country, player.nationality]
+          .where((value) => value.trim().isNotEmpty)
+          .map((value) => canonicalProfileOptionValue('country', value));
+      if (!playerCountries.contains(wanted)) return false;
     }
     if (education.isNotEmpty &&
-        !_normalize(player.education).contains(_normalize(education))) {
+        canonicalProfileOptionValue('education_level', player.education) !=
+            canonicalProfileOptionValue('education_level', education)) {
       return false;
     }
     if (!_inside(player.age, minAge, maxAge)) return false;

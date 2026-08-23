@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -6,11 +7,17 @@ import 'package:http/http.dart' as http;
 import '../core/app_config.dart';
 
 class ApiException implements Exception {
-  const ApiException(this.message, {this.statusCode, this.translationKey});
+  const ApiException(
+    this.message, {
+    this.statusCode,
+    this.translationKey,
+    this.code,
+  });
 
   final String message;
   final int? statusCode;
   final String? translationKey;
+  final String? code;
 
   @override
   String toString() => message;
@@ -31,10 +38,10 @@ class ApiClient {
     Map<String, String>? query,
     String? accessToken,
   }) async {
-    final response = await _http
-        .get(_uri(path, query), headers: _headers(accessToken))
-        .timeout(const Duration(seconds: 25));
-    return _decode(response);
+    return _request(
+      () => _http.get(_uri(path, query), headers: _headers(accessToken)),
+      const Duration(seconds: 25),
+    );
   }
 
   Future<Map<String, dynamic>> post(
@@ -42,14 +49,45 @@ class ApiClient {
     Map<String, dynamic>? body,
     String? accessToken,
   }) async {
-    final response = await _http
-        .post(
-          _uri(path),
-          headers: _headers(accessToken),
-          body: jsonEncode(body ?? const <String, dynamic>{}),
-        )
-        .timeout(const Duration(seconds: 30));
-    return _decode(response);
+    return _request(
+      () => _http.post(
+        _uri(path),
+        headers: _headers(accessToken),
+        body: jsonEncode(body ?? const <String, dynamic>{}),
+      ),
+      const Duration(seconds: 30),
+    );
+  }
+
+  Future<Map<String, dynamic>> _request(
+    Future<http.Response> Function() send,
+    Duration timeout,
+  ) async {
+    try {
+      return _decode(await send().timeout(timeout));
+    } on ApiException {
+      rethrow;
+    } on TimeoutException {
+      throw const ApiException(
+        'The request timed out.',
+        translationKey: 'requestTimeout',
+      );
+    } on SocketException {
+      throw const ApiException(
+        'The network is unavailable.',
+        translationKey: 'connectionError',
+      );
+    } on http.ClientException {
+      throw const ApiException(
+        'The request could not reach the server.',
+        translationKey: 'connectionError',
+      );
+    } catch (_) {
+      throw const ApiException(
+        'The request failed.',
+        translationKey: 'connectionError',
+      );
+    }
   }
 
   Map<String, String> _headers(String? token) => {
@@ -74,14 +112,27 @@ class ApiClient {
         ? Map<String, dynamic>.from(decoded)
         : <String, dynamic>{'data': decoded};
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      final code = payload['code']?.toString();
       throw ApiException(
         '${payload['error'] ?? payload['message'] ?? 'A connection error occurred'}',
         statusCode: response.statusCode,
-        translationKey: payload['error'] == null && payload['message'] == null
-            ? 'connectionError'
-            : null,
+        code: code,
+        translationKey: _errorTranslationKey(response.statusCode, code),
       );
     }
     return payload;
+  }
+
+  String _errorTranslationKey(int statusCode, String? code) {
+    return switch (code) {
+      'ACCOUNT_NOT_FOUND' => 'accountNotFoundRegisterFirst',
+      'ACCOUNT_ALREADY_EXISTS' => 'accountAlreadyExistsLogin',
+      'ACCOUNT_TYPE_MISMATCH' => 'accountTypeMismatch',
+      'ACCOUNT_LOOKUP_UNAVAILABLE' => 'accountLookupUnavailable',
+      'INVALID_OTP' || 'OTP_INVALID' || 'OTP_EXPIRED' => 'invalidOtp',
+      _ when statusCode == 429 => 'tooManyRequests',
+      _ when statusCode >= 500 => 'serviceUnavailable',
+      _ => 'requestFailed',
+    };
   }
 }

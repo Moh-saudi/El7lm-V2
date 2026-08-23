@@ -1,7 +1,7 @@
 name: el7lm_mobile
 description: "El7lm mobile MVP for Android and iOS."
 publish_to: 'none'
-version: 1.0.3+10
+version: 1.0.4+11
 
 environment:
   sdk: ^3.12.2
@@ -28,6 +28,7 @@ dependencies:
   image_picker: ^1.2.3
   audioplayers: ^6.1.0
   qr_flutter: ^4.1.0
+  font_awesome_flutter: ^11.0.0
 
 dev_dependencies:
   flutter_test:

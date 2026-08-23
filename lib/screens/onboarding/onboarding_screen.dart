@@ -60,109 +60,159 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const BrandLogo(size: 52, showName: false),
-                  Row(
-                    children: [
-                      const LanguageSwitcher(compact: true),
-                      TextButton(
-                        onPressed: widget.onDone,
-                        child: Text(context.tr('skip')),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: PageView.builder(
-                controller: controller,
-                itemCount: items.length,
-                onPageChanged: (value) => setState(() => index = value),
-                itemBuilder: (context, pageIndex) {
-                  final item = items[pageIndex];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 28),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFF7F9FC), Color(0xFFF0F8F5)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const BrandLogo(size: 52, showName: false),
+                    Row(
                       children: [
-                        Container(
-                          width: 210,
-                          height: 210,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.navy.withValues(alpha: .08),
-                                AppColors.green.withValues(alpha: .18),
-                              ],
-                              begin: Alignment.topRight,
-                              end: Alignment.bottomLeft,
-                            ),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            item.icon,
-                            size: 92,
-                            color: pageIndex.isEven
-                                ? AppColors.navy
-                                : AppColors.green,
-                          ),
-                        ),
-                        const SizedBox(height: 42),
-                        Text(
-                          context.tr(item.titleKey),
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          context.tr(item.textKey),
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyLarge
-                              ?.copyWith(color: AppColors.muted, height: 1.8),
+                        const LanguageSwitcher(compact: true),
+                        TextButton(
+                          onPressed: widget.onDone,
+                          child: Text(context.tr('skip')),
                         ),
                       ],
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                items.length,
-                (dot) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  width: dot == index ? 26 : 8,
-                  height: 8,
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  decoration: BoxDecoration(
-                    color: dot == index
-                        ? AppColors.green
-                        : const Color(0xFFD9DEE8),
-                    borderRadius: BorderRadius.circular(8),
+              Expanded(
+                child: PageView.builder(
+                  controller: controller,
+                  itemCount: items.length,
+                  onPageChanged: (value) => setState(() => index = value),
+                  itemBuilder: (context, pageIndex) {
+                    final item = items[pageIndex];
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final compact = constraints.maxHeight < 520;
+                        final artworkSize = compact ? 154.0 : 210.0;
+                        return Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 560),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 28,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    width: artworkSize,
+                                    height: artworkSize,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          AppColors.navy.withValues(alpha: .08),
+                                          AppColors.green.withValues(
+                                            alpha: .18,
+                                          ),
+                                        ],
+                                        begin: Alignment.topRight,
+                                        end: Alignment.bottomLeft,
+                                      ),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      item.icon,
+                                      size: compact ? 68 : 92,
+                                      color: pageIndex.isEven
+                                          ? AppColors.navy
+                                          : AppColors.green,
+                                    ),
+                                  ),
+                                  SizedBox(height: compact ? 22 : 42),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: Text(
+                                      context.tr(item.titleKey),
+                                      textAlign: TextAlign.center,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                    ),
+                                  ),
+                                  SizedBox(height: compact ? 8 : 14),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: Text(
+                                      context.tr(item.textKey),
+                                      textAlign: TextAlign.center,
+                                      softWrap: true,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.copyWith(
+                                            color: AppColors.muted,
+                                            height: 1.8,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  items.length,
+                  (dot) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    width: dot == index ? 26 : 8,
+                    height: 8,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: dot == index
+                          ? AppColors.green
+                          : const Color(0xFFD9DEE8),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: FilledButton(
-                onPressed: next,
-                child: Text(
-                  context.tr(index == items.length - 1 ? 'startNow' : 'next'),
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: next,
+                        child: Text(
+                          context.tr(
+                            index == items.length - 1 ? 'startNow' : 'next',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

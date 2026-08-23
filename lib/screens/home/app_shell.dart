@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_config.dart';
@@ -6,12 +8,18 @@ import '../../core/app_theme.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/account_type.dart';
 import '../../services/data_service.dart';
+import '../../services/in_app_notification_service.dart';
 import '../../widgets/language_switcher.dart';
 import '../cinema/player_cinema_screen.dart';
+import '../messages/conversations_screen.dart';
+import '../notifications/notifications_screen.dart';
 import '../opportunities/opportunities_screen.dart';
 import '../players/manage_players_screen.dart';
 import '../players/player_search_screen.dart';
+import '../profile/manager_profile_screen.dart';
+import '../profile/manager_settings_screen.dart';
 import '../profile/player_profile_screen.dart';
+import '../profile/player_profile_data.dart';
 import 'dashboard_screen.dart';
 
 class AppShell extends StatefulWidget {
@@ -34,88 +42,453 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int selectedIndex = 0;
+  int _unreadMessagesCount = 0;
+  int _unreadNotificationsCount = 0;
+  Timer? _unreadTimer;
 
-  List<_Destination> destinations(BuildContext context) =>
-      widget.accountType.isPlayer
-      ? [
-          _Destination(
-            context.tr('home'),
-            Icons.home_rounded,
-            DashboardScreen(
-              accountType: widget.accountType,
-              displayName: widget.displayName,
-              onNavigate: (index) => setState(() => selectedIndex = index),
-            ),
-          ),
-          _Destination(
-            context.tr('players'),
-            Icons.groups_rounded,
-            PlayerSearchScreen(dataService: widget.dataService),
-          ),
-          _Destination(
-            context.tr('cinema'),
-            Icons.smart_display_rounded,
-            PlayerCinemaScreen(dataService: widget.dataService),
-          ),
-          _Destination(
-            context.tr('opportunities'),
-            Icons.explore_rounded,
-            OpportunitiesScreen(dataService: widget.dataService),
-          ),
-          _Destination(
-            context.tr('myProfile'),
-            Icons.person_rounded,
-            PlayerProfileScreen(dataService: widget.dataService),
-          ),
-        ]
-      : [
-          _Destination(
-            context.tr('home'),
-            Icons.home_rounded,
-            DashboardScreen(
-              accountType: widget.accountType,
-              displayName: widget.displayName,
-              onNavigate: (index) => setState(() => selectedIndex = index),
-            ),
-          ),
-          _Destination(
-            context.tr('managePlayers'),
-            Icons.group_add_rounded,
-            ManagePlayersScreen(
-              accountType: widget.accountType,
-              organizationName: widget.displayName,
-              dataService: widget.dataService,
-            ),
-          ),
-        ];
+  late final List<_Destination> _cachedDestinations;
 
-  Future<void> openWeb(String path) async {
-    final uri = Uri.parse('${AppConfig.webBaseUrl}$path');
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
-        mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.tr('openWebFailed'))));
+  @override
+  void initState() {
+    super.initState();
+    _initDestinations();
+    _fetchUnreadCounts();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureProfileCompletionReminder();
+    });
+    _unreadTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => _fetchUnreadCounts(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _unreadTimer?.cancel();
+    super.dispose();
+  }
+
+  void _initDestinations() {
+    _cachedDestinations = widget.accountType.isPlayer
+        ? [
+            _Destination(
+              'home',
+              Icons.home_rounded,
+              DashboardScreen(
+                accountType: widget.accountType,
+                displayName: widget.displayName,
+                dataService: widget.dataService,
+                onNavigate: (index) => setState(() => selectedIndex = index),
+              ),
+            ),
+            _Destination(
+              'players',
+              Icons.groups_rounded,
+              PlayerSearchScreen(dataService: widget.dataService),
+            ),
+            _Destination(
+              'cinema',
+              Icons.smart_display_rounded,
+              PlayerCinemaScreen(
+                dataService: widget.dataService,
+                isScreenActive: selectedIndex == 2,
+              ),
+            ),
+            _Destination(
+              'opportunities',
+              Icons.explore_rounded,
+              OpportunitiesScreen(dataService: widget.dataService),
+            ),
+            _Destination(
+              'myProfile',
+              Icons.person_rounded,
+              PlayerProfileScreen(dataService: widget.dataService),
+            ),
+          ]
+        : [
+            _Destination(
+              'home',
+              Icons.home_rounded,
+              DashboardScreen(
+                accountType: widget.accountType,
+                displayName: widget.displayName,
+                dataService: widget.dataService,
+                onNavigate: (index) => setState(() => selectedIndex = index),
+              ),
+            ),
+            _Destination(
+              'players',
+              Icons.groups_rounded,
+              PlayerSearchScreen(dataService: widget.dataService),
+            ),
+            _Destination(
+              'managePlayers',
+              Icons.group_add_rounded,
+              ManagePlayersScreen(
+                accountType: widget.accountType,
+                organizationName: widget.displayName,
+                dataService: widget.dataService,
+              ),
+            ),
+            _Destination(
+              'cinema',
+              Icons.smart_display_rounded,
+              PlayerCinemaScreen(
+                dataService: widget.dataService,
+                isScreenActive: selectedIndex == 3,
+              ),
+            ),
+            _Destination(
+              'myProfile',
+              Icons.person_rounded,
+              ManagerProfileScreen(
+                accountType: widget.accountType,
+                displayName: widget.displayName,
+                authService: widget.dataService.authService,
+                dataService: widget.dataService,
+                onSignOut: widget.onSignOut,
+              ),
+            ),
+          ];
+  }
+
+  List<_Destination> destinations(BuildContext context) {
+    return _cachedDestinations;
+  }
+
+  Future<void> _fetchUnreadCounts() async {
+    try {
+      final convs = await widget.dataService.fetchConversations();
+      final currentUserId = widget.dataService.authService.authUserId ?? '';
+      int msgCount = 0;
+      for (final conv in convs) {
+        msgCount += (conv.unreadCount[currentUserId] as num? ?? 0).toInt();
+      }
+
+      final notifs = await widget.dataService.fetchNotifications();
+      int notifCount = notifs.where((n) => !n.isRead).length;
+
+      if (mounted) {
+        setState(() {
+          _unreadMessagesCount = msgCount;
+          _unreadNotificationsCount = notifCount;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _ensureProfileCompletionReminder() async {
+    if (!widget.accountType.isPlayer || !mounted) return;
+    try {
+      final profile = await widget.dataService.fetchProfile(AccountType.player);
+      var total = 0;
+      var filled = 0;
+      for (final section in getProfileSections()) {
+        for (final field in section.fields) {
+          total++;
+          final value = '${profile.values[field.key] ?? ''}'.trim();
+          if (value.isNotEmpty &&
+              value != 'null' &&
+              value != '0' &&
+              value != 'false' &&
+              value != '0.0') {
+            filled++;
+          }
+        }
+      }
+      final percent = total == 0 ? 0 : ((filled / total) * 100).round();
+      if (!mounted) return;
+      final notification = await InAppNotificationService()
+          .createProfileReminderIfDue(
+            completionPercent: percent,
+            title: context.tr('profileReminderTitle'),
+            message: context.tr('profileReminderBody', {'percent': '$percent'}),
+          );
+      if (!mounted || notification == null) return;
+      InAppNotificationService().showInAppNotificationBanner(
+        context: context,
+        title: notification.title,
+        body: notification.message,
+        onTap: () => setState(() => selectedIndex = 4),
+      );
+      await _fetchUnreadCounts();
+    } catch (_) {}
+  }
+
+  Future<void> _showUploadOptions(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  context.tr('uploadSkillsMedia'),
+                  style: Theme.of(
+                    sheetCtx,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  context.tr('mediaSelectChoice'),
+                  style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                ),
+                const SizedBox(height: 20),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFEFF6FF),
+                    child: Icon(
+                      Icons.videocam_rounded,
+                      color: Color(0xFF2563EB),
+                    ),
+                  ),
+                  title: Text(
+                    context.tr('uploadVideoClip'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(context.tr('mp4FormatsDesc')),
+                  onTap: () {
+                    Navigator.pop(sheetCtx);
+                    _pickAndUpload(ImageSource.gallery, isVideo: true);
+                  },
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFECFDF5),
+                    child: Icon(
+                      Icons.photo_library_rounded,
+                      color: AppColors.green,
+                    ),
+                  ),
+                  title: Text(
+                    context.tr('uploadPhoto'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(context.tr('jpgPngDesc')),
+                  onTap: () {
+                    Navigator.pop(sheetCtx);
+                    _pickAndUpload(ImageSource.gallery, isVideo: false);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickAndUpload(
+    ImageSource source, {
+    required bool isVideo,
+  }) async {
+    final picker = ImagePicker();
+    final file = isVideo
+        ? await picker.pickVideo(source: source)
+        : await picker.pickImage(source: source, imageQuality: 85);
+
+    if (file == null) return;
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.tr('uploadingMediaWait')),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+
+    try {
+      final bytes = await file.readAsBytes();
+      final ext = file.name.contains('.')
+          ? file.name.split('.').last
+          : (isVideo ? 'mp4' : 'jpg');
+      final contentType = isVideo ? 'video/mp4' : 'image/jpeg';
+      await widget.dataService.uploadPlayerMedia(
+        bytes: bytes,
+        extension: ext,
+        contentType: contentType,
+        isVideo: isVideo,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr('mediaUploadedSuccess')),
+          backgroundColor: AppColors.green,
+        ),
+      );
+
+      setState(() {
+        _initDestinations();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.errorText(e)),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final items = destinations(context);
-    if (selectedIndex >= items.length) selectedIndex = 0;
+    final isCinema = items[selectedIndex].icon == Icons.smart_display_rounded;
+    final isProfile = items[selectedIndex].icon == Icons.person_rounded;
+
     return Scaffold(
+      drawerEnableOpenDragGesture: false,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: isProfile && widget.accountType.isPlayer
+          ? FloatingActionButton(
+              heroTag: 'camera-upload-fab',
+              backgroundColor: AppColors.green,
+              foregroundColor: Colors.white,
+              onPressed: () => _showUploadOptions(context),
+              child: const Icon(Icons.camera_alt_rounded),
+            )
+          : null,
       appBar: AppBar(
+        backgroundColor: isCinema ? Colors.black : null,
+        foregroundColor: isCinema ? Colors.white : null,
         title: Text(
-          items[selectedIndex].label,
+          context.tr(items[selectedIndex].label),
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
-          const LanguageSwitcher(compact: true),
+          if (!isCinema) const LanguageSwitcher(compact: true),
+          if (!isCinema && !widget.accountType.isPlayer)
+            IconButton(
+              tooltip: context.tr('settings'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      ManagerSettingsScreen(onSignOut: widget.onSignOut),
+                ),
+              ),
+              icon: const Icon(Icons.settings_outlined),
+            ),
+          IconButton(
+            tooltip: context.trOr('messages', 'Messages'),
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      ConversationsScreen(dataService: widget.dataService),
+                ),
+              );
+              _fetchUnreadCounts();
+            },
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  _unreadMessagesCount > 0
+                      ? Icons.chat_rounded
+                      : Icons.chat_outlined,
+                  color: isCinema ? Colors.white : AppColors.navy,
+                  size: 23,
+                ),
+                if (_unreadMessagesCount > 0)
+                  Positioned(
+                    top: -4,
+                    right: -6,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        '$_unreadMessagesCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: context.trOr('notifications', 'Notifications'),
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => NotificationsScreen(
+                    dataService: widget.dataService,
+                    onProfileCompletionTap: () {
+                      setState(() => selectedIndex = 4);
+                    },
+                  ),
+                ),
+              );
+              _fetchUnreadCounts();
+            },
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  _unreadNotificationsCount > 0
+                      ? Icons.notifications_active_rounded
+                      : Icons.notifications_none_rounded,
+                  color: isCinema ? Colors.white : AppColors.navy,
+                  size: 23,
+                ),
+                if (_unreadNotificationsCount > 0)
+                  Positioned(
+                    top: -4,
+                    right: -6,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        '$_unreadNotificationsCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           Builder(
-            builder: (context) => IconButton(
-              tooltip: context.tr('allSections'),
-              onPressed: () => Scaffold.of(context).openEndDrawer(),
-              icon: const Icon(Icons.grid_view_rounded),
+            builder: (ctx) => IconButton(
+              icon: Icon(
+                Icons.grid_view_rounded,
+                color: isCinema ? Colors.white : AppColors.navy,
+              ),
+              onPressed: () => Scaffold.of(ctx).openEndDrawer(),
             ),
           ),
           const SizedBox(width: 8),
@@ -130,20 +503,62 @@ class _AppShellState extends State<AppShell> {
         index: selectedIndex,
         children: items.map((item) => item.screen).toList(),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (index) => setState(() => selectedIndex = index),
-        destinations: items
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: selectedIndex,
+        onTap: (index) {
+          debugPrint(
+            '=== AppShell: Switching tab from $selectedIndex to $index ===',
+          );
+          setState(() {
+            selectedIndex = index;
+          });
+        },
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: AppColors.green,
+        unselectedItemColor: AppColors.navy,
+        backgroundColor: Colors.white,
+        elevation: 8,
+        selectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 11,
+        ),
+        unselectedLabelStyle: const TextStyle(fontSize: 11),
+        items: items
             .map(
-              (item) => NavigationDestination(
+              (item) => BottomNavigationBarItem(
                 icon: Icon(item.icon),
-                selectedIcon: Icon(item.icon, color: AppColors.green),
-                label: item.label,
+                activeIcon: Icon(item.icon, color: AppColors.green),
+                label: context.tr(item.label),
               ),
             )
             .toList(),
       ),
     );
+  }
+
+  Future<void> openWeb(String path) async {
+    final session = widget.dataService.authService.hasSession
+        ? widget.dataService.authService.accessToken
+        : null;
+    final base = AppConfig.webBaseUrl;
+
+    final params = <String, String>{'mobile_source': 'flutter_app'};
+    if (session != null) params['access_token'] = session;
+    final target = Uri.parse(base).replace(path: path, queryParameters: params);
+
+    try {
+      if (!await launchUrl(target, mode: LaunchMode.externalApplication)) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('cannotOpenWebPage'))),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.errorText(e))));
+    }
   }
 }
 
@@ -174,7 +589,8 @@ class _WebMenuDrawer extends StatelessWidget {
       ('notifications', Icons.notifications_none, '$base/notifications'),
       ('reports', Icons.analytics_outlined, '$base/reports'),
       ('tournaments', Icons.emoji_events_outlined, '$base/tournaments'),
-      ('academy', Icons.school_outlined, '$base/academy'),
+      if (accountType == AccountType.academy)
+        ('academy', Icons.school_outlined, '$base/academy'),
       ('store', Icons.storefront_outlined, '$base/store'),
       ('settings', Icons.settings_outlined, '$base/settings'),
     ];

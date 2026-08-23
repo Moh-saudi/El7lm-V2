@@ -13,18 +13,18 @@ void main() {
       direction: TextDirection.rtl,
     ),
     'en': (
-      title: 'Your talent deserves to be seen',
+      title: 'Your Talent Deserves to Be Seen',
       next: 'Next',
       direction: TextDirection.ltr,
     ),
     'es': (
-      title: 'Tu talento merece ser visto',
+      title: 'Tu Talento Merece Ser Visto',
       next: 'Siguiente',
       direction: TextDirection.ltr,
     ),
     'pt': (
-      title: 'O seu talento merece ser visto',
-      next: 'Seguinte',
+      title: 'Seu Talento Merece Ser Visto',
+      next: 'Próximo',
       direction: TextDirection.ltr,
     ),
   };

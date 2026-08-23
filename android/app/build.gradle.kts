@@ -29,7 +29,8 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         // The embedded platform video player requires Android 7.0 or newer.
-        minSdk = 24
+        // minSdk lowered to 21 temporarily for Nox emulator testing (API 25 x86)
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

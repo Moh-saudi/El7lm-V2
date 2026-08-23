@@ -2,7 +2,9 @@ import http from 'node:http';
 
 const host = '127.0.0.1';
 const port = Number.parseInt(process.env.EL7LM_PROXY_PORT ?? '3001', 10);
-const upstream = new URL('https://www.el7lm.com');
+const upstream = new URL(
+  process.env.EL7LM_PROXY_UPSTREAM ?? 'https://www.el7lm.com',
+);
 const localOriginPattern = /^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?$/;
 
 function corsHeaders(origin) {

@@ -10,6 +10,7 @@ import '../../services/data_service.dart';
 import '../messages/chat_detail_screen.dart';
 
 import '../../widgets/player_share_modal.dart';
+import '../profile/player_profile_data.dart';
 
 class PlayerDetailsScreen extends StatefulWidget {
   const PlayerDetailsScreen({
@@ -46,7 +47,9 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
   Future<void> _checkFavorite() async {
     try {
       final ids = await widget.dataService.fetchFavoritePlayerIds();
-      if (mounted) setState(() => favorite = ids.contains(widget.initialPlayer.id));
+      if (mounted) {
+        setState(() => favorite = ids.contains(widget.initialPlayer.id));
+      }
     } catch (_) {}
   }
 
@@ -171,16 +174,16 @@ class _PlayerHeader extends StatelessWidget {
             child: player.imageUrl.isEmpty
                 ? const _PlayerImageFallback()
                 : kIsWeb
-                    ? Image.network(
-                        player.imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const _PlayerImageFallback(),
-                      )
-                    : CachedNetworkImage(
-                        imageUrl: player.imageUrl,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, _, _) => const _PlayerImageFallback(),
-                      ),
+                ? Image.network(
+                    player.imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const _PlayerImageFallback(),
+                  )
+                : CachedNetworkImage(
+                    imageUrl: player.imageUrl,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) => const _PlayerImageFallback(),
+                  ),
           ),
         ),
         const SizedBox(height: 14),
@@ -253,9 +256,7 @@ class _PlayerProfile extends StatelessWidget {
         ),
       );
     } catch (e) {
-      scaffold.showSnackBar(
-        SnackBar(content: Text(context.errorText(e))),
-      );
+      scaffold.showSnackBar(SnackBar(content: Text(context.errorText(e))));
     }
   }
 
@@ -284,9 +285,7 @@ class _PlayerProfile extends StatelessWidget {
           Icons.height_rounded,
           '${player.height}',
           context.tr('heightCm'),
-          const LinearGradient(
-            colors: [Color(0xFFE0F2FE), Color(0xFFBAE6FD)],
-          ),
+          const LinearGradient(colors: [Color(0xFFE0F2FE), Color(0xFFBAE6FD)]),
           const Color(0xFF0284C7),
           'الطول: ${player.height} سم - قامة رياضية متناسقة تمنح تفوقاً حركياً في الالتحامات والكرات العالية.',
         ),
@@ -296,9 +295,7 @@ class _PlayerProfile extends StatelessWidget {
           Icons.cake_outlined,
           '${player.age}',
           context.tr('age'),
-          const LinearGradient(
-            colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)],
-          ),
+          const LinearGradient(colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)]),
           const Color(0xFFD97706),
           'العمر: ${player.age} سنة - الفئة السنية المعتمدة في الأكاديميات والبطولات الرسمية.',
         ),
@@ -308,9 +305,7 @@ class _PlayerProfile extends StatelessWidget {
           Icons.insights_rounded,
           experience,
           context.tr('experienceYears'),
-          const LinearGradient(
-            colors: [Color(0xFFDCFCE7), Color(0xFFBBF7D0)],
-          ),
+          const LinearGradient(colors: [Color(0xFFDCFCE7), Color(0xFFBBF7D0)]),
           const Color(0xFF16A34A),
           'سنوات الخبرة: $experience سنة - مسيرة رياضية في التدريبات والمشاركات الميدانية.',
         ),
@@ -320,9 +315,7 @@ class _PlayerProfile extends StatelessWidget {
           Icons.monitor_weight_outlined,
           '${player.weight}',
           context.tr('weightKg'),
-          const LinearGradient(
-            colors: [Color(0xFFEDE9FE), Color(0xFFDDD6FE)],
-          ),
+          const LinearGradient(colors: [Color(0xFFEDE9FE), Color(0xFFDDD6FE)]),
           const Color(0xFF7C3AED),
           'الوزن: ${player.weight} كجم - كتلة بدنية ملائمة للبنية الرياضية في الملعب.',
         ),
@@ -731,10 +724,7 @@ class _ContactCard extends StatelessWidget {
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
       gradient: const LinearGradient(
-        colors: [
-          Color(0xFFF0FDF4),
-          Color(0xFFF8FAFC),
-        ],
+        colors: [Color(0xFFF0FDF4), Color(0xFFF8FAFC)],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
@@ -760,7 +750,11 @@ class _ContactCard extends StatelessWidget {
                 color: AppColors.green.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.shield_outlined, color: AppColors.green, size: 20),
+              child: const Icon(
+                Icons.shield_outlined,
+                color: AppColors.green,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -779,7 +773,10 @@ class _ContactCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFFEF3C7),
                           borderRadius: BorderRadius.circular(6),
@@ -788,7 +785,11 @@ class _ContactCard extends StatelessWidget {
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.lock_rounded, size: 10, color: Color(0xFFD97706)),
+                            Icon(
+                              Icons.lock_rounded,
+                              size: 10,
+                              color: Color(0xFFD97706),
+                            ),
                             SizedBox(width: 3),
                             Text(
                               'التواصل عبر التطبيق فقط',
@@ -806,7 +807,10 @@ class _ContactCard extends StatelessWidget {
                   if (contactName.isNotEmpty)
                     Text(
                       contactName,
-                      style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 11,
+                      ),
                     ),
                 ],
               ),
@@ -821,7 +825,9 @@ class _ContactCard extends StatelessWidget {
             onPressed: onMessage,
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.navy,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               elevation: 0,
             ),
             icon: const Icon(Icons.forum_rounded, size: 18),
@@ -871,7 +877,10 @@ class _QuickStats extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 onTap: () => _showStatDetailModal(context, item),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 4,
+                  ),
                   decoration: BoxDecoration(
                     gradient: item.bgGradient,
                     borderRadius: BorderRadius.circular(16),
@@ -927,10 +936,7 @@ class _QuickStats extends StatelessWidget {
 }
 
 class _EvaluationCard extends StatelessWidget {
-  const _EvaluationCard({
-    required this.isEvaluated,
-    required this.payload,
-  });
+  const _EvaluationCard({required this.isEvaluated, required this.payload});
 
   final bool isEvaluated;
   final Map<String, dynamic> payload;
@@ -969,7 +975,11 @@ class _EvaluationCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: Colors.white,
                 ),
-                child: const Icon(Icons.stars_rounded, color: Color(0xFF7C3AED), size: 22),
+                child: const Icon(
+                  Icons.stars_rounded,
+                  color: Color(0xFF7C3AED),
+                  size: 22,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
@@ -983,7 +993,9 @@ class _EvaluationCard extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                context.tr(isEvaluated ? 'talentEvaluated' : 'talentUnderEvaluation'),
+                context.tr(
+                  isEvaluated ? 'talentEvaluated' : 'talentUnderEvaluation',
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
@@ -1021,7 +1033,8 @@ class _PlayerAffiliationCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => _showAffiliationDetailModal(context, organization, payload),
+        onTap: () =>
+            _showAffiliationDetailModal(context, organization, payload),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
           decoration: BoxDecoration(
@@ -1049,7 +1062,11 @@ class _PlayerAffiliationCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: Colors.white,
                 ),
-                child: const Icon(Icons.sports_soccer_rounded, color: Color(0xFF16A34A), size: 22),
+                child: const Icon(
+                  Icons.sports_soccer_rounded,
+                  color: Color(0xFF16A34A),
+                  size: 22,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
@@ -1178,7 +1195,11 @@ void _showEvaluationDetailModal(
                   color: const Color(0xFF7C3AED).withValues(alpha: .12),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.stars_rounded, color: Color(0xFF7C3AED), size: 28),
+                child: const Icon(
+                  Icons.stars_rounded,
+                  color: Color(0xFF7C3AED),
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1187,11 +1208,23 @@ void _showEvaluationDetailModal(
                   children: [
                     Text(
                       context.tr('talentEvaluation'),
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.navy),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.navy,
+                      ),
                     ),
                     Text(
-                      context.tr(isEvaluated ? 'talentEvaluated' : 'talentUnderEvaluation'),
-                      style: const TextStyle(color: Color(0xFF7C3AED), fontWeight: FontWeight.bold, fontSize: 13),
+                      context.tr(
+                        isEvaluated
+                            ? 'talentEvaluated'
+                            : 'talentUnderEvaluation',
+                      ),
+                      style: const TextStyle(
+                        color: Color(0xFF7C3AED),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -1208,12 +1241,20 @@ void _showEvaluationDetailModal(
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline_rounded, color: Color(0xFF7C3AED), size: 20),
+                const Icon(
+                  Icons.info_outline_rounded,
+                  color: Color(0xFF7C3AED),
+                  size: 20,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     context.tr('byTechnicalCommittee'),
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF5B21B6), fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF5B21B6),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -1224,7 +1265,11 @@ void _showEvaluationDetailModal(
             isEvaluated
                 ? 'تم فحص وتقييم أداء ومهارات اللاعب بنجاح بواسطة خوارزميات الحلم واللجنة الفنية المتخصصة.'
                 : 'الملف حالياً في مرحلة التقييم الفني بواسطة خوارزميات الحلم المعتمدة واللجنة الرياضية.',
-            style: const TextStyle(fontSize: 13, height: 1.6, color: AppColors.navy),
+            style: const TextStyle(
+              fontSize: 13,
+              height: 1.6,
+              color: AppColors.navy,
+            ),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -1233,7 +1278,9 @@ void _showEvaluationDetailModal(
               onPressed: () => Navigator.pop(ctx),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.navy,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: Text(context.tr('agreeAndClose')),
             ),
@@ -1254,8 +1301,11 @@ void _showAffiliationDetailModal(
       '${organization['name'] ?? ''}'.trim().isNotEmpty;
   final orgName = '${organization['name'] ?? ''}'.trim();
   final orgType = '${organization['type'] ?? ''}'.trim();
-  final joinedViaReferral = organization['joinedViaReferral'] == true || payload['joinedViaReferral'] == true;
-  final rawJoinDate = payload['joinedAt'] ??
+  final joinedViaReferral =
+      organization['joinedViaReferral'] == true ||
+      payload['joinedViaReferral'] == true;
+  final rawJoinDate =
+      payload['joinedAt'] ??
       payload['organizationJoinedAt'] ??
       payload['requestedAt'] ??
       payload['created_at'] ??
@@ -1284,7 +1334,11 @@ void _showAffiliationDetailModal(
                   color: AppColors.green.withValues(alpha: .12),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.sports_soccer_rounded, color: AppColors.green, size: 28),
+                child: const Icon(
+                  Icons.sports_soccer_rounded,
+                  color: AppColors.green,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1293,11 +1347,19 @@ void _showAffiliationDetailModal(
                   children: [
                     Text(
                       context.tr('playerAffiliationStatus'),
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.navy),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.navy,
+                      ),
                     ),
                     Text(
                       hasOrganization ? orgName : context.tr('freePlayer'),
-                      style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.bold, fontSize: 13),
+                      style: const TextStyle(
+                        color: AppColors.green,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -1319,24 +1381,39 @@ void _showAffiliationDetailModal(
                   hasOrganization
                       ? 'اللاعب مسجل ورسمياً منتسب إلى: $orgName${orgType.isNotEmpty ? " ($orgType)" : ""}'
                       : context.tr('availableForImmediateTransfer'),
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF166534), fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF166534),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 if (joinedViaReferral) ...[
                   const SizedBox(height: 6),
                   Text(
                     context.tr('joinedThroughDreamAmbassadors'),
-                    style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.muted,
+                    ),
                   ),
                 ],
                 if (joinDateText.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today_rounded, size: 12, color: Color(0xFF166534)),
+                      const Icon(
+                        Icons.calendar_today_rounded,
+                        size: 12,
+                        color: Color(0xFF166534),
+                      ),
                       const SizedBox(width: 5),
                       Text(
                         'تاريخ الانضمام الرسمي: $joinDateText',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF166534), fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF166534),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -1356,7 +1433,9 @@ void _showAffiliationDetailModal(
               onPressed: () => Navigator.pop(ctx),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.navy,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: Text(context.tr('agreeAndClose')),
             ),
@@ -1366,10 +1445,6 @@ void _showAffiliationDetailModal(
     ),
   );
 }
-
-
-
-
 
 class _ProfileSection extends StatelessWidget {
   const _ProfileSection({
@@ -1640,8 +1715,18 @@ String _formatJoinDate(BuildContext context, dynamic dateValue) {
   final lang = Localizations.localeOf(context).languageCode;
   if (lang == 'ar') {
     final months = [
-      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+      'يناير',
+      'فبراير',
+      'مارس',
+      'أبريل',
+      'مايو',
+      'يونيو',
+      'يوليو',
+      'أغسطس',
+      'سبتمبر',
+      'أكتوبر',
+      'نوفمبر',
+      'ديسمبر',
     ];
     return '${local.day} ${months[local.month - 1]} ${local.year}';
   }
@@ -1650,7 +1735,23 @@ String _formatJoinDate(BuildContext context, dynamic dateValue) {
 
 String _localizedStoredText(BuildContext context, String value) {
   final language = Localizations.localeOf(context).languageCode;
-  if (language == 'ar') return value;
+
+  // ── First check if value is an English code (e.g. GK, CB, right, contracted)
+  final arPos = kPositionLabels[value];
+  final arFoot = kFootLabels[value];
+  final arContract = kContractStatusLabels[value];
+  final arGender = kGenderLabels[value];
+  final arEdu = kEducationLevelLabels[value];
+  final arWork = kWorkRateLabels[value];
+  final arValue = arPos ?? arFoot ?? arContract ?? arGender ?? arEdu ?? arWork;
+
+  if (arValue != null) {
+    if (language == 'ar') return arValue;
+    // Map code or Arabic text for non-Arabic locales
+    value = arValue;
+  } else if (language == 'ar') {
+    return value;
+  }
   const translations = <String, Map<String, String>>{
     'مصر': {'en': 'Egypt', 'es': 'Egipto', 'pt': 'Egito'},
     'جناح أيسر': {
@@ -1773,5 +1874,7 @@ String _localizedStoredText(BuildContext context, String value) {
       'pt': 'Ganhar prémios individuais',
     },
   };
-  return translations[value]?[language] ?? value;
+  return translations[value]?[language] ??
+      (language == 'fr' ? (translations[value] ?? const {})['en'] : null) ??
+      value;
 }

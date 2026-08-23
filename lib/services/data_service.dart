@@ -13,6 +13,7 @@ import '../models/player.dart';
 import '../models/user_profile.dart';
 import 'api_client.dart';
 import 'auth_service.dart';
+import 'contact_validator.dart';
 import 'in_app_notification_service.dart';
 
 class DataService {
@@ -54,6 +55,9 @@ class DataService {
         // A second notification source can still be available under stricter RLS.
       }
     }
+    final profileReminder = await InAppNotificationService()
+        .getProfileCompletionNotification();
+    if (profileReminder != null) result.add(profileReminder);
     result.sort((a, b) {
       final left = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
       final right = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -63,6 +67,11 @@ class DataService {
   }
 
   Future<void> markNotificationRead(AppNotification notification) async {
+    if (notification.sourceTable ==
+        InAppNotificationService.profileReminderSource) {
+      await InAppNotificationService().markProfileCompletionNotificationRead();
+      return;
+    }
     _requireSupabase();
     await Supabase.instance.client
         .from(notification.sourceTable)
@@ -298,64 +307,104 @@ class DataService {
   }
 
   Future<UserProfile> fetchProfile(AccountType accountType) async {
-    _requireSupabase();
-    final client = Supabase.instance.client;
-    final authId = _auth.authUserId;
-    final legacyId = await _auth.legacyUserId();
-    final table = _tableFor(accountType);
+    try {
+      _requireSupabase();
+      final client = Supabase.instance.client;
+      final authId = _auth.authUserId;
+      final legacyId = await _auth.legacyUserId();
+      final table = _tableFor(accountType);
 
-    Map<String, dynamic>? specific;
-    for (final id in {
-      authId,
-      legacyId,
-    }.whereType<String>().where((e) => e.isNotEmpty)) {
-      specific = await client.from(table).select().eq('id', id).maybeSingle();
-      specific ??= await client
-          .from(table)
-          .select()
-          .eq('uid', id)
-          .maybeSingle();
-      if (specific != null) break;
-    }
+      Map<String, dynamic>? specific;
+      for (final id in {
+        authId,
+        legacyId,
+      }.whereType<String>().where((e) => e.isNotEmpty)) {
+        try {
+          specific = await client
+              .from(table)
+              .select()
+              .eq('id', id)
+              .maybeSingle();
+          specific ??= await client
+              .from(table)
+              .select()
+              .eq('uid', id)
+              .maybeSingle();
+          if (specific != null) break;
+        } catch (_) {}
+      }
 
-    Map<String, dynamic>? user;
-    for (final id in {
-      authId,
-      legacyId,
-    }.whereType<String>().where((e) => e.isNotEmpty)) {
-      user = await client.from('users').select().eq('id', id).maybeSingle();
-      user ??= await client.from('users').select().eq('uid', id).maybeSingle();
-      if (user != null) break;
-    }
+      Map<String, dynamic>? user;
+      for (final id in {
+        authId,
+        legacyId,
+      }.whereType<String>().where((e) => e.isNotEmpty)) {
+        try {
+          user = await client.from('users').select().eq('id', id).maybeSingle();
+          user ??= await client
+              .from('users')
+              .select()
+              .eq('uid', id)
+              .maybeSingle();
+          if (user != null) break;
+        } catch (_) {}
+      }
 
-    final merged = <String, dynamic>{...?specific};
-    merged['name'] ??=
-        specific?['full_name'] ?? user?['displayName'] ?? user?['full_name'];
-    merged['email'] ??= user?['email'];
-    merged['phone'] ??= specific?['phone'] ?? user?['phoneNumber'];
-    if (accountType == AccountType.player) {
-      await _enrichPlayerOrganization(client, merged);
-      await _resolvePlayerMedia(client, merged);
+      final merged = <String, dynamic>{...?specific};
+      merged['name'] ??=
+          specific?['full_name'] ?? user?['displayName'] ?? user?['full_name'];
+      merged['email'] ??= user?['email'];
+      merged['phone'] ??= specific?['phone'] ?? user?['phoneNumber'];
+      if (accountType == AccountType.player) {
+        try {
+          await _enrichPlayerOrganization(client, merged);
+          await _resolvePlayerMedia(client, merged);
+        } catch (_) {}
+      }
+      return UserProfile(
+        userId:
+            '${specific?['id'] ?? user?['id'] ?? legacyId ?? authId ?? 'guest'}',
+        accountType: accountType.value,
+        values: merged,
+      );
+    } catch (_) {
+      final authId = _auth.authUserId;
+      final legacyId = await _auth.legacyUserId();
+      return UserProfile(
+        userId: authId ?? legacyId ?? 'guest_player',
+        accountType: accountType.value,
+        values: const {'name': 'لاعب الحلم', 'position': 'ST', 'foot': 'right'},
+      );
     }
-    return UserProfile(
-      userId: '${specific?['id'] ?? user?['id'] ?? legacyId ?? authId ?? ''}',
-      accountType: accountType.value,
-      values: merged,
-    );
   }
 
   Future<void> savePlayerProfile(
     UserProfile profile,
-    Map<String, dynamic> updates,
-  ) async {
-    await saveOrganizationProfile(profile, updates);
+    Map<String, dynamic> updates, {
+    bool strict = false,
+  }) async {
+    await saveOrganizationProfile(profile, updates, strict: strict);
   }
 
   Future<void> saveOrganizationProfile(
     UserProfile profile,
-    Map<String, dynamic> updates,
-  ) async {
+    Map<String, dynamic> updates, {
+    bool strict = false,
+  }) async {
     _requireSupabase();
+    final submittedEmail = '${updates['email'] ?? ''}'.trim();
+    if (submittedEmail.isNotEmpty &&
+        !ContactValidator.email(submittedEmail).isValid) {
+      throw const FormatException('profileChatInvalidEmail');
+    }
+    final submittedPhone = '${updates['phone'] ?? ''}'.trim();
+    final registeredPhone =
+        '${profile.values['phone'] ?? profile.values['phoneNumber'] ?? ''}'.trim();
+    if (submittedPhone.isNotEmpty &&
+        registeredPhone.isNotEmpty &&
+        !ContactValidator.samePhone(submittedPhone, registeredPhone)) {
+      throw const FormatException('profilePhoneMustMatchLogin');
+    }
     final client = Supabase.instance.client;
     final merged = profile.mergeUpdates(updates);
     final accountType = AccountType.fromValue(profile.accountType);
@@ -390,6 +439,7 @@ class DataService {
       }
     } catch (e) {
       debugPrint('Error saving to $table: $e');
+      if (strict) rethrow;
     }
 
     try {
@@ -397,7 +447,8 @@ class DataService {
         'isProfileComplete': true,
         'updatedAt': DateTime.now().toUtc().toIso8601String(),
       };
-      final nameVal = updates['name'] ??
+      final nameVal =
+          updates['name'] ??
           updates['full_name'] ??
           updates['academy_name'] ??
           merged['name'] ??
@@ -433,11 +484,16 @@ class DataService {
     for (final bucket in ['profile-images', 'ads', 'avatars']) {
       for (final path in paths) {
         try {
-          await client.storage.from(bucket).uploadBinary(
-            path,
-            bytes,
-            fileOptions: FileOptions(contentType: contentType, upsert: true),
-          );
+          await client.storage
+              .from(bucket)
+              .uploadBinary(
+                path,
+                bytes,
+                fileOptions: FileOptions(
+                  contentType: contentType,
+                  upsert: true,
+                ),
+              );
           // Return the relative path compatible with R2 resolution
           return '$bucket/$path';
         } catch (e) {
@@ -464,23 +520,29 @@ class DataService {
       RegExp(r'[^a-z0-9]'),
       '',
     );
-    final ext = safeExtension.isEmpty ? (isVideo ? 'mp4' : (isDocument ? 'pdf' : 'jpg')) : safeExtension;
+    final ext = safeExtension.isEmpty
+        ? (isVideo ? 'mp4' : (isDocument ? 'pdf' : 'jpg'))
+        : safeExtension;
     final timeStamp = DateTime.now().microsecondsSinceEpoch;
     final flatPath = '${ownerId}_$timeStamp.$ext';
 
     final primaryBucket = isVideo
         ? 'videos'
-        : (isDocument || contentType.contains('pdf') || contentType.contains('document')
-            ? 'documents'
-            : 'profile-images');
+        : (isDocument ||
+                  contentType.contains('pdf') ||
+                  contentType.contains('document')
+              ? 'documents'
+              : 'profile-images');
 
     final client = Supabase.instance.client;
     try {
-      await client.storage.from(primaryBucket).uploadBinary(
-        flatPath,
-        bytes,
-        fileOptions: FileOptions(contentType: contentType, upsert: true),
-      );
+      await client.storage
+          .from(primaryBucket)
+          .uploadBinary(
+            flatPath,
+            bytes,
+            fileOptions: FileOptions(contentType: contentType, upsert: true),
+          );
       return client.storage.from(primaryBucket).getPublicUrl(flatPath);
     } catch (e) {
       debugPrint('Player media upload error ($primaryBucket/$flatPath): $e');
@@ -489,7 +551,9 @@ class DataService {
     final base64Data = base64Encode(bytes);
     final fallbackMime = contentType.isNotEmpty
         ? contentType
-        : (isVideo ? 'video/mp4' : (isDocument ? 'application/pdf' : 'image/jpeg'));
+        : (isVideo
+              ? 'video/mp4'
+              : (isDocument ? 'application/pdf' : 'image/jpeg'));
     return 'data:$fallbackMime;base64,$fallbackMime;base64,$base64Data';
   }
 
@@ -527,8 +591,10 @@ class DataService {
                 .eq(field, organizationId);
             for (final row in rows) {
               final map = Map<String, dynamic>.from(row);
-              final approvalStatus = map['approval_status'] ?? map['status'] ?? 'approved';
-              if (onlyApproved && (approvalStatus == 'pending' || map['is_pending'] == true)) {
+              final approvalStatus =
+                  map['approval_status'] ?? map['status'] ?? 'approved';
+              if (onlyApproved &&
+                  (approvalStatus == 'pending' || map['is_pending'] == true)) {
                 continue;
               }
               if (seen.add('${map['id']}')) players.add(map);
@@ -560,7 +626,9 @@ class DataService {
                     .select()
                     .eq('id', reqPlayerId)
                     .maybeSingle();
-                if (pRes != null) fullPlayerRecord = Map<String, dynamic>.from(pRes);
+                if (pRes != null) {
+                  fullPlayerRecord = Map<String, dynamic>.from(pRes);
+                }
               } catch (_) {}
             }
 
@@ -571,7 +639,9 @@ class DataService {
                     .select()
                     .eq('email', reqEmail)
                     .maybeSingle();
-                if (pRes != null) fullPlayerRecord = Map<String, dynamic>.from(pRes);
+                if (pRes != null) {
+                  fullPlayerRecord = Map<String, dynamic>.from(pRes);
+                }
               } catch (_) {}
             }
 
@@ -582,7 +652,9 @@ class DataService {
                     .select()
                     .eq('phone', reqPhone)
                     .maybeSingle();
-                if (pRes != null) fullPlayerRecord = Map<String, dynamic>.from(pRes);
+                if (pRes != null) {
+                  fullPlayerRecord = Map<String, dynamic>.from(pRes);
+                }
               } catch (_) {}
             }
 
@@ -591,8 +663,14 @@ class DataService {
               final playerMap = <String, dynamic>{
                 ...?fullPlayerRecord,
                 'id': effectivePlayerId,
-                'full_name': fullPlayerRecord?['full_name'] ?? map['playerName'] ?? 'لاعب جديد',
-                'primary_position': fullPlayerRecord?['primary_position'] ?? map['position'] ?? 'لاعب',
+                'full_name':
+                    fullPlayerRecord?['full_name'] ??
+                    map['playerName'] ??
+                    'لاعب جديد',
+                'primary_position':
+                    fullPlayerRecord?['primary_position'] ??
+                    map['position'] ??
+                    'لاعب',
                 'guardian_approval': status == 'approved',
                 'approval_status': status,
                 'status': status,
@@ -616,19 +694,23 @@ class DataService {
   }) async {
     _requireSupabase();
     final client = Supabase.instance.client;
-    
+
     try {
-      await client.from('players').update({
-        'guardian_approval': true,
-        'approval_status': 'approved',
-        'status': 'active',
-      }).eq('id', playerId);
+      await client
+          .from('players')
+          .update({
+            'guardian_approval': true,
+            'approval_status': 'approved',
+            'status': 'active',
+          })
+          .eq('id', playerId);
     } catch (_) {}
 
     try {
-      await client.from('player_join_requests').update({
-        'status': 'approved',
-      }).eq('playerId', playerId);
+      await client
+          .from('player_join_requests')
+          .update({'status': 'approved'})
+          .eq('playerId', playerId);
     } catch (_) {}
   }
 
@@ -639,20 +721,24 @@ class DataService {
     _requireSupabase();
     final client = Supabase.instance.client;
     final orgField = '${accountType.value}_id';
-    
+
     try {
-      await client.from('players').update({
-        orgField: null,
-        'organizationId': null,
-        'approval_status': 'rejected',
-        'guardian_approval': false,
-      }).eq('id', playerId);
+      await client
+          .from('players')
+          .update({
+            orgField: null,
+            'organizationId': null,
+            'approval_status': 'rejected',
+            'guardian_approval': false,
+          })
+          .eq('id', playerId);
     } catch (_) {}
 
     try {
-      await client.from('player_join_requests').update({
-        'status': 'rejected',
-      }).eq('playerId', playerId);
+      await client
+          .from('player_join_requests')
+          .update({'status': 'rejected'})
+          .eq('playerId', playerId);
     } catch (_) {}
   }
 
@@ -696,7 +782,9 @@ class DataService {
       'organizationName': organizationName,
       'referralCode': code,
       'inviteLink': '${AppConfig.webBaseUrl}/join/org/$code',
-      'description': description.trim().isNotEmpty ? description.trim() : 'انضم إلى $organizationName',
+      'description': description.trim().isNotEmpty
+          ? description.trim()
+          : 'انضم إلى $organizationName',
       'isActive': true,
       'maxUsage': maxUsage,
       'currentUsage': 0,
@@ -885,8 +973,8 @@ class DataService {
     Map<String, dynamic> data,
   ) async {
     const r2DevBase = 'https://pub-d4c7563dad1f41f3adf319c6a25a5f44.r2.dev';
-    const r2Base = 'https://assets.el7lm.com';
-    const supabaseBase = 'https://mjuaefipdzxfqazzbyke.supabase.co/storage/v1/object/public';
+    const supabaseBase =
+        'https://mjuaefipdzxfqazzbyke.supabase.co/storage/v1/object/public';
 
     Future<Object?> resolve(Object? value) async {
       if (value is String) {
@@ -905,12 +993,19 @@ class DataService {
           return str;
         }
 
-        if (str.contains('ekyerljzfokqimbabzxm.supabase.co/storage/v1/object/public/')) {
-          final path = str.substring('https://ekyerljzfokqimbabzxm.supabase.co/storage/v1/object/public/'.length);
+        if (str.contains(
+          'ekyerljzfokqimbabzxm.supabase.co/storage/v1/object/public/',
+        )) {
+          final path = str.substring(
+            'https://ekyerljzfokqimbabzxm.supabase.co/storage/v1/object/public/'
+                .length,
+          );
           return '$r2DevBase/$path';
         }
 
-        if (str.startsWith('https://') || str.startsWith('http://') || str.startsWith('data:')) {
+        if (str.startsWith('https://') ||
+            str.startsWith('http://') ||
+            str.startsWith('data:')) {
           return str;
         }
 
@@ -919,7 +1014,16 @@ class DataService {
           return '$r2DevBase/$path';
         }
 
-        for (final bucket in ['profile-images', 'videos', 'documents', 'avatars', 'ads', 'gallery', 'photos', 'player-images']) {
+        for (final bucket in [
+          'profile-images',
+          'videos',
+          'documents',
+          'avatars',
+          'ads',
+          'gallery',
+          'photos',
+          'player-images',
+        ]) {
           if (str.startsWith('$bucket/')) {
             return '$supabaseBase/$str';
           }
@@ -933,7 +1037,15 @@ class DataService {
       if (value is List) return Future.wait(value.map(resolve));
       if (value is Map) {
         final result = Map<String, dynamic>.from(value);
-        for (final key in ['url', 'video_url', 'videoUrl', 'src', 'uri', 'path', 'thumbnail']) {
+        for (final key in [
+          'url',
+          'video_url',
+          'videoUrl',
+          'src',
+          'uri',
+          'path',
+          'thumbnail',
+        ]) {
           if (result.containsKey(key)) result[key] = await resolve(result[key]);
         }
         return result;
@@ -973,15 +1085,17 @@ class DataService {
     return fallback;
   }
 
-
   Future<void> joinOrganizationByCode(String rawInput) async {
     _requireSupabase();
     // Parse exactly like the Web: trim + uppercase + remove spaces
-    final normalizedCode = rawInput.trim().toUpperCase().replaceAll(RegExp(r'\s+'), '');
-    
+    final normalizedCode = rawInput.trim().toUpperCase().replaceAll(
+      RegExp(r'\s+'),
+      '',
+    );
+
     // If input is a URL (like https://el7lm.com/join/org/CLBWUL3NI), extract the code
     final effectiveCode = _extractCodeFromInput(normalizedCode);
-    
+
     if (effectiveCode.isEmpty) {
       throw const ApiException(
         'كود الدعوة فارغ، الرجاء إدخال الكود الصحيح.',
@@ -1021,10 +1135,14 @@ class DataService {
       // Check usability: not expired and not over usage limit
       bool usable = true;
       final expiresAt = DateTime.tryParse('${orgRef['expiresAt'] ?? ''}');
-      if (expiresAt != null && expiresAt.isBefore(DateTime.now())) usable = false;
+      if (expiresAt != null && expiresAt.isBefore(DateTime.now())) {
+        usable = false;
+      }
       final maxUsage = orgRef['maxUsage'];
       final currentUsage = (orgRef['currentUsage'] as num? ?? 0).toInt();
-      if (maxUsage != null && currentUsage >= (maxUsage as num).toInt()) usable = false;
+      if (maxUsage != null && currentUsage >= (maxUsage as num).toInt()) {
+        usable = false;
+      }
 
       if (!usable) {
         throw const ApiException(
@@ -1172,11 +1290,14 @@ class DataService {
 
     // 3. Insert into player_join_requests for Web & Manager compatibility
     try {
-      final reqId = 'req_${DateTime.now().millisecondsSinceEpoch}_${userId.length > 6 ? userId.substring(0, 6) : userId}';
+      final reqId =
+          'req_${DateTime.now().millisecondsSinceEpoch}_${userId.length > 6 ? userId.substring(0, 6) : userId}';
       await client.from('player_join_requests').insert({
         'id': reqId,
         'playerId': userId,
-        'playerName': _auth.currentDisplayName.isNotEmpty ? _auth.currentDisplayName : 'لاعب جديد',
+        'playerName': _auth.currentDisplayName.isNotEmpty
+            ? _auth.currentDisplayName
+            : 'لاعب جديد',
         'playerEmail': userEmail,
         'playerPhone': userPhone,
         'organizationId': orgId,
@@ -1247,8 +1368,8 @@ class DataService {
       throw Exception('كود الدعوة غير موجود أو تم حذفه سابقاً.');
     }
 
-    final dbId    = '${refRow['id']}';
-    final code    = '${refRow['referralCode'] ?? refRow['code'] ?? ''}';
+    final dbId = '${refRow['id']}';
+    final code = '${refRow['referralCode'] ?? refRow['code'] ?? ''}';
     final currentUsage = (refRow['currentUsage'] as num? ?? 0).toInt();
 
     // 2. Count players linked to this code
@@ -1279,10 +1400,7 @@ class DataService {
     }
 
     // 4. Delete using the real DB uuid id (most reliable)
-    await client
-        .from('organization_referrals')
-        .delete()
-        .eq('id', dbId);
+    await client.from('organization_referrals').delete().eq('id', dbId);
   }
 
   Future<Map<String, dynamic>?> fetchJoinedOrganization() async {
@@ -1307,7 +1425,9 @@ class DataService {
     try {
       final rows = await client
           .from('players')
-          .select('organizationId, organizationType, organization_name, referralCodeUsed, joinedAt')
+          .select(
+            'organizationId, organizationType, organization_name, referralCodeUsed, joinedAt',
+          )
           .eq('id', userId)
           .limit(1);
 
@@ -1355,7 +1475,8 @@ class DataService {
   }
 
   /// Keep for backwards-compat with profile screen paste button
-  static String parseReferralCodeInput(String raw) => _extractCodeFromInput(raw);
+  static String parseReferralCodeInput(String raw) =>
+      _extractCodeFromInput(raw);
 
   Future<ConversationModel> startOrCreateConversation({
     required String targetId,
@@ -1367,8 +1488,9 @@ class DataService {
     final client = Supabase.instance.client;
     final senderId =
         _auth.authUserId ?? await _auth.legacyUserId() ?? 'user_anonymous';
-    final senderName =
-        _auth.currentDisplayName.isNotEmpty ? _auth.currentDisplayName : 'User';
+    final senderName = _auth.currentDisplayName.isNotEmpty
+        ? _auth.currentDisplayName
+        : 'User';
     final senderType = (await _auth.savedAccountType())?.value ?? 'player';
 
     // 1. Check if conversation already exists between participants
@@ -1380,7 +1502,7 @@ class DataService {
           .filter('participants', 'cs', jsonArray)
           .limit(20);
 
-      if (res is List && res.isNotEmpty) {
+      if (res.isNotEmpty) {
         for (final row in res) {
           final map = Map<String, dynamic>.from(row);
           final parts = List<String>.from(map['participants'] ?? []);
@@ -1399,31 +1521,22 @@ class DataService {
     final payload = {
       'id': convId,
       'participants': [senderId, targetId],
-      'participantNames': {
-        senderId: senderName,
-        targetId: targetName,
-      },
-      'participantTypes': {
-        senderId: senderType,
-        targetId: targetType,
-      },
-      'participantAvatars': {
-        senderId: '',
-        targetId: targetAvatar ?? '',
-      },
+      'participantNames': {senderId: senderName, targetId: targetName},
+      'participantTypes': {senderId: senderType, targetId: targetType},
+      'participantAvatars': {senderId: '', targetId: targetAvatar ?? ''},
       'lastMessage': '',
       'lastMessageTime': now.toIso8601String(),
       'lastSenderId': senderId,
-      'unreadCount': {
-        senderId: 0,
-        targetId: 0,
-      },
+      'unreadCount': {senderId: 0, targetId: 0},
       'updatedAt': now.toIso8601String(),
     };
 
     try {
-      final inserted =
-          await client.from('conversations').insert(payload).select().single();
+      final inserted = await client
+          .from('conversations')
+          .insert(payload)
+          .select()
+          .single();
       return ConversationModel.fromJson(Map<String, dynamic>.from(inserted));
     } catch (_) {
       // Local fallback conversation model so chat opens seamlessly 100% of the time!
@@ -1456,7 +1569,9 @@ class DataService {
           .select()
           .filter('participants', 'cs', jsonArray)
           .order('updatedAt', ascending: false);
-      return (res as List).map((e) => ConversationModel.fromJson(Map<String, dynamic>.from(e))).toList();
+      return (res as List)
+          .map((e) => ConversationModel.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
     } catch (_) {
       try {
         final res = await client
@@ -1465,7 +1580,9 @@ class DataService {
             .order('updatedAt', ascending: false)
             .limit(30);
         return (res as List)
-            .map((e) => ConversationModel.fromJson(Map<String, dynamic>.from(e)))
+            .map(
+              (e) => ConversationModel.fromJson(Map<String, dynamic>.from(e)),
+            )
             .where((conv) => conv.participants.contains(userId))
             .toList();
       } catch (_) {
@@ -1515,7 +1632,9 @@ class DataService {
       'conversationId': conversationId,
       'senderId': senderId,
       'receiverId': receiverId,
-      'senderName': _auth.currentDisplayName.isNotEmpty ? _auth.currentDisplayName : 'User',
+      'senderName': _auth.currentDisplayName.isNotEmpty
+          ? _auth.currentDisplayName
+          : 'User',
       'receiverName': receiverName,
       'senderType': senderType,
       'receiverType': receiverType,
@@ -1527,12 +1646,15 @@ class DataService {
     await client.from('messages').insert(payload);
 
     try {
-      await client.from('conversations').update({
-        'lastMessage': message,
-        'lastMessageTime': now,
-        'lastSenderId': senderId,
-        'updatedAt': now,
-      }).eq('id', conversationId);
+      await client
+          .from('conversations')
+          .update({
+            'lastMessage': message,
+            'lastMessageTime': now,
+            'lastSenderId': senderId,
+            'updatedAt': now,
+          })
+          .eq('id', conversationId);
     } catch (_) {}
 
     try {

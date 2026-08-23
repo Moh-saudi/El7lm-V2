@@ -9,7 +9,7 @@ class AppColors {
   static const gold = Color(0xFFF4A70B);
   static const ink = Color(0xFF17213A);
   static const muted = Color(0xFF667085);
-  static const canvas = Color(0xFFF5F7FA);
+  static const canvas = Color(0xFFF3F6FB);
 }
 
 ThemeData buildAppTheme() {
@@ -19,6 +19,7 @@ ThemeData buildAppTheme() {
       seedColor: AppColors.navy,
       primary: AppColors.navy,
       secondary: AppColors.green,
+      tertiary: AppColors.gold,
       surface: Colors.white,
     ),
     scaffoldBackgroundColor: AppColors.canvas,
@@ -29,18 +30,20 @@ ThemeData buildAppTheme() {
       base.textTheme,
     ).apply(bodyColor: AppColors.ink, displayColor: AppColors.ink),
     appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xFFF9FBFF),
       foregroundColor: AppColors.ink,
       elevation: 0,
+      scrolledUnderElevation: 1,
       centerTitle: false,
     ),
     cardTheme: CardThemeData(
       color: Colors.white,
-      elevation: 0,
+      elevation: 1.5,
+      shadowColor: const Color(0x1A111A4B),
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: const BorderSide(color: Color(0xFFE7EAF0)),
+        borderRadius: BorderRadius.circular(22),
+        side: const BorderSide(color: Color(0xFFE3E8F2)),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -64,9 +67,37 @@ ThemeData buildAppTheme() {
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.navy,
         foregroundColor: Colors.white,
-        minimumSize: const Size.fromHeight(52),
+        minimumSize: const Size(0, 52),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+      ),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      height: 72,
+      backgroundColor: Colors.white,
+      elevation: 8,
+      shadowColor: const Color(0x22111A4B),
+      indicatorColor: AppColors.green.withValues(alpha: .13),
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (states) => TextStyle(
+          color: states.contains(WidgetState.selected)
+              ? AppColors.navy
+              : AppColors.muted,
+          fontWeight: states.contains(WidgetState.selected)
+              ? FontWeight.w800
+              : FontWeight.w600,
+          fontSize: 11,
+        ),
+      ),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+        ),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
       ),
     ),
   );

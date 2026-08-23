@@ -9,9 +9,13 @@ class AppConfig {
     'WEB_BASE_URL',
     defaultValue: 'https://www.el7lm.com',
   );
-  static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://mjuaefipdzxfqazzbyke.supabase.co',
+  );
   static const supabasePublishableKey = String.fromEnvironment(
     'SUPABASE_PUBLISHABLE_KEY',
+    defaultValue: '',
   );
 
   static bool get hasSupabaseConfiguration =>

@@ -1,13 +1,20 @@
 import 'dart:async';
 
+import 'package:country_picker/country_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/account_type.dart';
 import '../../services/auth_service.dart';
+import '../../services/contact_validator.dart';
+import '../../services/location_catalog_service.dart';
+import '../../widgets/account_type_football_icon.dart';
 import '../../widgets/brand_logo.dart';
+import '../../widgets/company_footer.dart';
 import '../../widgets/language_switcher.dart';
+import '../../widgets/legal_links_footer.dart';
+import '../../widgets/personal_sponsor_support.dart';
 import 'otp_screen.dart';
 
 class PhoneAuthScreen extends StatefulWidget {
@@ -31,62 +38,199 @@ class PhoneAuthScreen extends StatefulWidget {
 class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   final phone = TextEditingController();
   final name = TextEditingController();
-  String countryCode = '+20';
+  Country selectedCountry = Country.parse('EG');
   bool registration = false;
   bool agreed = false;
   bool loading = false;
-  String? error;
+  String? errorKey;
+  final locationCatalog = LocationCatalogService();
 
-  static const countries = {
-    '+20': 'مصر',
-    '+974': 'قطر',
-    '+966': 'السعودية',
-    '+971': 'الإمارات',
-    '+965': 'الكويت',
-    '+968': 'عُمان',
-    '+973': 'البحرين',
-    '+962': 'الأردن',
-    '+964': 'العراق',
-    '+212': 'المغرب',
-    '+213': 'الجزائر',
-    '+216': 'تونس',
-  };
+  String get countryCode => '+${selectedCountry.phoneCode}';
 
-  String get fullPhone =>
-      '$countryCode${phone.text.replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^0+'), '')}';
+  Future<void> showTerms() async {
+    final accepted = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => FractionallySizedBox(
+        heightFactor: .82,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      sheetContext.tr('termsAndConditions'),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: SelectableText(
+                  sheetContext.tr('registrationTermsText'),
+                  style: const TextStyle(height: 1.65, fontSize: 13),
+                ),
+              ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.pop(sheetContext, true),
+                  icon: const Icon(Icons.check_circle_outline_rounded),
+                  label: Text(sheetContext.tr('agreeAndClose')),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (accepted == true && mounted) setState(() => agreed = true);
+  }
+
+  Future<void> selectCountry() async {
+    try {
+      final countries = await locationCatalog.countries();
+      if (!mounted || countries.isEmpty) return;
+      final selected = await showModalBottomSheet<Country>(
+        context: context,
+        useSafeArea: true,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (sheetContext) {
+          var query = '';
+          return StatefulBuilder(
+            builder: (context, setSheetState) {
+              final languageCode = Localizations.localeOf(context).languageCode;
+              final filtered = countries.where((country) {
+                final text = '${country.name} ${country.nameAr ?? ''} ${country.iso2} ${country.phoneCode ?? ''}'
+                    .toLowerCase();
+                return text.contains(query.toLowerCase());
+              }).toList(growable: false);
+              return FractionallySizedBox(
+                heightFactor: .82,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                      child: TextField(
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          labelText: context.tr('searchCountry'),
+                          hintText: context.tr('searchCountryHint'),
+                          prefixIcon: const Icon(Icons.search_rounded),
+                        ),
+                        onChanged: (value) => setSheetState(() => query = value.trim()),
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final item = filtered[index];
+                          final parsed = Country.tryParse(item.iso2);
+                          if (parsed == null) return const SizedBox.shrink();
+                          final localizedName = languageCode == 'ar' && item.nameAr?.isNotEmpty == true
+                              ? item.nameAr!
+                              : item.name;
+                          return ListTile(
+                            leading: Text(item.flagEmoji ?? parsed.flagEmoji, style: const TextStyle(fontSize: 26)),
+                            title: Text(localizedName),
+                            subtitle: Text(item.iso2),
+                            trailing: Text(item.phoneCode ?? '+${parsed.phoneCode}'),
+                            onTap: () => Navigator.pop(context, parsed),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      );
+      if (selected != null && mounted) setState(() => selectedCountry = selected);
+      return;
+    } catch (_) {
+      // Keep authentication available while the remote catalogue is offline.
+    }
+    if (!mounted) return;
+    showCountryPicker(
+      context: context,
+      showPhoneCode: true,
+      favorite: const ['EG', 'QA', 'SA', 'AE'],
+      countryListTheme: CountryListThemeData(
+        flagSize: 28,
+        bottomSheetHeight: MediaQuery.sizeOf(context).height * .78,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        inputDecoration: InputDecoration(
+          labelText: context.tr('searchCountry'),
+          hintText: context.tr('searchCountryHint'),
+          prefixIcon: const Icon(Icons.search_rounded),
+        ),
+      ),
+      onSelect: (country) => setState(() => selectedCountry = country),
+    );
+  }
 
   Future<void> submit() async {
-    final digits = phone.text.replaceAll(RegExp(r'\D'), '');
-    if (digits.length < 7) {
-      setState(() => error = context.tr('invalidPhone'));
+    final phoneValidation = ContactValidator.phoneForCountry(
+      input: phone.text,
+      callingCode: selectedCountry.phoneCode,
+      example: selectedCountry.example,
+    );
+    if (!phoneValidation.isValid) {
+      setState(() => errorKey = phoneValidation.errorKey);
       return;
     }
     if (registration && name.text.trim().length < 3) {
-      setState(() => error = context.tr('nameRequired'));
+      setState(() => errorKey = 'nameRequired');
       return;
     }
     if (registration && !agreed) {
-      setState(() => error = context.tr('termsRequired'));
+      setState(() => errorKey = 'termsRequired');
       return;
     }
 
     setState(() {
       loading = true;
-      error = null;
+      errorKey = null;
     });
     try {
-      await widget.authService.sendOtp(
-        phone: fullPhone,
+      final accountStatus = await widget.authService.sendOtp(
+        phone: phoneValidation.value!,
         registration: registration,
+        expectedAccountType: widget.accountType,
         name: name.text.trim(),
       );
       if (!mounted) return;
       final result = await Navigator.of(context).push<AuthResult>(
         MaterialPageRoute(
           builder: (_) => OtpScreen(
-            phone: fullPhone,
+            phone: phoneValidation.value!,
             registration: registration,
-            accountType: widget.accountType,
+            accountType: registration
+                ? widget.accountType
+                : (accountStatus.accountType ?? widget.accountType),
             name: name.text.trim(),
             authService: widget.authService,
           ),
@@ -94,7 +238,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
       );
       if (result != null) widget.onAuthenticated(result);
     } catch (exception) {
-      setState(() => error = '$exception');
+      setState(() => errorKey = context.errorTranslationKey(exception));
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -103,9 +247,10 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: const PersonalSponsorSupportButton(),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 104),
           children: [
             const SizedBox(height: 10),
             const Row(
@@ -129,21 +274,14 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
               onSelectionChanged: (value) {
                 setState(() {
                   registration = value.first;
-                  error = null;
+                  errorKey = null;
                 });
               },
             ),
             const SizedBox(height: 24),
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.green.withValues(alpha: .1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(widget.accountType.icon, color: AppColors.green),
-                ),
+                AccountTypeFootballIcon(type: widget.accountType, size: 48),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -175,23 +313,41 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  width: 118,
-                  child: DropdownButtonFormField<String>(
-                    initialValue: countryCode,
-                    decoration: InputDecoration(
-                      labelText: context.tr('country'),
-                    ),
-                    items: countries.entries
-                        .map(
-                          (entry) => DropdownMenuItem(
-                            value: entry.key,
-                            child: Text(entry.key),
+                  width: 128,
+                  child: InkWell(
+                    onTap: selectCountry,
+                    borderRadius: BorderRadius.circular(16),
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: context.tr('countryCode'),
+                        contentPadding: const EdgeInsetsDirectional.fromSTEB(
+                          12,
+                          18,
+                          8,
+                          18,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            selectedCountry.flagEmoji,
+                            style: const TextStyle(fontSize: 21),
                           ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) setState(() => countryCode = value);
-                    },
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              countryCode,
+                              textDirection: TextDirection.ltr,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          const Icon(Icons.expand_more_rounded, size: 18),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -202,7 +358,9 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                     textDirection: TextDirection.ltr,
                     decoration: InputDecoration(
                       labelText: context.tr('phone'),
-                      hintText: '1012345678',
+                      hintText: selectedCountry.example.isNotEmpty
+                          ? selectedCountry.example
+                          : '1012345678',
                       prefixIcon: const Icon(Icons.phone_iphone),
                     ),
                   ),
@@ -221,15 +379,34 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                 onChanged: (value) => setState(() => agreed = value ?? false),
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.leading,
-                title: Text(
-                  context.tr('acceptTerms'),
-                  style: const TextStyle(fontSize: 13),
+                title: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      '${context.tr('agreeTo')} ',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    InkWell(
+                      onTap: showTerms,
+                      child: Text(
+                        context.tr('termsAndConditions'),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
-            if (error != null) ...[
+            if (errorKey != null) ...[
               const SizedBox(height: 8),
-              Text(error!, style: const TextStyle(color: Colors.red)),
+              Text(
+                context.tr(errorKey!),
+                style: const TextStyle(color: Colors.red),
+              ),
             ],
             const SizedBox(height: 18),
             FilledButton.icon(
@@ -244,14 +421,9 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
               label: Text(context.tr(loading ? 'sending' : 'sendOtp')),
             ),
             const SizedBox(height: 16),
-            Text(
-              context.tr('allAccountsFree'),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.green,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            const FreeAccountsBanner(),
+            LegalLinksFooter(onTerms: showTerms),
+            const CompanyFooter(),
           ],
         ),
       ),

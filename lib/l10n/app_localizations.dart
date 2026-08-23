@@ -16,6 +16,7 @@ class AppLocalizations {
     Locale('en'),
     Locale('es'),
     Locale('pt'),
+    Locale('fr'),
   ];
 
   static AppLocalizations of(BuildContext context) {
@@ -43,13 +44,39 @@ class AppLocalizations {
   }
 
   String _formatResult(String result) {
-    if (locale.languageCode == 'en' && !result.contains('\n') && !result.contains('http') && result.length < 120) {
-      const minorWords = {'a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'nor', 'of', 'on', 'or', 'so', 'the', 'to', 'up', 'yet', 'with'};
+    if (locale.languageCode == 'en' &&
+        !result.contains('\n') &&
+        !result.contains('http') &&
+        result.length < 120) {
+      const minorWords = {
+        'a',
+        'an',
+        'and',
+        'as',
+        'at',
+        'but',
+        'by',
+        'for',
+        'in',
+        'nor',
+        'of',
+        'on',
+        'or',
+        'so',
+        'the',
+        'to',
+        'up',
+        'yet',
+        'with',
+      };
       final words = result.split(' ');
       final titleWords = <String>[];
       for (var i = 0; i < words.length; i++) {
         final w = words[i];
-        if (w.isEmpty || w.startsWith('{') || w.startsWith('(') || w.startsWith('http')) {
+        if (w.isEmpty ||
+            w.startsWith('{') ||
+            w.startsWith('(') ||
+            w.startsWith('http')) {
           titleWords.add(w);
           continue;
         }
@@ -84,9 +111,17 @@ class _AppLocalizationsDelegate
       'assets/i18n/$languageCode.json',
     );
     final decoded = Map<String, dynamic>.from(jsonDecode(source) as Map);
+    final values = <String, dynamic>{};
+    if (languageCode == 'fr') {
+      final fallbackSource = await rootBundle.loadString('assets/i18n/en.json');
+      values.addAll(
+        Map<String, dynamic>.from(jsonDecode(fallbackSource) as Map),
+      );
+    }
+    values.addAll(decoded);
     return AppLocalizations(
       Locale(languageCode),
-      decoded.map((key, value) => MapEntry(key, '$value')),
+      values.map((key, value) => MapEntry(key, '$value')),
     );
   }
 

@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../models/account_type.dart';
 import '../../services/auth_service.dart';
+import '../../services/contact_validator.dart';
 import '../../widgets/brand_logo.dart';
 
 class OtpScreen extends StatefulWidget {
@@ -32,7 +34,7 @@ class _OtpScreenState extends State<OtpScreen> {
   Timer? timer;
   int remaining = 30;
   bool loading = false;
-  String? error;
+  String? errorKey;
 
   @override
   void initState() {
@@ -54,37 +56,53 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   Future<void> verify() async {
-    if (code.text.trim().length != 6) {
-      setState(() => error = context.tr('invalidOtp'));
+    final normalizedCode = ContactValidator.digitsOnly(
+      ContactValidator.normalizeDigits(code.text),
+    );
+    if (normalizedCode.length != 6) {
+      setState(() => errorKey = 'otpLengthInvalid');
       return;
     }
     setState(() {
       loading = true;
-      error = null;
+      errorKey = null;
     });
     try {
       final result = await widget.authService.verifyOtp(
         phone: widget.phone,
-        otp: code.text.trim(),
+        otp: normalizedCode,
         registration: widget.registration,
         selectedType: widget.accountType,
         name: widget.name,
       );
       if (mounted) Navigator.of(context).pop(result);
     } catch (exception) {
-      setState(() => error = '$exception');
+      setState(() => errorKey = context.errorTranslationKey(exception));
     } finally {
       if (mounted) setState(() => loading = false);
     }
   }
 
   Future<void> resend() async {
-    await widget.authService.sendOtp(
-      phone: widget.phone,
-      registration: widget.registration,
-      name: widget.name,
-    );
-    startTimer();
+    setState(() {
+      loading = true;
+      errorKey = null;
+    });
+    try {
+      await widget.authService.sendOtp(
+        phone: widget.phone,
+        registration: widget.registration,
+        expectedAccountType: widget.accountType,
+        name: widget.name,
+      );
+      if (mounted) startTimer();
+    } catch (exception) {
+      if (mounted) {
+        setState(() => errorKey = context.errorTranslationKey(exception));
+      }
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
   }
 
   @override
@@ -123,6 +141,9 @@ class _OtpScreenState extends State<OtpScreen> {
             textAlign: TextAlign.center,
             textDirection: TextDirection.ltr,
             maxLength: 6,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9٠-٩۰-۹]')),
+            ],
             style: const TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
@@ -134,10 +155,10 @@ class _OtpScreenState extends State<OtpScreen> {
             ),
             onSubmitted: (_) => verify(),
           ),
-          if (error != null) ...[
+          if (errorKey != null) ...[
             const SizedBox(height: 8),
             Text(
-              error!,
+              context.tr(errorKey!),
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.red),
             ),
@@ -149,7 +170,7 @@ class _OtpScreenState extends State<OtpScreen> {
           ),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: remaining == 0 ? resend : null,
+            onPressed: remaining == 0 && !loading ? resend : null,
             child: Text(
               remaining == 0
                   ? context.tr('resendOtp')

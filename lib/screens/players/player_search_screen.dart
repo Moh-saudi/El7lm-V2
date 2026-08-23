@@ -1,15 +1,18 @@
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
+import '../../core/country_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/player.dart';
 import '../../models/player_filter.dart';
 import '../../services/data_service.dart';
 import '../../widgets/async_state_view.dart';
 import '../../widgets/player_filter_sheet.dart';
+import '../profile/player_profile_data.dart';
 import 'player_details_screen.dart';
 
 class PlayerSearchScreen extends StatefulWidget {
@@ -28,12 +31,16 @@ class _PlayerSearchScreenState extends State<PlayerSearchScreen> {
   final searchController = TextEditingController();
   final scrollController = ScrollController();
   PlayerFilter filter = const PlayerFilter();
+  Set<String> favoriteIds = <String>{};
+  final Set<String> favoriteChanges = <String>{};
+  bool favoritesOnly = false;
   int currentPage = 1;
 
   @override
   void initState() {
     super.initState();
     future = widget.dataService.fetchPlayers();
+    _loadFavorites();
   }
 
   @override
@@ -46,7 +53,46 @@ class _PlayerSearchScreenState extends State<PlayerSearchScreen> {
   Future<void> refresh() async {
     final next = widget.dataService.fetchPlayers();
     setState(() => future = next);
-    await next;
+    await Future.wait([next, _loadFavorites()]);
+  }
+
+  Future<void> _loadFavorites() async {
+    try {
+      final ids = await widget.dataService.fetchFavoritePlayerIds();
+      if (mounted) setState(() => favoriteIds = ids);
+    } catch (_) {
+      // Player discovery remains usable if favorites are temporarily offline.
+    }
+  }
+
+  Future<void> toggleFavorite(Player player) async {
+    if (favoriteChanges.contains(player.id)) return;
+    final wasFavorite = favoriteIds.contains(player.id);
+    setState(() {
+      favoriteChanges.add(player.id);
+      if (wasFavorite) {
+        favoriteIds.remove(player.id);
+      } else {
+        favoriteIds.add(player.id);
+      }
+    });
+    try {
+      await widget.dataService.setPlayerFavorite(player.id, !wasFavorite);
+    } catch (exception) {
+      if (!mounted) return;
+      setState(() {
+        if (wasFavorite) {
+          favoriteIds.add(player.id);
+        } else {
+          favoriteIds.remove(player.id);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('favoriteUpdateFailed'))),
+      );
+    } finally {
+      if (mounted) setState(() => favoriteChanges.remove(player.id));
+    }
   }
 
   void updateQuery(String value) {
@@ -86,6 +132,17 @@ class _PlayerSearchScreenState extends State<PlayerSearchScreen> {
         builder: (_) => PlayerDetailsScreen(
           initialPlayer: player,
           dataService: widget.dataService,
+          initiallyFavorite: favoriteIds.contains(player.id),
+          onFavoriteChanged: (isFavorite) {
+            if (!mounted) return;
+            setState(() {
+              if (isFavorite) {
+                favoriteIds.add(player.id);
+              } else {
+                favoriteIds.remove(player.id);
+              }
+            });
+          },
         ),
       ),
     );
@@ -96,7 +153,10 @@ class _PlayerSearchScreenState extends State<PlayerSearchScreen> {
   Widget build(BuildContext context) => AsyncStateView<List<Player>>(
     future: future,
     builder: (context, players) {
-      final filtered = players.where(filter.matches).toList();
+      final filtered = players
+          .where(filter.matches)
+          .where((player) => !favoritesOnly || favoriteIds.contains(player.id))
+          .toList();
       final advancedFilterCount =
           filter.activeCount - (filter.query.isEmpty ? 0 : 1);
       final totalPages = math.max(1, (filtered.length / pageSize).ceil());
@@ -146,30 +206,26 @@ class _PlayerSearchScreenState extends State<PlayerSearchScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Text(
-                      context.tr('resultsCount', {
-                        'count': filtered.length,
-                        'total': players.length,
-                      }),
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 12,
-                      ),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: FilterChip(
+                    selected: favoritesOnly,
+                    avatar: Icon(
+                      favoritesOnly
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      size: 17,
                     ),
-                    const Spacer(),
-                    Text(
-                      context.tr('pageOf', {
-                        'page': currentPage,
-                        'total': totalPages,
+                    label: Text(
+                      context.tr('favoritesOnly', {
+                        'count': favoriteIds.length,
                       }),
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 12,
-                      ),
                     ),
-                  ],
+                    onSelected: (value) => setState(() {
+                      favoritesOnly = value;
+                      currentPage = 1;
+                    }),
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -204,6 +260,14 @@ class _PlayerSearchScreenState extends State<PlayerSearchScreen> {
                               itemCount: pagePlayers.length,
                               itemBuilder: (context, index) => _PlayerCard(
                                 player: pagePlayers[index],
+                                isFavorite: favoriteIds.contains(
+                                  pagePlayers[index].id,
+                                ),
+                                favoriteBusy: favoriteChanges.contains(
+                                  pagePlayers[index].id,
+                                ),
+                                onFavorite: () =>
+                                    toggleFavorite(pagePlayers[index]),
                                 onTap: () => openPlayer(pagePlayers[index]),
                               ),
                             );
@@ -252,42 +316,29 @@ class _FloatingPager extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              color: Colors.white,
-              disabledColor: Colors.white30,
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                disabledForegroundColor: Colors.white30,
+              ),
               onPressed: currentPage > 1
                   ? () => onChanged(currentPage - 1)
                   : null,
               icon: const Icon(Icons.chevron_left),
+              label: Text(context.tr('previous')),
             ),
-            DropdownButtonHideUnderline(
-              child: DropdownButton<int>(
-                value: currentPage,
-                dropdownColor: AppColors.navy,
-                iconEnabledColor: Colors.white,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                ),
-                items: List.generate(
-                  totalPages,
-                  (index) => DropdownMenuItem(
-                    value: index + 1,
-                    child: Text('${index + 1} / $totalPages'),
-                  ),
-                ),
-                onChanged: (page) {
-                  if (page != null) onChanged(page);
-                },
+            Container(height: 24, width: 1, color: Colors.white24),
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                disabledForegroundColor: Colors.white30,
               ),
-            ),
-            IconButton(
-              color: Colors.white,
-              disabledColor: Colors.white30,
               onPressed: currentPage < totalPages
                   ? () => onChanged(currentPage + 1)
                   : null,
+              iconAlignment: IconAlignment.end,
               icon: const Icon(Icons.chevron_right),
+              label: Text(context.tr('next')),
             ),
           ],
         ),
@@ -297,9 +348,18 @@ class _FloatingPager extends StatelessWidget {
 }
 
 class _PlayerCard extends StatelessWidget {
-  const _PlayerCard({required this.player, required this.onTap});
+  const _PlayerCard({
+    required this.player,
+    required this.isFavorite,
+    required this.favoriteBusy,
+    required this.onFavorite,
+    required this.onTap,
+  });
 
   final Player player;
+  final bool isFavorite;
+  final bool favoriteBusy;
+  final VoidCallback onFavorite;
   final VoidCallback onTap;
 
   @override
@@ -322,6 +382,13 @@ class _PlayerCard extends StatelessWidget {
                           size: 72,
                           color: Color(0xFFB5BCC8),
                         )
+                      : kIsWeb
+                      ? Image.network(
+                          player.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) =>
+                              const Icon(Icons.person, size: 72),
+                        )
                       : CachedNetworkImage(
                           imageUrl: player.imageUrl,
                           fit: BoxFit.cover,
@@ -332,7 +399,36 @@ class _PlayerCard extends StatelessWidget {
                 PositionedDirectional(
                   top: 8,
                   end: 8,
-                  child: Row(
+                  child: Material(
+                    color: Colors.white.withValues(alpha: .94),
+                    shape: const CircleBorder(),
+                    elevation: 2,
+                    child: IconButton(
+                      tooltip: context.tr(
+                        isFavorite ? 'removeFavorite' : 'addFavorite',
+                      ),
+                      onPressed: favoriteBusy ? null : onFavorite,
+                      icon: favoriteBusy
+                          ? const SizedBox(
+                              width: 19,
+                              height: 19,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              isFavorite
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              color: isFavorite
+                                  ? const Color(0xFFE5484D)
+                                  : AppColors.navy,
+                            ),
+                    ),
+                  ),
+                ),
+                PositionedDirectional(
+                  top: 56,
+                  end: 8,
+                  child: Column(
                     children: [
                       if (player.hasImages)
                         const _MediaBadge(icon: Icons.photo_camera),
@@ -358,8 +454,19 @@ class _PlayerCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   [
-                    player.position,
-                    player.country,
+                    player.position.isEmpty
+                        ? ''
+                        : localizedProfileOptionLabel(
+                            context,
+                            'position',
+                            canonicalProfileOptionValue(
+                              'position',
+                              player.position,
+                            ),
+                          ),
+                    player.country.isNotEmpty
+                        ? '${localizedProfileOptionLabel(context, 'country', canonicalProfileOptionValue('country', player.country))} ${getCountryFlag(player.country)}'
+                        : '',
                   ].where((item) => item.isNotEmpty).join(' • '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

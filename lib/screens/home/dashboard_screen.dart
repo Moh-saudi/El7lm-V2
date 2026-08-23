@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_theme.dart';
@@ -13,6 +14,7 @@ import '../../models/player.dart';
 import '../../models/user_profile.dart';
 import '../../services/data_service.dart';
 import '../../widgets/company_footer.dart';
+import '../../widgets/personal_sponsor_support.dart';
 import '../messages/chat_detail_screen.dart';
 import '../players/manage_players_screen.dart';
 import '../players/player_details_screen.dart';
@@ -1174,12 +1176,7 @@ class _ManagerDashboard extends StatelessWidget {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                 ),
-                onPressed: () async {
-                  final uri = Uri.parse('https://el7lm.com/tournaments/unified-registration');
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  }
-                },
+                onPressed: () => _showTournamentActions(context),
                 icon: const Icon(Icons.verified_rounded, size: 18, color: AppColors.gold),
                 label: Text(context.tr('registerInTournament')),
               ),
@@ -1261,24 +1258,34 @@ class _ManagerDashboard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _SocialIconButton(
-                      icon: Icons.facebook_rounded,
+                      icon: FontAwesomeIcons.facebookF,
+                      label: 'Facebook',
                       color: const Color(0xFF1877F2),
-                      url: 'https://www.facebook.com/hagzz',
+                      url: 'https://www.facebook.com/profile.php?id=61577797509887',
                     ),
                     _SocialIconButton(
-                      icon: Icons.camera_alt_rounded,
+                      icon: FontAwesomeIcons.instagram,
+                      label: 'Instagram',
                       color: const Color(0xFFE4405F),
                       url: 'https://www.instagram.com/hagzzel7lm',
                     ),
                     _SocialIconButton(
-                      icon: Icons.video_library_rounded,
+                      icon: FontAwesomeIcons.tiktok,
+                      label: 'TikTok',
                       color: Colors.black,
-                      url: 'https://www.tiktok.com/@hagzz25',
+                      url: 'https://www.tiktok.com/@meskel7lm',
                     ),
                     _SocialIconButton(
-                      icon: Icons.work_rounded,
+                      icon: FontAwesomeIcons.linkedinIn,
+                      label: 'LinkedIn',
                       color: const Color(0xFF0A66C2),
-                      url: 'https://www.linkedin.com/company/hagzz',
+                      url: 'https://www.linkedin.com/showcase/el7lm',
+                    ),
+                    _SocialIconButton(
+                      icon: FontAwesomeIcons.snapchat,
+                      label: 'Snapchat',
+                      color: const Color(0xFFFFC800),
+                      url: 'https://www.snapchat.com/@el7lmofficial',
                     ),
                   ],
                 ),
@@ -1609,29 +1616,167 @@ bool _sameText(String left, String right) {
 class _SocialIconButton extends StatelessWidget {
   const _SocialIconButton({
     required this.icon,
+    required this.label,
     required this.color,
     required this.url,
   });
 
-  final IconData icon;
+  final FaIconData icon;
+  final String label;
   final Color color;
   final String url;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(30),
-      onTap: () async {
-        final uri = Uri.parse(url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
-      },
-      child: CircleAvatar(
-        radius: 22,
-        backgroundColor: color.withValues(alpha: .12),
-        child: Icon(icon, color: color, size: 22),
+    return Semantics(
+      button: true,
+      label: label,
+      child: Tooltip(
+        message: label,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(30),
+          onTap: () => _launchExternal(context, Uri.parse(url)),
+          child: CircleAvatar(
+            radius: 21,
+            backgroundColor: color.withValues(alpha: .12),
+            child: FaIcon(icon, color: color, size: 20),
+          ),
+        ),
       ),
+    );
+  }
+}
+
+Future<void> _launchExternal(BuildContext context, Uri uri) async {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final failureMessage = context.tr('openContactFailed');
+  if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+    messenger?.showSnackBar(SnackBar(content: Text(failureMessage)));
+  }
+}
+
+Future<void> _showTournamentActions(BuildContext context) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (sheetContext) => Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 62,
+              height: 62,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.gold, Color(0xFFFFE08A)],
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.emoji_events_rounded, color: AppColors.ink, size: 34),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              sheetContext.tr('tournamentActionsTitle'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              sheetContext.tr('tournamentActionsSubtitle'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.muted, height: 1.45),
+            ),
+            const SizedBox(height: 18),
+            _TournamentActionTile(
+              icon: const Icon(Icons.language_rounded),
+              color: AppColors.navy,
+              title: sheetContext.tr('openTournamentRegistration'),
+              subtitle: sheetContext.tr('openTournamentRegistrationHint'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _launchExternal(context, Uri.parse('https://el7lm.com/tournaments/unified-registration'));
+              },
+            ),
+            const SizedBox(height: 10),
+            _TournamentActionTile(
+              icon: const FaIcon(FontAwesomeIcons.whatsapp, size: 21),
+              color: const Color(0xFF25D366),
+              title: sheetContext.tr('contactTournamentWhatsApp'),
+              subtitle: '+974 3061 1350',
+              onTap: () {
+                final message = Uri.encodeComponent(sheetContext.tr('tournamentWhatsAppMessage'));
+                Navigator.of(sheetContext).pop();
+                _launchExternal(
+                  context,
+                  Uri.parse('https://wa.me/${PersonalSponsorSupportButton.whatsAppNumber}?text=$message'),
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            _TournamentActionTile(
+              icon: const Icon(Icons.alternate_email_rounded),
+              color: AppColors.green,
+              title: sheetContext.tr('contactTournamentEmail'),
+              subtitle: PersonalSponsorSupportButton.supportEmail,
+              onTap: () {
+                final subject = Uri.encodeComponent(sheetContext.tr('tournamentEmailSubject'));
+                Navigator.of(sheetContext).pop();
+                _launchExternal(
+                  context,
+                  Uri.parse('mailto:${PersonalSponsorSupportButton.supportEmail}?subject=$subject'),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _TournamentActionTile extends StatelessWidget {
+  const _TournamentActionTile({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final Widget icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: color.withValues(alpha: .2)),
+      ),
+      leading: CircleAvatar(
+        backgroundColor: color.withValues(alpha: .1),
+        foregroundColor: color,
+        child: IconTheme(data: IconThemeData(color: color), child: icon),
+      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: Text(
+        subtitle,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        textDirection: subtitle.contains('@') || subtitle.contains('+')
+            ? TextDirection.ltr
+            : null,
+      ),
+      trailing: const Icon(Icons.open_in_new_rounded, size: 18),
     );
   }
 }
@@ -2030,8 +2175,8 @@ class _SliderLoadingSkeleton extends StatelessWidget {
     return ListView.separated(
       scrollDirection: Axis.horizontal,
       itemCount: 5,
-      separatorBuilder: (_, __) => const SizedBox(width: 10),
-      itemBuilder: (_, __) => Container(
+      separatorBuilder: (context, index) => const SizedBox(width: 10),
+      itemBuilder: (context, index) => Container(
         width: 88,
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
@@ -2169,11 +2314,8 @@ class _PlayerSquareCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              Text(
-                player.name.isNotEmpty ? player.name : 'لاعب',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
+              _OverflowMarqueeText(
+                text: player.name.isNotEmpty ? player.name : 'لاعب',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 11,
@@ -2190,6 +2332,78 @@ class _PlayerSquareCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _OverflowMarqueeText extends StatefulWidget {
+  const _OverflowMarqueeText({required this.text, required this.style});
+
+  final String text;
+  final TextStyle style;
+
+  @override
+  State<_OverflowMarqueeText> createState() => _OverflowMarqueeTextState();
+}
+
+class _OverflowMarqueeTextState extends State<_OverflowMarqueeText>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2600),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final direction = Directionality.of(context);
+    return SizedBox(
+      height: 16,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final painter = TextPainter(
+            text: TextSpan(text: widget.text, style: widget.style),
+            maxLines: 1,
+            textDirection: direction,
+          )..layout();
+          final overflow = math.max(0.0, painter.width - constraints.maxWidth);
+          if (overflow == 0) {
+            return Center(
+              child: Text(widget.text, maxLines: 1, style: widget.style),
+            );
+          }
+          return ClipRect(
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) => Transform.translate(
+                offset: Offset(
+                  (direction == TextDirection.rtl ? 1 : -1) *
+                      overflow *
+                      _controller.value,
+                  0,
+                ),
+                child: child,
+              ),
+              child: Align(
+                alignment: direction == TextDirection.rtl
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
+                child: Text(
+                  widget.text,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: widget.style,
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -2250,4 +2464,3 @@ class _AddPlayerSquareCard extends StatelessWidget {
     );
   }
 }
-

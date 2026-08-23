@@ -109,12 +109,29 @@ class Player {
   }
 
   static String _asUrl(Object? value) {
-    if (value is String) return value.trim();
+    if (value is String) return _usableUrl(value);
     if (value is Map) {
-      return '${value['url'] ?? value['downloadURL'] ?? value['src'] ?? ''}'
-          .trim();
+      return _usableUrl(
+        '${value['url'] ?? value['downloadURL'] ?? value['src'] ?? ''}',
+      );
     }
     return '';
+  }
+
+  static String _usableUrl(String value) {
+    var url = value.trim();
+    if (url.isEmpty || url == 'null' || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+      return '';
+    }
+    if (url.contains('ekyerljzfokqimbabzxm.supabase.co')) return '';
+    if (url.contains('images.weserv.nl')) {
+      final uri = Uri.tryParse(url);
+      final target = uri?.queryParameters['url'];
+      if (target != null && target.isNotEmpty && (target.startsWith('http://') || target.startsWith('https://'))) {
+        url = target;
+      }
+    }
+    return url;
   }
 
   static int? _ageFromBirthDate(Object? value) {
