@@ -1,4 +1,0 @@
-[33me480e3b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m إضافة أيقونات ووظائف الإشعارات والرسائل في الهيدر + تحديث صفحات الرسائل لاستخدام WorkingMessageCenter + إضافة صفحة الإشعارات للقائمة الجانبية
-[33m19023b7[m fix(build): migrate from @heroui/react to shadcn/ui; fix support page JSX and imports; ensure production build passes
-[33m7225dd8[m Complete project update with all fixes and improvements - Translation fixes, OTP disabled, responsive design, marketer pages, and comprehensive system enhancements
-[33mc68d1f0[m[33m ([m[1;32mmaster[m[33m)[m Initial commit: Add core project files with responsive design and CSP fixes

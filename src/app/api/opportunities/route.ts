@@ -75,7 +75,10 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query;
     if (error) {
-      console.error('[/api/opportunities] error:', error);
+      // In local dev or explore mode, return graceful empty list
+      if (explore) {
+        return NextResponse.json({ data: [] });
+      }
       return NextResponse.json({ error: error.message, code: error.code }, { status: 500 });
     }
 
@@ -83,6 +86,9 @@ export async function GET(request: NextRequest) {
     const merged = (data ?? []).map((row: any) => ({ ...(row.metadata || {}), ...row }));
     return NextResponse.json({ data: merged });
   } catch (err: any) {
+    if (explore) {
+      return NextResponse.json({ data: [] });
+    }
     console.error('[/api/opportunities] unexpected error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
