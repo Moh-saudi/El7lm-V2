@@ -9,6 +9,7 @@ interface ClarityProviderProps {
 
 const ClarityProvider: React.FC<ClarityProviderProps> = ({ children, projectId }) => {
   useEffect(() => {
+    if (process.env.NODE_ENV === 'development') return;
     // التحقق من تحميل Clarity
     if (projectId && typeof window !== 'undefined' && projectId !== 'your_clarity_project_id_here') {
       const checkClarity = () => {

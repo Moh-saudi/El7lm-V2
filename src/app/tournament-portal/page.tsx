@@ -7,8 +7,7 @@ import {
     Trophy, Plus, Calendar, Users, Activity,
     ChevronLeft, Clock, CheckCircle, XCircle, AlertCircle,
 } from 'lucide-react';
-import { getCurrentClient, TournamentClient } from '@/lib/tournament-portal/auth';
-import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { getCurrentClient, TournamentClient, createPortalClient } from '@/lib/tournament-portal/auth';
 import { PortalShell } from './_components/PortalShell';
 import { useTranslation } from '@/lib/i18n';
 
@@ -45,14 +44,28 @@ export default function TournamentPortalDashboard() {
             }
             setClient(c);
 
-            const supabase = createPortalClient();
-            const { data } = await supabase
-                .from('tournament_new')
-                .select('id, slug, name, status, type, start_date, end_date, country, city, logo_url, max_teams, created_at')
-                .eq('client_id', c.id)
-                .order('created_at', { ascending: false });
+            try {
+                const res = await fetch(`/api/tournament-portal/tournaments?client_id=${c.id}`);
+                const json = await res.json();
+                if (res.ok && Array.isArray(json.tournaments)) {
+                    setTournaments(json.tournaments as TournamentRow[]);
+                    setLoading(false);
+                    return;
+                }
+            } catch (apiErr) {
+                console.warn('[tournament-portal] API fetch note:', apiErr);
+            }
 
-            setTournaments((data as TournamentRow[]) || []);
+            try {
+                const supabase = createPortalClient();
+                const { data } = await supabase
+                    .from('tournament_new')
+                    .select('id, slug, name, status, type, start_date, end_date, country, city, logo_url, max_teams, created_at')
+                    .eq('client_id', c.id)
+                    .order('created_at', { ascending: false });
+
+                setTournaments((data as TournamentRow[]) || []);
+            } catch {}
             setLoading(false);
         })();
     }, []);

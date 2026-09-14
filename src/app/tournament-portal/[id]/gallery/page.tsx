@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { createPortalClient, portalAuthenticatedFetch } from '@/lib/tournament-portal/auth';
+import { createPortalClient, portalAuthenticatedFetch, isUuid } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { toast } from 'sonner';
 import { useTranslation } from '@/lib/i18n';
@@ -39,6 +39,12 @@ export default function GalleryPage() {
 
   useEffect(() => {
     (async () => {
+      if (!isUuid(id)) {
+        setPhotos([]);
+        setSponsors([]);
+        setLoading(false);
+        return;
+      }
       const [pRes, sRes] = await Promise.all([
         supabase.from('tournament_gallery').select('*').eq('tournament_id', id).order('uploaded_at', { ascending: false }),
         supabase.from('tournament_sponsors').select('*').eq('tournament_id', id).order('tier').order('name'),
@@ -62,17 +68,25 @@ export default function GalleryPage() {
         const res  = await portalAuthenticatedFetch('/api/storage/upload', { method: 'POST', body: form });
         const json = await res.json();
         if (!json.url) { toast.error(copy.uploadFailed); continue; }
-        await supabase.from('tournament_gallery').insert({ tournament_id: id, url: json.url, caption: null });
+        if (isUuid(id)) {
+          await supabase.from('tournament_gallery').insert({ tournament_id: id, url: json.url, caption: null });
+        } else {
+          setPhotos(p => [{ id: `ph-${Date.now()}`, url: json.url, caption: null, uploaded_at: new Date().toISOString() }, ...p]);
+        }
       }
-      const { data } = await supabase.from('tournament_gallery').select('*').eq('tournament_id', id).order('uploaded_at', { ascending: false });
-      setPhotos(data || []);
+      if (isUuid(id)) {
+        const { data } = await supabase.from('tournament_gallery').select('*').eq('tournament_id', id).order('uploaded_at', { ascending: false });
+        setPhotos(data || []);
+      }
       toast.success(copy.uploaded);
     } catch (e: any) { toast.error(e.message); }
     setUploading(false);
   };
 
   const deletePhoto = async (photoId: string) => {
-    await supabase.from('tournament_gallery').delete().eq('id', photoId);
+    if (isUuid(id)) {
+      await supabase.from('tournament_gallery').delete().eq('id', photoId);
+    }
     setPhotos(p => p.filter(x => x.id !== photoId));
     toast.success(copy.deleted);
   };
@@ -91,6 +105,14 @@ export default function GalleryPage() {
 
   const saveSponsor = async () => {
     if (!sName.trim()) { toast.error(copy.enterSponsor); return; }
+    if (!isUuid(id)) {
+      const mock: Sponsor = { id: `sp-${Date.now()}`, name: sName.trim(), logo_url: sLogo || null, tier: sTier, website_url: sWeb.trim() || null };
+      setSponsors(s => [...s, mock]);
+      setSName(''); setSTier('gold'); setSWeb(''); setSLogo('');
+      setShowSponsorForm(false);
+      toast.success(copy.sponsorAdded);
+      return;
+    }
     const { data, error } = await supabase.from('tournament_sponsors').insert({ tournament_id: id, name: sName.trim(), logo_url: sLogo || null, tier: sTier, website_url: sWeb.trim() || null }).select().single();
     if (error) { toast.error(error.message); return; }
     setSponsors(s => [...s, data]);
@@ -100,7 +122,9 @@ export default function GalleryPage() {
   };
 
   const deleteSponsor = async (sId: string) => {
-    await supabase.from('tournament_sponsors').delete().eq('id', sId);
+    if (isUuid(id)) {
+      await supabase.from('tournament_sponsors').delete().eq('id', sId);
+    }
     setSponsors(s => s.filter(x => x.id !== sId));
     toast.success(copy.deleted);
   };

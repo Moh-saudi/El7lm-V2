@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { createPortalClient, portalAuthenticatedFetch } from '@/lib/tournament-portal/auth';
+import { createPortalClient, portalAuthenticatedFetch, isUuid } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { useTranslation } from '@/lib/i18n';
 
@@ -33,6 +33,10 @@ export default function NotificationsPage() {
   const supabase = createPortalClient();
 
   const load = useCallback(async()=>{
+    if (!isUuid(id)) {
+      setTeams([]); setNotifs([]); setLoading(false);
+      return;
+    }
     const [tR,nR] = await Promise.all([
       supabase.from('tournament_teams').select('id,name,logo_url,contact_phone').eq('tournament_id',id).eq('status','approved').order('name'),
       supabase.from('tournament_notifications').select('*,target_team:tournament_teams!target_id(name)').eq('tournament_id',id).order('created_at',{ascending:false}).limit(50),
@@ -57,8 +61,10 @@ export default function NotificationsPage() {
 
     // Save in-app notification
     if (channels.includes('app')) {
-      const { error } = await supabase.from('tournament_notifications').insert({ tournament_id:id, title:title.trim(), body:body.trim(), target_type:target, target_id:target==='team'?teamId:null, status:'sent', sent_at:new Date().toISOString() });
-      if (error) toast.error(error.message);
+      if (isUuid(id)) {
+        const { error } = await supabase.from('tournament_notifications').insert({ tournament_id:id, title:title.trim(), body:body.trim(), target_type:target, target_id:target==='team'?teamId:null, status:'sent', sent_at:new Date().toISOString() });
+        if (error) toast.error(error.message);
+      }
     }
 
     // WhatsApp links
@@ -102,7 +108,9 @@ export default function NotificationsPage() {
   };
 
   const del = async(nid:string)=>{
-    await supabase.from('tournament_notifications').delete().eq('id',nid);
+    if (isUuid(nid)) {
+      await supabase.from('tournament_notifications').delete().eq('id',nid);
+    }
     setNotifs(p=>p.filter(n=>n.id!==nid));
     toast.success(copy.deleted);
   };

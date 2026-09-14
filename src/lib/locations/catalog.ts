@@ -31,15 +31,17 @@ export interface LocationCity {
 let countriesCache: Promise<LocationCountry[]> | null = null;
 
 export function getLocationCountries(): Promise<LocationCountry[]> {
-  countriesCache ??= supabase
-    .from('location_countries')
-    .select('iso2,iso3,name,name_ar,phone_code,currency_code,flag_emoji')
-    .eq('is_active', true)
-    .order('name')
-    .then(({ data, error }) => {
-      if (error) throw error;
-      return (data ?? []) as LocationCountry[];
-    });
+  countriesCache ??= Promise.resolve(
+    supabase
+      .from('location_countries')
+      .select('iso2,iso3,name,name_ar,phone_code,currency_code,flag_emoji')
+      .eq('is_active', true)
+      .order('name')
+      .then(({ data, error }) => {
+        if (error) throw error;
+        return (data ?? []) as LocationCountry[];
+      })
+  );
   return countriesCache;
 }
 

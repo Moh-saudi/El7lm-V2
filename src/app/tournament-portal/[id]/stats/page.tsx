@@ -4,7 +4,7 @@ import { TeamLogo as LogoImg } from '../../_components/TeamLogo';
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { createPortalClient, isUuid } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { useTranslation } from '@/lib/i18n';
 
@@ -18,22 +18,23 @@ const TABS: { key:Tab; emoji:string }[] = [{key:'scorers',emoji:'⚽'},{key:'att
 export default function StatsPage() {
   const { getTranslations } = useTranslation();
   const copy = getTranslations<any>('tournamentStats');
-  const { id }     = useParams<{ id:string }>();
+  const { id }     = useParams<{ id: string }>();
   const { isDark } = usePortalTheme();
   const S = isDark ? D : L;
 
-  const [cats,   setCats]   = useState<Cat[]>([]);
-  const [selCat, setSelCat] = useState('');
-  const [scorers,setScorers]= useState<Scorer[]>([]);
-  const [stats,  setStats]  = useState<TStat[]>([]);
-  const [loading,setLoading]= useState(true);
-  const [recalc, setRecalc] = useState(false);
-  const [tab,    setTab]    = useState<Tab>('scorers');
+  const [cats,    setCats]    = useState<Cat[]>([]);
+  const [selCat,  setSelCat]  = useState('');
+  const [scorers, setScorers] = useState<Scorer[]>([]);
+  const [stats,   setStats]   = useState<TStat[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [recalc,  setRecalc]  = useState(false);
+  const [tab,     setTab]     = useState<Tab>('scorers');
 
   const supabase = createPortalClient();
 
   useEffect(()=>{
     (async()=>{
+      if (!isUuid(id)) { setCats([]); setLoading(false); return; }
       const { data } = await supabase.from('tournament_categories').select('id,name').eq('tournament_id',id).order('sort_order');
       setCats(data||[]);
       if (data?.length) setSelCat(data[0].id);
@@ -42,7 +43,7 @@ export default function StatsPage() {
   },[id]);
 
   const load = useCallback(async()=>{
-    if (!selCat) return;
+    if (!selCat || !isUuid(id)) return;
     const [sR,stR] = await Promise.all([
       supabase.from('tournament_top_scorers').select('*,team:tournament_teams(name,logo_url)').eq('tournament_id',id).eq('category_id',selCat).order('goals',{ascending:false}).order('assists',{ascending:false}).limit(30),
       supabase.from('tournament_standings').select('*,team:tournament_teams(name,logo_url)').eq('tournament_id',id).eq('category_id',selCat).order('goals_for',{ascending:false}),
@@ -54,6 +55,7 @@ export default function StatsPage() {
   useEffect(()=>{ load(); },[load]);
 
   const recalculate = async()=>{
+    if (!isUuid(id)) return;
     setRecalc(true);
     try {
       const { data:evs } = await supabase.from('tournament_match_events').select('event_type,player_name,team_id,match_id,match:tournament_matches!match_id(category_id)').eq('tournament_id',id);

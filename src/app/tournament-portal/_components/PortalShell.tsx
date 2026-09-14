@@ -107,9 +107,9 @@ export function PortalShell({ client, children }: Props) {
     router.push('/tournament-portal/login');
   };
 
-  const orgName  = client.organization_name || client.name;
-  const initials = orgName.charAt(0).toUpperCase();
-  const hasLogo  = !!client.logo_url;
+  const orgName  = client?.organization_name || client?.name || 'Tournament Portal';
+  const initials = (orgName ? orgName.charAt(0) : 'T').toUpperCase();
+  const hasLogo  = !!client?.logo_url;
 
   const userMenuItems: MenuProps['items'] = [
     {

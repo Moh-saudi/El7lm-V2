@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Modal, Select as AntSelect, Popconfirm } from 'antd';
 import { toast } from 'sonner';
-import { createPortalClient, portalAuthenticatedFetch } from '@/lib/tournament-portal/auth';
+import { createPortalClient, portalAuthenticatedFetch, isUuid } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { TeamLogo } from '../../_components/TeamLogo';
 import { resolveImg } from '../../_utils/img';
@@ -68,6 +68,12 @@ export default function RegistrationsPage() {
   const supabase = createPortalClient();
 
   const fetchData = useCallback(async () => {
+    if (!isUuid(id)) {
+      setTeams([]);
+      setCats([]);
+      setLoading(false);
+      return;
+    }
     const [tR, cR] = await Promise.all([
       supabase.from('tournament_teams').select('*, registration:tournament_team_regs(payment_status,payment_amount), players:tournament_players(id)').eq('tournament_id', id).order('registered_at', { ascending: false }),
       supabase.from('tournament_categories').select('id,name').eq('tournament_id', id),
@@ -82,7 +88,9 @@ export default function RegistrationsPage() {
   const act = async (teamId: string, status: string) => {
     setActing(teamId);
     const team = teams.find(t => t.id === teamId);
-    await supabase.from('tournament_teams').update({ status, ...(status === 'approved' ? { approved_at: new Date().toISOString() } : {}) }).eq('id', teamId);
+    if (isUuid(teamId)) {
+      await supabase.from('tournament_teams').update({ status, ...(status === 'approved' ? { approved_at: new Date().toISOString() } : {}) }).eq('id', teamId);
+    }
     setTeams(p => p.map(t => t.id === teamId ? { ...t, status } : t));
 
     // WhatsApp auto-notification
@@ -106,7 +114,9 @@ export default function RegistrationsPage() {
   };
 
   const updatePay = async (teamId: string, v: string) => {
-    await supabase.from('tournament_team_regs').upsert({ tournament_id: id, team_id: teamId, payment_status: v }, { onConflict: 'team_id' });
+    if (isUuid(id) && isUuid(teamId)) {
+      await supabase.from('tournament_team_regs').upsert({ tournament_id: id, team_id: teamId, payment_status: v }, { onConflict: 'team_id' });
+    }
     setTeams(p => p.map(t => t.id === teamId ? { ...t, registration: { ...t.registration, payment_status: v } as any } : t));
     toast.success(copy.paymentUpdated);
   };
@@ -185,9 +195,34 @@ export default function RegistrationsPage() {
   const addManual = async () => {
     if (!manual.name.trim()) { toast.error(copy.teamRequired); return; }
     setActing('new');
-    const { error } = await supabase.from('tournament_teams').insert({ tournament_id:id, name:manual.name, contact_phone:manual.phone||null, city:manual.city||null, category_id:manual.category_id||null, status:'approved' });
-    if (error) toast.error(error.message);
-    else { toast.success(copy.added); setShowAdd(false); setManual({ name:'', phone:'', city:'', category_id:'' }); fetchData(); }
+    if (isUuid(id)) {
+      const { error } = await supabase.from('tournament_teams').insert({ tournament_id:id, name:manual.name, contact_phone:manual.phone||null, city:manual.city||null, category_id:manual.category_id||null, status:'approved' });
+      if (error) toast.error(error.message);
+      else { toast.success(copy.added); setShowAdd(false); setManual({ name:'', phone:'', city:'', category_id:'' }); fetchData(); }
+    } else {
+      const devTeam: Team = {
+        id: `team-${Date.now()}`,
+        name: manual.name,
+        contact_phone: manual.phone || null,
+        contact_name: null,
+        contact_email: null,
+        city: manual.city || null,
+        country: null,
+        club_name: null,
+        category_id: manual.category_id || null,
+        status: 'approved',
+        registered_at: new Date().toISOString(),
+        approved_at: new Date().toISOString(),
+        logo_url: null,
+        notes: null,
+        seed: null,
+        players_count: 0,
+      };
+      setTeams(p => [devTeam, ...p]);
+      toast.success(copy.added);
+      setShowAdd(false);
+      setManual({ name:'', phone:'', city:'', category_id:'' });
+    }
     setActing(null);
   };
 
@@ -216,8 +251,6 @@ export default function RegistrationsPage() {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-
-      {/* ── Header ── */}
       <div style={{ background:S.surface, border:`1px solid ${S.border}`, borderRadius:14, padding:'14px 18px', display:'flex', alignItems:'center', flexWrap:'wrap', gap:12 }}>
         {/* Search */}
         <div style={{ position:'relative', flex:1, minWidth:180 }}>
@@ -375,7 +408,7 @@ export default function RegistrationsPage() {
                             <a href={`/tournament-portal/${id}/team-view?team=${t.id}`} target="_blank" rel="noopener noreferrer" className="sp-btn sp-btn-ghost sp-btn-sm" style={{ textDecoration:'none' }}>
                               🔗 {copy.teamPortal}
                             </a>
-                            <Popconfirm title={copy.deleteTeamQuestion} onConfirm={async()=>{ await supabase.from('tournament_teams').delete().eq('id',t.id); setTeams(p=>p.filter(x=>x.id!==t.id)); toast.success(copy.deleted); }} okText={copy.deleted} cancelText={copy.no} okButtonProps={{ danger:true }}>
+                            <Popconfirm title={copy.deleteTeamQuestion} onConfirm={async()=>{ if (isUuid(t.id)) { await supabase.from('tournament_teams').delete().eq('id',t.id); } setTeams(p=>p.filter(x=>x.id!==t.id)); toast.success(copy.deleted); }} okText={copy.deleted} cancelText={copy.no} okButtonProps={{ danger:true }}>
                               <button className="sp-btn sp-btn-ghost sp-btn-sm" style={{ color:'#ef4444', borderColor:'rgba(220,38,38,0.3)' }}>🗑 {copy.deleteTeam}</button>
                             </Popconfirm>
                           </div>

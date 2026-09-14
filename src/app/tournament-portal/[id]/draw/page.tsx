@@ -9,9 +9,10 @@ import {
   ThunderboltOutlined, CheckCircleOutlined, InfoCircleOutlined,
 } from '@ant-design/icons';
 import { toast } from 'sonner';
-import { createPortalClient, portalAuthenticatedFetch } from '@/lib/tournament-portal/auth';
+import { createPortalClient, portalAuthenticatedFetch, isUuid } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { useTranslation } from '@/lib/i18n';
+
 
 const { Text } = Typography;
 
@@ -68,6 +69,11 @@ export default function DrawPage() {
   // ── Load ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
+      if (!isUuid(id)) {
+        setCategories([]);
+        setLoading(false);
+        return;
+      }
       const { data: cats } = await supabase.from('tournament_categories').select('id,name,type,group_count,teams_per_group').eq('tournament_id', id);
       setCategories(cats || []);
       if (cats?.length) { setSelectedCat(cats[0].id); if (cats[0].group_count) setCustomGroupCount(cats[0].group_count); }
@@ -76,6 +82,12 @@ export default function DrawPage() {
   }, [id]);
 
   const loadTeamsAndGroups = async (catId: string) => {
+    if (!isUuid(id)) {
+      setAllTeams([]);
+      setGroups([]);
+      setSelectedTeam(null);
+      return;
+    }
     let q = supabase.from('tournament_teams').select('id,name,logo_url,seed,group_id,category_id').eq('tournament_id', id).eq('status', 'approved');
     if (catId !== 'all') q = (q as any).or(`category_id.eq.${catId},category_id.is.null`);
     const [teamsRes, groupsRes] = await Promise.all([q, supabase.from('tournament_groups').select('id,name').eq('tournament_id', id).eq('category_id', catId === 'all' ? '' : catId).order('sort_order')]);

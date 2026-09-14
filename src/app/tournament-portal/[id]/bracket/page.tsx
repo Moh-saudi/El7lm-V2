@@ -3,15 +3,16 @@ import { TeamLogo as LogoImg } from '../../_components/TeamLogo';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { createPortalClient, isUuid } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
+import { TeamLogo } from '../../_components/TeamLogo';
 import { useTranslation } from '@/lib/i18n';
 
-type Cat   = { id:string; name:string; type:string };
-type Team  = { id:string; name:string; logo_url:string|null };
-type BM    = { id:string; round:string; match_number:number|null; home_team_id:string|null; away_team_id:string|null; home_score:number|null; away_score:number|null; status:string; match_date:string|null; home_team?:Team|null; away_team?:Team|null };
+const RO = ['R128','R64','R32','R16','QF','SF','3rd','F'];
 
-const RO  = ['R128','R64','R32','R16','QF','SF','F','3rd'];
+type Team = { id:string; name:string; logo_url:string|null };
+type BM  = { id:string; round:string; match_number:number|null; home_team_id:string|null; away_team_id:string|null; home_score:number|null; away_score:number|null; status:string; match_date:string|null; home_team:{ id:string; name:string; logo_url:string|null }|null; away_team:{ id:string; name:string; logo_url:string|null }|null };
+type Cat = { id:string; name:string; type:string };
 
 export default function BracketPage() {
   const { getTranslations } = useTranslation();
@@ -28,6 +29,7 @@ export default function BracketPage() {
 
   useEffect(()=>{
     (async()=>{
+      if (!isUuid(id)) { setCats([]); setLoading(false); return; }
       const { data } = await supabase.from('tournament_categories').select('id,name,type').eq('tournament_id',id).in('type',['knockout','groups_knockout']).order('sort_order');
       setCats(data||[]);
       if (data?.length) setSelCat(data[0].id);
@@ -36,7 +38,7 @@ export default function BracketPage() {
   },[id]);
 
   const load = useCallback(async()=>{
-    if (!selCat) return;
+    if (!selCat || !isUuid(id)) return;
     const { data } = await supabase.from('tournament_matches').select('id,round,match_number,home_team_id,away_team_id,home_score,away_score,status,match_date,home_team:tournament_teams!home_team_id(id,name,logo_url),away_team:tournament_teams!away_team_id(id,name,logo_url)').eq('tournament_id',id).eq('category_id',selCat).in('round',RO).order('match_number',{ascending:true});
     setMatches((data as any)||[]);
   },[selCat,id]);

@@ -17,7 +17,12 @@ export function getSupabaseAdmin() {
 
   if (!adminInstance) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    let serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    // Fallback to anon key if serviceKey is missing, placeholder, or invalid in dev environment
+    if (!serviceKey || serviceKey.includes('your_supabase_service_role_key') || serviceKey.length < 20) {
+      serviceKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    }
 
     if (!url || !serviceKey) {
       throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');

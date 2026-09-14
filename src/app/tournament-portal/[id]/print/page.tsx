@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { createPortalClient, isUuid } from '@/lib/tournament-portal/auth';
 import { useTranslation } from '@/lib/i18n';
 
 type PrintType = 'schedule' | 'standings' | 'teams';
@@ -24,6 +24,15 @@ export default function PrintPage() {
 
   useEffect(() => {
     (async () => {
+      if (!isUuid(id)) {
+        try {
+          const r = await fetch(`/api/tournament-portal/tournaments?id=${id}`);
+          const d = await r.json();
+          if (d?.tournament) setTournament(d.tournament);
+        } catch {}
+        setData([]);
+        return;
+      }
       const { data: t } = await supabase.from('tournament_new').select('name,logo_url,start_date,city').eq('id', id).single();
       setTournament(t);
 

@@ -61,22 +61,40 @@ export default function TournamentSetupPage() {
 
   const supabase = createPortalClient();
 
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
   useEffect(() => {
     (async () => {
-      const { data: t } = await supabase.from('tournament_new').select('*').eq('id', id).single();
-      setTournament(t);
-      const { data: cats } = await supabase.from('tournament_categories').select('*').eq('tournament_id', id).order('sort_order');
-      if (cats?.length) {
-        setCategories(cats.map((c: any) => ({
-          id: c.id, name: c.name || '', age_min: c.age_min?.toString() || '',
-          age_max: c.age_max?.toString() || '', max_teams: c.max_teams?.toString() || '',
-          type: c.type || 'knockout', group_count: c.group_count?.toString() || '',
-          teams_per_group: c.teams_per_group?.toString() || '',
-          advance_count: c.advance_count?.toString() || '', sort_order: c.sort_order || 0,
-        })));
+      // 1. Fetch tournament from portal API (handles both Supabase & local dev tournaments)
+      try {
+        const res = await fetch(`/api/tournament-portal/tournaments?id=${id}`);
+        const json = await res.json();
+        if (res.ok && json?.tournament) {
+          setTournament(json.tournament);
+        }
+      } catch (err) {
+        console.warn('[setup] Tournament API fetch note:', err);
+      }
+
+      // 2. If valid UUID, load from Supabase
+      if (isUuid) {
+        try {
+          const { data: t } = await supabase.from('tournament_new').select('*').eq('id', id).maybeSingle();
+          if (t) setTournament(t);
+          const { data: cats } = await supabase.from('tournament_categories').select('*').eq('tournament_id', id).order('sort_order');
+          if (cats?.length) {
+            setCategories(cats.map((c: any) => ({
+              id: c.id, name: c.name || '', age_min: c.age_min?.toString() || '',
+              age_max: c.age_max?.toString() || '', max_teams: c.max_teams?.toString() || '',
+              type: c.type || 'knockout', group_count: c.group_count?.toString() || '',
+              teams_per_group: c.teams_per_group?.toString() || '',
+              advance_count: c.advance_count?.toString() || '', sort_order: c.sort_order || 0,
+            })));
+          }
+        } catch {}
       }
     })();
-  }, [id]);
+  }, [id, isUuid]);
 
   const updateCat = (idx: number, k: keyof Category, v: any) =>
     setCategories((prev) => prev.map((c, i) => i === idx ? { ...c, [k]: v } : c));
@@ -89,29 +107,33 @@ export default function TournamentSetupPage() {
 
   const removeCategory = async (idx: number) => {
     const cat = categories[idx];
-    if (cat.id) await supabase.from('tournament_categories').delete().eq('id', cat.id);
+    if (cat.id && isUuid) {
+      try { await supabase.from('tournament_categories').delete().eq('id', cat.id); } catch {}
+    }
     setCategories((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const saveCategories = async () => {
     setSaving(true);
     try {
-      for (const cat of categories) {
-        if (!cat.name.trim()) continue;
-        const payload = {
-          tournament_id: id, name: cat.name,
-          age_min: cat.age_min ? +cat.age_min : null, age_max: cat.age_max ? +cat.age_max : null,
-          max_teams: cat.max_teams ? +cat.max_teams : null, type: cat.type,
-          group_count: cat.group_count ? +cat.group_count : null,
-          teams_per_group: cat.teams_per_group ? +cat.teams_per_group : null,
-          advance_count: cat.advance_count ? +cat.advance_count : null,
-          sort_order: cat.sort_order,
-        };
-        if (cat.id) {
-          await supabase.from('tournament_categories').update(payload).eq('id', cat.id);
-        } else {
-          const { data } = await supabase.from('tournament_categories').insert(payload).select('id').single();
-          if (data) cat.id = data.id;
+      if (isUuid) {
+        for (const cat of categories) {
+          if (!cat.name.trim()) continue;
+          const payload = {
+            tournament_id: id, name: cat.name,
+            age_min: cat.age_min ? +cat.age_min : null, age_max: cat.age_max ? +cat.age_max : null,
+            max_teams: cat.max_teams ? +cat.max_teams : null, type: cat.type,
+            group_count: cat.group_count ? +cat.group_count : null,
+            teams_per_group: cat.teams_per_group ? +cat.teams_per_group : null,
+            advance_count: cat.advance_count ? +cat.advance_count : null,
+            sort_order: cat.sort_order,
+          };
+          if (cat.id) {
+            await supabase.from('tournament_categories').update(payload).eq('id', cat.id);
+          } else {
+            const { data } = await supabase.from('tournament_categories').insert(payload).select('id').single();
+            if (data) cat.id = data.id;
+          }
         }
       }
       toast.success(copy.savedCategories);
@@ -123,9 +145,16 @@ export default function TournamentSetupPage() {
     if (!tournament || !STATUS_FLOW[tournament.status]) return;
     setStatusLoading(true);
     const next = STATUS_FLOW[tournament.status].next;
-    const { error } = await supabase.from('tournament_new').update({ status: next }).eq('id', id);
-    if (error) toast.error(error.message);
-    else { toast.success(copy.statusChanged.replace('{status}',copy.statuses[next]||next)); setTournament((p: any) => ({ ...p, status: next })); }
+    if (isUuid) {
+      const { error } = await supabase.from('tournament_new').update({ status: next }).eq('id', id);
+      if (error) {
+        toast.error(error.message);
+        setStatusLoading(false);
+        return;
+      }
+    }
+    toast.success(copy.statusChanged.replace('{status}',copy.statuses[next]||next));
+    setTournament((p: any) => ({ ...p, status: next }));
     setStatusLoading(false);
   };
 

@@ -4,24 +4,25 @@ import { TeamLogo as LogoImg } from '../../_components/TeamLogo';
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { createPortalClient, portalAuthenticatedFetch } from '@/lib/tournament-portal/auth';
+import { createPortalClient, portalAuthenticatedFetch, isUuid } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
+import { TeamLogo } from '../../_components/TeamLogo';
 import { useTranslation } from '@/lib/i18n';
 
-type Standing = { id:string; team_id:string; group_id:string|null; category_id:string; played:number; won:number; drawn:number; lost:number; goals_for:number; goals_against:number; goal_diff:number; points:number; team?:{ name:string; logo_url:string|null } };
-type Group    = { id:string; name:string; sort_order:number };
-type Category = { id:string; name:string; type:string; group_count:number|null };
+type Cat      = { id:string; name:string; type:string; group_count?:number };
+type Group    = { id:string; name:string; sort_order:number; teams:{ id:string; name:string; logo_url:string|null }[] };
+type Standing = { id?:string; team_id:string; group_id:string|null; category_id?:string; played:number; won:number; drawn:number; lost:number; goals_for:number; goals_against:number; goal_diff:number; points:number; team?:{ name:string; logo_url:string|null } };
 
 const API = '/api/tournament-portal/groups';
 
 export default function GroupsPage() {
   const { getTranslations } = useTranslation();
   const copy = getTranslations<any>('tournamentGroups');
-  const { id } = useParams<{ id:string }>();
+  const { id }     = useParams<{ id: string }>();
   const { isDark } = usePortalTheme();
   const S = isDark ? D : L;
 
-  const [cats,        setCats]        = useState<Category[]>([]);
+  const [cats,        setCats]        = useState<Cat[]>([]);
   const [selCat,      setSelCat]      = useState('');
   const [groups,      setGroups]      = useState<Group[]>([]);
   const [standings,   setStandings]   = useState<Standing[]>([]);
@@ -38,6 +39,11 @@ export default function GroupsPage() {
 
   useEffect(() => {
     (async () => {
+      if (!isUuid(id)) {
+        setCats([]);
+        setLoading(false);
+        return;
+      }
       const { data } = await supabase.from('tournament_categories').select('id,name,type,group_count').eq('tournament_id',id).order('sort_order');
       setCats(data||[]);
       if (data?.length) { setSelCat(data[0].id); if (data[0].group_count) setCount(data[0].group_count); }
@@ -46,7 +52,7 @@ export default function GroupsPage() {
   }, [id]);
 
   const loadData = useCallback(async () => {
-    if (!selCat) return;
+    if (!selCat || !isUuid(id)) return;
     const [gj, sr] = await Promise.all([
       portalAuthenticatedFetch(`${API}?tournament_id=${id}&category_id=${selCat}`).then(r=>r.json()),
       supabase.from('tournament_standings').select('*,team:tournament_teams(name,logo_url)').eq('tournament_id',id).eq('category_id',selCat).order('points',{ascending:false}).order('goal_diff',{ascending:false}),

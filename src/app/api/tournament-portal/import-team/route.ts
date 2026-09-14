@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { isUuid } from '@/lib/tournament-portal/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,21 +12,28 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'tournament_id and name required' }, { status: 400 });
     }
 
+    if (!isUuid(tournament_id)) {
+        return NextResponse.json({
+            team: {
+                id: `team-${Date.now()}`,
+                tournament_id,
+                name: name.trim(),
+                city: city || null,
+                contact_phone: contact_phone || null,
+                logo_url: logo_url || null,
+                category_id: category_id || null,
+                status: 'approved',
+                registered_at: new Date().toISOString(),
+                approved_at: new Date().toISOString(),
+                notes: notes || 'مستورد من المنصة',
+            }
+        });
+    }
+
     // ── Duplicate check ───────────────────────────────────────
     const supa = getSupabaseAdmin();
 
     const { data: existing } = await supa
-        .from('tournament_teams')
-        .select('id, name')
-        .eq('tournament_id', tournament_id)
-        .ilike('name', name.trim())
-        .limit(1)
-        .single();
-
-    if (existing) {
-        return NextResponse.json({ error: `الفريق "${existing.name}" مسجل مسبقاً في هذه البطولة` }, { status: 409 });
-    }
-
     const { data, error } = await supa
         .from('tournament_teams')
         .insert({

@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
 import {
   Trophy,
   Eye,
@@ -16,6 +17,11 @@ import {
   SortAsc,
   X,
   CalendarRange,
+  ArrowUpRight,
+  Sparkles,
+  Globe,
+  ExternalLink,
+  Layers,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
@@ -217,35 +223,83 @@ const AdminTournamentsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="border-b border-gray-200 bg-white shadow-sm">
-        <div className="mx-auto max-w-[1480px] px-4 py-5 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="rounded-xl bg-yellow-100 p-2.5">
-                <Trophy className="h-7 w-7 text-yellow-600" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">إدارة البطولات</h1>
-                <p className="mt-1 text-sm text-gray-600">عرض البطولات وفلترتها وترتيبها بشكل أوضح.</p>
-              </div>
+    <div className="min-h-screen bg-slate-50/60 p-4 md:p-8 space-y-8 max-w-[1480px] mx-auto" dir="rtl">
+      {/* ── Executive Mesk El7lm Brand Header ── */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0c132c] via-[#111c42] to-[#0c132c] text-white p-6 md:p-10 shadow-xl shadow-indigo-950/10 border border-indigo-950/40">
+        <div className="absolute -top-24 -right-24 w-80 h-80 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-semibold text-slate-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-amber-400 font-bold">Mesk El7lm</span>
+              <span className="text-white/40">|</span>
+              <span>محرك ومنظومة إدارة البطولات الدولية</span>
             </div>
 
-            <Button
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight text-white">
+              إدارة ومتابعة البطولات
+            </h1>
+
+            <p className="text-sm md:text-base text-slate-300 max-w-2xl leading-relaxed">
+              مركز التحكم الشامل لإنشاء وجدولة البطولات، إدارة اشتراكات الأندية، رصد النتائج، وإطلاق الأدوار الإقصائية.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 pt-2 lg:pt-0">
+            <a
+              href="/tournament-portal/login"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-2xl font-bold text-sm bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-900/30 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+              title="فتح شاشة تسجيل دخول مديري ومنظمي البطولات"
+            >
+              <Trophy className="w-4 h-4 text-amber-300" />
+              <span>شاشة تسجيل دخول المنظمين</span>
+              <ArrowUpRight className="w-4 h-4 opacity-75" />
+            </a>
+
+            <button
               onClick={() => {
                 setEditingTournament(null);
                 setIsFormOpen(true);
               }}
-              className="h-11 bg-yellow-600 px-5 text-white hover:bg-yellow-700"
+              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-2xl font-bold text-sm bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 shadow-lg shadow-amber-950/20 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
             >
-              <Plus className="mr-2 h-5 w-5" />
-              إضافة بطولة جديدة
-            </Button>
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>إضافة بطولة جديدة</span>
+            </button>
           </div>
+        </div>
+
+        {/* Sub-Tabs */}
+        <div className="relative z-10 flex items-center gap-2 mt-8 pt-6 border-t border-white/10 text-xs font-semibold overflow-x-auto">
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/15 text-amber-300 border border-white/10 whitespace-nowrap">
+            <Layers className="w-3.5 h-3.5" />
+            <span>كافة البطولات الميدانية</span>
+          </span>
+          <Link
+            href="/dashboard/admin/tournament-clients"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap"
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>منظمو وعملاء البطولات</span>
+          </Link>
+          <a
+            href="/tournaments"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors whitespace-nowrap mr-auto"
+          >
+            <Globe className="w-3.5 h-3.5" />
+            <span>عرض البطولات للجمهور</span>
+            <ExternalLink className="w-3 h-3 opacity-60" />
+          </a>
         </div>
       </div>
 
-      <div className="mx-auto max-w-[1480px] px-4 py-6 sm:px-6 lg:px-8">
+      <div className="space-y-6">
         <div className="mb-5 space-y-4">
           <div className="relative">
             <Search className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />

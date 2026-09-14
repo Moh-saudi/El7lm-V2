@@ -11,7 +11,7 @@ const KNOWN_R2_BUCKETS = [
     // Profile buckets per account type
     'clubs', 'academies', 'trainers', 'agents', 'marketers',
     'playeravatar', 'clubavatar', 'academyavatar', 'traineravatar', 'agentavatar',
-    'tournaments',
+    'tournaments', 'content',
 ];
 
 const FALLBACK_BUCKET = 'el7lmplatform';

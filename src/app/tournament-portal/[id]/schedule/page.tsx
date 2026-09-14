@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import { DatePicker } from 'antd';
 import dayjs from 'dayjs';
 import { toast } from 'sonner';
-import { createPortalClient, portalAuthenticatedFetch } from '@/lib/tournament-portal/auth';
+import { createPortalClient, portalAuthenticatedFetch, isUuid } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { useTranslation } from '@/lib/i18n';
 
@@ -45,6 +45,19 @@ export default function SchedulePage() {
   const [loading,     setLoading]     = useState(true);
   const [generating,  setGenerating]  = useState(false);
   const [saving,      setSaving]      = useState(false);
+  const { id }    = useParams<{ id: string }>();
+  const { isDark } = usePortalTheme();
+  const S = isDark ? D : L;
+
+  const [categories,  setCategories]  = useState<Category[]>([]);
+  const [selectedCat, setSelectedCat] = useState('');
+  const [teams,       setTeams]       = useState<Team[]>([]);
+  const [groups,      setGroups]      = useState<Group[]>([]);
+  const [matches,     setMatches]     = useState<Match[]>([]);
+  const [referees,    setReferees]    = useState<{id:string;name:string;level:string|null}[]>([]);
+  const [loading,     setLoading]     = useState(true);
+  const [generating,  setGenerating]  = useState(false);
+  const [saving,      setSaving]      = useState(false);
   const [drafts,      setDrafts]      = useState<Record<string, Partial<Draft>>>({});
   const [editing,     setEditing]     = useState<Set<string>>(new Set());
   const [confirmGen,  setConfirmGen]  = useState(false);
@@ -52,7 +65,7 @@ export default function SchedulePage() {
   const supabase = createPortalClient();
 
   const loadAll = useCallback(async () => {
-    if (!selectedCat) return;
+    if (!selectedCat || !isUuid(id)) return;
     const [tR, gR, mR] = await Promise.all([
       supabase.from('tournament_teams').select('id,name,logo_url').eq('tournament_id', id).eq('status','approved').order('name'),
       supabase.from('tournament_groups').select('id,name').eq('tournament_id', id).eq('category_id', selectedCat).order('sort_order'),
@@ -66,6 +79,12 @@ export default function SchedulePage() {
 
   useEffect(() => {
     (async () => {
+      if (!isUuid(id)) {
+        setCategories([]);
+        setReferees([]);
+        setLoading(false);
+        return;
+      }
       const [catsRes, refsRes] = await Promise.all([
         supabase.from('tournament_categories').select('id,name,type,group_count').eq('tournament_id', id).order('sort_order'),
         portalAuthenticatedFetch(`/api/tournament-portal/referees?tournament_id=${id}`).then(r => r.json()),
@@ -76,6 +95,7 @@ export default function SchedulePage() {
       setLoading(false);
     })();
   }, [id]);
+
   useEffect(() => { loadAll(); }, [loadAll]);
 
   const generate = async () => {

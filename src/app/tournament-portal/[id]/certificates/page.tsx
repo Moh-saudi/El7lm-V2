@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { createPortalClient, isUuid } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { resolveImg } from '../../_utils/img';
 import { toast } from 'sonner';
@@ -21,6 +21,7 @@ export default function CertificatesPage() {
   const { locale, isRTL, getTranslations } = useTranslation();
   const copy = getTranslations<any>('tournamentCertificates');
   const { id }     = useParams<{ id: string }>();
+  const { id }     = useParams<{ id: string }>();
   const { isDark } = usePortalTheme();
   const S = isDark ? D : L;
 
@@ -37,11 +38,25 @@ export default function CertificatesPage() {
 
   useEffect(() => {
     (async () => {
+      let tData: any = null;
+      try {
+        const res = await fetch(`/api/tournament-portal/tournaments?id=${id}`);
+        const json = await res.json();
+        if (json.tournament) tData = json.tournament;
+      } catch {}
+
+      if (!isUuid(id)) {
+        setTournament(tData);
+        setTeams([]);
+        setLoading(false);
+        return;
+      }
+
       const [tRes, teamsRes] = await Promise.all([
-        supabase.from('tournament_new').select('*').eq('id', id).single(),
+        tData ? Promise.resolve({ data: tData }) : supabase.from('tournament_new').select('*').eq('id', id).single(),
         supabase.from('tournament_teams').select('id,name,logo_url,status').eq('tournament_id', id).eq('status', 'approved').order('name'),
       ]);
-      setTournament(tRes.data);
+      setTournament(tRes.data || tData);
       setTeams(teamsRes.data || []);
       if (teamsRes.data?.length) setSelTeam(teamsRes.data[0].id);
       setLoading(false);

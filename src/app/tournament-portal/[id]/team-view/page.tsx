@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
+import { isUuid } from '@/lib/tournament-portal/auth';
 import { resolveImg } from '../../_utils/img';
 import { useTranslation } from '@/lib/i18n';
 
@@ -35,6 +36,16 @@ export default function TeamViewPage() {
   useEffect(() => {
     if (!teamId) { setLoading(false); return; }
     (async () => {
+      if (!isUuid(id) || !isUuid(teamId)) {
+        try {
+          const r = await fetch(`/api/tournament-portal/tournaments?id=${id}`);
+          const d = await r.json();
+          if (d?.tournament) setTournament(d.tournament);
+        } catch {}
+        setLoading(false);
+        return;
+      }
+
       const [tRes, teamRes] = await Promise.all([
         supabase.from('tournament_new').select('name,logo_url,city,type,status').eq('id', id).single(),
         supabase.from('tournament_teams').select('*').eq('id', teamId).single(),

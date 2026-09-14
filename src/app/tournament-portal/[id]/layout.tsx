@@ -14,6 +14,7 @@ const STATUS_DOT: Record<string, string> = {
   draft: '#64748b', open: '#16a34a', closed: '#ef4444',
   ongoing: '#3b82f6', completed: '#8b5cf6', cancelled: '#94a3b8',
 };
+
 function TournamentHeader({ tournament, id }: { tournament: any; id: string }) {
   const { locale, getTranslations } = useTranslation();
   const section = getTranslations<any>('tournamentPortalSection');
@@ -85,9 +86,24 @@ export default function TournamentLayout({ children }: { children: React.ReactNo
       const c = await getCurrentClient();
       if (!c) { router.replace('/tournament-portal/login'); return; }
       setClient(c);
-      const supabase = createPortalClient();
-      const { data } = await supabase.from('tournament_new').select('id,name,status,type,country,city,logo_url,start_date,end_date').eq('id', id).eq('client_id', c.id).single();
-      setTournament(data);
+
+      try {
+        const res = await fetch(`/api/tournament-portal/tournaments?id=${id}`);
+        const json = await res.json();
+        if (res.ok && json.tournament) {
+          setTournament(json.tournament);
+          setLoading(false);
+          return;
+        }
+      } catch (apiErr) {
+        console.warn('[tournament-layout] API fetch note:', apiErr);
+      }
+
+      try {
+        const supabase = createPortalClient();
+        const { data } = await supabase.from('tournament_new').select('id,name,status,type,country,city,logo_url,start_date,end_date').eq('id', id).eq('client_id', c.id).single();
+        setTournament(data);
+      } catch {}
       setLoading(false);
     })();
   }, [id]);

@@ -29,13 +29,37 @@ export async function authorizeUser(request: NextRequest): Promise<UserAuthoriza
     };
   }
 
-  const admin = getSupabaseAdmin();
-  const {
-    data: { user },
-    error,
-  } = await admin.auth.getUser(token);
+  let user: User | null = null;
+  let authError: any = null;
 
-  if (error || !user) {
+  try {
+    const admin = getSupabaseAdmin();
+    const { data, error } = await admin.auth.getUser(token);
+    user = data?.user ?? null;
+    authError = error;
+  } catch (err) {
+    authError = err;
+  }
+
+  // Fallback to anon client if admin client fails or is unconfigured
+  if (!user && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const fallbackClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      );
+      const { data, error } = await fallbackClient.auth.getUser(token);
+      if (data?.user) {
+        user = data.user;
+        authError = null;
+      }
+    } catch (fallbackErr) {
+      console.warn('Fallback token verification failed:', fallbackErr);
+    }
+  }
+
+  if (authError || !user) {
     return {
       ok: false,
       response: NextResponse.json(

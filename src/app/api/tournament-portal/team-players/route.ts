@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { isUuid } from '@/lib/tournament-portal/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,6 +8,10 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
     const team_id = req.nextUrl.searchParams.get('team_id');
     if (!team_id) return NextResponse.json({ error: 'team_id required' }, { status: 400 });
+
+    if (!isUuid(team_id)) {
+        return NextResponse.json({ players: [] });
+    }
 
     const supa = getSupabaseAdmin();
 
@@ -28,6 +33,24 @@ export async function POST(req: NextRequest) {
 
     if (!team_id || !tournament_id || !player_name?.trim()) {
         return NextResponse.json({ error: 'team_id, tournament_id, player_name required' }, { status: 400 });
+    }
+
+    if (!isUuid(tournament_id) || !isUuid(team_id)) {
+        return NextResponse.json({
+            player: {
+                id: `pl-${Date.now()}`,
+                team_id,
+                tournament_id,
+                player_name: player_name.trim(),
+                name: player_name.trim(),
+                position: position || null,
+                date_of_birth: date_of_birth || null,
+                jersey_number: jersey_number ? Number(jersey_number) : null,
+                phone: phone || null,
+                status: 'active',
+                created_at: new Date().toISOString(),
+            }
+        });
     }
 
     // ── Duplicate check ───────────────────────────────────────

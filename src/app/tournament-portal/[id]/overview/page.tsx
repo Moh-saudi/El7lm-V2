@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { createPortalClient, isUuid } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { TeamLogo } from '../../_components/TeamLogo';
 import { resolveImg } from '../../_utils/img';
@@ -31,14 +31,26 @@ export default function TournamentOverviewPage() {
 
   useEffect(() => {
     (async () => {
+      let tournamentData: any = null;
+      try {
+        const res = await fetch(`/api/tournament-portal/tournaments?id=${id}`);
+        const json = await res.json();
+        if (json.tournament) tournamentData = json.tournament;
+      } catch {}
+
+      if (!isUuid(id)) {
+        setData({ t: tournamentData, teams: [], matches: [], cats: [] });
+        return;
+      }
+
       const s = createPortalClient();
       const [tR, teamsR, matchesR, catsR] = await Promise.all([
-        s.from('tournament_new').select('*').eq('id', id).single(),
+        tournamentData ? Promise.resolve({ data: tournamentData }) : s.from('tournament_new').select('*').eq('id', id).single(),
         s.from('tournament_teams').select('id,status,name,logo_url').eq('tournament_id', id),
         s.from('tournament_matches').select('id,status,match_date,home_score,away_score,home_team_id,away_team_id').eq('tournament_id', id),
         s.from('tournament_categories').select('id,name').eq('tournament_id', id).order('sort_order'),
       ]);
-      setData({ t: tR.data, teams: teamsR.data || [], matches: matchesR.data || [], cats: catsR.data || [] });
+      setData({ t: tR.data || tournamentData, teams: teamsR.data || [], matches: matchesR.data || [], cats: catsR.data || [] });
     })();
   }, [id]);
 

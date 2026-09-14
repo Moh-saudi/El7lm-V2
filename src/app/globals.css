@@ -1535,10 +1535,10 @@ body,
     margin-bottom: 1rem !important;
   }
 
-  /* Grid Systems */
-  .grid {
-    grid-template-columns: 1fr !important;
-    gap: 1rem !important;
+  /* Grid Systems (scoped to legacy) */
+  .legacy-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
   /* Buttons */
@@ -1724,9 +1724,9 @@ body,
     padding-right: 2rem !important;
   }
 
-  .grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 1.5rem !important;
+  .legacy-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
   }
 
   .sidebar {
@@ -1767,9 +1767,9 @@ body,
     padding-right: 2rem !important;
   }
 
-  .grid {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 2rem !important;
+  .legacy-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
   }
 
   .sidebar {
@@ -1806,8 +1806,8 @@ body,
     max-width: 1400px !important;
   }
 
-  .grid {
-    grid-template-columns: repeat(4, 1fr) !important;
+  .legacy-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 

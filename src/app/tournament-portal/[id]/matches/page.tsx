@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import { Modal } from 'antd';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { createPortalClient, portalAuthenticatedFetch } from '@/lib/tournament-portal/auth';
+import { createPortalClient, portalAuthenticatedFetch, isUuid } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { useTranslation } from '@/lib/i18n';
 
@@ -58,6 +58,11 @@ export default function MatchesPage() {
   const supabase = createPortalClient();
 
   const fetchAll = useCallback(async () => {
+    if (!isUuid(id)) {
+      setCats([]); setTeams([]); setMatches([]);
+      setLoading(false);
+      return;
+    }
     const [cR,tR,mR] = await Promise.all([
       supabase.from('tournament_categories').select('id,name').eq('tournament_id',id).order('sort_order'),
       supabase.from('tournament_teams').select('id,name,logo_url').eq('tournament_id',id).eq('status','approved'),
@@ -71,6 +76,7 @@ export default function MatchesPage() {
 
   const loadEvents = async (mid: string) => {
     if (events[mid] !== undefined) return;
+    if (!isUuid(mid)) { setEvents(p => ({ ...p, [mid]: [] })); return; }
     const { data } = await supabase.from('tournament_match_events').select('*').eq('match_id',mid).order('minute');
     setEvents(p => ({ ...p, [mid]: data||[] }));
   };
@@ -85,8 +91,10 @@ export default function MatchesPage() {
     const as_ = sc.as !== '' ? +sc.as : null;
     const done = hs !== null && as_ !== null;
     const winnerId = done ? (hs > as_ ? scoreModal.home_team_id : as_ > hs ? scoreModal.away_team_id : null) : null;
-    const { error } = await supabase.from('tournament_matches').update({ home_score:hs, away_score:as_, home_penalties:sc.hp?+sc.hp:null, away_penalties:sc.ap?+sc.ap:null, status:done?'completed':'scheduled', winner_id:winnerId }).eq('id',scoreModal.id);
-    if (error) { toast.error(error.message); setSaving(false); return; }
+    if (isUuid(scoreModal.id)) {
+      const { error } = await supabase.from('tournament_matches').update({ home_score:hs, away_score:as_, home_penalties:sc.hp?+sc.hp:null, away_penalties:sc.ap?+sc.ap:null, status:done?'completed':'scheduled', winner_id:winnerId }).eq('id',scoreModal.id);
+      if (error) { toast.error(error.message); setSaving(false); return; }
+    }
     toast.success(copy.scoreSaved);
     setScoreModal(null);
     fetchAll();

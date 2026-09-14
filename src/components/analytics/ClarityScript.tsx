@@ -11,8 +11,7 @@ interface ClarityScriptProps {
  * بناءً على الكود الرسمي من Microsoft
  */
 const ClarityScript: React.FC<ClarityScriptProps> = ({ projectId }) => {
-  if (!projectId || projectId === 'your_clarity_project_id_here') {
-    console.warn('⚠️ Clarity Project ID غير صحيح:', projectId);
+  if (process.env.NODE_ENV === 'development' || !projectId || projectId === 'your_clarity_project_id_here') {
     return null;
   }
 

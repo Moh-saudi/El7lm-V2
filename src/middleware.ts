@@ -63,6 +63,8 @@ export async function middleware(request: NextRequest) {
 
     if (
         pathname.startsWith('/api/tournament-portal/') &&
+        pathname !== '/api/tournament-portal/login' &&
+        pathname !== '/api/tournament-portal/tournaments' &&
         pathname !== '/api/tournament-portal/complete-registration' &&
         pathname !== '/api/tournament-portal/debug-tables'
     ) {

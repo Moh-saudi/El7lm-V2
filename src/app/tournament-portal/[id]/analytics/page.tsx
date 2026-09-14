@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { createPortalClient } from '@/lib/tournament-portal/auth';
+import { createPortalClient, isUuid } from '@/lib/tournament-portal/auth';
 import { usePortalTheme } from '../../_components/PortalShell';
 import { TeamLogo as LogoImg } from '../../_components/TeamLogo';
 import { useTranslation } from '@/lib/i18n';
@@ -29,6 +29,11 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     (async () => {
+      if (!isUuid(id)) {
+        setCats([]);
+        setLoading(false);
+        return;
+      }
       const { data } = await supabase.from('tournament_categories').select('id,name').eq('tournament_id', id).order('sort_order');
       setCats(data || []);
       if (data?.length) setSelCat(data[0].id);
@@ -37,7 +42,7 @@ export default function AnalyticsPage() {
   }, [id]);
 
   const load = useCallback(async () => {
-    if (!selCat) return;
+    if (!selCat || !isUuid(id)) return;
     const [mRes, eRes, sRes] = await Promise.all([
       supabase.from('tournament_matches').select('id,home_score,away_score,status,category_id,round,home_team:tournament_teams!home_team_id(name,logo_url),away_team:tournament_teams!away_team_id(name,logo_url)').eq('tournament_id', id).eq('category_id', selCat).not('home_score', 'is', null),
       supabase.from('tournament_match_events').select('event_type,minute,team_id,match_id,match:tournament_matches!match_id(category_id)').eq('tournament_id', id),

@@ -129,14 +129,27 @@ export default function NewTournamentPage() {
                 status:                'draft',
             };
 
-            const { data, error: dbErr } = await supabase
-                .from('tournament_new')
-                .insert(payload)
-                .select('id')
-                .single();
+            // Create tournament via API endpoint (with server-side admin / dev store)
+            const res = await fetch('/api/tournament-portal/tournaments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const json = await res.json();
+            if (!res.ok || !json.data?.id) {
+                // Supabase direct fallback if API fails
+                const { data, error: dbErr } = await supabase
+                    .from('tournament_new')
+                    .insert(payload)
+                    .select('id')
+                    .single();
 
-            if (dbErr) throw new Error(dbErr.message);
-            router.push(`/tournament-portal/${data.id}/setup`);
+                if (dbErr) throw new Error(dbErr.message);
+                router.push(`/tournament-portal/${data.id}/setup`);
+                return;
+            }
+
+            router.push(`/tournament-portal/${json.data.id}/setup`);
         } catch (e: any) {
             setError(e.message || t.errors.create);
         } finally {
