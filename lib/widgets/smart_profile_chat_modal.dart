@@ -509,10 +509,109 @@ class _SmartProfileChatModalState extends State<SmartProfileChatModal> {
     'current_club',
   };
 
+  static const _booleanFieldKeys = {'has_private_coach', 'has_joined_academy'};
+
+  static const _numberFieldKeys = {
+    'graduation_year',
+    'jersey_number',
+    'shoe_size',
+    'caps',
+    'goals',
+    'assists',
+    'market_value',
+  };
+
+  static const _structuredListFieldKeys = {
+    'languages',
+    'courses',
+    'club_history',
+    'achievements',
+    'allergies_list',
+    'surgeries_list',
+    'medications',
+    'injuries',
+    'family_history',
+    'private_coaches',
+    'academies',
+    'social_links',
+  };
+
+  /// The chat uses the exact same source of truth as the profile form. The
+  /// hand-crafted questions provide richer controls, while the profile form
+  /// determines the complete list and its order.
+  List<_ChatQuestion> get _questions {
+    final configured = <String, _ChatQuestion>{
+      for (final question in _allQuestions) question.key: question,
+    };
+    final questions = <_ChatQuestion>[];
+    for (final section in getProfileSections()) {
+      for (final field in section.fields) {
+        questions.add(
+          configured.remove(field.key) ??
+              _questionForProfileField(section.key, field),
+        );
+      }
+    }
+    // Retain a specialised question if it was intentionally added before its
+    // corresponding profile field is introduced in a future release.
+    questions.addAll(configured.values);
+    return questions;
+  }
+
+  _ChatQuestion _questionForProfileField(
+    String sectionKey,
+    ProfileField field,
+  ) {
+    if (_booleanFieldKeys.contains(field.key)) {
+      return _ChatQuestion(
+        key: field.key,
+        sectionKey: sectionKey,
+        labelKey: field.label,
+        type: _FieldType.choice,
+        options: const ['true', 'false'],
+      );
+    }
+    if (field.isSlider) {
+      return _ChatQuestion(
+        key: field.key,
+        sectionKey: sectionKey,
+        labelKey: field.label,
+        type: _FieldType.slider,
+        min: 1,
+        max: 99,
+      );
+    }
+    if (field.isStar) {
+      return _ChatQuestion(
+        key: field.key,
+        sectionKey: sectionKey,
+        labelKey: field.label,
+        type: _FieldType.star,
+        min: 1,
+        max: 5,
+      );
+    }
+    return _ChatQuestion(
+      key: field.key,
+      sectionKey: sectionKey,
+      labelKey: field.label,
+      type: field.options != null
+          ? _FieldType.choice
+          : _numberFieldKeys.contains(field.key)
+          ? _FieldType.number
+          : field.key.endsWith('_date') || field.key == 'last_checkup'
+          ? _FieldType.date
+          : _FieldType.text,
+      options: field.options,
+      labelFor: field.labelFor,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     _workingValues = Map<String, dynamic>.from(widget.profile.values);
+    _hydrateCanonicalValues();
     _filterQuestions();
   }
 
@@ -528,6 +627,7 @@ class _SmartProfileChatModalState extends State<SmartProfileChatModal> {
   void _restartChat() {
     setState(() {
       _workingValues = Map<String, dynamic>.from(widget.profile.values);
+      _hydrateCanonicalValues();
       _filterQuestions();
       _currentQuestionIndex = 0;
       _skippedCount = 0;
@@ -539,16 +639,48 @@ class _SmartProfileChatModalState extends State<SmartProfileChatModal> {
   }
 
   void _filterQuestions() {
-    _unansweredQuestions = _allQuestions.where((q) {
+    _unansweredQuestions = _questions.where((q) {
       if (!_isQuestionApplicable(q)) return false;
-      final val = _workingValues[q.key];
-      if (val == null) return true;
-      final str = '$val'.trim();
-      return str.isEmpty || str == '0' || str == 'false' || str == '0.0';
+      return _isMissingValue(_workingValues[q.key]);
     }).toList();
-    if (_unansweredQuestions.isEmpty) {
-      _unansweredQuestions = List.from(_allQuestions);
+  }
+
+  void _hydrateCanonicalValues() {
+    const aliases = <String, List<String>>{
+      'name': ['full_name', 'displayName', 'player_name', 'username'],
+      'phone': ['phoneNumber', 'mobile', 'telephone', 'phone_number'],
+      'email': ['emailAddress', 'mail'],
+      'brief': ['bio', 'about', 'overview', 'description'],
+      'height': ['height_cm', 'stature'],
+      'weight': ['weight_kg', 'mass'],
+      'position': ['primary_position', 'main_position', 'pos'],
+      'secondary_position': ['alt_position', 'secondaryPosition'],
+      'contract_status': ['contractStatus', 'status'],
+      'guardian_name': ['guardianName', 'parent_name'],
+      'guardian_phone': ['guardianPhone', 'parent_phone'],
+    };
+    for (final entry in aliases.entries) {
+      if (!_isMissingValue(_workingValues[entry.key])) continue;
+      for (final alias in entry.value) {
+        final value = _workingValues[alias];
+        if (!_isMissingValue(value)) {
+          _workingValues[entry.key] = value;
+          break;
+        }
+      }
     }
+  }
+
+  bool _isMissingValue(Object? value) {
+    if (value == null) return true;
+    final text = '$value'.trim();
+    return text.isEmpty ||
+        text == 'null' ||
+        text == '0' ||
+        text == 'false' ||
+        text == '0.0' ||
+        text == '[]' ||
+        text == '{}';
   }
 
   bool _isQuestionApplicable(_ChatQuestion question) {
@@ -585,11 +717,9 @@ class _SmartProfileChatModalState extends State<SmartProfileChatModal> {
 
   void _selectQuestionMode(_QuestionMode mode) {
     final lang = Localizations.localeOf(context).languageCode;
-    final allUnanswered = _allQuestions.where((q) {
+    final allUnanswered = _questions.where((q) {
       if (!_isQuestionApplicable(q)) return false;
-      final value = _workingValues[q.key];
-      final text = '${value ?? ''}'.trim();
-      return text.isEmpty || text == '0' || text == 'false' || text == '0.0';
+      return _isMissingValue(_workingValues[q.key]);
     });
     final selected = mode == _QuestionMode.essentials
         ? allUnanswered.where((q) => _essentialQuestionKeys.contains(q.key))
@@ -711,7 +841,10 @@ class _SmartProfileChatModalState extends State<SmartProfileChatModal> {
 
     setState(() {
       _messages.add(_ChatMessage(text: displayLabel, isUser: true));
-      _workingValues[currentQ.key] = answer.value;
+      _workingValues[currentQ.key] = _valueForStorage(
+        currentQ.key,
+        answer.value,
+      );
     });
     _scrollToBottom();
 
@@ -719,12 +852,14 @@ class _SmartProfileChatModalState extends State<SmartProfileChatModal> {
     setState(() => _isSaving = true);
     try {
       await widget.dataService.savePlayerProfile(widget.profile, {
-        currentQ.key: answer.value,
+        currentQ.key: _workingValues[currentQ.key],
       }, strict: true);
       final updatedProfile = UserProfile(
         userId: widget.profile.userId,
         accountType: widget.profile.accountType,
-        values: widget.profile.mergeUpdates({currentQ.key: answer.value}),
+        values: widget.profile.mergeUpdates({
+          currentQ.key: _workingValues[currentQ.key],
+        }),
       );
       widget.onProfileUpdated(updatedProfile);
     } catch (_) {
@@ -748,7 +883,35 @@ class _SmartProfileChatModalState extends State<SmartProfileChatModal> {
     }
     if (mounted) setState(() => _isSaving = false);
 
-    // Next question
+    await _advanceToNextQuestion(lang);
+  }
+
+  dynamic _valueForStorage(String key, Object? value) {
+    if (_booleanFieldKeys.contains(key)) return '$value' == 'true';
+    if (!_structuredListFieldKeys.contains(key)) return value;
+
+    final text = '$value'.trim();
+    if (text.isEmpty) return <dynamic>[];
+    return [
+      <String, dynamic>{_structuredValueKey(key): text},
+    ];
+  }
+
+  String _structuredValueKey(String key) => switch (key) {
+    'club_history' => 'club_name',
+    'languages' => 'language',
+    'achievements' => 'title',
+    'injuries' => 'injury_type',
+    'allergies_list' => 'allergen',
+    'surgeries_list' => 'procedure',
+    'family_history' => 'condition',
+    'social_links' => 'url',
+    _ => 'name',
+  };
+
+  Future<void> _advanceToNextQuestion(String lang) async {
+    // Question applicability can change after an answer (for example, the
+    // education level determines whether school or university is relevant).
     _unansweredQuestions = _unansweredQuestions
         .where(_isQuestionApplicable)
         .toList(growable: false);
@@ -819,7 +982,11 @@ class _SmartProfileChatModalState extends State<SmartProfileChatModal> {
       'en' => 'Skip ⏭️',
       _ => 'تخطي ⏭️',
     };
-    _submitAnswer('', skipText);
+    setState(() {
+      _messages.add(_ChatMessage(text: skipText, isUser: true));
+    });
+    _scrollToBottom();
+    _advanceToNextQuestion(lang);
 
     // Schedule 24-hour reminder if questions are skipped
     _schedule24hReminder();
@@ -1407,7 +1574,9 @@ class _SmartProfileChatModalState extends State<SmartProfileChatModal> {
           spacing: 8,
           runSpacing: 8,
           children: (q.options ?? []).map((opt) {
-            final label = localizedProfileOptionLabel(context, q.key, opt);
+            final label = _booleanFieldKeys.contains(q.key)
+                ? (opt == 'true' ? context.tr('yes') : context.tr('no'))
+                : localizedProfileOptionLabel(context, q.key, opt);
             return ActionChip(
               avatar: const Icon(
                 Icons.sports_soccer_rounded,

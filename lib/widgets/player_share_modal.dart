@@ -26,27 +26,32 @@ class _PlayerShareModal extends StatelessWidget {
   final Player player;
 
   String _buildFormattedWhatsAppMessage(BuildContext context) {
-    final name = player.name.isNotEmpty ? player.name : context.tr('dreamPlayer');
+    final name = player.name.isNotEmpty
+        ? player.name
+        : context.tr('dreamPlayer');
     final position = player.position.isNotEmpty ? player.position : '-';
     final country = player.country.isNotEmpty ? player.country : '-';
     final age = player.age != null ? '${player.age}' : '-';
-    final height = player.height != null ? '${player.height} سم' : '-';
+    final height = player.height != null
+        ? context.tr('sharePlayerHeight', {'value': player.height})
+        : '-';
     final profileUrl = 'https://www.el7lm.com/player/${player.id}';
 
-    return '🏆 السيرة الذاتية الرسمية للاعب من منصة الحلم الدولية للألعاب الرياضية ⚽\n\n'
-        '👤 الاسم: $name\n'
-        '📌 المركز: $position\n'
-        '🎂 العمر: $age سنة  |  📏 الطول: $height\n'
-        '🌍 البلد: $country\n'
-        '🌟 التقييم: ملف معتمد رسمياً ببيانات فنية موثقة 🌟\n\n'
-        '🔗 للاطلاع على الملف الشامل وكراسة الكشاف المباشرة:\n'
-        '$profileUrl\n\n'
-        '#منصة_الحلم #سيرة_لاعب #الكشاف_الرياضي';
+    return context.tr('sharePlayerWhatsAppMessage', {
+      'name': name,
+      'position': position,
+      'age': age,
+      'height': height,
+      'country': country,
+      'url': profileUrl,
+    });
   }
 
   Future<void> _shareToWhatsApp(BuildContext context) async {
     final message = _buildFormattedWhatsAppMessage(context);
-    final url = Uri.parse('https://wa.me/?text=${Uri.encodeComponent(message)}');
+    final url = Uri.parse(
+      'https://wa.me/?text=${Uri.encodeComponent(message)}',
+    );
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
@@ -77,7 +82,9 @@ class _PlayerShareModal extends StatelessWidget {
 
   void _showDigitalCardDialog(BuildContext context) {
     final profileUrl = 'https://www.el7lm.com/player/${player.id}';
-    final name = player.name.isNotEmpty ? player.name : context.tr('dreamPlayer');
+    final name = player.name.isNotEmpty
+        ? player.name
+        : context.tr('dreamPlayer');
     final position = player.position.isNotEmpty ? player.position : '-';
 
     showDialog<void>(
@@ -111,7 +118,10 @@ class _PlayerShareModal extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.green,
                       borderRadius: BorderRadius.circular(8),
@@ -126,7 +136,11 @@ class _PlayerShareModal extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const Icon(Icons.verified_rounded, color: AppColors.green, size: 24),
+                  const Icon(
+                    Icons.verified_rounded,
+                    color: AppColors.green,
+                    size: 24,
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -144,9 +158,17 @@ class _PlayerShareModal extends StatelessWidget {
                       ? Image.network(
                           player.imageUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => const Icon(Icons.person, size: 50, color: Colors.white70),
+                          errorBuilder: (_, _, _) => const Icon(
+                            Icons.person,
+                            size: 50,
+                            color: Colors.white70,
+                          ),
                         )
-                      : const Icon(Icons.person, size: 50, color: Colors.white70),
+                      : const Icon(
+                          Icons.person,
+                          size: 50,
+                          color: Colors.white70,
+                        ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -196,7 +218,9 @@ class _PlayerShareModal extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
                         side: const BorderSide(color: Colors.white38),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: () => Navigator.pop(ctx),
                       icon: const Icon(Icons.close_rounded, size: 18),
@@ -209,14 +233,18 @@ class _PlayerShareModal extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.green,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: profileUrl));
                         Navigator.pop(ctx);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(context.tr('profileLinkCopiedSuccess')),
+                            content: Text(
+                              context.tr('profileLinkCopiedSuccess'),
+                            ),
                             backgroundColor: AppColors.green,
                           ),
                         );
@@ -235,7 +263,9 @@ class _PlayerShareModal extends StatelessWidget {
   }
 
   void _showScoutDossierDialog(BuildContext context) {
-    final name = player.name.isNotEmpty ? player.name : context.tr('dreamPlayer');
+    final name = player.name.isNotEmpty
+        ? player.name
+        : context.tr('dreamPlayer');
     final position = player.position.isNotEmpty ? player.position : '-';
     final country = player.country.isNotEmpty ? player.country : '-';
     final age = player.age != null ? '${player.age}' : '-';
@@ -261,7 +291,11 @@ class _PlayerShareModal extends StatelessWidget {
                       color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.picture_as_pdf_rounded, color: Colors.red, size: 26),
+                    child: const Icon(
+                      Icons.picture_as_pdf_rounded,
+                      color: Colors.red,
+                      size: 26,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -278,7 +312,10 @@ class _PlayerShareModal extends StatelessWidget {
                         ),
                         Text(
                           context.tr('certifiedScoutReport'),
-                          style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.muted,
+                          ),
                         ),
                       ],
                     ),
@@ -287,11 +324,23 @@ class _PlayerShareModal extends StatelessWidget {
               ),
               const Divider(height: 24),
               _DossierRow(label: context.tr('playerNameLabel'), value: name),
-              _DossierRow(label: context.tr('primaryPositionLabel'), value: position),
-              _DossierRow(label: context.tr('countryNationalityLabel'), value: country),
+              _DossierRow(
+                label: context.tr('primaryPositionLabel'),
+                value: position,
+              ),
+              _DossierRow(
+                label: context.tr('countryNationalityLabel'),
+                value: country,
+              ),
               _DossierRow(label: context.tr('sportsAgeLabel'), value: age),
-              _DossierRow(label: context.tr('heightWeightLabel'), value: '$height / $weight'),
-              _DossierRow(label: context.tr('verificationStatusLabel'), value: context.tr('byTechnicalCommittee')),
+              _DossierRow(
+                label: context.tr('heightWeightLabel'),
+                value: '$height / $weight',
+              ),
+              _DossierRow(
+                label: context.tr('verificationStatusLabel'),
+                value: context.tr('byTechnicalCommittee'),
+              ),
               const SizedBox(height: 14),
               Center(
                 child: QrImageView(
@@ -305,7 +354,11 @@ class _PlayerShareModal extends StatelessWidget {
               Center(
                 child: Text(
                   context.tr('verifiedTechnicalDossier'),
-                  style: const TextStyle(fontSize: 10, color: AppColors.muted, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const SizedBox(height: 18),
@@ -314,7 +367,9 @@ class _PlayerShareModal extends StatelessWidget {
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.navy,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: profileUrl));
@@ -488,7 +543,11 @@ class _ShareOptionTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.muted),
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: AppColors.muted,
+              ),
             ],
           ),
         ),
@@ -510,8 +569,18 @@ class _DossierRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.navy)),
+          Text(
+            label,
+            style: const TextStyle(color: AppColors.muted, fontSize: 12),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              color: AppColors.navy,
+            ),
+          ),
         ],
       ),
     );

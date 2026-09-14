@@ -22,6 +22,17 @@ void main() {
       );
       expect(result.errorKey, 'profileChatWrongWritingLanguage');
     });
+
+    test('allows an international value when editing an existing profile', () {
+      final result = ProfileAnswerValidator.validate(
+        key: 'school_name',
+        rawValue: 'Future International School',
+        fieldType: 'text',
+        languageCode: 'ar',
+        enforceSelectedScript: false,
+      );
+      expect(result.isValid, isTrue);
+    });
   });
 
   test('rejects invalid profile chat answers before saving', () {
@@ -99,5 +110,10 @@ void main() {
       ).value,
       '2004-02-03',
     );
+  });
+
+  test('normalizes Arabic digits for mobile form numeric fields', () {
+    expect(ProfileAnswerValidator.normalizeDigits('١٨٠'), '180');
+    expect(ProfileAnswerValidator.normalizeDigits('۱۲۳'), '123');
   });
 }

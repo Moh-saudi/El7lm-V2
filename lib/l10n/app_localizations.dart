@@ -107,18 +107,16 @@ class _AppLocalizationsDelegate
   @override
   Future<AppLocalizations> load(Locale locale) async {
     final languageCode = isSupported(locale) ? locale.languageCode : 'ar';
+    // English is the complete, safe fallback for every locale. This ensures a
+    // missing translated label never leaks its implementation key to users.
+    final fallbackSource = await rootBundle.loadString('assets/i18n/en.json');
     final source = await rootBundle.loadString(
       'assets/i18n/$languageCode.json',
     );
-    final decoded = Map<String, dynamic>.from(jsonDecode(source) as Map);
-    final values = <String, dynamic>{};
-    if (languageCode == 'fr') {
-      final fallbackSource = await rootBundle.loadString('assets/i18n/en.json');
-      values.addAll(
-        Map<String, dynamic>.from(jsonDecode(fallbackSource) as Map),
-      );
-    }
-    values.addAll(decoded);
+    final values = <String, dynamic>{
+      ...Map<String, dynamic>.from(jsonDecode(fallbackSource) as Map),
+      ...Map<String, dynamic>.from(jsonDecode(source) as Map),
+    };
     return AppLocalizations(
       Locale(languageCode),
       values.map((key, value) => MapEntry(key, '$value')),

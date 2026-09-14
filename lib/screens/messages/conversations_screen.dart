@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/country_helper.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/conversation.dart';
 import '../../services/data_service.dart';
 import 'chat_detail_screen.dart';
@@ -46,19 +47,19 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   ) {
     Navigator.of(context)
         .push(
-      MaterialPageRoute<void>(
-        builder: (_) => ChatDetailScreen(
-          conversation: conv,
-          targetId: targetId,
-          targetName: targetName,
-          targetType: targetType,
-          dataService: widget.dataService,
-        ),
-      ),
-    )
+          MaterialPageRoute<void>(
+            builder: (_) => ChatDetailScreen(
+              conversation: conv,
+              targetId: targetId,
+              targetName: targetName,
+              targetType: targetType,
+              dataService: widget.dataService,
+            ),
+          ),
+        )
         .then((_) {
-      if (mounted) _refresh();
-    });
+          if (mounted) _refresh();
+        });
   }
 
   Future<void> _startChatWith({
@@ -99,15 +100,18 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('تعذر فتح المحادثة: $e')),
+          SnackBar(
+            content: Text('${context.tr('conversationOpenFailed')}: $e'),
+          ),
         );
       }
     }
   }
 
   Future<void> _showNewChatDialog() async {
-    final players = await widget.dataService.fetchPlayers();
+    final contacts = await widget.dataService.fetchChatContacts();
     final filterController = TextEditingController();
+    var selectedType = 'all';
 
     if (!mounted) return;
 
@@ -123,11 +127,10 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         return StatefulBuilder(
           builder: (context, setState2) {
             final query = filterController.text.trim().toLowerCase();
-            final filtered = players.where((p) {
-              if (query.isEmpty) return true;
-              return p.name.toLowerCase().contains(query) ||
-                  p.position.toLowerCase().contains(query) ||
-                  p.country.toLowerCase().contains(query);
+            final filtered = contacts.where((contact) {
+              final typeMatches =
+                  selectedType == 'all' || contact.accountType == selectedType;
+              return typeMatches && contact.matches(query);
             }).toList();
 
             return SafeArea(
@@ -137,8 +140,8 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'ابدأ محادثة جديدة 💬',
+                    Text(
+                      context.tr('startNewConversation'),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -150,7 +153,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                       controller: filterController,
                       onChanged: (_) => setState2(() {}),
                       decoration: InputDecoration(
-                        hintText: 'ابحث بالاسم، المركز أو الدولة...',
+                        hintText: context.tr('searchChatAccountsHint'),
                         prefixIcon: const Icon(Icons.search_rounded),
                         filled: true,
                         fillColor: Colors.grey[100],
@@ -164,12 +167,42 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 40,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children:
+                            const [
+                              'all',
+                              'player',
+                              'club',
+                              'academy',
+                              'trainer',
+                              'agent',
+                              'marketer',
+                            ].map((type) {
+                              final selected = selectedType == type;
+                              return Padding(
+                                padding: const EdgeInsetsDirectional.only(
+                                  end: 8,
+                                ),
+                                child: ChoiceChip(
+                                  selected: selected,
+                                  label: Text(context.tr('accountType.$type')),
+                                  onSelected: (_) =>
+                                      setState2(() => selectedType = type),
+                                ),
+                              );
+                            }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Expanded(
                       child: filtered.isEmpty
-                          ? const Center(
+                          ? Center(
                               child: Text(
-                                'لا توجد حسابات مطابقة',
+                                context.tr('noMatchingAccounts'),
                                 style: TextStyle(color: AppColors.muted),
                               ),
                             )
@@ -178,12 +211,11 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                               separatorBuilder: (context, index) =>
                                   const Divider(height: 1),
                               itemBuilder: (_, i) {
-                                final player = filtered[i];
-                                const badge = _AccountTypeBadge(
-                                  label: 'لاعب 🏃',
-                                  color: AppColors.green,
+                                final contact = filtered[i];
+                                final badge = _getAccountTypeBadge(
+                                  contact.accountType,
                                 );
-                                final flag = getCountryFlag(player.country);
+                                final flag = getCountryFlag(contact.country);
 
                                 return ListTile(
                                   contentPadding: const EdgeInsets.symmetric(
@@ -192,21 +224,27 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                   ),
                                   leading: CircleAvatar(
                                     radius: 22,
-                                    backgroundColor:
-                                        AppColors.green.withValues(alpha: .15),
+                                    backgroundColor: AppColors.green.withValues(
+                                      alpha: .15,
+                                    ),
                                     backgroundImage:
-                                        (player.imageUrl.isNotEmpty &&
-                                                player.imageUrl.startsWith('http'))
-                                            ? NetworkImage(player.imageUrl)
-                                            : null,
-                                    child: (player.imageUrl.isEmpty ||
-                                            !player.imageUrl.startsWith('http'))
+                                        (contact.avatarUrl.isNotEmpty &&
+                                            contact.avatarUrl.startsWith(
+                                              'http',
+                                            ))
+                                        ? NetworkImage(contact.avatarUrl)
+                                        : null,
+                                    child:
+                                        (contact.avatarUrl.isEmpty ||
+                                            !contact.avatarUrl.startsWith(
+                                              'http',
+                                            ))
                                         ? Text(
-                                            player.name.isNotEmpty
-                                                ? player.name[0].toUpperCase()
-                                                : 'P',
-                                            style: const TextStyle(
-                                              color: AppColors.green,
+                                            contact.name.isNotEmpty
+                                                ? contact.name[0].toUpperCase()
+                                                : '?',
+                                            style: TextStyle(
+                                              color: badge.color,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           )
@@ -216,13 +254,20 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          player.name,
+                                          contact.name,
                                           style: const TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 15,
                                           ),
                                         ),
                                       ),
+                                      if (contact.isVerified)
+                                        const Icon(
+                                          Icons.verified_rounded,
+                                          color: AppColors.green,
+                                          size: 18,
+                                        ),
+                                      const SizedBox(width: 6),
                                       Container(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 8,
@@ -232,11 +277,14 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                           color: badge.color.withValues(
                                             alpha: 0.12,
                                           ),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: Text(
-                                          badge.label,
+                                          context.tr(
+                                            'accountType.${badge.label}',
+                                          ),
                                           style: TextStyle(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
@@ -247,7 +295,15 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                     ],
                                   ),
                                   subtitle: Text(
-                                    '${player.position} • ${player.country} $flag',
+                                    [
+                                          contact.detail,
+                                          contact.city,
+                                          '${contact.country} $flag'.trim(),
+                                        ]
+                                        .where(
+                                          (value) => value.trim().isNotEmpty,
+                                        )
+                                        .join(' • '),
                                     style: const TextStyle(
                                       color: AppColors.muted,
                                       fontSize: 12,
@@ -256,8 +312,9 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                   trailing: Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: AppColors.green
-                                          .withValues(alpha: 0.1),
+                                      color: AppColors.green.withValues(
+                                        alpha: 0.1,
+                                      ),
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(
@@ -268,10 +325,10 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                   ),
                                   onTap: () => _startChatWith(
                                     sheetContext: sheetCtx,
-                                    targetId: player.id,
-                                    targetName: player.name,
-                                    targetType: 'player',
-                                    targetAvatar: player.imageUrl,
+                                    targetId: contact.id,
+                                    targetName: contact.name,
+                                    targetType: contact.accountType,
+                                    targetAvatar: contact.avatarUrl,
                                   ),
                                 );
                               },
@@ -293,13 +350,13 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'المحادثات 💬',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          '${context.tr('messages')} 💬',
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
-            tooltip: 'تحديث',
+            tooltip: context.tr('refresh'),
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _refresh,
           ),
@@ -315,7 +372,9 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text('خطأ في جلب المحادثات: ${snapshot.error}'),
+                child: Text(
+                  '${context.tr('conversationsLoadFailed')}: ${snapshot.error}',
+                ),
               ),
             );
           }
@@ -339,7 +398,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                   controller: _searchController,
                   onChanged: (val) => setState(() => _searchQuery = val.trim()),
                   decoration: InputDecoration(
-                    hintText: 'البحث في المحادثات...',
+                    hintText: context.tr('searchConversations'),
                     prefixIcon: const Icon(Icons.search_rounded),
                     filled: true,
                     fillColor: Colors.grey[100],
@@ -371,14 +430,15 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                               orElse: () => '',
                             );
                             final targetName =
-                                conv.participantNames[targetId] ?? 'مستخدم';
+                                conv.participantNames[targetId] ??
+                                context.tr('user');
                             final targetType =
                                 conv.participantTypes[targetId] ?? 'player';
-                            final avatarUrl = conv.participantAvatars[targetId] ?? '';
-                            final unread = (conv.unreadCount[currentUserId]
-                                        as num? ??
-                                    0)
-                                .toInt();
+                            final avatarUrl =
+                                conv.participantAvatars[targetId] ?? '';
+                            final unread =
+                                (conv.unreadCount[currentUserId] as num? ?? 0)
+                                    .toInt();
 
                             final timeStr = conv.lastMessageTime != null
                                 ? '${conv.lastMessageTime!.hour.toString().padLeft(2, '0')}:${conv.lastMessageTime!.minute.toString().padLeft(2, '0')}'
@@ -387,8 +447,12 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                             final badge = _getAccountTypeBadge(targetType);
 
                             // Active/Online indicator based on recent message timestamp
-                            final isOnline = conv.updatedAt != null &&
-                                DateTime.now().difference(conv.updatedAt!).inMinutes < 15;
+                            final isOnline =
+                                conv.updatedAt != null &&
+                                DateTime.now()
+                                        .difference(conv.updatedAt!)
+                                        .inMinutes <
+                                    15;
 
                             return ListTile(
                               contentPadding: const EdgeInsets.symmetric(
@@ -405,13 +469,17 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                 children: [
                                   CircleAvatar(
                                     radius: 24,
-                                    backgroundColor:
-                                        badge.color.withValues(alpha: .15),
+                                    backgroundColor: badge.color.withValues(
+                                      alpha: .15,
+                                    ),
                                     backgroundImage:
-                                        (avatarUrl.isNotEmpty && avatarUrl.startsWith('http'))
-                                            ? NetworkImage(avatarUrl)
-                                            : null,
-                                    child: (avatarUrl.isEmpty || !avatarUrl.startsWith('http'))
+                                        (avatarUrl.isNotEmpty &&
+                                            avatarUrl.startsWith('http'))
+                                        ? NetworkImage(avatarUrl)
+                                        : null,
+                                    child:
+                                        (avatarUrl.isEmpty ||
+                                            !avatarUrl.startsWith('http'))
                                         ? Text(
                                             targetName.isNotEmpty
                                                 ? targetName[0].toUpperCase()
@@ -431,9 +499,14 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                       width: 12,
                                       height: 12,
                                       decoration: BoxDecoration(
-                                        color: isOnline ? Colors.green : Colors.grey[400],
+                                        color: isOnline
+                                            ? Colors.green
+                                            : Colors.grey[400],
                                         shape: BoxShape.circle,
-                                        border: Border.all(color: Colors.white, width: 2),
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 2,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -454,10 +527,9 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                     timeStr,
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Theme.of(ctx2)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.color,
+                                      color: Theme.of(
+                                        ctx2,
+                                      ).textTheme.bodySmall?.color,
                                     ),
                                   ),
                                 ],
@@ -476,7 +548,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
-                                      badge.label,
+                                      context.tr('accountType.${badge.label}'),
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
@@ -489,19 +561,17 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                                     child: Text(
                                       conv.lastMessage.isNotEmpty
                                           ? conv.lastMessage
-                                          : 'محادثة جديدة',
+                                          : context.tr('newConversation'),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         color: unread > 0
-                                            ? Theme.of(ctx2)
-                                                .textTheme
-                                                .bodyLarge
-                                                ?.color
-                                            : Theme.of(ctx2)
-                                                .textTheme
-                                                .bodySmall
-                                                ?.color,
+                                            ? Theme.of(
+                                                ctx2,
+                                              ).textTheme.bodyLarge?.color
+                                            : Theme.of(
+                                                ctx2,
+                                              ).textTheme.bodySmall?.color,
                                         fontWeight: unread > 0
                                             ? FontWeight.bold
                                             : FontWeight.normal,
@@ -551,29 +621,26 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   _AccountTypeBadge _getAccountTypeBadge(String type) {
     return switch (type.toLowerCase()) {
       'club' => const _AccountTypeBadge(
-          label: 'نادي ⚽',
-          color: Color(0xFF2563EB),
-        ),
+        label: 'club',
+        color: Color(0xFF2563EB),
+      ),
       'academy' => const _AccountTypeBadge(
-          label: 'أكاديمية 🏆',
-          color: Color(0xFFD97706),
-        ),
+        label: 'academy',
+        color: Color(0xFFD97706),
+      ),
       'trainer' => const _AccountTypeBadge(
-          label: 'مدرب 👟',
-          color: Color(0xFF7C3AED),
-        ),
+        label: 'trainer',
+        color: Color(0xFF7C3AED),
+      ),
       'agent' => const _AccountTypeBadge(
-          label: 'وكيل 💼',
-          color: Color(0xFFDC2626),
-        ),
+        label: 'agent',
+        color: Color(0xFFDC2626),
+      ),
       'marketer' => const _AccountTypeBadge(
-          label: 'مسوق 📣',
-          color: Color(0xFF059669),
-        ),
-      _ => const _AccountTypeBadge(
-          label: 'لاعب 🏃',
-          color: AppColors.green,
-        ),
+        label: 'marketer',
+        color: Color(0xFF059669),
+      ),
+      _ => const _AccountTypeBadge(label: 'player', color: AppColors.green),
     };
   }
 }
@@ -596,13 +663,13 @@ class _EmptyState extends StatelessWidget {
               color: Theme.of(context).disabledColor,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'لا توجد محادثات نشطة',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Text(
+              context.tr('noConversations'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'اضغط + لبدء محادثة مع لاعب، نادي أو أكاديمية',
+              context.tr('startChatWithPlayer'),
               style: TextStyle(
                 fontSize: 13,
                 color: Theme.of(context).disabledColor,
@@ -620,9 +687,9 @@ class _EmptyState extends StatelessWidget {
               ),
               onPressed: onNewChat,
               icon: const Icon(Icons.chat_bubble_rounded),
-              label: const Text(
-                'ابدأ محادثة جديدة',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              label: Text(
+                context.tr('startNewConversation'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ],

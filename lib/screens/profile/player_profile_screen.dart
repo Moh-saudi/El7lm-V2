@@ -94,6 +94,22 @@ class _ProfileFormState extends State<_ProfileForm>
     with SingleTickerProviderStateMixin {
   final formKey = GlobalKey<FormState>();
   final controllers = <String, TextEditingController>{};
+  final _initialControllerValues = <String, String>{};
+  final _initialRawValues = <String, dynamic>{};
+  static const _structuredProfileFields = {
+    'languages',
+    'courses',
+    'club_history',
+    'achievements',
+    'allergies_list',
+    'surgeries_list',
+    'medications',
+    'injuries',
+    'family_history',
+    'private_coaches',
+    'academies',
+    'social_links',
+  };
   bool saving = false;
   bool editing = false;
   late final List<ProfileSection> _sections;
@@ -305,6 +321,7 @@ class _ProfileFormState extends State<_ProfileForm>
     for (final section in _sections) {
       for (final field in section.fields) {
         var value = _getRawValue(field.key);
+        _initialRawValues[field.key] = value;
         if (value is Map) {
           value =
               value['url'] ??
@@ -323,13 +340,14 @@ class _ProfileFormState extends State<_ProfileForm>
         } else {
           controllers[field.key] = TextEditingController(text: text);
         }
+        _initialControllerValues[field.key] = text;
       }
     }
   }
 
   String _displayListItem(Object? item) {
     if (item is Map) {
-      return '${item['name'] ?? item['title'] ?? item['url'] ?? item}';
+      return '${item['name'] ?? item['title'] ?? item['club_name'] ?? item['club'] ?? item['language'] ?? item['injury_type'] ?? item['allergen'] ?? item['procedure'] ?? item['condition'] ?? item['url'] ?? item}';
     }
     return '$item';
   }
@@ -1079,9 +1097,9 @@ class _ProfileFormState extends State<_ProfileForm>
                   color: const Color(0xFF10B981).withValues(alpha: .12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text(
-                  'وضع التعديل',
-                  style: TextStyle(
+                child: Text(
+                  context.tr('profileEditMode'),
+                  style: const TextStyle(
                     fontSize: 10,
                     color: Color(0xFF10B981),
                     fontWeight: FontWeight.bold,
@@ -1137,20 +1155,22 @@ class _ProfileFormState extends State<_ProfileForm>
     return ((filledFields / totalFields) * 100).round().clamp(0, 100);
   }
 
-  /// Shows a date picker and updates the birth_date controller.
-  Future<void> _pickBirthDate(BuildContext context) async {
+  /// Shows a date picker and keeps stored dates in the API's ISO format.
+  Future<void> _pickProfileDate(BuildContext context, String key) async {
     if (!editing) return;
     DateTime? initial;
     try {
-      if (controllers['birth_date']!.text.isNotEmpty) {
-        initial = DateTime.parse(controllers['birth_date']!.text);
+      if (controllers[key]!.text.isNotEmpty) {
+        initial = DateTime.parse(controllers[key]!.text);
       }
     } catch (_) {}
+    final isContractDate = key == 'contract_end_date';
+    final today = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: initial ?? DateTime(2000),
-      firstDate: DateTime(1950),
-      lastDate: DateTime.now(),
+      initialDate: initial ?? (isContractDate ? today : DateTime(2000)),
+      firstDate: isContractDate ? today : DateTime(1950),
+      lastDate: isContractDate ? DateTime(today.year + 50) : today,
       locale: Localizations.localeOf(context),
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
@@ -1165,7 +1185,7 @@ class _ProfileFormState extends State<_ProfileForm>
     );
     if (picked != null) {
       setState(() {
-        controllers['birth_date']!.text =
+        controllers[key]!.text =
             '${picked.year.toString().padLeft(4, '0')}-'
             '${picked.month.toString().padLeft(2, '0')}-'
             '${picked.day.toString().padLeft(2, '0')}';
@@ -1284,8 +1304,8 @@ class _ProfileFormState extends State<_ProfileForm>
                       ),
                     ),
                   ] else ...[
-                    const Text(
-                      'غير مكتمل',
+                    Text(
+                      context.tr('profileIncomplete'),
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey,
@@ -1300,8 +1320,8 @@ class _ProfileFormState extends State<_ProfileForm>
               TextButton.icon(
                 onPressed: () => setState(() => editing = true),
                 icon: const Icon(Icons.add_circle_outline_rounded, size: 16),
-                label: const Text(
-                  'إكمال',
+                label: Text(
+                  context.tr('completeProfileField'),
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 ),
                 style: TextButton.styleFrom(
@@ -1320,7 +1340,7 @@ class _ProfileFormState extends State<_ProfileForm>
                   size: 18,
                   color: Colors.grey[400],
                 ),
-                tooltip: 'تعديل',
+                tooltip: context.tr('edit'),
               ),
           ],
         ),
@@ -1447,7 +1467,9 @@ class _ProfileFormState extends State<_ProfileForm>
                   ),
                 )
                 .toList(),
-            onChanged: (value) => setState(() => ctrl.text = value ?? ''),
+            onChanged: editing
+                ? (value) => setState(() => ctrl.text = value ?? '')
+                : null,
           ),
         );
       }
@@ -1569,12 +1591,12 @@ class _ProfileFormState extends State<_ProfileForm>
       );
     }
 
-    // ── Date Picker for birth_date ───────────────────────────────────────
-    if (field.key == 'birth_date') {
+    // ── Date Picker ───────────────────────────────────────────────────────
+    if (field.key == 'birth_date' || field.key == 'contract_end_date') {
       return Padding(
         padding: const EdgeInsets.only(bottom: 16),
         child: InkWell(
-          onTap: () => _pickBirthDate(context),
+          onTap: () => _pickProfileDate(context, field.key),
           borderRadius: BorderRadius.circular(12),
           child: InputDecorator(
             decoration: InputDecoration(
@@ -1639,7 +1661,16 @@ class _ProfileFormState extends State<_ProfileForm>
             return context.tr('requiredField');
           }
           if (value != null && value.trim().isNotEmpty) {
-            if (!_numericFields.contains(field.key)) {
+            if (_numericFields.contains(field.key)) {
+              final number = num.tryParse(
+                ProfileAnswerValidator.normalizeDigits(value.trim()),
+              );
+              if (number == null ||
+                  number < 0 ||
+                  number > _numericMax(field.key)) {
+                return context.tr('profileChatInvalidNumber');
+              }
+            } else {
               final validation = ProfileAnswerValidator.validate(
                 key: field.key,
                 rawValue: value,
@@ -1647,23 +1678,33 @@ class _ProfileFormState extends State<_ProfileForm>
                 languageCode: Localizations.localeOf(context).languageCode,
                 registeredPhone:
                     '${widget.profile.values['phone'] ?? widget.profile.values['phoneNumber'] ?? ''}',
+                // Existing web data can legitimately use a different script
+                // (club names, schools, international names). The chat flow
+                // keeps its language rule; the edit form must not reject it.
+                enforceSelectedScript: false,
               );
               if (!validation.isValid) {
                 return context.tr(validation.errorKey!);
               }
             }
             if (field.key == 'height') {
-              final h = num.tryParse(value);
+              final h = num.tryParse(
+                ProfileAnswerValidator.normalizeDigits(value),
+              );
               if (h == null || h < 100 || h > 230) {
-                return '100 - 230 cm';
+                return context.tr('profileHeightRange');
               }
             } else if (field.key == 'weight') {
-              final w = num.tryParse(value);
+              final w = num.tryParse(
+                ProfileAnswerValidator.normalizeDigits(value),
+              );
               if (w == null || w < 30 || w > 180) {
-                return '30 - 180 kg';
+                return context.tr('profileWeightRange');
               }
             } else if (field.key == 'market_value') {
-              final v = num.tryParse(value);
+              final v = num.tryParse(
+                ProfileAnswerValidator.normalizeDigits(value),
+              );
               if (v == null || v < 0) return context.tr('requiredField');
             }
           }
@@ -1740,10 +1781,18 @@ class _ProfileFormState extends State<_ProfileForm>
 
   Future<void> save() async {
     if (!formKey.currentState!.validate()) return;
-    setState(() => saving = true);
     try {
       final updates = collectUpdates();
-      await widget.dataService.savePlayerProfile(widget.profile, updates);
+      if (updates.isEmpty) {
+        setState(() => editing = false);
+        return;
+      }
+      setState(() => saving = true);
+      await widget.dataService.savePlayerProfile(
+        widget.profile,
+        updates,
+        strict: true,
+      );
       if (!mounted) return;
       setState(() => editing = false);
       final updated = UserProfile(
@@ -1756,7 +1805,7 @@ class _ProfileFormState extends State<_ProfileForm>
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      ).showSnackBar(SnackBar(content: Text(_localizedSaveError(e))));
     } finally {
       if (mounted) setState(() => saving = false);
     }
@@ -1766,18 +1815,70 @@ class _ProfileFormState extends State<_ProfileForm>
     final res = <String, dynamic>{};
     for (final e in controllers.entries) {
       final key = e.key;
-      final text = e.value.text;
+      final text = e.value.text.trim();
+      if (text == (_initialControllerValues[key] ?? '').trim()) continue;
 
       if (_booleanFields.contains(key)) {
         res[key] = text.toLowerCase() == 'true';
       } else if (_numericFields.contains(key)) {
-        res[key] = num.tryParse(text) ?? 0;
+        res[key] = text.isEmpty
+            ? null
+            : num.parse(ProfileAnswerValidator.normalizeDigits(text));
+      } else if (_structuredProfileFields.contains(key)) {
+        res[key] = _serializeStructuredValue(key, text);
       } else {
         res[key] = text;
       }
     }
     return res;
   }
+
+  String _localizedSaveError(Object error) {
+    if (error is FormatException) {
+      return context.tr(error.message);
+    }
+    return context.errorText(error);
+  }
+
+  dynamic _serializeStructuredValue(String key, String text) {
+    final lines = text
+        .split(RegExp(r'\r?\n'))
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    final original = _initialRawValues[key];
+    if (original is List && original.every((item) => item is Map)) {
+      final valueKey = _structuredValueKey(key);
+      return List<dynamic>.generate(lines.length, (index) {
+        final previous = index < original.length
+            ? Map<String, dynamic>.from(original[index] as Map)
+            : <String, dynamic>{};
+        previous[valueKey] = lines[index];
+        return previous;
+      });
+    }
+    return lines;
+  }
+
+  String _structuredValueKey(String key) => switch (key) {
+    'club_history' => 'club_name',
+    'languages' => 'language',
+    'achievements' => 'title',
+    'injuries' => 'injury_type',
+    _ => 'name',
+  };
+
+  double _numericMax(String key) => switch (key) {
+    'height' => 230,
+    'weight' => 180,
+    'weak_foot' || 'skill_moves' => 5,
+    'shoe_size' => 60,
+    'jersey_number' => 99,
+    'hours_per_week' => 168,
+    'market_value' => 1000000000,
+    'caps' || 'goals' || 'assists' => 100000,
+    _ => 100,
+  };
 
   Future<void> _pickProfilePhoto() async {
     final file = await ImagePicker().pickImage(source: ImageSource.gallery);
@@ -2005,12 +2106,18 @@ class _JoinOrgCardState extends State<_JoinOrgCard> {
                       : () async {
                           if (controller.text.trim().isEmpty) return;
                           final messenger = ScaffoldMessenger.of(context);
+                          final successMessage = context.tr(
+                            'joinRequestSubmitted',
+                          );
                           setState(() => loading = true);
                           try {
                             await widget.dataService.joinOrganizationByCode(
                               controller.text,
                             );
                             widget.onJoined();
+                            messenger.showSnackBar(
+                              SnackBar(content: Text(successMessage)),
+                            );
                           } catch (e) {
                             if (!mounted) return;
                             final errText = this.context.errorText(e);
@@ -2897,7 +3004,7 @@ void _showJoinOrgModal(
                       textCapitalization: TextCapitalization.characters,
                       decoration: InputDecoration(
                         labelText: ctx.tr('orgCodeLabel'),
-                        hintText: 'مثال: ACDVMRC44 أو رابط الإحالة',
+                        hintText: ctx.tr('orgCodeInputHint'),
                         prefixIcon: const Icon(Icons.qr_code_rounded),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -2907,7 +3014,7 @@ void _showJoinOrgModal(
                   ),
                   const SizedBox(width: 8),
                   Tooltip(
-                    message: 'لصق الكود أو الرابط من الحافظة',
+                    message: ctx.tr('pasteReferralCode'),
                     child: IconButton.filledTonal(
                       style: IconButton.styleFrom(
                         backgroundColor: AppColors.green.withValues(
@@ -2934,7 +3041,7 @@ void _showJoinOrgModal(
                   ),
                   const SizedBox(width: 8),
                   Tooltip(
-                    message: 'مسح رمز QR Code بالكاميرا',
+                    message: ctx.tr('scanJoinQr'),
                     child: IconButton.filledTonal(
                       style: IconButton.styleFrom(
                         backgroundColor: AppColors.navy.withValues(alpha: 0.15),
@@ -2976,9 +3083,9 @@ void _showJoinOrgModal(
                   color: AppColors.navy,
                   size: 18,
                 ),
-                label: const Text(
-                  '📷 مسح رمز QR Code الانضمام المباشر',
-                  style: TextStyle(
+                label: Text(
+                  '📷 ${ctx.tr('scanJoinQr')}',
+                  style: const TextStyle(
                     color: AppColors.navy,
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
@@ -3024,10 +3131,18 @@ void _showJoinOrgModal(
                             error = null;
                           });
                           try {
+                            final messenger = ScaffoldMessenger.of(ctx);
                             await dataService.joinOrganizationByCode(
                               controller.text,
                             );
-                            if (ctx.mounted) Navigator.of(ctx).pop();
+                            if (ctx.mounted) {
+                              Navigator.of(ctx).pop();
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(ctx.tr('joinRequestSubmitted')),
+                                ),
+                              );
+                            }
                             await onJoined();
                           } catch (e) {
                             setModalState(() {
@@ -3470,7 +3585,6 @@ class _SmartScoutBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAr = Localizations.localeOf(context).languageCode == 'ar';
     return InkWell(
       onTap: () {
         SmartProfileChatModal.show(
@@ -3522,9 +3636,7 @@ class _SmartScoutBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isAr
-                        ? 'كابتن حلم - المستكشف الذكي 🤖'
-                        : 'Captain El7lm - AI Scout 🤖',
+                    context.tr('profileChatScoutTitle'),
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
@@ -3533,9 +3645,7 @@ class _SmartScoutBanner extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    isAr
-                        ? 'إكمال بياناتك بالحوار السريع لرفع نسبة ظهورك 🚀'
-                        : 'Complete your profile fast via smart chat 🚀',
+                    context.tr('profileChatScoutSubtitle'),
                     style: const TextStyle(
                       color: Color(0xFF94A3B8),
                       fontSize: 11,
@@ -3551,7 +3661,7 @@ class _SmartScoutBanner extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                isAr ? 'ابدأ الحوار' : 'Start',
+                context.tr('profileChatScoutStart'),
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,

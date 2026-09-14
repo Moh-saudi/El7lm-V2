@@ -1,5 +1,10 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:record/record.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_theme.dart';
@@ -35,6 +40,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final List<ChatMessageModel> _messages = [];
   bool _isLoading = true;
   bool _isSending = false;
+  bool _isUploading = false;
+  bool _isRecording = false;
+  int _recordingSeconds = 0;
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  Timer? _recordingTimer;
   RealtimeChannel? _subscription;
 
   @override
@@ -134,12 +144,137 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         receiverType: widget.targetType,
         message: text,
       );
-    } catch (_) {}
+    } catch (_) {
+      if (!mounted) return;
+      setState(
+        () => _messages.removeWhere((item) => item.id == optimisticMsg.id),
+      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.tr('messageSendFailed'))));
+    }
+  }
+
+  Future<void> _sendImage() async {
+    if (_isUploading) return;
+    final photoLabel = context.tr('photoMessage');
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 78,
+      maxWidth: 1800,
+    );
+    if (file == null || !mounted) return;
+    setState(() => _isUploading = true);
+    try {
+      final url = await widget.dataService.uploadChatMedia(
+        conversationId: widget.conversation.id,
+        bytes: await file.readAsBytes(),
+        extension: file.name.split('.').last,
+        contentType: 'image/jpeg',
+      );
+      await widget.dataService.sendMessage(
+        conversationId: widget.conversation.id,
+        receiverId: widget.targetId,
+        receiverName: widget.targetName,
+        receiverType: widget.targetType,
+        message: photoLabel,
+        messageType: 'image',
+        imageUrl: url,
+      );
+      await _loadMessages();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.errorText(error))));
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  Future<void> _toggleRecording() async {
+    if (_isUploading) return;
+    if (_isRecording) {
+      final duration = _recordingSeconds;
+      _recordingTimer?.cancel();
+      final path = await _audioRecorder.stop();
+      if (mounted) {
+        setState(() {
+          _isRecording = false;
+          _recordingSeconds = 0;
+        });
+      }
+      if (path != null && duration > 0) {
+        await _sendVoice(path, duration);
+      }
+      return;
+    }
+
+    if (!await _audioRecorder.hasPermission()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('microphonePermissionRequired'))),
+        );
+      }
+      return;
+    }
+    final path =
+        '${Directory.systemTemp.path}/el7lm_voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    await _audioRecorder.start(
+      const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 96000),
+      path: path,
+    );
+    if (!mounted) return;
+    setState(() => _isRecording = true);
+    _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _recordingSeconds++);
+      if (_recordingSeconds >= 120) _toggleRecording();
+    });
+  }
+
+  Future<void> _sendVoice(String path, int duration) async {
+    final voiceLabel = context.tr('voiceMessage');
+    setState(() => _isUploading = true);
+    try {
+      final file = File(path);
+      final url = await widget.dataService.uploadChatMedia(
+        conversationId: widget.conversation.id,
+        bytes: await file.readAsBytes(),
+        extension: 'm4a',
+        contentType: 'audio/mp4',
+      );
+      await widget.dataService.sendMessage(
+        conversationId: widget.conversation.id,
+        receiverId: widget.targetId,
+        receiverName: widget.targetName,
+        receiverType: widget.targetType,
+        message: voiceLabel,
+        messageType: 'voice',
+        voiceUrl: url,
+        voiceDuration: duration,
+      );
+      await _loadMessages();
+      try {
+        await file.delete();
+      } catch (_) {}
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(context.errorText(error))));
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
   }
 
   @override
   void dispose() {
     _subscription?.unsubscribe();
+    _recordingTimer?.cancel();
+    _audioRecorder.dispose();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -191,7 +326,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'نشط الآن • ${badgeInfo.label}',
+                        '${context.tr('accountType.${widget.targetType.toLowerCase()}')} • ${context.tr('activeNow')}',
                         style: TextStyle(
                           fontSize: 11,
                           color: badgeInfo.color,
@@ -212,41 +347,40 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _messages.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.chat_bubble_outline_rounded,
-                              size: 56,
-                              color: AppColors.muted,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              context.trOr(
-                                'noMessagesYet',
-                                'No messages yet. Start the conversation!',
-                              ),
-                              style: const TextStyle(color: AppColors.muted),
-                            ),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          size: 56,
+                          color: AppColors.muted,
                         ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
+                        const SizedBox(height: 12),
+                        Text(
+                          context.trOr(
+                            'noMessagesYet',
+                            'No messages yet. Start the conversation!',
+                          ),
+                          style: const TextStyle(color: AppColors.muted),
                         ),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          final msg = _messages[index];
-                          final isMe =
-                              msg.senderId == currentUserId ||
-                              msg.senderId == 'me';
-                          return _ChatBubble(message: msg, isMe: isMe);
-                        },
-                      ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final msg = _messages[index];
+                      final isMe =
+                          msg.senderId == currentUserId || msg.senderId == 'me';
+                      return _ChatBubble(message: msg, isMe: isMe);
+                    },
+                  ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -263,28 +397,51 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             child: SafeArea(
               child: Row(
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _messageController,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                      decoration: InputDecoration(
-                        hintText: context.trOr(
-                          'typeMessage',
-                          'Type a message...',
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: AppColors.muted.withValues(alpha: 0.12),
-                      ),
+                  IconButton(
+                    tooltip: context.tr('sendPhoto'),
+                    onPressed: _isUploading ? null : _sendImage,
+                    icon: const Icon(Icons.add_photo_alternate_outlined),
+                  ),
+                  IconButton(
+                    tooltip: context.tr('recordVoice'),
+                    color: _isRecording ? Colors.red : AppColors.navy,
+                    onPressed: _toggleRecording,
+                    icon: Icon(
+                      _isRecording ? Icons.stop_circle : Icons.mic_none_rounded,
                     ),
+                  ),
+                  Expanded(
+                    child: _isRecording
+                        ? Text(
+                            '${context.tr('recording')}  ${(_recordingSeconds ~/ 60).toString().padLeft(2, '0')}:${(_recordingSeconds % 60).toString().padLeft(2, '0')}',
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : TextField(
+                            controller: _messageController,
+                            textInputAction: TextInputAction.send,
+                            onSubmitted: (_) => _sendMessage(),
+                            decoration: InputDecoration(
+                              hintText: context.trOr(
+                                'typeMessage',
+                                'Type a message...',
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                borderSide: BorderSide.none,
+                              ),
+                              filled: true,
+                              fillColor: AppColors.muted.withValues(
+                                alpha: 0.12,
+                              ),
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 8),
                   IconButton.filled(
@@ -294,8 +451,19 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       shape: const CircleBorder(),
                       padding: const EdgeInsets.all(12),
                     ),
-                    onPressed: _sendMessage,
-                    icon: const Icon(Icons.send_rounded, size: 20),
+                    onPressed: _isUploading || _isRecording
+                        ? null
+                        : _sendMessage,
+                    icon: _isUploading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.send_rounded, size: 20),
                   ),
                 ],
               ),
@@ -313,10 +481,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         label: 'أكاديمية 🏆',
         color: Color(0xFFD97706),
       ),
-      'trainer' => const _BadgeInfo(
-        label: 'مدرب 👟',
-        color: Color(0xFF7C3AED),
-      ),
+      'trainer' => const _BadgeInfo(label: 'مدرب 👟', color: Color(0xFF7C3AED)),
       'agent' => const _BadgeInfo(label: 'وكيل 💼', color: Color(0xFFDC2626)),
       'marketer' => const _BadgeInfo(
         label: 'مسوق 📣',
@@ -370,17 +535,44 @@ class _ChatBubble extends StatelessWidget {
           ],
         ),
         child: Column(
-          crossAxisAlignment:
-              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isMe
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
-            Text(
-              message.message,
-              style: TextStyle(
-                color: isMe ? Colors.white : AppColors.ink,
-                fontSize: 15,
-                height: 1.3,
+            if (message.messageType == 'image' && message.imageUrl.isNotEmpty)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CachedNetworkImage(
+                  imageUrl: message.imageUrl,
+                  width: 240,
+                  fit: BoxFit.cover,
+                  placeholder: (_, _) => const SizedBox(
+                    width: 240,
+                    height: 140,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (_, _, _) => const SizedBox(
+                    width: 240,
+                    height: 100,
+                    child: Icon(Icons.broken_image_outlined),
+                  ),
+                ),
               ),
-            ),
+            if (message.messageType == 'voice' && message.voiceUrl.isNotEmpty)
+              _VoiceMessagePlayer(
+                url: message.voiceUrl,
+                initialDuration: message.voiceDuration,
+                isMe: isMe,
+              ),
+            if (message.messageType == 'text')
+              Text(
+                message.message,
+                style: TextStyle(
+                  color: isMe ? Colors.white : AppColors.ink,
+                  fontSize: 15,
+                  height: 1.3,
+                ),
+              ),
             const SizedBox(height: 4),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -397,7 +589,9 @@ class _ChatBubble extends StatelessWidget {
                 if (isMe) ...[
                   const SizedBox(width: 4),
                   Icon(
-                    message.isRead ? Icons.done_all_rounded : Icons.done_rounded,
+                    message.isRead
+                        ? Icons.done_all_rounded
+                        : Icons.done_rounded,
                     size: 14,
                     color: Colors.white.withValues(alpha: 0.9),
                   ),
@@ -406,6 +600,98 @@ class _ChatBubble extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _VoiceMessagePlayer extends StatefulWidget {
+  const _VoiceMessagePlayer({
+    required this.url,
+    required this.initialDuration,
+    required this.isMe,
+  });
+  final String url;
+  final int initialDuration;
+  final bool isMe;
+
+  @override
+  State<_VoiceMessagePlayer> createState() => _VoiceMessagePlayerState();
+}
+
+class _VoiceMessagePlayerState extends State<_VoiceMessagePlayer> {
+  final AudioPlayer _player = AudioPlayer();
+  Duration _position = Duration.zero;
+  late Duration _duration = Duration(seconds: widget.initialDuration);
+  bool _playing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _player.onPositionChanged.listen((value) {
+      if (mounted) setState(() => _position = value);
+    });
+    _player.onDurationChanged.listen((value) {
+      if (mounted) setState(() => _duration = value);
+    });
+    _player.onPlayerComplete.listen((_) {
+      if (mounted) {
+        setState(() {
+          _playing = false;
+          _position = Duration.zero;
+        });
+      }
+    });
+  }
+
+  Future<void> _toggle() async {
+    if (_playing) {
+      await _player.pause();
+    } else {
+      await _player.play(UrlSource(widget.url), position: _position);
+    }
+    if (mounted) setState(() => _playing = !_playing);
+  }
+
+  String _time(Duration value) =>
+      '${value.inSeconds ~/ 60}:${(value.inSeconds % 60).toString().padLeft(2, '0')}';
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.isMe ? Colors.white : AppColors.navy;
+    final max = _duration.inMilliseconds <= 0 ? 1 : _duration.inMilliseconds;
+    return SizedBox(
+      width: 230,
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: _toggle,
+            color: color,
+            icon: Icon(
+              _playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+            ),
+          ),
+          Expanded(
+            child: Slider(
+              value: _position.inMilliseconds.clamp(0, max).toDouble(),
+              max: max.toDouble(),
+              activeColor: color,
+              inactiveColor: color.withValues(alpha: .3),
+              onChanged: (value) =>
+                  _player.seek(Duration(milliseconds: value.round())),
+            ),
+          ),
+          Text(
+            _time(_position == Duration.zero ? _duration : _position),
+            style: TextStyle(color: color, fontSize: 11),
+          ),
+        ],
       ),
     );
   }

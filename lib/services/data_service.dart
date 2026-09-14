@@ -7,6 +7,7 @@ import '../core/app_config.dart';
 import '../models/account_type.dart';
 import '../models/app_notification.dart';
 import '../models/chat_message.dart';
+import '../models/chat_contact.dart';
 import '../models/conversation.dart';
 import '../models/opportunity.dart';
 import '../models/player.dart';
@@ -399,13 +400,15 @@ class DataService {
     }
     final submittedPhone = '${updates['phone'] ?? ''}'.trim();
     final registeredPhone =
-        '${profile.values['phone'] ?? profile.values['phoneNumber'] ?? ''}'.trim();
+        '${profile.values['phone'] ?? profile.values['phoneNumber'] ?? ''}'
+            .trim();
     if (submittedPhone.isNotEmpty &&
         registeredPhone.isNotEmpty &&
         !ContactValidator.samePhone(submittedPhone, registeredPhone)) {
       throw const FormatException('profilePhoneMustMatchLogin');
     }
     final client = Supabase.instance.client;
+    if (updates.isEmpty) return;
     final merged = profile.mergeUpdates(updates);
     final accountType = AccountType.fromValue(profile.accountType);
     final table = _tableFor(accountType);
@@ -422,7 +425,10 @@ class DataService {
       '_organization',
     };
     final payload = <String, dynamic>{'id': profile.userId};
-    merged.forEach((key, value) {
+    // Send only fields that the player actually changed.  Sending the merged
+    // web/mobile profile used to include legacy keys that are not columns in
+    // every deployment, making a valid edit fail as a whole.
+    updates.forEach((key, value) {
       if (!key.startsWith('_') && !nonColumnKeys.contains(key)) {
         payload[key] = value;
       }
@@ -562,6 +568,12 @@ class DataService {
     bool onlyApproved = false,
   }) async {
     _requireSupabase();
+    if (accountType == AccountType.player) {
+      throw const ApiException(
+        'Player accounts cannot create invitation codes.',
+        translationKey: 'inviteCodesOrganizationOnly',
+      );
+    }
     final client = Supabase.instance.client;
     final authId = _auth.authUserId;
     final legacyId = await _auth.legacyUserId();
@@ -671,7 +683,6 @@ class DataService {
                     fullPlayerRecord?['primary_position'] ??
                     map['position'] ??
                     'لاعب',
-                'guardian_approval': status == 'approved',
                 'approval_status': status,
                 'status': status,
                 'is_pending': status == 'pending',
@@ -694,24 +705,17 @@ class DataService {
   }) async {
     _requireSupabase();
     final client = Supabase.instance.client;
-
     try {
-      await client
-          .from('players')
-          .update({
-            'guardian_approval': true,
-            'approval_status': 'approved',
-            'status': 'active',
-          })
-          .eq('id', playerId);
-    } catch (_) {}
-
-    try {
-      await client
-          .from('player_join_requests')
-          .update({'status': 'approved'})
-          .eq('playerId', playerId);
-    } catch (_) {}
+      await client.rpc(
+        'approve_organization_join',
+        params: {'p_player_id': playerId},
+      );
+    } on PostgrestException {
+      throw const ApiException(
+        'The join request could not be approved.',
+        translationKey: 'joinActionFailed',
+      );
+    }
   }
 
   Future<void> rejectPlayerJoinRequest({
@@ -720,26 +724,17 @@ class DataService {
   }) async {
     _requireSupabase();
     final client = Supabase.instance.client;
-    final orgField = '${accountType.value}_id';
-
     try {
-      await client
-          .from('players')
-          .update({
-            orgField: null,
-            'organizationId': null,
-            'approval_status': 'rejected',
-            'guardian_approval': false,
-          })
-          .eq('id', playerId);
-    } catch (_) {}
-
-    try {
-      await client
-          .from('player_join_requests')
-          .update({'status': 'rejected'})
-          .eq('playerId', playerId);
-    } catch (_) {}
+      await client.rpc(
+        'reject_organization_join',
+        params: {'p_player_id': playerId},
+      );
+    } on PostgrestException {
+      throw const ApiException(
+        'The join request could not be rejected.',
+        translationKey: 'joinActionFailed',
+      );
+    }
   }
 
   Future<Map<String, dynamic>> createInviteCode({
@@ -1087,254 +1082,66 @@ class DataService {
 
   Future<void> joinOrganizationByCode(String rawInput) async {
     _requireSupabase();
-    // Parse exactly like the Web: trim + uppercase + remove spaces
+    final accountType = await _auth.savedAccountType();
+    if (accountType != AccountType.player) {
+      throw const ApiException(
+        'Only player accounts can request to join an organization.',
+        translationKey: 'playerOnlyJoin',
+      );
+    }
+
     final normalizedCode = rawInput.trim().toUpperCase().replaceAll(
       RegExp(r'\s+'),
       '',
     );
-
-    // If input is a URL (like https://el7lm.com/join/org/CLBWUL3NI), extract the code
     final effectiveCode = _extractCodeFromInput(normalizedCode);
-
     if (effectiveCode.isEmpty) {
       throw const ApiException(
-        'كود الدعوة فارغ، الرجاء إدخال الكود الصحيح.',
+        'The invitation code is required.',
         translationKey: 'invalidOrgCode',
       );
     }
 
     final client = Supabase.instance.client;
-    final userId = _auth.authUserId ?? await _auth.legacyUserId();
-    if (userId == null || userId.isEmpty) {
+    if (_auth.authUserId == null || _auth.authUserId!.isEmpty) {
       throw const ApiException(
         'Authentication required.',
         translationKey: 'accountLookupUnavailable',
       );
     }
 
-    // --- STEP 1: Query organization_referrals using EXACT same logic as Web ---
-    // Web uses: .eq('referralCode', normalized).eq('isActive', true)
-    Map<String, dynamic>? orgRef;
     try {
-      final rows = await client
-          .from('organization_referrals')
-          .select()
-          .eq('referralCode', effectiveCode)
-          .eq('isActive', true)
-          .limit(1);
-      if (rows.isNotEmpty) {
-        orgRef = Map<String, dynamic>.from(rows.first);
-      }
-    } catch (_) {}
-
-    String orgId = '';
-    String orgType = '';
-    String orgName = '';
-
-    if (orgRef != null) {
-      // Check usability: not expired and not over usage limit
-      bool usable = true;
-      final expiresAt = DateTime.tryParse('${orgRef['expiresAt'] ?? ''}');
-      if (expiresAt != null && expiresAt.isBefore(DateTime.now())) {
-        usable = false;
-      }
-      final maxUsage = orgRef['maxUsage'];
-      final currentUsage = (orgRef['currentUsage'] as num? ?? 0).toInt();
-      if (maxUsage != null && currentUsage >= (maxUsage as num).toInt()) {
-        usable = false;
-      }
-
-      if (!usable) {
-        throw const ApiException(
-          'كود الدعوة منتهي الصلاحية أو تجاوز الحد الأقصى للاستخدام.',
-          translationKey: 'invalidOrgCode',
-        );
-      }
-
-      orgId = '${orgRef['organizationId'] ?? ''}';
-      orgType = '${orgRef['organizationType'] ?? 'academy'}';
-      orgName = '${orgRef['organizationName'] ?? ''}';
-    }
-
-    // --- STEP 2: If not found in referrals, search entity tables ---
-    if (orgId.isEmpty) {
-      // Try searching clubs, academies etc by their referralCode field
-      for (final tableInfo in [
-        {'table': 'clubs', 'type': 'club'},
-        {'table': 'academies', 'type': 'academy'},
-        {'table': 'trainers', 'type': 'trainer'},
-        {'table': 'agents', 'type': 'agent'},
-      ]) {
-        try {
-          final rows = await client
-              .from(tableInfo['table']!)
-              .select()
-              .eq('referralCode', effectiveCode)
-              .limit(1);
-          if (rows.isNotEmpty) {
-            final row = Map<String, dynamic>.from(rows.first);
-            orgId = '${row['id'] ?? ''}';
-            orgType = tableInfo['type']!;
-            orgName = _firstNonEmpty([
-              row['name'],
-              row['full_name'],
-              row['displayName'],
-              row['academy_name'],
-              row['club_name'],
-            ]);
-            break;
-          }
-        } catch (_) {}
-      }
-    }
-
-    // --- STEP 3: Fallback by code prefix pattern (offline mode) ---
-    if (orgId.isEmpty) {
-      if (effectiveCode.startsWith('CLB')) {
-        orgId = 'org_club_${effectiveCode.toLowerCase()}';
-        orgType = 'club';
-        orgName = 'نادي الحلم الرياضي';
-      } else if (effectiveCode.startsWith('ACD')) {
-        orgId = 'org_acad_${effectiveCode.toLowerCase()}';
-        orgType = 'academy';
-        orgName = 'أكاديمية الحلم الدولية';
-      } else if (effectiveCode.startsWith('TRN')) {
-        orgId = 'org_trn_${effectiveCode.toLowerCase()}';
-        orgType = 'trainer';
-        orgName = 'كابتن / مدرب الحلم';
-      } else if (effectiveCode.startsWith('AGT')) {
-        orgId = 'org_agt_${effectiveCode.toLowerCase()}';
-        orgType = 'agent';
-        orgName = 'وكالة الحلم الرياضية';
-      } else if (effectiveCode.startsWith('ORG') || effectiveCode.length >= 6) {
-        orgId = 'org_gen_${effectiveCode.toLowerCase()}';
-        orgType = 'academy';
-        orgName = 'منظمة رياضية معتمدة';
-      }
-    }
-
-    if (orgId.isEmpty) {
-      throw const ApiException(
-        'كود الدعوة غير صحيح أو منتهي الصلاحية.',
-        translationKey: 'invalidOrgCode',
+      final response = await client.rpc(
+        'request_organization_join',
+        params: {'p_referral_code': effectiveCode},
       );
-    }
-
-    final nowIso = DateTime.now().toIso8601String();
-    final userEmail = Supabase.instance.client.auth.currentUser?.email ?? '';
-    final userPhone = Supabase.instance.client.auth.currentUser?.phone ?? '';
-
-    final orgSnakeField = switch (orgType) {
-      'club' => 'club_id',
-      'academy' => 'academy_id',
-      'trainer' => 'trainer_id',
-      'agent' => 'agent_id',
-      _ => 'organizationId',
-    };
-    final orgCamelField = switch (orgType) {
-      'club' => 'clubId',
-      'academy' => 'academyId',
-      'trainer' => 'trainerId',
-      'agent' => 'agentId',
-      _ => 'organizationId',
-    };
-
-    final updates = <String, dynamic>{
-      'organizationId': orgId,
-      'organizationType': orgType,
-      'organization_name': orgName,
-      'organizationName': orgName,
-      orgSnakeField: orgId,
-      orgCamelField: orgId,
-      'referralCodeUsed': effectiveCode,
-      'joinedViaReferral': true,
-      'joinedAt': nowIso,
-      'status': 'active',
-      'joinRequestStatus': 'approved',
-    };
-
-    // 1. Update players table across all possible player identifier fields
-    for (final field in ['id', 'uid', 'firebaseUid']) {
-      try {
-        await client.from('players').update(updates).eq(field, userId);
-      } catch (_) {}
-    }
-    if (userEmail.isNotEmpty) {
-      try {
-        await client.from('players').update(updates).eq('email', userEmail);
-      } catch (_) {}
-    }
-    if (userPhone.isNotEmpty) {
-      final cleanPhone = userPhone.replaceAll('+', '').trim();
-      try {
-        await client.from('players').update(updates).eq('phone', userPhone);
-      } catch (_) {}
-      if (cleanPhone.isNotEmpty) {
-        try {
-          await client.from('players').update(updates).eq('phone', cleanPhone);
-        } catch (_) {}
+      final result = response is Map
+          ? Map<String, dynamic>.from(response)
+          : const <String, dynamic>{};
+      if (result['ok'] != true) {
+        throw _joinRequestException(result['code']?.toString());
       }
+    } on PostgrestException catch (error) {
+      throw _joinRequestException(error.message);
     }
+  }
 
-    // 2. Update users table across all possible user identifier fields
-    for (final field in ['id', 'uid', 'firebaseUid']) {
-      try {
-        await client.from('users').update(updates).eq(field, userId);
-      } catch (_) {}
-    }
-    if (userEmail.isNotEmpty) {
-      try {
-        await client.from('users').update(updates).eq('email', userEmail);
-      } catch (_) {}
-    }
-
-    // 3. Insert into player_join_requests for Web & Manager compatibility
-    try {
-      final reqId =
-          'req_${DateTime.now().millisecondsSinceEpoch}_${userId.length > 6 ? userId.substring(0, 6) : userId}';
-      await client.from('player_join_requests').insert({
-        'id': reqId,
-        'playerId': userId,
-        'playerName': _auth.currentDisplayName.isNotEmpty
-            ? _auth.currentDisplayName
-            : 'لاعب جديد',
-        'playerEmail': userEmail,
-        'playerPhone': userPhone,
-        'organizationId': orgId,
-        'organizationType': orgType,
-        'organizationName': orgName,
-        'referralCode': effectiveCode,
-        'status': 'approved',
-        'requestedAt': nowIso,
-        'processedAt': nowIso,
-      });
-    } catch (_) {}
-
-    // Save locally for instant dashboard display
-    try {
-      const storage = FlutterSecureStorage();
-      await storage.write(
-        key: 'player_organization_$userId',
-        value: jsonEncode({
-          'id': orgId,
-          'type': orgType,
-          'name': orgName,
-          'code': effectiveCode,
-          'joinedAt': nowIso,
-        }),
-      );
-    } catch (_) {}
-
-    // Increment usage counter in organization_referrals
-    if (orgRef != null && orgRef['id'] != null) {
-      try {
-        final currentUsage = (orgRef['currentUsage'] as num? ?? 0).toInt();
-        await client
-            .from('organization_referrals')
-            .update({'currentUsage': currentUsage + 1})
-            .eq('id', orgRef['id']);
-      } catch (_) {}
-    }
+  ApiException _joinRequestException(String? code) {
+    final normalized = (code ?? '').toUpperCase();
+    final translationKey = switch (normalized) {
+      'PLAYER_ACCOUNT_REQUIRED' => 'playerOnlyJoin',
+      'INVALID_INVITATION_CODE' ||
+      'INVITATION_EXPIRED' ||
+      'INVITATION_LIMIT_REACHED' => 'invalidOrgCode',
+      'ALREADY_AFFILIATED' => 'alreadyAffiliated',
+      'JOIN_REQUEST_ALREADY_PENDING' => 'joinRequestAlreadyPending',
+      _ => 'joinServiceUnavailable',
+    };
+    return ApiException(
+      code ?? 'The organization join request could not be completed.',
+      code: code,
+      translationKey: translationKey,
+    );
   }
 
   Future<void> deleteReferralCode(String referralId) async {
@@ -1478,6 +1285,81 @@ class DataService {
   static String parseReferralCodeInput(String raw) =>
       _extractCodeFromInput(raw);
 
+  Future<List<ChatContact>> fetchChatContacts({String? accountType}) async {
+    _requireSupabase();
+    final client = Supabase.instance.client;
+    final currentUserId = _auth.authUserId ?? await _auth.legacyUserId() ?? '';
+    const sources = <String, String>{
+      'player': 'players',
+      'club': 'clubs',
+      'academy': 'academies',
+      'trainer': 'trainers',
+      'agent': 'agents',
+      'marketer': 'marketers',
+    };
+    final selectedSources = accountType == null || accountType == 'all'
+        ? sources.entries
+        : sources.entries.where((entry) => entry.key == accountType);
+    final contacts = <ChatContact>[];
+    final seen = <String>{};
+
+    for (final source in selectedSources) {
+      try {
+        final rows = await client.from(source.value).select().limit(150);
+        for (final raw in rows) {
+          final row = Map<String, dynamic>.from(raw);
+          final id = _firstNonEmpty([row['uid'], row['id']]);
+          if (id.isEmpty || id == currentUserId || !seen.add(id)) continue;
+          final name = _firstNonEmpty([
+            row['full_name'],
+            row['name'],
+            row['displayName'],
+            row['club_name'],
+            row['academy_name'],
+          ]);
+          if (name.isEmpty) continue;
+          final avatar = _firstNonEmpty([
+            row['profile_image_url'],
+            row['profile_image'],
+            row['image'],
+            row['logoUrl'],
+            row['logo_url'],
+          ]);
+          contacts.add(
+            ChatContact(
+              id: id,
+              name: name,
+              accountType: source.key,
+              country: _firstNonEmpty([row['country'], row['nationality']]),
+              city: _firstNonEmpty([row['city'], row['region']]),
+              detail: _firstNonEmpty([
+                row['primary_position'],
+                row['position'],
+                row['specialization'],
+                row['coaching_level'],
+                row['description'],
+              ]),
+              avatarUrl: avatar.startsWith('http') ? avatar : '',
+              isVerified:
+                  row['isVerified'] == true ||
+                  row['is_verified'] == true ||
+                  '${row['verificationStatus'] ?? ''}'.toLowerCase() ==
+                      'verified',
+            ),
+          );
+        }
+      } catch (_) {
+        // A missing optional account table must not break the whole directory.
+      }
+    }
+
+    contacts.sort((left, right) {
+      if (left.isVerified != right.isVerified) return left.isVerified ? -1 : 1;
+      return left.name.toLowerCase().compareTo(right.name.toLowerCase());
+    });
+    return contacts;
+  }
+
   Future<ConversationModel> startOrCreateConversation({
     required String targetId,
     required String targetName,
@@ -1599,16 +1481,26 @@ class DataService {
           .from('messages')
           .select()
           .eq('conversationId', conversationId)
-          .order('timestamp', ascending: true);
-      return (res as List).map((e) => ChatMessageModel.fromJson(e)).toList();
+          .order('timestamp', ascending: false)
+          .limit(100);
+      return (res as List)
+          .map((e) => ChatMessageModel.fromJson(e))
+          .toList()
+          .reversed
+          .toList();
     } catch (_) {
       try {
         final res2 = await client
             .from('messages')
             .select()
             .eq('conversation_id', conversationId)
-            .order('created_at', ascending: true);
-        return (res2 as List).map((e) => ChatMessageModel.fromJson(e)).toList();
+            .order('created_at', ascending: false)
+            .limit(100);
+        return (res2 as List)
+            .map((e) => ChatMessageModel.fromJson(e))
+            .toList()
+            .reversed
+            .toList();
       } catch (_) {
         return const [];
       }
@@ -1621,6 +1513,10 @@ class DataService {
     required String receiverName,
     required String receiverType,
     required String message,
+    String messageType = 'text',
+    String imageUrl = '',
+    String voiceUrl = '',
+    int voiceDuration = 0,
   }) async {
     _requireSupabase();
     final client = Supabase.instance.client;
@@ -1639,6 +1535,11 @@ class DataService {
       'senderType': senderType,
       'receiverType': receiverType,
       'message': message,
+      'messageType': messageType,
+      'imageUrl': imageUrl.isEmpty ? null : imageUrl,
+      'voiceUrl': voiceUrl.isEmpty ? null : voiceUrl,
+      'voiceDuration': voiceDuration,
+      'deliveryStatus': 'sent',
       'timestamp': now,
       'isRead': false,
     };
@@ -1660,6 +1561,34 @@ class DataService {
     try {
       InAppNotificationService().playChatSound();
     } catch (_) {}
+  }
+
+  Future<String> uploadChatMedia({
+    required String conversationId,
+    required List<int> bytes,
+    required String extension,
+    required String contentType,
+  }) async {
+    _requireSupabase();
+    final client = Supabase.instance.client;
+    final senderId = _auth.authUserId ?? await _auth.legacyUserId() ?? '';
+    if (senderId.isEmpty) {
+      throw const ApiException(
+        'A signed-in user is required.',
+        translationKey: 'sessionCreationFailed',
+      );
+    }
+    final safeExtension = extension.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+    final path =
+        'chat/$conversationId/$senderId/${DateTime.now().microsecondsSinceEpoch}.${safeExtension.isEmpty ? 'bin' : safeExtension}';
+    await client.storage
+        .from('documents')
+        .uploadBinary(
+          path,
+          Uint8List.fromList(bytes),
+          fileOptions: FileOptions(contentType: contentType, upsert: false),
+        );
+    return client.storage.from('documents').getPublicUrl(path);
   }
 
   RealtimeChannel subscribeToMessages(

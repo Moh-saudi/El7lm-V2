@@ -1113,12 +1113,7 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
                     final playerId = '${player['id']}';
                     final approvalStatus =
                         '${player['approval_status'] ?? player['status'] ?? ''}';
-                    final isApproved =
-                        approvalStatus == 'approved' ||
-                        player['guardian_approval'] == true ||
-                        player['guardian_consent'] == true ||
-                        player['parent_consent'] == true ||
-                        player['guardian_approved'] == true;
+                    final isApproved = approvalStatus == 'approved';
                     final isPending =
                         !isApproved && approvalStatus != 'rejected';
 
@@ -1247,8 +1242,8 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
                                     Text(
                                       context.tr(
                                         isApproved
-                                            ? 'guardianApproved'
-                                            : 'pendingApproval',
+                                            ? 'membershipApproved'
+                                            : 'membershipPending',
                                       ),
                                       style: TextStyle(
                                         fontSize: 10,
@@ -1397,13 +1392,7 @@ class RosterAnalyticsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final total = players.length;
     final approved = players
-        .where(
-          (p) =>
-              p['guardian_approval'] == true ||
-              p['guardian_consent'] == true ||
-              p['parent_consent'] == true ||
-              p['guardian_approved'] == true,
-        )
+        .where((p) => '${p['approval_status'] ?? p['status']}' == 'approved')
         .length;
     final pending = total - approved;
 

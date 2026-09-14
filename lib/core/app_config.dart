@@ -15,7 +15,10 @@ class AppConfig {
   );
   static const supabasePublishableKey = String.fromEnvironment(
     'SUPABASE_PUBLISHABLE_KEY',
-    defaultValue: '',
+    // This is the project's public client key. It is safe to embed in a
+    // mobile application; database access is protected by Supabase RLS.
+    // Server/service-role keys must never be added here.
+    defaultValue: 'sb_publishable_aHNOh4BJvrL3CWDkXUA2qA_QnHvx_ew',
   );
 
   static bool get hasSupabaseConfiguration =>

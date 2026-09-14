@@ -53,6 +53,7 @@ class ProfileAnswerValidator {
     double max = 100,
     List<String>? options,
     String? registeredPhone,
+    bool enforceSelectedScript = true,
   }) {
     final value = _normalizeDigits(rawValue.trim());
     if (value.isEmpty) return const ProfileAnswerValidationResult.valid('');
@@ -97,7 +98,8 @@ class ProfileAnswerValidator {
       return ProfileAnswerValidationResult.valid(clean);
     }
 
-    if (fieldType == 'text' &&
+    if (enforceSelectedScript &&
+        fieldType == 'text' &&
         !_languageFlexibleKeys.contains(key) &&
         !_matchesSelectedScript(value, languageCode)) {
       return const ProfileAnswerValidationResult.invalid(
@@ -203,6 +205,10 @@ class ProfileAnswerValidator {
 
   static DateTime _dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);
+
+  /// Converts Arabic and Persian digits so form fields are validated and saved
+  /// consistently, regardless of the keyboard language selected by the player.
+  static String normalizeDigits(String value) => _normalizeDigits(value);
 
   static String _normalizeDigits(String value) {
     const easternArabic = '٠١٢٣٤٥٦٧٨٩';
