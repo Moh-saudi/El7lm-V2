@@ -129,6 +129,7 @@ class _AppLocalizationsDelegate
 
 extension AppTranslationContext on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
+  String get languageCode => Localizations.localeOf(this).languageCode;
 
   String tr(String key, [Map<String, Object?> values = const {}]) =>
       l10n.text(key, values);

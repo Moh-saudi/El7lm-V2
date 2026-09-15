@@ -188,7 +188,9 @@ class _PlayerHeader extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         Text(
-          player.name.isEmpty ? context.tr('dreamPlayer') : player.name,
+          player.localizedName(context.languageCode).isEmpty
+              ? context.tr('dreamPlayer')
+              : player.localizedName(context.languageCode),
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: Colors.white,
@@ -287,7 +289,7 @@ class _PlayerProfile extends StatelessWidget {
           context.tr('heightCm'),
           const LinearGradient(colors: [Color(0xFFE0F2FE), Color(0xFFBAE6FD)]),
           const Color(0xFF0284C7),
-          'الطول: ${player.height} سم - قامة رياضية متناسقة تمنح تفوقاً حركياً في الالتحامات والكرات العالية.',
+          context.tr('statHeightDesc', {'val': '${player.height}'}),
         ),
       if (player.age != null)
         _StatItem(
@@ -297,7 +299,7 @@ class _PlayerProfile extends StatelessWidget {
           context.tr('age'),
           const LinearGradient(colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)]),
           const Color(0xFFD97706),
-          'العمر: ${player.age} سنة - الفئة السنية المعتمدة في الأكاديميات والبطولات الرسمية.',
+          context.tr('statAgeDesc', {'val': '${player.age}'}),
         ),
       if (experience.isNotEmpty)
         _StatItem(
@@ -307,7 +309,7 @@ class _PlayerProfile extends StatelessWidget {
           context.tr('experienceYears'),
           const LinearGradient(colors: [Color(0xFFDCFCE7), Color(0xFFBBF7D0)]),
           const Color(0xFF16A34A),
-          'سنوات الخبرة: $experience سنة - مسيرة رياضية في التدريبات والمشاركات الميدانية.',
+          context.tr('statExperienceDesc', {'val': experience}),
         ),
       if (player.weight != null)
         _StatItem(
@@ -317,7 +319,7 @@ class _PlayerProfile extends StatelessWidget {
           context.tr('weightKg'),
           const LinearGradient(colors: [Color(0xFFEDE9FE), Color(0xFFDDD6FE)]),
           const Color(0xFF7C3AED),
-          'الوزن: ${player.weight} كجم - كتلة بدنية ملائمة للبنية الرياضية في الملعب.',
+          context.tr('statWeightDesc', {'val': '${player.weight}'}),
         ),
     ];
     final personal = _fields(context, payload, const [
@@ -782,18 +784,18 @@ class _ContactCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(color: const Color(0xFFFDE68A)),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.lock_rounded,
                               size: 10,
                               color: Color(0xFFD97706),
                             ),
-                            SizedBox(width: 3),
+                            const SizedBox(width: 3),
                             Text(
-                              'التواصل عبر التطبيق فقط',
-                              style: TextStyle(
+                              context.tr('contactViaAppOnly'),
+                              style: const TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFFD97706),
@@ -806,7 +808,9 @@ class _ContactCard extends StatelessWidget {
                   ),
                   if (contactName.isNotEmpty)
                     Text(
-                      contactName,
+                      context.languageCode == 'ar'
+                          ? contactName
+                          : transliterateArabicName(contactName),
                       style: const TextStyle(
                         color: AppColors.muted,
                         fontSize: 11,
@@ -831,9 +835,9 @@ class _ContactCard extends StatelessWidget {
               elevation: 0,
             ),
             icon: const Icon(Icons.forum_rounded, size: 18),
-            label: const Text(
-              'بدء محادثة آمنة عبر التطبيق 💬',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            label: Text(
+              context.tr('startSecureInAppChat'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             ),
           ),
         ),
@@ -1263,8 +1267,8 @@ void _showEvaluationDetailModal(
           const SizedBox(height: 14),
           Text(
             isEvaluated
-                ? 'تم فحص وتقييم أداء ومهارات اللاعب بنجاح بواسطة خوارزميات الحلم واللجنة الفنية المتخصصة.'
-                : 'الملف حالياً في مرحلة التقييم الفني بواسطة خوارزميات الحلم المعتمدة واللجنة الرياضية.',
+                ? context.tr('talentEvaluationVerifiedDesc')
+                : context.tr('talentEvaluationPendingDesc'),
             style: const TextStyle(
               fontSize: 13,
               height: 1.6,
@@ -1379,7 +1383,7 @@ void _showAffiliationDetailModal(
               children: [
                 Text(
                   hasOrganization
-                      ? 'اللاعب مسجل ورسمياً منتسب إلى: $orgName${orgType.isNotEmpty ? " ($orgType)" : ""}'
+                      ? context.tr('playerOfficiallyRegisteredTo', {'org': '$orgName${orgType.isNotEmpty ? " ($orgType)" : ""}'})
                       : context.tr('availableForImmediateTransfer'),
                   style: const TextStyle(
                     fontSize: 13,
@@ -1408,7 +1412,7 @@ void _showAffiliationDetailModal(
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        'تاريخ الانضمام الرسمي: $joinDateText',
+                        context.tr('officialJoinDate', {'date': joinDateText}),
                         style: const TextStyle(
                           fontSize: 11,
                           color: Color(0xFF166534),
@@ -1422,9 +1426,9 @@ void _showAffiliationDetailModal(
             ),
           ),
           const SizedBox(height: 14),
-          const Text(
-            'حالة الانتقال والعقود توضح وضعية اللاعب القانونية والرياضية الحالية لإتاحة التواصل والتفاوض المباشر من قبل الأندية والكشافين.',
-            style: TextStyle(fontSize: 13, height: 1.6, color: AppColors.navy),
+          Text(
+            context.tr('playerAffiliationModalDesc'),
+            style: const TextStyle(fontSize: 13, height: 1.6, color: AppColors.navy),
           ),
           const SizedBox(height: 20),
           SizedBox(

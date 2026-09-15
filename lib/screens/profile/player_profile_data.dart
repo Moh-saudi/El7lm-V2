@@ -520,15 +520,24 @@ String genderLabel(String code) => kGenderLabels[code] ?? code;
 String educationLabel(String code) => kEducationLevelLabels[code] ?? code;
 String workRateLabel(String code) => kWorkRateLabels[code] ?? code;
 
+String localizePosition(BuildContext context, String rawPosition) {
+  if (rawPosition.trim().isEmpty) return '';
+  return localizedProfileOptionLabel(context, 'position', rawPosition);
+}
+
 String localizedProfileOptionLabel(
   BuildContext context,
   String fieldKey,
   String value,
 ) {
+  if (value.trim().isEmpty) return '';
   if (fieldKey == 'country' || fieldKey == 'nationality') {
     final country = Country.tryParse(value);
     return country?.getTranslatedName(context) ?? value;
   }
+
+  final canonical = canonicalProfileOptionValue(fieldKey, value);
+  final code = canonical.isNotEmpty ? canonical : value.trim();
 
   final group = switch (fieldKey) {
     'position' || 'secondary_position' => 'position',
@@ -541,17 +550,135 @@ String localizedProfileOptionLabel(
   };
   if (group.isEmpty) return value;
   final fallback = switch (fieldKey) {
-    'position' || 'secondary_position' => positionLabel(value),
-    'foot' => footLabel(value),
-    'contract_status' => contractLabel(value),
-    'gender' => genderLabel(value),
-    'education_level' => educationLabel(value),
-    'work_rate_attack' || 'work_rate_defense' => workRateLabel(value),
-    _ => value,
+    'position' || 'secondary_position' => positionLabel(code),
+    'foot' => footLabel(code),
+    'contract_status' => contractLabel(code),
+    'gender' => genderLabel(code),
+    'education_level' => educationLabel(code),
+    'work_rate_attack' || 'work_rate_defense' => workRateLabel(code),
+    _ => code,
   };
   final language = Localizations.localeOf(context).languageCode;
-  return _profileOptionTranslations[language]?['$group.$value'] ?? fallback;
+  if (language == 'ar') return fallback;
+  return _profileOptionTranslations[language]?['$group.$code'] ?? fallback;
 }
+
+const _kPositionAliases = <String, String>{
+  'مدافع ايسر': 'LB',
+  'الظهير الايسر': 'LB',
+  'ظهير ايسر': 'LB',
+  'left back': 'LB',
+  'lateral esquerdo': 'LB',
+  'arriere gauche': 'LB',
+  'lateral izquierdo': 'LB',
+
+  'مدافع ايمن': 'RB',
+  'الظهير الايمن': 'RB',
+  'ظهير ايمن': 'RB',
+  'right back': 'RB',
+  'lateral direito': 'RB',
+  'arriere droit': 'RB',
+  'lateral derecho': 'RB',
+
+  'قلب دفاع': 'CB',
+  'قلب الدفاع': 'CB',
+  'مدافع وسط': 'CB',
+  'مدافع': 'CB',
+  'center back': 'CB',
+  'defesa central': 'CB',
+  'defenseur central': 'CB',
+  'defensa central': 'CB',
+
+  'حارس مرمى': 'GK',
+  'حارس': 'GK',
+  'حارس المرمى': 'GK',
+  'goalkeeper': 'GK',
+  'guarda-redes': 'GK',
+  'guarda redes': 'GK',
+  'gardien de but': 'GK',
+  'portero': 'GK',
+
+  'وسط دفاعي': 'CDM',
+  'لاعب وسط دفاعي': 'CDM',
+  'ارتكاز': 'CDM',
+  'defensive midfielder': 'CDM',
+  'medio defensivo': 'CDM',
+  'milieu defensif': 'CDM',
+
+  'لاعب وسط': 'CM',
+  'وسط': 'CM',
+  'خط وسط': 'CM',
+  'central midfielder': 'CM',
+  'midfielder': 'CM',
+  'medio centro': 'CM',
+  'milieu central': 'CM',
+  'centrocampista': 'CM',
+
+  'وسط مهاجم': 'CAM',
+  'لاعب وسط مهاجم': 'CAM',
+  'صانع العاب': 'CAM',
+  'attacking midfielder': 'CAM',
+  'medio ofensivo': 'CAM',
+  'milieu offensif': 'CAM',
+
+  'جناح ايمن': 'RW',
+  'الجناح الايمن': 'RW',
+  'right winger': 'RW',
+  'extremo direito': 'RW',
+  'ailier droit': 'RW',
+  'extremo derecho': 'RW',
+
+  'جناح ايسر': 'LW',
+  'الجناح الايسر': 'LW',
+  'left winger': 'LW',
+  'extremo esquerdo': 'LW',
+  'ailier gauche': 'LW',
+  'extremo izquierdo': 'LW',
+
+  'مهاجم': 'ST',
+  'مهاجم مركزي': 'ST',
+  'راس حربة': 'ST',
+  'striker': 'ST',
+  'ponta de lanca': 'ST',
+  'buteur': 'ST',
+  'delantero': 'ST',
+
+  'مهاجم ثان': 'SS',
+  'second striker': 'SS',
+  'segundo avancado': 'SS',
+  'deuxieme attaquant': 'SS',
+  'segundo delantero': 'SS',
+
+  'مهاجم متاخر': 'CF',
+  'center forward': 'CF',
+  'avancado recuado': 'CF',
+  'avant-centre': 'CF',
+  'delantero centro': 'CF',
+
+  'ظهير جناح ايسر': 'LWB',
+  'ala esquerdo': 'LWB',
+  'piston gauche': 'LWB',
+  'carrilero izquierdo': 'LWB',
+
+  'ظهير جناح ايمن': 'RWB',
+  'ala direito': 'RWB',
+  'piston droit': 'RWB',
+  'carrilero derecho': 'RWB',
+
+  'وسط ايسر': 'LM',
+  'medio esquerdo': 'LM',
+  'milieu gauche': 'LM',
+  'interior izquierdo': 'LM',
+
+  'وسط ايمن': 'RM',
+  'medio direito': 'RM',
+  'milieu droit': 'RM',
+  'interior derecho': 'RM',
+
+  'ليبرو': 'SW',
+  'sweeper': 'SW',
+  'libero': 'SW',
+};
 
 /// Converts legacy/localized labels back to the stable schema value used by
 /// filters and persistence. This prevents Arabic, English, French, Spanish and
@@ -567,6 +694,10 @@ String canonicalProfileOptionValue(String fieldKey, String value) {
     'education' || 'education_level' => 'education',
     _ => '',
   };
+  if (group == 'position') {
+    final alias = _kPositionAliases[raw];
+    if (alias != null) return alias;
+  }
   final values = switch (group) {
     'position' => kPositionCodes,
     'education' => kEducationLevels,

@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../core/app_theme.dart';
+import '../../core/country_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/opportunity.dart';
 import '../../services/data_service.dart';
@@ -146,9 +147,9 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
                           ),
                         ),
                         Text(
-                          opportunity.title.isEmpty
+                          opportunity.localizedTitle(context.languageCode).isEmpty
                               ? context.tr('sportsOpportunity')
-                              : opportunity.title,
+                              : opportunity.localizedTitle(context.languageCode),
                           style: const TextStyle(
                             color: AppColors.muted,
                             fontSize: 12,
@@ -385,23 +386,29 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
                                       : AppColors.muted,
                                 ),
                                 const SizedBox(width: 6),
-                                Text(
-                                  context.tr('availableOpportunities'),
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: selectedTab == 0
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    color: selectedTab == 0
-                                        ? AppColors.navy
-                                        : AppColors.muted,
+                                Flexible(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      context.tr('availableOpportunities'),
+                                      maxLines: 1,
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: selectedTab == 0
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                        color: selectedTab == 0
+                                            ? AppColors.navy
+                                            : AppColors.muted,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
                       Expanded(
                         child: GestureDetector(
                           onTap: () => setState(() => selectedTab = 1),
@@ -433,16 +440,22 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
                                       : AppColors.muted,
                                 ),
                                 const SizedBox(width: 6),
-                                Text(
-                                  context.tr('myApplicationsHistory'),
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: selectedTab == 1
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    color: selectedTab == 1
-                                        ? AppColors.navy
-                                        : AppColors.muted,
+                                Flexible(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      context.tr('myApplicationsHistory'),
+                                      maxLines: 1,
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: selectedTab == 1
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                        color: selectedTab == 1
+                                            ? AppColors.navy
+                                            : AppColors.muted,
+                                      ),
+                                    ),
                                   ),
                                 ),
                                 if (appliedList.isNotEmpty) ...[
@@ -525,7 +538,7 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
                       ],
                     ),
                     SizedBox(
-                      height: 100,
+                      height: 108,
                       child: ScrollConfiguration(
                         behavior: ScrollConfiguration.of(context).copyWith(
                           dragDevices: {
@@ -555,7 +568,7 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
                                 });
                               },
                               child: Container(
-                                width: 80,
+                                width: 86,
                                 margin: const EdgeInsets.symmetric(
                                   horizontal: 4,
                                 ),
@@ -576,19 +589,24 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
                                   children: [
                                     Text(
                                       c['flag']!,
-                                      style: const TextStyle(fontSize: 32),
+                                      style: const TextStyle(fontSize: 26),
                                     ),
                                     const SizedBox(height: 4),
-                                    Text(
-                                      context.tr('country.${c['id']}'),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w900
-                                            : FontWeight.bold,
-                                        color: isSelected
-                                            ? AppColors.green
-                                            : AppColors.ink,
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        context.tr('country.${c['id']}'),
+                                        maxLines: 2,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w900
+                                              : FontWeight.bold,
+                                          color: isSelected
+                                              ? AppColors.green
+                                              : AppColors.ink,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -769,7 +787,9 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            matchedOpp.title,
+                                            matchedOpp.localizedTitle(context.languageCode).isEmpty
+                                                ? context.tr('sportsOpportunity')
+                                                : matchedOpp.localizedTitle(context.languageCode),
                                             style: const TextStyle(
                                               fontWeight: FontWeight.w900,
                                               fontSize: 16,
@@ -777,7 +797,9 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
                                             ),
                                           ),
                                           Text(
-                                            matchedOpp.organizerName,
+                                            matchedOpp.localizedOrganizerName(context.languageCode).isEmpty
+                                                ? context.tr('verifiedOrganization')
+                                                : matchedOpp.localizedOrganizerName(context.languageCode),
                                             style: const TextStyle(
                                               color: AppColors.muted,
                                               fontSize: 12,
@@ -961,9 +983,9 @@ class _OpportunityCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        opportunity.title.isEmpty
+                        opportunity.localizedTitle(context.languageCode).isEmpty
                             ? context.tr('sportsOpportunity')
-                            : opportunity.title,
+                            : opportunity.localizedTitle(context.languageCode),
                         style: const TextStyle(
                           fontWeight: FontWeight.w900,
                           fontSize: 16,
@@ -971,9 +993,9 @@ class _OpportunityCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        opportunity.organizerName.isEmpty
+                        opportunity.localizedOrganizerName(context.languageCode).isEmpty
                             ? context.tr('verifiedOrganization')
-                            : opportunity.organizerName,
+                            : opportunity.localizedOrganizerName(context.languageCode),
                         style: const TextStyle(
                           color: AppColors.muted,
                           fontSize: 12,
@@ -1003,10 +1025,10 @@ class _OpportunityCard extends StatelessWidget {
                   ),
               ],
             ),
-            if (opportunity.description.isNotEmpty) ...[
+            if (opportunity.localizedDescription(context.languageCode).isNotEmpty) ...[
               const SizedBox(height: 14),
               Text(
-                opportunity.description,
+                opportunity.localizedDescription(context.languageCode),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: AppColors.ink, height: 1.4),
@@ -1020,9 +1042,10 @@ class _OpportunityCard extends StatelessWidget {
                 if (opportunity.country.isNotEmpty)
                   _Tag(
                     icon: Icons.location_on_outlined,
-                    text: opportunity.country,
+                    text: localizeCountry(opportunity.country, context.languageCode),
                   ),
-                if (opportunity.city.isNotEmpty) _Tag(text: opportunity.city),
+                if (opportunity.city.isNotEmpty)
+                  _Tag(text: localizeCity(opportunity.city, context.languageCode)),
                 ...opportunity.positions
                     .take(3)
                     .map((position) => _Tag(text: position)),

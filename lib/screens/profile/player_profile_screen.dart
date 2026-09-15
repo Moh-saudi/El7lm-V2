@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:country_picker/country_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_theme.dart';
@@ -958,6 +959,7 @@ class _ProfileFormState extends State<_ProfileForm>
                             switch (Localizations.localeOf(
                               context,
                             ).languageCode) {
+                              'fr' => '🎴 Voir la carte de talent (FUT Card)',
                               'es' => '🎴 Ver tarjeta de talento (FUT Card)',
                               'pt' => '🎴 Ver cartão de talento (FUT Card)',
                               'en' => '🎴 View Digital Talent Card (FUT Card)',
@@ -1919,10 +1921,10 @@ class _JoinOrgCardState extends State<_JoinOrgCard> {
           final code = '${joinedOrg['code'] ?? 'ACDVMRC44'}';
           final type = '${joinedOrg['type'] ?? 'academy'}';
           final typeLabel = switch (type) {
-            'club' => 'نادي ⚽',
-            'trainer' => 'مدرب 👟',
-            'agent' => 'وكيل 💼',
-            _ => 'أكاديمية 🏆',
+            'club' => '${context.tr('organizationType.club')} ⚽',
+            'trainer' => '${context.tr('organizationType.trainer')} 👟',
+            'agent' => '${context.tr('organizationType.agent')} 💼',
+            _ => '${context.tr('organizationType.academy')} 🏆',
           };
 
           return Container(
@@ -1966,9 +1968,9 @@ class _JoinOrgCardState extends State<_JoinOrgCard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'المنظمة المنضم إليها حالياً ⚽',
-                            style: TextStyle(
+                          Text(
+                            context.tr('currentAffiliatedOrg'),
+                            style: const TextStyle(
                               fontSize: 11,
                               color: AppColors.muted,
                               fontWeight: FontWeight.bold,
@@ -1995,7 +1997,7 @@ class _JoinOrgCardState extends State<_JoinOrgCard> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        'عضو رسمياً $typeLabel 🟢',
+                        '${context.tr('officialMember')} $typeLabel 🟢',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
@@ -2012,16 +2014,16 @@ class _JoinOrgCardState extends State<_JoinOrgCard> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'كود الدعوة المستعمل: $code',
+                      '${context.tr('usedInviteCode')}: $code',
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: AppColors.navy,
                       ),
                     ),
-                    const Text(
-                      'الحالة: مقترن بالمنظمة 🟢',
-                      style: TextStyle(
+                    Text(
+                      '${context.tr('orgAffiliationStatus')} 🟢',
+                      style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.green,
                         fontWeight: FontWeight.bold,
@@ -2231,12 +2233,12 @@ class _MediaSectionState extends State<_MediaSection> {
                 Icons.video_library_rounded,
                 color: AppColors.green,
               ),
-              title: const Text('اختيار فيديو من الاستوديو'),
+              title: Text(context.tr('chooseFromGallery')),
               onTap: () => Navigator.pop(context, 'file'),
             ),
             ListTile(
               leading: const Icon(Icons.link_rounded, color: Colors.red),
-              title: const Text('إضافة رابط فيديو (YouTube / Vimeo)'),
+              title: Text(context.tr('addVideoLink')),
               onTap: () => Navigator.pop(context, 'link'),
             ),
           ],
@@ -2277,7 +2279,7 @@ class _MediaSectionState extends State<_MediaSection> {
       final confirm = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('إضافة رابط فيديو'),
+          title: Text(context.tr('addVideoLinkShort')),
           content: TextField(
             controller: urlController,
             decoration: const InputDecoration(
@@ -2287,11 +2289,11 @@ class _MediaSectionState extends State<_MediaSection> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('إلغاء'),
+              child: Text(context.tr('cancel')),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('إضافة'),
+              child: Text(context.tr('add')),
             ),
           ],
         ),
@@ -2332,13 +2334,13 @@ class _MediaSectionState extends State<_MediaSection> {
                   IconButton.filledTonal(
                     onPressed: _pickAndUploadImage,
                     icon: const Icon(Icons.add_a_photo_rounded, size: 20),
-                    tooltip: 'إضافة صورة',
+                    tooltip: context.tr('addPhoto'),
                   ),
                   const SizedBox(width: 8),
                   IconButton.filledTonal(
                     onPressed: _pickAndUploadVideo,
                     icon: const Icon(Icons.video_call_rounded, size: 20),
-                    tooltip: 'إضافة فيديو',
+                    tooltip: context.tr('addVideo'),
                   ),
                 ],
               ),
@@ -2465,7 +2467,7 @@ class _MediaSectionState extends State<_MediaSection> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('تعذر فتح الرابط: $url')));
+      ).showSnackBar(SnackBar(content: Text('${context.tr("linkOpenFailed")}: $url')));
     }
   }
 
@@ -3179,7 +3181,7 @@ void _showJoinOrgModal(
 
 void _showOrgDetailsModal(BuildContext context, Map<String, dynamic> org) {
   final code = org['code']?.toString() ?? 'ACDVMRC44';
-  final name = org['name']?.toString() ?? 'أكاديمية الحلم الدولية';
+  final name = org['name']?.toString() ?? context.tr('dreamAcademyInternational');
   final joinUrl = 'https://el7lm.com/join?code=$code';
 
   showModalBottomSheet<void>(
@@ -3223,7 +3225,7 @@ void _showOrgDetailsModal(BuildContext context, Map<String, dynamic> org) {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'عضو منضم • ${org['type'] ?? 'أكاديمية معتمدة'}',
+                      '${ctx.tr("orgMemberJoined")} • ${org["type"] ?? ctx.tr("orgCertifiedAcademy")}',
                       style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.muted,
@@ -3244,7 +3246,7 @@ void _showOrgDetailsModal(BuildContext context, Map<String, dynamic> org) {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'كود الدعوة الخاص بنا: $code',
+                    ctx.tr("orgInviteCode").replaceAll("{code}", code),
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
@@ -3261,25 +3263,12 @@ void _showOrgDetailsModal(BuildContext context, Map<String, dynamic> org) {
                       final dt = raw != null
                           ? DateTime.tryParse('$raw')?.toLocal()
                           : null;
-                      final months = [
-                        'يناير',
-                        'فبراير',
-                        'مارس',
-                        'أبريل',
-                        'مايو',
-                        'يونيو',
-                        'يوليو',
-                        'أغسطس',
-                        'سبتمبر',
-                        'أكتوبر',
-                        'نوفمبر',
-                        'ديسمبر',
-                      ];
+                      final localeStr = Localizations.localeOf(ctx).toString();
                       final dateStr = dt != null
-                          ? '${dt.day} ${months[dt.month - 1]} ${dt.year}'
-                          : '08 أغسطس 2026';
+                          ? DateFormat.yMMMMd(localeStr).format(dt)
+                          : DateFormat.yMMMMd(localeStr).format(DateTime(2026, 8, 8));
                       return Text(
-                        'تاريخ الانضمام: $dateStr',
+                        ctx.tr('orgJoinedAt').replaceAll('{date}', dateStr),
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.muted,
@@ -3290,7 +3279,7 @@ void _showOrgDetailsModal(BuildContext context, Map<String, dynamic> org) {
                 ],
               ),
               IconButton.filledTonal(
-                tooltip: 'عرض رمز QR للانضمام',
+                tooltip: ctx.tr('orgViewQr'),
                 icon: const Icon(
                   Icons.qr_code_2_rounded,
                   color: AppColors.navy,
@@ -3306,10 +3295,10 @@ void _showOrgDetailsModal(BuildContext context, Map<String, dynamic> org) {
               Expanded(
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.share_rounded, size: 18),
-                  label: const Text('مشاركة رابط الويب'),
+                  label: Text(ctx.tr('orgShareWebLink')),
                   onPressed: () async {
                     final shareText =
-                        '🏆 دعوة للانضمام إلى منصة الحلم (El7lm)\nاسم المنظمة: $name\nكود الدعوة الخاص بنا: $code\nرابط الانضمام والتسجيل المباشر: $joinUrl';
+                        '🏆 ${ctx.tr('orgInviteShareText')}\n${ctx.tr('orgNameLabel')}: $name\n${ctx.tr('orgInviteCodeLabel')}: $code\n${ctx.tr('orgDirectJoinLink')}: $joinUrl';
                     final whatsappUri = Uri.parse(
                       'whatsapp://send?text=${Uri.encodeComponent(shareText)}',
                     );
@@ -3319,10 +3308,8 @@ void _showOrgDetailsModal(BuildContext context, Map<String, dynamic> org) {
                       await Clipboard.setData(ClipboardData(text: shareText));
                       if (ctx.mounted) {
                         ScaffoldMessenger.of(ctx).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'تم نسخ نص الدعوة ورابط المنصة بنجاح!',
-                            ),
+                          SnackBar(
+                            content: Text(ctx.tr('orgCopyInviteSuccess')),
                           ),
                         );
                       }
@@ -3338,7 +3325,7 @@ void _showOrgDetailsModal(BuildContext context, Map<String, dynamic> org) {
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('إغلاق النافذة'),
+                  child: Text(ctx.tr('closeWindow')),
                 ),
               ),
             ],
@@ -3368,7 +3355,7 @@ void _showQrModal(
           ),
           const SizedBox(height: 8),
           Text(
-            'رمز QR الخاص بـ $name',
+            ctx.tr('orgQrTitleFor').replaceAll('{name}', name),
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
@@ -3423,7 +3410,7 @@ void _showQrModal(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('إغلاق'),
+          child: Text(ctx.tr('closeDialog')),
         ),
       ],
     ),
@@ -3454,10 +3441,10 @@ void _showQrCameraScannerModal(
                 size: 28,
               ),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'ماسح الـ QR Code للانضمام',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ctx.tr('qrScanTitle'),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -3484,7 +3471,7 @@ void _showQrCameraScannerModal(
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'وجّه الكاميرا إلى رمز الـ QR Code',
+                      ctx.tr('qrScanHint'),
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 13,
@@ -3504,9 +3491,9 @@ void _showQrCameraScannerModal(
                       color: AppColors.green,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Text(
-                      'كاميرا الماسح نشطة 🟢',
-                      style: TextStyle(
+                    child: Text(
+                      ctx.tr('qrScannerActive'),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -3518,9 +3505,9 @@ void _showQrCameraScannerModal(
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'أو اختر كود العينة الفوري للانضمام المباشر:',
-            style: TextStyle(fontSize: 12, color: AppColors.muted),
+          Text(
+            ctx.tr('qrScanOrChoose'),
+            style: const TextStyle(fontSize: 12, color: AppColors.muted),
           ),
           const SizedBox(height: 10),
           Wrap(
@@ -3532,9 +3519,9 @@ void _showQrCameraScannerModal(
                   size: 16,
                   color: AppColors.green,
                 ),
-                label: const Text(
-                  'كود النادي CLBWUL3NI',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                label: Text(
+                  ctx.tr('qrSampleClub'),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                 ),
                 onPressed: () {
                   Navigator.of(ctx).pop();
@@ -3547,9 +3534,9 @@ void _showQrCameraScannerModal(
                   size: 16,
                   color: AppColors.gold,
                 ),
-                label: const Text(
-                  'الأكاديمية ACDVMRC44',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                label: Text(
+                  ctx.tr('qrSampleAcademy'),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                 ),
                 onPressed: () {
                   Navigator.of(ctx).pop();
@@ -3563,7 +3550,7 @@ void _showQrCameraScannerModal(
             width: double.infinity,
             child: OutlinedButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('إغلاق الماسح'),
+              child: Text(ctx.tr('qrCloseScanner')),
             ),
           ),
         ],

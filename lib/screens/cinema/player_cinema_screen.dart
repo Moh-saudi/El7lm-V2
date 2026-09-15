@@ -13,6 +13,7 @@ import '../../services/data_service.dart';
 import '../../widgets/async_state_view.dart';
 import '../../widgets/player_filter_sheet.dart';
 import '../players/player_details_screen.dart';
+import '../profile/player_profile_data.dart';
 
 class PlayerCinemaScreen extends StatefulWidget {
   const PlayerCinemaScreen({
@@ -334,9 +335,9 @@ class _CinemaVideoState extends State<_CinemaVideo> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      widget.player.name.isEmpty
+                      widget.player.localizedName(context.languageCode).isEmpty
                           ? context.tr('dreamPlayer')
-                          : widget.player.name,
+                          : widget.player.localizedName(context.languageCode),
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w900,
@@ -358,7 +359,7 @@ class _CinemaVideoState extends State<_CinemaVideo> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          widget.player.position,
+                          localizePosition(context, widget.player.position),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 10,

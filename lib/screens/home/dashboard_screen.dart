@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_theme.dart';
@@ -18,6 +19,7 @@ import '../../widgets/personal_sponsor_support.dart';
 import '../messages/chat_detail_screen.dart';
 import '../players/manage_players_screen.dart';
 import '../players/player_details_screen.dart';
+import '../profile/player_profile_data.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
@@ -519,9 +521,9 @@ class _OpportunitySpotlight extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.title.isEmpty
+                      item.localizedTitle(context.languageCode).isEmpty
                           ? context.tr('sportsOpportunity')
-                          : item.title,
+                          : item.localizedTitle(context.languageCode),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -530,7 +532,7 @@ class _OpportunitySpotlight extends StatelessWidget {
                     ),
                     if (item.organizerName.isNotEmpty)
                       Text(
-                        item.organizerName,
+                        item.localizedOrganizerName(context.languageCode),
                         style: const TextStyle(
                           color: Colors.white60,
                           fontSize: 12,
@@ -1793,7 +1795,7 @@ class _OrganizationDashboardBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final orgName =
-        organization['name']?.toString() ?? 'أكاديمية الحلم الدولية';
+        organization['name']?.toString() ?? context.tr('dreamAcademyInternational');
     final orgType = organization['type']?.toString() ?? 'academy';
     final rawDate = organization['joinedAt'] ??
         organization['organizationJoinedAt'] ??
@@ -1806,20 +1808,17 @@ class _OrganizationDashboardBanner extends StatelessWidget {
       joinedAt = DateTime.tryParse(joinedAtStr)?.toLocal();
     }
 
-    final months = [
-      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
-    ];
+    final localeStr = Localizations.localeOf(context).toString();
     final formattedDate = joinedAt != null
-        ? '${joinedAt.day} ${months[joinedAt.month - 1]} ${joinedAt.year}'
-        : '08 أغسطس 2026';
+        ? DateFormat.yMMMMd(localeStr).format(joinedAt)
+        : DateFormat.yMMMMd(localeStr).format(DateTime(2026, 8, 8));
 
     final typeLabel = switch (orgType) {
-      'club' => 'نادي رياضي رسمي ⚽',
-      'academy' => 'أكاديمية معتمدة 🏆',
-      'trainer' => 'مدرب شخصي 🏃',
-      'agent' => 'وكيل لاعبين 💼',
-      _ => 'منظمة رياضية 🏟️',
+      'club' => '${context.tr('organizationType.club')} ⚽',
+      'academy' => '${context.tr('organizationType.academy')} 🏆',
+      'trainer' => '${context.tr('organizationType.trainer')} 🏃',
+      'agent' => '${context.tr('organizationType.agent')} 💼',
+      _ => '${context.tr('organization')} 🏟️',
     };
 
     return Container(
@@ -1909,9 +1908,9 @@ class _OrganizationDashboardBanner extends StatelessWidget {
                           size: 8,
                         ),
                         const SizedBox(width: 4),
-                        const Text(
-                          'عضو منضم نشط',
-                          style: TextStyle(
+                        Text(
+                          context.tr('activeJoinedMember'),
+                          style: const TextStyle(
                             color: Color(0xFF6EE7B7),
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -1931,7 +1930,7 @@ class _OrganizationDashboardBanner extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'تاريخ الانضمام: $formattedDate',
+                context.tr('orgJoinedAt').replaceAll('{date}', formattedDate),
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
               ElevatedButton.icon(
@@ -1968,9 +1967,9 @@ class _OrganizationDashboardBanner extends StatelessWidget {
                   );
                 },
                 icon: const Icon(Icons.chat_bubble_rounded, size: 16),
-                label: const Text(
-                  'مراسلة الإدارة',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                label: Text(
+                  context.tr('contactManagement'),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -2222,7 +2221,9 @@ class _PlayerSquareCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pos = player.position.isNotEmpty ? player.position : 'لاعب';
+    final pos = player.position.isNotEmpty
+        ? localizePosition(context, player.position)
+        : context.tr('player');
 
     return Material(
       color: Colors.transparent,
@@ -2300,9 +2301,11 @@ class _PlayerSquareCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          player.position.length > 3
-                              ? player.position.substring(0, 3)
-                              : player.position,
+                          canonicalProfileOptionValue('position', player.position).isNotEmpty
+                              ? canonicalProfileOptionValue('position', player.position)
+                              : (player.position.length > 3
+                                  ? player.position.substring(0, 3)
+                                  : player.position),
                           style: const TextStyle(
                             color: AppColors.ink,
                             fontSize: 8,
@@ -2315,7 +2318,9 @@ class _PlayerSquareCard extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               _OverflowMarqueeText(
-                text: player.name.isNotEmpty ? player.name : 'لاعب',
+                text: player.localizedName(context.languageCode).isNotEmpty
+                    ? player.localizedName(context.languageCode)
+                    : context.tr('player'),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 11,

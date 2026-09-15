@@ -446,7 +446,9 @@ class _PlayerCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  player.name.isEmpty ? context.tr('dreamPlayer') : player.name,
+                  player.localizedName(context.languageCode).isEmpty
+                      ? context.tr('dreamPlayer')
+                      : player.localizedName(context.languageCode),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w900),

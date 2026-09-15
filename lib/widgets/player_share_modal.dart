@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/app_theme.dart';
 import '../l10n/app_localizations.dart';
 import '../models/player.dart';
+import '../screens/profile/player_profile_data.dart';
 
 void showPlayerShareModal(BuildContext context, {required Player player}) {
   showModalBottomSheet<void>(
@@ -29,7 +30,9 @@ class _PlayerShareModal extends StatelessWidget {
     final name = player.name.isNotEmpty
         ? player.name
         : context.tr('dreamPlayer');
-    final position = player.position.isNotEmpty ? player.position : '-';
+    final position = player.position.isNotEmpty
+        ? localizePosition(context, player.position)
+        : '-';
     final country = player.country.isNotEmpty ? player.country : '-';
     final age = player.age != null ? '${player.age}' : '-';
     final height = player.height != null
@@ -85,7 +88,9 @@ class _PlayerShareModal extends StatelessWidget {
     final name = player.name.isNotEmpty
         ? player.name
         : context.tr('dreamPlayer');
-    final position = player.position.isNotEmpty ? player.position : '-';
+    final position = player.position.isNotEmpty
+        ? localizePosition(context, player.position)
+        : '-';
 
     showDialog<void>(
       context: context,
@@ -266,7 +271,9 @@ class _PlayerShareModal extends StatelessWidget {
     final name = player.name.isNotEmpty
         ? player.name
         : context.tr('dreamPlayer');
-    final position = player.position.isNotEmpty ? player.position : '-';
+    final position = player.position.isNotEmpty
+        ? localizePosition(context, player.position)
+        : '-';
     final country = player.country.isNotEmpty ? player.country : '-';
     final age = player.age != null ? '${player.age}' : '-';
     final height = player.height != null ? '${player.height} cm' : '-';
