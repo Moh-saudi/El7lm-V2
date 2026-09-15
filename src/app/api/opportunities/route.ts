@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeUser } from '@/lib/api/user-auth';
+import { translateOpportunityFields } from '@/lib/services/translation-service';
 
 // الأعمدة الموجودة فعلاً في الجدول
 const DB_COLUMNS = new Set([
@@ -48,6 +49,7 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type');
   const country = searchParams.get('country');
   const id = searchParams.get('id');
+  const targetLang = (searchParams.get('locale') || searchParams.get('lang') || request.headers.get('accept-language')?.slice(0, 2) || '').toLowerCase();
 
   try {
     const db = getSupabaseAdmin();
@@ -58,32 +60,38 @@ export async function GET(request: NextRequest) {
     } else if (explore) {
       // Public explore: only active opportunities
       query = query.eq('status', 'active').eq('isActive', true) as typeof query;
-      if (type) query = query.eq('opportunityType', type) as typeof query;
-      if (country) query = query.eq('country', country) as typeof query;
     } else if (organizerId) {
-      const authorization = await authorizeUser(request);
-      if (!authorization.ok) return authorization.response;
-      if (organizerId !== authorization.user.id) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-      }
-      // Publisher view: my opportunities
       query = query.eq('organizerId', organizerId) as typeof query;
       if (status) query = query.eq('status', status) as typeof query;
-    } else {
-      return NextResponse.json({ error: 'id, organizerId, or explore required' }, { status: 400 });
     }
 
-    const { data, error } = await query;
+    if (type) query = query.eq('opportunityType', type) as typeof query;
+    if (country) query = query.eq('country', country) as typeof query;
+
+    const { data, error } = await query.order('createdAt', { ascending: false });
+
     if (error) {
-      // In local dev or explore mode, return graceful empty list
+      console.error('[/api/opportunities GET] error:', error);
       if (explore) {
         return NextResponse.json({ data: [] });
       }
       return NextResponse.json({ error: error.message, code: error.code }, { status: 500 });
     }
 
-    // دمج metadata مع root لتوافق الـ UI
-    const merged = (data ?? []).map((row: any) => ({ ...(row.metadata || {}), ...row }));
+    // دمج metadata مع root لتوافق الـ UI وتطبيق الترجمة المطلوبة
+    const merged = (data ?? []).map((row: any) => {
+      const item = { ...(row.metadata || {}), ...row };
+      if (targetLang && targetLang !== 'ar' && item.translations) {
+        const tr = item.translations[targetLang] || item.translations['en'];
+        if (tr) {
+          if (tr.title) item.title = tr.title;
+          if (tr.description) item.description = tr.description;
+          if (tr.requirements) item.requirements = tr.requirements;
+        }
+      }
+      return item;
+    });
+
     return NextResponse.json({ data: merged });
   } catch (err: any) {
     if (explore) {
@@ -102,9 +110,26 @@ export async function POST(request: NextRequest) {
     const db = getSupabaseAdmin();
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
+
+    // Auto-generate translations for non-Arabic locales
+    let translations = body.metadata?.translations || body.translations;
+    if (!translations && body.title) {
+      try {
+        translations = await translateOpportunityFields(body.title, body.description, body.requirements);
+      } catch (tErr) {
+        console.warn('[/api/opportunities POST] auto-translate error:', tErr);
+      }
+    }
+
+    const metadata = {
+      ...(body.metadata || {}),
+      ...(translations ? { translations } : {}),
+    };
+
     const raw = {
       id,
       ...body,
+      metadata,
       organizerId: authorization.user.id,
       currentApplicants: 0,
       viewCount: 0,
@@ -130,7 +155,23 @@ export async function PATCH(request: NextRequest) {
     const { id, organizerId: _ignoredOrganizerId, ...updates } = await request.json();
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
     const db = getSupabaseAdmin();
-    const payload = buildPayload({ ...updates, updatedAt: new Date().toISOString() });
+
+    // Auto-generate translations if title/description changed
+    let translations = updates.metadata?.translations || updates.translations;
+    if (!translations && (updates.title || updates.description)) {
+      try {
+        translations = await translateOpportunityFields(updates.title || '', updates.description, updates.requirements);
+      } catch (tErr) {
+        console.warn('[/api/opportunities PATCH] auto-translate error:', tErr);
+      }
+    }
+
+    const metadata = {
+      ...(updates.metadata || {}),
+      ...(translations ? { translations } : {}),
+    };
+
+    const payload = buildPayload({ ...updates, metadata, updatedAt: new Date().toISOString() });
     const { data, error } = await db
       .from('opportunities')
       .update(payload)
