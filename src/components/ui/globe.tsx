@@ -232,9 +232,9 @@ export function World(props: WorldProps) {
 
   return (
     <Canvas 
-      scene={scene}
+      scene={scene as any}
       onCreated={({ gl }) => {
-        gl.setClearColor(new Color(0x000000), 0);
+        gl.setClearColor(0x000000, 0);
       }}
     >
       <PerspectiveCamera makeDefault position={[0, 0, cameraZ]} fov={50} far={2000} />
@@ -242,15 +242,15 @@ export function World(props: WorldProps) {
       <ambientLight color={globeConfig.ambientLight || "#38bdf8"} intensity={0.6} />
       <directionalLight
         color={globeConfig.directionalLeftLight || "#ffffff"}
-        position={new Vector3(-400, 100, 400)}
+        position={[-400, 100, 400]}
       />
       <directionalLight
         color={globeConfig.directionalTopLight || "#ffffff"}
-        position={new Vector3(-200, 500, 200)}
+        position={[-200, 500, 200]}
       />
       <pointLight
         color={globeConfig.pointLight || "#ffffff"}
-        position={new Vector3(-200, 500, 200)}
+        position={[-200, 500, 200]}
         intensity={0.8}
       />
       <Globe {...props} />

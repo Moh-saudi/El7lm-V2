@@ -147,7 +147,7 @@ export const withPageErrorBoundary = <P extends object>(
 ) => {
   return React.forwardRef<any, P>((props, ref) => (
     <PageErrorBoundary pageName={pageName} fallback={fallback}>
-      <Component {...props} ref={ref} />
+      <Component {...(props as any)} ref={ref} />
     </PageErrorBoundary>
   ));
 }; 

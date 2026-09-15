@@ -136,7 +136,7 @@ export const withDataErrorBoundary = <P extends object>(
       fallback={fallback}
       retryFunction={retryFunction}
     >
-      <Component {...props} ref={ref} />
+      <Component {...(props as any)} ref={ref} />
     </DataErrorBoundary>
   ));
 };

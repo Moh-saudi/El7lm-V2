@@ -21,7 +21,6 @@ export default function CertificatesPage() {
   const { locale, isRTL, getTranslations } = useTranslation();
   const copy = getTranslations<any>('tournamentCertificates');
   const { id }     = useParams<{ id: string }>();
-  const { id }     = useParams<{ id: string }>();
   const { isDark } = usePortalTheme();
   const S = isDark ? D : L;
 

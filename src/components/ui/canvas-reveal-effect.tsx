@@ -261,7 +261,7 @@ const ShaderMaterial = ({
     const materialUniforms = useMemo(() => getUniforms(), []);
 
     return (
-        <mesh ref={ref}>
+        <mesh ref={ref as any}>
             <planeGeometry args={[2, 2]} />
             <shaderMaterial
                 vertexShader={`

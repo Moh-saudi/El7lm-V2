@@ -148,7 +148,7 @@ export const withErrorBoundary = <P extends object>(
 ) => {
   return React.forwardRef<any, P>((props, ref) => (
     <ErrorBoundary fallback={fallback}>
-      <Component {...props} ref={ref} />
+      <Component {...(props as any)} ref={ref} />
     </ErrorBoundary>
   ));
 }; 

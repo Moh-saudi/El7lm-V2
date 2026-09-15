@@ -33,7 +33,6 @@ export async function POST(req: NextRequest) {
     // ── Duplicate check ───────────────────────────────────────
     const supa = getSupabaseAdmin();
 
-    const { data: existing } = await supa
     const { data, error } = await supa
         .from('tournament_teams')
         .insert({

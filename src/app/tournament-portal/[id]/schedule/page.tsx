@@ -45,19 +45,6 @@ export default function SchedulePage() {
   const [loading,     setLoading]     = useState(true);
   const [generating,  setGenerating]  = useState(false);
   const [saving,      setSaving]      = useState(false);
-  const { id }    = useParams<{ id: string }>();
-  const { isDark } = usePortalTheme();
-  const S = isDark ? D : L;
-
-  const [categories,  setCategories]  = useState<Category[]>([]);
-  const [selectedCat, setSelectedCat] = useState('');
-  const [teams,       setTeams]       = useState<Team[]>([]);
-  const [groups,      setGroups]      = useState<Group[]>([]);
-  const [matches,     setMatches]     = useState<Match[]>([]);
-  const [referees,    setReferees]    = useState<{id:string;name:string;level:string|null}[]>([]);
-  const [loading,     setLoading]     = useState(true);
-  const [generating,  setGenerating]  = useState(false);
-  const [saving,      setSaving]      = useState(false);
   const [drafts,      setDrafts]      = useState<Record<string, Partial<Draft>>>({});
   const [editing,     setEditing]     = useState<Set<string>>(new Set());
   const [confirmGen,  setConfirmGen]  = useState(false);
