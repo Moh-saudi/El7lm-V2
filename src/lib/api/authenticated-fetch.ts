@@ -6,16 +6,28 @@ export async function authenticatedFetch(
   input: RequestInfo | URL,
   init: RequestInit = {}
 ): Promise<Response> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  let token: string | null = null;
 
-  if (!session?.access_token) {
-    throw new Error('Authentication required');
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    token = session?.access_token || null;
+  } catch {}
+
+  if (!token) {
+    try {
+      const { auth } = await import('@/lib/firebase/config');
+      if (auth.currentUser) {
+        token = await auth.currentUser.getIdToken();
+      }
+    } catch {}
   }
 
   const headers = new Headers(init.headers);
-  headers.set('Authorization', `Bearer ${session.access_token}`);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
 
   return fetch(input, { ...init, headers });
 }

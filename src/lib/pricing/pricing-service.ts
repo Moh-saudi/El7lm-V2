@@ -1,5 +1,6 @@
 
 import { supabase } from '@/lib/supabase/config';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 import { SubscriptionPlan, PriceResult } from '@/types/pricing';
 import { convertCurrency } from '@/lib/currency-rates';
 
@@ -121,7 +122,33 @@ export const PricingService = {
 
     async updatePlan(plan: SubscriptionPlan) {
         try {
-            await supabase.from(TABLE_NAME).upsert({ ...plan, updatedAt: new Date().toISOString() });
+            if (typeof window !== 'undefined') {
+                const response = await authenticatedFetch('/api/admin/pricing', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(plan),
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'فشل تحديث باقة الاشتراك');
+                }
+                return true;
+            }
+
+            // Server-side fallback using admin client
+            const { getSupabaseAdmin } = await import('@/lib/supabase/admin');
+            const admin = getSupabaseAdmin();
+            const ALLOWED_COLUMNS = [
+                'id', 'title', 'subtitle', 'period', 'base_currency',
+                'base_original_price', 'base_price', 'features', 'bonusFeatures',
+                'popular', 'icon', 'color', 'overrides', 'isActive', 'order'
+            ];
+            const cleanPlan: Record<string, any> = {};
+            for (const col of ALLOWED_COLUMNS) {
+                if ((plan as any)[col] !== undefined) cleanPlan[col] = (plan as any)[col];
+            }
+            const { error } = await admin.from(TABLE_NAME).upsert(cleanPlan);
+            if (error) throw error;
             return true;
         } catch (error) {
             console.error('Error updating plan:', error);
@@ -131,7 +158,21 @@ export const PricingService = {
 
     async deletePlan(planId: string) {
         try {
-            await supabase.from(TABLE_NAME).delete().eq('id', planId);
+            if (typeof window !== 'undefined') {
+                const response = await authenticatedFetch(`/api/admin/pricing?id=${encodeURIComponent(planId)}`, {
+                    method: 'DELETE',
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'فشل حذف الباقة');
+                }
+                return true;
+            }
+
+            const { getSupabaseAdmin } = await import('@/lib/supabase/admin');
+            const admin = getSupabaseAdmin();
+            const { error } = await admin.from(TABLE_NAME).delete().eq('id', planId);
+            if (error) throw error;
             return true;
         } catch (error) {
             console.error('Error deleting plan:', error);
@@ -165,7 +206,10 @@ export const PricingService = {
     },
 
     async initializeDefaults() {
-        await Promise.all(DEFAULT_PLANS.map(plan => supabase.from(TABLE_NAME).upsert(plan)));
+        for (const plan of DEFAULT_PLANS) {
+            await this.updatePlan(plan);
+        }
+        return true;
     },
 
     resolvePrice(

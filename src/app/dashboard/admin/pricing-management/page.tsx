@@ -618,24 +618,34 @@ function CustomPricingTab() {
         try {
             const vals = await form.validateFields();
             setSaving(true);
+            const countryKey = (editingCode || vals.countryCode || '').trim().toUpperCase();
+            if (!countryKey) {
+                toast.error('رمز الدولة مطلوب');
+                setSaving(false);
+                return;
+            }
             const updated = {
                 ...currentPlan,
                 overrides: {
-                    ...currentPlan.overrides,
-                    [vals.countryCode.toUpperCase()]: {
+                    ...(currentPlan?.overrides || {}),
+                    [countryKey]: {
                         currency: vals.currency,
-                        original_price: vals.originalPrice || 0,
-                        price: vals.price,
+                        original_price: Number(vals.originalPrice || 0),
+                        price: Number(vals.price || 0),
                         active: vals.active ?? true,
                     }
                 }
             };
             await PricingService.updatePlan(updated);
             setPlans(prev => prev.map(p => p.id === selectedPlanId ? updated : p));
-            toast.success('تم الحفظ');
+            toast.success('تم حفظ التسعير الدولي بنجاح');
             setModalOpen(false);
-        } catch { toast.error('فشل الحفظ'); }
-        finally { setSaving(false); }
+        } catch (err: any) {
+            console.error('Custom pricing save error:', err);
+            toast.error(err?.message || 'فشل الحفظ');
+        } finally {
+            setSaving(false);
+        }
     };
 
     const columns: TableColumnsType<any> = [
