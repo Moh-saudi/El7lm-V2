@@ -197,6 +197,7 @@
   "requestFailed": "We could not complete the request. Please try again.",
   "otpRequestPreparationFailed": "We could not prepare the verification request. Please try again shortly.",
   "otpDeliveryNotConfigured": "The verification delivery service is not configured. Please contact support.",
+  "otpTemplateRejected": "The WhatsApp verification template needs review before the code can be sent.",
   "otpDeliveryFailed": "We could not send the verification code via WhatsApp. Check the number and try again.",
   "serviceUnavailable": "The service is temporarily unavailable. Please try again shortly.",
   "tooManyRequests": "Too many attempts. Wait a moment and try again.",

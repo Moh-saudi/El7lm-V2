@@ -132,6 +132,7 @@ class ApiClient {
       'INVALID_OTP' || 'OTP_INVALID' || 'OTP_EXPIRED' => 'invalidOtp',
       'OTP_STORAGE_FAILED' => 'otpRequestPreparationFailed',
       'OTP_DELIVERY_NOT_CONFIGURED' => 'otpDeliveryNotConfigured',
+      'OTP_TEMPLATE_REJECTED' => 'otpTemplateRejected',
       'OTP_DELIVERY_FAILED' => 'otpDeliveryFailed',
       'OTP_CHANNEL_UNAVAILABLE' => 'otpDeliveryFailed',
       _ when statusCode == 429 => 'tooManyRequests',
