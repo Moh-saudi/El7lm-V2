@@ -425,16 +425,28 @@ function PlanCard({ plan, onUpdate }: { plan: SubscriptionPlan; onUpdate: () => 
     };
 
     const handleSave = async (updatedPlan: any) => {
-        await PricingService.updatePlan({
-            ...updatedPlan,
-            title: updatedPlan.name || updatedPlan.title,
-            base_price: updatedPlan.basePrice ?? updatedPlan.base_price,
-            features: updatedPlan.features?.map((f: any) => typeof f === 'string' ? f : f.name),
-            bonusFeatures: updatedPlan.bonusFeatures?.map((b: any) => typeof b === 'string' ? b : b.name),
-        });
-        toast.success('تم حفظ التغييرات');
-        setShowEdit(false);
-        onUpdate();
+        try {
+            const finalTitle = updatedPlan.title || updatedPlan.name;
+            const finalBasePrice = Number(updatedPlan.base_price !== undefined ? updatedPlan.base_price : updatedPlan.basePrice);
+            const finalOriginalPrice = Number(updatedPlan.base_original_price !== undefined ? updatedPlan.base_original_price : 0);
+
+            await PricingService.updatePlan({
+                ...updatedPlan,
+                title: finalTitle,
+                name: finalTitle,
+                base_price: finalBasePrice,
+                basePrice: finalBasePrice,
+                base_original_price: finalOriginalPrice,
+                features: updatedPlan.features?.map((f: any) => typeof f === 'string' ? f : f?.name || ''),
+                bonusFeatures: updatedPlan.bonusFeatures?.map((b: any) => typeof b === 'string' ? b : b?.name || ''),
+            });
+            toast.success('تم حفظ التغييرات بنجاح');
+            setShowEdit(false);
+            onUpdate();
+        } catch (err: any) {
+            console.error('Plan save error:', err);
+            toast.error(err?.message || 'فشل حفظ التعديلات');
+        }
     };
 
     const features = plan.features || [];
