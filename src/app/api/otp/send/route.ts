@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
     } else {
       return NextResponse.json({
         success: false,
+        code: result.code || 'OTP_DELIVERY_FAILED',
         error: result.error || 'فشل في إرسال رمز التحقق',
         channel: result.channel
       }, { status: 400 });

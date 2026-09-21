@@ -31,8 +31,16 @@ export interface SendOTPResult {
   otp?: string;
   channel?: OTPChannel;
   error?: string;
+  /** Safe, stable reason for the client. Never expose a provider response. */
+  code?: OTPErrorCode;
   message?: string;
 }
+
+export type OTPErrorCode =
+  | 'OTP_STORAGE_FAILED'
+  | 'OTP_DELIVERY_NOT_CONFIGURED'
+  | 'OTP_DELIVERY_FAILED'
+  | 'OTP_CHANNEL_UNAVAILABLE';
 
 export interface SendOTPOptions {
   phoneNumber: string;
@@ -50,10 +58,7 @@ function generateOTP(): string {
 }
 
 /**
- * إرسال OTP عبر WhatsApp (Babaservice)
- */
-/**
- * جلب إعدادات ChatAman من Firestore باستخدام Admin SDK
+ * جلب إعدادات ChatAman من Supabase system_configs
  */
 async function getChatAmanConfig(): Promise<{ apiKey: string; baseUrl: string; isActive: boolean } | null> {
   try {
@@ -69,59 +74,106 @@ async function getChatAmanConfig(): Promise<{ apiKey: string; baseUrl: string; i
 /**
  * إرسال OTP مباشرةً لـ ChatAman API (server-to-server)
  */
-async function sendOTPViaChatAman(phone: string, otp: string): Promise<{ success: boolean; error?: string }> {
+async function sendOTPViaChatAman(
+  phone: string,
+  otp: string,
+): Promise<{ success: boolean; error?: string; code?: OTPErrorCode }> {
   try {
     const config = await getChatAmanConfig();
     if (!config || !config.isActive || !config.apiKey) {
-      return { success: false, error: 'ChatAman not configured' };
+      console.error('❌ [OTP] ChatAman configuration is missing or inactive');
+      return {
+        success: false,
+        error: 'OTP delivery is not configured.',
+        code: 'OTP_DELIVERY_NOT_CONFIGURED',
+      };
     }
 
-    // تنسيق رقم الهاتف
+    // تنسيق رقم الهاتف بصيغة دولية موحدة
     let cleaned = phone.replace(/\D/g, '');
-    if (cleaned.startsWith('01') && cleaned.length === 11) cleaned = `20${cleaned.substring(1)}`;
-    else if (cleaned.startsWith('1') && cleaned.length === 10) cleaned = `20${cleaned}`;
+    if (cleaned.length >= 7) {
+      if (cleaned.startsWith('01') && cleaned.length === 11) cleaned = `20${cleaned.substring(1)}`;
+      else if (cleaned.startsWith('05') && cleaned.length === 10) cleaned = `966${cleaned.substring(1)}`;
+      else if (cleaned.startsWith('0') && cleaned.length >= 9) cleaned = cleaned.substring(1);
+    }
     const formattedPhone = `+${cleaned}`;
 
     const baseUrl = (config.baseUrl || 'https://chataman.com').trim().replace(/\/+$/, '');
 
-    const payload = {
-      phone: formattedPhone,
-      template: {
-        name: 'otp_el7lmplatform',
-        language: { code: 'ar' },
-        components: [
-          { type: 'body', parameters: [{ type: 'text', text: otp }] },
-          { type: 'button', sub_type: 'url', index: 0, parameters: [{ type: 'text', text: otp }] },
-        ],
-      },
-    };
+    // 1. محاولة إرسال القالب أولاً
+    try {
+      const payload = {
+        phone: formattedPhone,
+        template: {
+          name: 'otp_el7lmplatform',
+          language: { code: 'ar' },
+          components: [
+            { type: 'body', parameters: [{ type: 'text', text: otp }] },
+            { type: 'button', sub_type: 'url', index: 0, parameters: [{ type: 'text', text: otp }] },
+          ],
+        },
+      };
 
-    const response = await fetch(`${baseUrl}/api/send/template`, {
+      const response = await fetch(`${baseUrl}/api/send/template`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.apiKey.trim()}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const text = await response.text();
+      let data: any = {};
+      try { data = JSON.parse(text); } catch { data = { message: text }; }
+
+      if (response.ok && data.status !== 'error' && data.success !== false && data?.data?.success !== false) {
+        console.log('✅ [OTP] Sent via ChatAman template to', formattedPhone);
+        return { success: true };
+      }
+      console.warn('⚠️ [ChatAman] Template send failed, falling back to direct message:', data.message || data.error);
+    } catch (tplErr) {
+      console.warn('⚠️ [ChatAman] Template endpoint error:', tplErr);
+    }
+
+    // 2. Fallback: إرسال الرمز مباشرة عبر /api/send
+    const directMessage = `‏*${otp}*‏ هو كود التحقق الخاص بك على منصة الحلم (el7lm.com).\n\nللحفاظ على أمانك، لا تشارك هذا الكود مع أي شخص.\nتنتهي صلاحية الرمز خلال 3 دقائق.`;
+    const sendResponse = await fetch(`${baseUrl}/api/send`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${config.apiKey.trim()}`,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        phone: formattedPhone,
+        message: directMessage,
+      }),
     });
 
-    const text = await response.text();
-    let data: any = {};
-    try { data = JSON.parse(text); } catch { data = { message: text }; }
+    const sendText = await sendResponse.text();
+    let sendData: any = {};
+    try { sendData = JSON.parse(sendText); } catch { sendData = { message: sendText }; }
 
-    console.log('📡 [ChatAman] HTTP status:', response.status);
-    console.log('📡 [ChatAman] Full response:', JSON.stringify(data, null, 2));
-
-    if (!response.ok || data.status === 'error' || data.success === false) {
-      console.error('❌ [ChatAman] Failed:', data.message || data.error || 'Unknown error');
-      return { success: false, error: data.message || 'ChatAman API error' };
+    if (!sendResponse.ok || sendData.status === 'error' || sendData.success === false || sendData?.data?.success === false) {
+      console.error('❌ [ChatAman] Direct send failed:', sendData.message || sendData.error || 'Unknown error');
+      return {
+        success: false,
+        error: 'The verification message could not be delivered.',
+        code: 'OTP_DELIVERY_FAILED',
+      };
     }
 
-    console.log('✅ [OTP] Sent via ChatAman to', formattedPhone);
+    console.log('✅ [OTP] Sent via ChatAman direct message to', formattedPhone);
     return { success: true };
   } catch (error: any) {
-    return { success: false, error: error.message };
+    console.error('❌ [OTP] ChatAman request failed:', error);
+    return {
+      success: false,
+      error: 'The verification message could not be delivered.',
+      code: 'OTP_DELIVERY_FAILED',
+    };
   }
 }
 
@@ -137,17 +189,17 @@ async function sendOTPViaWhatsApp(
 
 /**
  * إرسال OTP عبر SMS
- * ملاحظة: هذا الـ route غير موجود حالياً - نرجع خطأ واضح
  */
 async function sendOTPViaSMS(
   phoneNumber: string,
   otp: string,
   name: string
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; code?: OTPErrorCode }> {
   // SMS route غير موجود حالياً - نرجع خطأ واضح
   return {
     success: false,
-    error: 'SMS service غير متاح حالياً. يرجى استخدام WhatsApp'
+    error: 'SMS service is not available.',
+    code: 'OTP_CHANNEL_UNAVAILABLE',
   };
 }
 
@@ -212,9 +264,11 @@ export async function sendOTP(options: SendOTPOptions): Promise<SendOTPResult> {
     // نحذف OTP القديم أولاً قبل التحقق من Rate Limiting
     const storeResult = await storeOTPInFirestore(formattedPhone, otp, purpose);
     if (!storeResult.success) {
+      console.error('❌ [OTP] Could not store the verification request:', storeResult.error);
       return {
         success: false,
-        error: storeResult.error || 'فشل في حفظ رمز التحقق'
+        error: 'The verification request could not be prepared.',
+        code: 'OTP_STORAGE_FAILED',
       };
     }
 
@@ -226,7 +280,7 @@ export async function sendOTP(options: SendOTPOptions): Promise<SendOTPResult> {
     }
 
     // إرسال OTP عبر القناة المحددة
-    let sendResult: { success: boolean; error?: string } = { success: false };
+    let sendResult: { success: boolean; error?: string; code?: OTPErrorCode } = { success: false };
 
     if (selectedChannel === 'whatsapp') {
       sendResult = await sendOTPViaWhatsApp(formattedPhone, otp);
@@ -270,15 +324,17 @@ export async function sendOTP(options: SendOTPOptions): Promise<SendOTPResult> {
       // (يمكن الاحتفاظ به للتدقيق)
       return {
         success: false,
-        error: sendResult.error || 'فشل في إرسال رمز التحقق',
-        channel: selectedChannel
+        error: sendResult.error || 'The verification message could not be delivered.',
+        code: sendResult.code || 'OTP_DELIVERY_FAILED',
+        channel: selectedChannel,
       };
     }
   } catch (error: any) {
     console.error('❌ [Unified OTP Service] Error:', error);
     return {
       success: false,
-      error: error.message || 'حدث خطأ أثناء إرسال رمز التحقق'
+      error: 'The verification message could not be delivered.',
+      code: 'OTP_DELIVERY_FAILED',
     };
   }
 }
