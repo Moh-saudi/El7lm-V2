@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: false,
         code: 'ACCOUNT_NOT_FOUND',
-        error: 'This phone number is not registered. Create an account first.',
+        error: 'رقم الهاتف هذا غير مسجل. يرجى إنشاء حساب جديد أولاً.',
       }, { status: 404 });
     }
     if (purpose === 'registration' && account.found) {
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         success: false,
         code: 'ACCOUNT_ALREADY_EXISTS',
         accountType: account.accountType,
-        error: 'This phone number is already registered. Sign in instead.',
+        error: 'رقم الهاتف هذا مسجل بالفعل. يرجى تسجيل الدخول بدلاً من ذلك.',
       }, { status: 409 });
     }
 

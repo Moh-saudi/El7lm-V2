@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber, generatePhoneVariants } from '@/lib/validation/phone-validation';
 
+import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
+
 const COLLECTIONS = ['players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins', 'employees', 'users'];
 
 const TABLE_TO_ACCOUNT_TYPE: Record<string, string> = {
@@ -45,45 +47,19 @@ async function findByEmail(email: string) {
 }
 
 async function findByPhone(phone: string) {
-  const db = getSupabaseAdmin();
-  const variants = generatePhoneVariants(phone);
-  for (const coll of COLLECTIONS) {
-    // نستعلم فقط عن الأعمدة الأساسية الموجودة في كل جدول لتجنب خطأ "column does not exist"
-    const { data, error } = await db
-      .from(coll)
-      .select('id, email')
-      .in('phone', variants.slice(0, 10))
-      .limit(1)
-      .maybeSingle();
-    if (error && error.code !== '42703') {
-      console.error(`[check-user] ${coll}:`, error.message);
-    }
-    if (data) {
+  try {
+    const account = await findAccountByPhone(phone);
+    if (account.found) {
       return {
         exists: true,
-        userName: 'مستخدم',
-        accountType: TABLE_TO_ACCOUNT_TYPE[coll] || 'player',
-        email: (data as any).email || '',
+        userName: account.name || 'مستخدم',
+        accountType: account.accountType || 'player',
+        email: account.email || '',
+        uid: account.uid || account.id,
       };
     }
-    // بحث إضافي بـ originalPhone
-    const { data: data2, error: error2 } = await db
-      .from(coll)
-      .select('id, email')
-      .in('originalPhone', variants.slice(0, 10))
-      .limit(1)
-      .maybeSingle();
-    if (error2 && error2.code !== '42703') {
-      console.error(`[check-user] originalPhone error in ${coll}:`, error2.message);
-    }
-    if (data2) {
-      return {
-        exists: true,
-        userName: 'مستخدم',
-        accountType: TABLE_TO_ACCOUNT_TYPE[coll] || 'player',
-        email: (data2 as any).email || '',
-      };
-    }
+  } catch (error) {
+    console.error('[check-user] findByPhone error:', error);
   }
   return { exists: false };
 }
