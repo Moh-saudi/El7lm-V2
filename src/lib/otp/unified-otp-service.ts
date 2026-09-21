@@ -117,7 +117,8 @@ async function sendOTPViaChatAman(
       const payload = {
         phone: formattedPhone,
         template: {
-          name: 'otp_el7lmplatform',
+          // ChatAman/WhatsApp template names are case-sensitive.
+          name: 'Otp_el7lmplatform',
           language: { code: 'ar' },
           components,
         },
