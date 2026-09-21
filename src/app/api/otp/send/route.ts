@@ -67,6 +67,8 @@ export async function POST(request: NextRequest) {
         success: true,
         message: result.message || 'تم إرسال رمز التحقق بنجاح',
         channel: result.channel,
+        found: account.found,
+        accountType: account.found ? account.accountType : undefined,
         // لا نرجع OTP في الإنتاج - هذا للتطوير فقط
         ...(process.env.NODE_ENV === 'development' && { otp: result.otp })
       });

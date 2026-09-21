@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: 'Account verification is temporarily unavailable.',
+        error: 'تعذر التحقق من رقم الهاتف حالياً. يرجى المحاولة مرة أخرى.',
         code: 'ACCOUNT_LOOKUP_UNAVAILABLE',
       },
       { status: 500 },
