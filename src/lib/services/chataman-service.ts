@@ -292,7 +292,14 @@ export const ChatAmanService = {
   sendOtp: async (phone: string, otpCode: string, language: string = 'ar') => {
     const config = await ChatAmanService.getConfig();
     if (!config || !config.isActive) return { success: false, error: 'Service inactive' };
-    return await ChatAmanService.sendTemplate(phone, 'otp_el7lmplatform', { language, bodyParams: [otpCode], buttons: [{ type: 'button', sub_type: 'url', index: 0, parameters: [{ type: 'text', text: otpCode }] }] });
+    try {
+      const templateResult = await ChatAmanService.sendTemplate(phone, 'otp_el7lmplatform', { language, bodyParams: [otpCode], buttons: [{ type: 'button', sub_type: 'url', index: 0, parameters: [{ type: 'text', text: otpCode }] }] });
+      if (templateResult.success) return templateResult;
+    } catch {
+      // Fallback to direct message
+    }
+    const directMessage = `‏*${otpCode}*‏ هو كود التحقق الخاص بك على منصة الحلم (el7lm.com).\n\nللحفاظ على أمانك، لا تشارك هذا الكود مع أي شخص.\nتنتهي صلاحية الرمز خلال 3 دقائق.`;
+    return await ChatAmanService.sendMessage(phone, directMessage);
   },
 
   sendProfileViewNotification: async (targetPhone: string, viewerName: string, userName: string) => {
