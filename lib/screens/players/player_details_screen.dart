@@ -568,12 +568,8 @@ class _PlayerProfile extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          trailing: const Icon(Icons.open_in_new_rounded),
-                          onTap: () => _openUri(
-                            context,
-                            Uri.tryParse(video.url),
-                            failureKey: 'videoPlaybackFailed',
-                          ),
+                          trailing: const Icon(Icons.play_circle_fill_rounded, color: AppColors.green),
+                          onTap: () => _playVideo(context, video.url),
                         ),
                       ),
                     )
@@ -846,21 +842,72 @@ class _ContactCard extends StatelessWidget {
   );
 }
 
-Future<void> _openUri(
-  BuildContext context,
-  Uri? uri, {
-  String failureKey = 'openContactFailed',
-}) async {
-  if (uri != null &&
-      await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+String? _cleanVideoUrl(String? raw) {
+  if (raw == null) return null;
+  var url = raw.trim();
+  if (url.isEmpty) return null;
+
+  final httpIdx = url.indexOf('http');
+  if (httpIdx > 0) {
+    url = url.substring(httpIdx).trim();
+  } else if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    if (url.startsWith('www.') ||
+        url.contains('tiktok.com') ||
+        url.contains('youtube.com') ||
+        url.contains('youtu.be')) {
+      url = 'https://$url';
+    } else {
+      return null;
+    }
+  }
+  return url;
+}
+
+Future<void> _playVideo(BuildContext context, String rawUrl) async {
+  final clean = _cleanVideoUrl(rawUrl);
+  if (clean == null) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('videoPlaybackFailed'))),
+      );
+    }
     return;
   }
-  if (context.mounted) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(context.tr(failureKey))));
+
+  final uri = Uri.tryParse(clean);
+  if (uri == null) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('videoPlaybackFailed'))),
+      );
+    }
+    return;
+  }
+
+  bool launched = false;
+  try {
+    launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {}
+
+  if (!launched) {
+    try {
+      launched = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+    } catch (_) {}
+  }
+
+  if (!launched) {
+    try {
+      launched = await launchUrl(uri, mode: LaunchMode.platformDefault);
+    } catch (_) {}
+  }
+
+  if (!launched && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.tr('videoPlaybackFailed'))),
+    );
   }
 }
+
 
 class _QuickStats extends StatelessWidget {
   const _QuickStats({required this.items});

@@ -62,15 +62,47 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
     ),
   );
 
-  bool _isDirectVideoUrl(String url) {
-    final clean = url.split('?').first.toLowerCase();
-    return clean.endsWith('.mp4') ||
-        clean.endsWith('.webm') ||
-        clean.endsWith('.mov') ||
-        url.contains('supabase.co/storage') ||
-        url.contains('assets.el7lm.com') ||
-        url.contains('r2.dev') ||
-        url.contains('firebasestorage.googleapis.com');
+  static String? cleanVideoUrl(String? raw) {
+    if (raw == null) return null;
+    var url = raw.trim();
+    if (url.isEmpty) return null;
+
+    final httpIdx = url.indexOf('http');
+    if (httpIdx > 0) {
+      url = url.substring(httpIdx).trim();
+    } else if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      if (url.startsWith('www.') ||
+          url.contains('tiktok.com') ||
+          url.contains('youtube.com') ||
+          url.contains('youtu.be')) {
+        url = 'https://$url';
+      } else {
+        return null;
+      }
+    }
+
+    // Filter out deleted/dead legacy Supabase storage host
+    if (url.contains('ekyerljzfokqimbabzxm.supabase.co')) {
+      return null;
+    }
+    if (url.contains('لا/يوجد') || url.startsWith('la/')) {
+      return null;
+    }
+
+    return url;
+  }
+
+  static bool isDirectVideoUrl(String url) {
+    final clean = cleanVideoUrl(url);
+    if (clean == null) return false;
+    final base = clean.split('?').first.toLowerCase();
+    return base.endsWith('.mp4') ||
+        base.endsWith('.webm') ||
+        base.endsWith('.mov') ||
+        clean.contains('supabase.co/storage') ||
+        clean.contains('assets.el7lm.com') ||
+        clean.contains('r2.dev') ||
+        clean.contains('firebasestorage.googleapis.com');
   }
 
   @override
@@ -88,13 +120,11 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
           final rawVideos = [
             for (final player in matchedPlayers)
               for (final video in player.videos)
-                if (video.url.isNotEmpty) (player: player, video: video),
+                if (cleanVideoUrl(video.url) != null)
+                  (player: player, video: video),
           ];
 
-          // Sort: Direct video files first, external platform links last
-          final directVideos = rawVideos.where((v) => _isDirectVideoUrl(v.video.url)).toList();
-          final externalVideos = rawVideos.where((v) => !_isDirectVideoUrl(v.video.url)).toList();
-          final videos = [...directVideos, ...externalVideos];
+          final videos = rawVideos;
 
           if (activeIndex >= videos.length) activeIndex = 0;
 
@@ -200,16 +230,8 @@ class _CinemaVideoState extends State<_CinemaVideo> {
   bool liked = false;
   bool favorited = false;
 
-  bool get isDirectVideo {
-    final clean = widget.video.url.split('?').first.toLowerCase();
-    return clean.endsWith('.mp4') ||
-        clean.endsWith('.webm') ||
-        clean.endsWith('.mov') ||
-        widget.video.url.contains('supabase.co/storage') ||
-        widget.video.url.contains('assets.el7lm.com') ||
-        widget.video.url.contains('r2.dev') ||
-        widget.video.url.contains('firebasestorage.googleapis.com');
-  }
+  bool get isDirectVideo =>
+      _PlayerCinemaScreenState.isDirectVideoUrl(widget.video.url);
 
   @override
   void initState() {
@@ -226,7 +248,8 @@ class _CinemaVideoState extends State<_CinemaVideo> {
   }
 
   Future<void> _initializeDirectVideo() async {
-    final uri = Uri.tryParse(widget.video.url);
+    final clean = _PlayerCinemaScreenState.cleanVideoUrl(widget.video.url);
+    final uri = clean != null ? Uri.tryParse(clean) : null;
     if (uri == null || !uri.hasScheme) {
       failed = true;
       return;
@@ -499,7 +522,13 @@ class _EmbeddedPlatformVideoState extends State<_EmbeddedPlatformVideo> {
           ),
         );
     }
-    controller.loadRequest(_embeddableUri(widget.url));
+    final embedUri = _embeddableUri(widget.url);
+    controller.loadRequest(
+      embedUri,
+      headers: const {
+        'Referer': 'https://www.el7lm.com',
+      },
+    );
   }
 
   @override
@@ -508,32 +537,41 @@ class _EmbeddedPlatformVideoState extends State<_EmbeddedPlatformVideo> {
       );
 
   static Uri _embeddableUri(String source) {
-    final uri = Uri.tryParse(source);
+    final clean = _PlayerCinemaScreenState.cleanVideoUrl(source) ?? source;
+    final uri = Uri.tryParse(clean);
     if (uri == null) return Uri.parse('about:blank');
     final host = uri.host.toLowerCase();
 
     if (host.contains('youtube.com') || host == 'youtu.be') {
-      final id = host == 'youtu.be'
-          ? (uri.pathSegments.isEmpty ? null : uri.pathSegments.first)
-          : uri.queryParameters['v'] ??
-                _afterSegment(uri.pathSegments, 'embed') ??
-                _afterSegment(uri.pathSegments, 'shorts');
+      String? id;
+      if (host == 'youtu.be') {
+        id = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
+      } else if (uri.pathSegments.contains('shorts')) {
+        id = _afterSegment(uri.pathSegments, 'shorts');
+      } else if (uri.pathSegments.contains('embed')) {
+        id = _afterSegment(uri.pathSegments, 'embed');
+      } else {
+        id = uri.queryParameters['v'];
+      }
       if (id != null && id.isNotEmpty) {
+        // Strip any trailing query or parameters from ID
+        final cleanId = id.split('?').first.split('&').first;
         return Uri.parse(
-          'https://www.youtube.com/embed/$id?autoplay=1&mute=1&loop=1&playlist=$id&playsinline=1&controls=1',
+          'https://www.youtube.com/embed/$cleanId?autoplay=1&mute=1&loop=1&playlist=$cleanId&playsinline=1&controls=1&rel=0',
         );
       }
     }
     if (host.contains('tiktok.com')) {
       final id = _afterSegment(uri.pathSegments, 'video');
       if (id != null && id.isNotEmpty) {
+        final cleanId = id.split('?').first;
         return Uri.parse(
-          'https://www.tiktok.com/player/v1/$id?autoplay=1&loop=1&music_info=1&description=1',
+          'https://www.tiktok.com/player/v1/$cleanId?autoplay=1&loop=1&music_info=1&description=1',
         );
       }
     }
     if (host.contains('vimeo.com') && uri.pathSegments.isNotEmpty) {
-      final id = uri.pathSegments.last;
+      final id = uri.pathSegments.last.split('?').first;
       return Uri.parse(
         'https://player.vimeo.com/video/$id?autoplay=1&muted=1&loop=1',
       );
@@ -546,6 +584,42 @@ class _EmbeddedPlatformVideoState extends State<_EmbeddedPlatformVideo> {
     return index >= 0 && index + 1 < segments.length
         ? segments[index + 1]
         : null;
+  }
+}
+
+Future<void> _safeLaunchVideoUrl(BuildContext context, String rawUrl) async {
+  final clean = _PlayerCinemaScreenState.cleanVideoUrl(rawUrl) ?? rawUrl.trim();
+  final uri = Uri.tryParse(clean);
+  if (uri == null) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('videoPlaybackFailed'))),
+      );
+    }
+    return;
+  }
+
+  bool launched = false;
+  try {
+    launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {}
+
+  if (!launched) {
+    try {
+      launched = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+    } catch (_) {}
+  }
+
+  if (!launched) {
+    try {
+      launched = await launchUrl(uri, mode: LaunchMode.platformDefault);
+    } catch (_) {}
+  }
+
+  if (!launched && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.tr('videoPlaybackFailed'))),
+    );
   }
 }
 
@@ -583,26 +657,45 @@ class _VideoPoster extends StatelessWidget {
             Center(
               child: Container(
                 padding: const EdgeInsets.all(24),
-                color: Colors.black54,
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.error_outline,
-                        color: Colors.white54, size: 48),
+                    const Icon(Icons.play_circle_outline_rounded,
+                        color: Colors.white70, size: 52),
                     const SizedBox(height: 12),
                     Text(
                       context.tr('videoPlaybackFailed'),
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: Colors.white70),
                     ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () =>
+                          _safeLaunchVideoUrl(context, video.url),
+                      icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                      label: Text(context.tr('openVideo')),
+                    ),
                     if (onRetry != null) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       TextButton.icon(
                         onPressed: onRetry,
-                        icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+                        icon: const Icon(Icons.refresh_rounded,
+                            color: Colors.white70),
                         label: Text(
                           context.tr('retry'),
-                          style: const TextStyle(color: Colors.white),
+                          style: const TextStyle(color: Colors.white70),
                         ),
                       ),
                     ],
