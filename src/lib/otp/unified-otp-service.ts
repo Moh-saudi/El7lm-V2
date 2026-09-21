@@ -39,6 +39,7 @@ export interface SendOTPResult {
 export type OTPErrorCode =
   | 'OTP_STORAGE_FAILED'
   | 'OTP_DELIVERY_NOT_CONFIGURED'
+  | 'OTP_TEMPLATE_REJECTED'
   | 'OTP_DELIVERY_FAILED'
   | 'OTP_CHANNEL_UNAVAILABLE';
 
@@ -100,17 +101,25 @@ async function sendOTPViaChatAman(
 
     const baseUrl = (config.baseUrl || 'https://chataman.com').trim().replace(/\/+$/, '');
 
-    // 1. محاولة إرسال القالب أولاً
-    try {
+    const sendTemplate = async (includeUrlButton: boolean) => {
+      const components: Record<string, unknown>[] = [
+        { type: 'body', parameters: [{ type: 'text', text: otp }] },
+      ];
+      if (includeUrlButton) {
+        components.push({
+          type: 'button',
+          sub_type: 'url',
+          index: 0,
+          parameters: [{ type: 'text', text: otp }],
+        });
+      }
+
       const payload = {
         phone: formattedPhone,
         template: {
           name: 'otp_el7lmplatform',
           language: { code: 'ar' },
-          components: [
-            { type: 'body', parameters: [{ type: 'text', text: otp }] },
-            { type: 'button', sub_type: 'url', index: 0, parameters: [{ type: 'text', text: otp }] },
-          ],
+          components,
         },
       };
 
@@ -129,44 +138,29 @@ async function sendOTPViaChatAman(
       try { data = JSON.parse(text); } catch { data = { message: text }; }
 
       if (response.ok && data.status !== 'error' && data.success !== false && data?.data?.success !== false) {
-        console.log('✅ [OTP] Sent via ChatAman template to', formattedPhone);
-        return { success: true };
+        return true;
       }
-      console.warn('⚠️ [ChatAman] Template send failed, falling back to direct message:', data.message || data.error);
-    } catch (tplErr) {
-      console.warn('⚠️ [ChatAman] Template endpoint error:', tplErr);
+      console.warn('⚠️ [ChatAman] OTP template was rejected:', {
+        status: response.status,
+        includeUrlButton,
+        providerMessage: data.message || data.error || 'Unknown error',
+      });
+      return false;
+    };
+
+    // A WhatsApp Business OTP must be delivered through an approved template.
+    // Some approved templates have a dynamic URL button and some only have the
+    // body variable, so support both without ever sending two messages.
+    if (await sendTemplate(true) || await sendTemplate(false)) {
+      console.log('✅ [OTP] Sent via ChatAman template to', formattedPhone);
+      return { success: true };
     }
 
-    // 2. Fallback: إرسال الرمز مباشرة عبر /api/send
-    const directMessage = `‏*${otp}*‏ هو كود التحقق الخاص بك على منصة الحلم (el7lm.com).\n\nللحفاظ على أمانك، لا تشارك هذا الكود مع أي شخص.\nتنتهي صلاحية الرمز خلال 3 دقائق.`;
-    const sendResponse = await fetch(`${baseUrl}/api/send`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${config.apiKey.trim()}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({
-        phone: formattedPhone,
-        message: directMessage,
-      }),
-    });
-
-    const sendText = await sendResponse.text();
-    let sendData: any = {};
-    try { sendData = JSON.parse(sendText); } catch { sendData = { message: sendText }; }
-
-    if (!sendResponse.ok || sendData.status === 'error' || sendData.success === false || sendData?.data?.success === false) {
-      console.error('❌ [ChatAman] Direct send failed:', sendData.message || sendData.error || 'Unknown error');
-      return {
-        success: false,
-        error: 'The verification message could not be delivered.',
-        code: 'OTP_DELIVERY_FAILED',
-      };
-    }
-
-    console.log('✅ [OTP] Sent via ChatAman direct message to', formattedPhone);
-    return { success: true };
+    return {
+      success: false,
+      error: 'The approved verification template could not be delivered.',
+      code: 'OTP_TEMPLATE_REJECTED',
+    };
   } catch (error: any) {
     console.error('❌ [OTP] ChatAman request failed:', error);
     return {
