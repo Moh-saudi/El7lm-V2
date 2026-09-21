@@ -338,7 +338,7 @@
   "accountAlreadyExistsLogin": "Ce numero est deja enregistre. Connectez-vous.",
   "accountTypeMismatch": "Ce numero est enregistre sous un autre type de compte.",
   "accountTypeMissing": "Type de compte non identifie. Contactez le support.",
-  "accountLookupUnavailable": "Impossible de verifier la base de donnees. Reessayez.",
+  "accountLookupUnavailable": "Impossible de vérifier le numéro pour le moment. Veuillez vérifier votre connexion et réessayer.",
   "playerAgeValue": "{age} ans",
   "playerPersonalDetails": "Informations personnelles",
   "playerNationality": "Nationalite",

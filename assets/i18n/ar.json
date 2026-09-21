@@ -338,7 +338,7 @@
   "accountAlreadyExistsLogin": "رقم الهاتف مسجل بالفعل. استخدم تسجيل الدخول.",
   "accountTypeMismatch": "رقم الهاتف مسجل على نوع حساب آخر. يرجى اختيار نوع الحساب الصحيح.",
   "accountTypeMissing": "تعذر تحديد نوع الحساب. تواصل مع الدعم.",
-  "accountLookupUnavailable": "تعذر التحقق من قاعدة بيانات الحسابات حاليًا. يرجى المحاولة بعد قليل.",
+  "accountLookupUnavailable": "تعذر التحقق من رقم الهاتف حاليًا. يرجى التأكد من اتصال الإنترنت والمحاولة مجددًا.",
   "playerAgeValue": "{age} سنة",
   "playerPersonalDetails": "البيانات الشخصية",
   "playerNationality": "الجنسية",

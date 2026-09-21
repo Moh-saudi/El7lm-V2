@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -28,14 +31,15 @@ class AuthService {
   AuthService(this._api);
 
   final ApiClient _api;
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  static const _storage = FlutterSecureStorage();
 
-  bool get hasSession {
-    if (!AppConfig.hasSupabaseConfiguration) return false;
-    final session = Supabase.instance.client.auth.currentSession;
-    if (session == null) return false;
-    return !session.isExpired;
-  }
+  bool get isAuthenticated => AppConfig.hasSupabaseConfiguration
+      ? Supabase.instance.client.auth.currentSession != null
+      : false;
+
+  bool get hasSession => AppConfig.hasSupabaseConfiguration
+      ? Supabase.instance.client.auth.currentSession != null
+      : false;
 
   bool get hasExpiredOrInvalidSession {
     if (!AppConfig.hasSupabaseConfiguration) return false;
@@ -58,55 +62,81 @@ class AuthService {
   }
 
   Future<PhoneAccountStatus> checkPhone(String phone) async {
-    if (!AppConfig.hasSupabaseConfiguration) {
-      throw const ApiException(
-        'The account lookup service is not configured.',
-        code: 'ACCOUNT_LOOKUP_UNAVAILABLE',
-        translationKey: 'accountLookupUnavailable',
-      );
-    }
-
+    // 1. First try the backend resolve-phone endpoint
     try {
-      final response = await Supabase.instance.client.functions.invoke(
-        'resolve-phone',
+      final result = await _api.post(
+        '/api/auth/resolve-phone',
         body: {'phoneNumber': phone},
       );
-      final result = _functionPayload(response.data);
       return PhoneAccountStatus(
         found: result['found'] == true,
         accountType: AccountType.tryFromValue(
           result['accountType']?.toString(),
         ),
       );
-    } on FunctionException catch (error) {
-      final payload = _functionPayload(error.details);
-      final code = payload['code']?.toString();
-      throw ApiException(
-        '${payload['error'] ?? payload['message'] ?? error.reasonPhrase ?? 'Account lookup failed.'}',
-        statusCode: error.status,
-        code: code,
-        translationKey: switch (code) {
-          'INVALID_PHONE' => 'invalidPhone',
-          'TOO_MANY_REQUESTS' => 'tooManyRequests',
-          _ when error.status == 429 => 'tooManyRequests',
-          _ => 'accountLookupUnavailable',
-        },
-      );
-    } on ApiException {
-      rethrow;
+    } on ApiException catch (error) {
+      if (error.code == 'INVALID_PHONE' ||
+          error.code == 'TOO_MANY_REQUESTS' ||
+          error.statusCode == 429) {
+        rethrow;
+      }
+      // If server returned another error, try Supabase fallback
     } catch (_) {
-      throw const ApiException(
-        'The account lookup service could not be reached.',
-        code: 'ACCOUNT_LOOKUP_UNAVAILABLE',
-        translationKey: 'accountLookupUnavailable',
-      );
+      // Network or parsing failure, try fallback
     }
+
+    // 2. Fallback to Supabase Edge function if configured
+    if (AppConfig.hasSupabaseConfiguration) {
+      try {
+        final response = await Supabase.instance.client.functions.invoke(
+          'resolve-phone',
+          body: {'phoneNumber': phone},
+        );
+        final result = _functionPayload(response.data);
+        return PhoneAccountStatus(
+          found: result['found'] == true,
+          accountType: AccountType.tryFromValue(
+            result['accountType']?.toString(),
+          ),
+        );
+      } on FunctionException catch (error) {
+        final payload = _functionPayload(error.details);
+        final code = payload['code']?.toString();
+        if (code == 'INVALID_PHONE' ||
+            code == 'TOO_MANY_REQUESTS' ||
+            error.status == 429) {
+          throw ApiException(
+            '${payload['error'] ?? payload['message'] ?? error.reasonPhrase ?? 'Rate limit exceeded.'}',
+            statusCode: error.status,
+            code: code ?? 'TOO_MANY_REQUESTS',
+            translationKey: code == 'INVALID_PHONE'
+                ? 'invalidPhone'
+                : 'tooManyRequests',
+          );
+        }
+      } catch (_) {}
+    }
+
+    throw const ApiException(
+      'The phone verification service could not be reached.',
+      code: 'ACCOUNT_LOOKUP_UNAVAILABLE',
+      translationKey: 'accountLookupUnavailable',
+    );
   }
 
   Map<String, dynamic> _functionPayload(dynamic data) {
-    return data is Map
-        ? Map<String, dynamic>.from(data)
-        : const <String, dynamic>{};
+    if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+    if (data is String) {
+      try {
+        final decoded = jsonDecode(data);
+        if (decoded is Map) {
+          return Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {}
+    }
+    return const <String, dynamic>{};
   }
 
   Future<PhoneAccountStatus> sendOtp({
@@ -115,35 +145,54 @@ class AuthService {
     required AccountType expectedAccountType,
     String? name,
   }) async {
-    final status = await checkPhone(phone);
-    if (!registration && !status.found) {
-      throw const ApiException(
-        'This phone number is not registered. Create an account first.',
-        statusCode: 404,
-        code: 'ACCOUNT_NOT_FOUND',
-        translationKey: 'accountNotFoundRegisterFirst',
-      );
+    PhoneAccountStatus? status;
+    try {
+      status = await checkPhone(phone);
+    } on ApiException catch (error) {
+      // Re-throw validation or rate limit errors immediately
+      if (error.code == 'INVALID_PHONE' ||
+          error.code == 'TOO_MANY_REQUESTS' ||
+          error.statusCode == 429) {
+        rethrow;
+      }
+      // For general lookup unavailability, do NOT block OTP sending!
+      // The server (/api/otp/send) performs the authoritative check.
+      debugPrint('[auth_service] pre-check skipped: ${error.code}');
+    } catch (e) {
+      debugPrint('[auth_service] pre-check error: $e');
     }
-    if (!registration &&
-        status.found &&
-        status.accountType != null &&
-        status.accountType != expectedAccountType) {
-      throw const ApiException(
-        'This phone number is registered under another account type.',
-        statusCode: 409,
-        code: 'ACCOUNT_TYPE_MISMATCH',
-        translationKey: 'accountTypeMismatch',
-      );
+
+    if (status != null) {
+      if (!registration && !status.found) {
+        throw const ApiException(
+          'This phone number is not registered. Create an account first.',
+          statusCode: 404,
+          code: 'ACCOUNT_NOT_FOUND',
+          translationKey: 'accountNotFoundRegisterFirst',
+        );
+      }
+      if (!registration &&
+          status.found &&
+          status.accountType != null &&
+          status.accountType != expectedAccountType) {
+        throw const ApiException(
+          'This phone number is registered under another account type.',
+          statusCode: 409,
+          code: 'ACCOUNT_TYPE_MISMATCH',
+          translationKey: 'accountTypeMismatch',
+        );
+      }
+      if (registration && status.found) {
+        throw const ApiException(
+          'This phone number is already registered. Sign in instead.',
+          statusCode: 409,
+          code: 'ACCOUNT_ALREADY_EXISTS',
+          translationKey: 'accountAlreadyExistsLogin',
+        );
+      }
     }
-    if (registration && status.found) {
-      throw const ApiException(
-        'This phone number is already registered. Sign in instead.',
-        statusCode: 409,
-        code: 'ACCOUNT_ALREADY_EXISTS',
-        translationKey: 'accountAlreadyExistsLogin',
-      );
-    }
-    await _api.post(
+
+    final response = await _api.post(
       '/api/otp/send',
       body: {
         'phoneNumber': phone,
@@ -152,7 +201,15 @@ class AuthService {
         'channel': 'auto',
       },
     );
-    return status;
+
+    final returnedType = AccountType.tryFromValue(
+      response['accountType']?.toString(),
+    ) ?? status?.accountType;
+
+    return PhoneAccountStatus(
+      found: status?.found ?? (response['found'] == true || !registration),
+      accountType: returnedType,
+    );
   }
 
   Future<AuthResult> verifyOtp({

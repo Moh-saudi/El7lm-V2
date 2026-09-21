@@ -338,7 +338,7 @@
   "accountAlreadyExistsLogin": "Telefone já cadastrado. Faça login.",
   "accountTypeMismatch": "Telefone cadastrado em outro tipo de conta.",
   "accountTypeMissing": "Não foi possível identificar o tipo de conta.",
-  "accountLookupUnavailable": "Não é possível verificar o banco de dados agora.",
+  "accountLookupUnavailable": "Não foi possível verificar o número agora. Verifique sua conexão e tente novamente.",
   "playerAgeValue": "{age} anos",
   "playerPersonalDetails": "Detalhes Pessoais",
   "playerNationality": "Nacionalidade",

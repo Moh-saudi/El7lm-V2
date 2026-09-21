@@ -338,7 +338,7 @@
   "accountAlreadyExistsLogin": "This phone number is already registered. Sign in instead.",
   "accountTypeMismatch": "This phone number is registered under another account type. Please select the correct account type.",
   "accountTypeMissing": "The account type could not be identified. Contact support.",
-  "accountLookupUnavailable": "We cannot verify the accounts database right now. Please try again shortly.",
+  "accountLookupUnavailable": "Unable to verify phone number right now. Please check your internet connection and try again.",
   "playerAgeValue": "{age} years",
   "playerPersonalDetails": "Personal Details",
   "playerNationality": "Nationality",
