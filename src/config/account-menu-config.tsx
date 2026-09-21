@@ -47,6 +47,7 @@ const MENU_ITEM_PERMISSIONS: Record<string, keyof RolePermissions> = {
   'admin-geidea-settings': 'canManagePayments',
   'admin-subscriptions': 'canManagePayments',
   'admin-pricing': 'canManagePayments',
+  'admin-pricing-management': 'canManagePayments',
   'admin-email-center': 'canManageSupport',
   'admin-invoices': 'canViewFinancials',
   'admin-reports': 'canViewReports',

@@ -432,6 +432,7 @@ const ResponsiveSidebar: React.FC<ResponsiveSidebarProps> = ({ accountType: prop
       'admin-geidea-settings': 'canManagePayments',
       'admin-subscriptions': 'canManagePayments',
       'admin-pricing': 'canManagePayments',
+      'admin-pricing-management': 'canManagePayments',
       'admin-email-center': 'canManageSupport',
 
       'admin-invoices': 'canViewFinancials',

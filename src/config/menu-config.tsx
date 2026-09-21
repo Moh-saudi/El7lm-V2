@@ -216,6 +216,15 @@ export const SUBSCRIPTIONS_GROUP: MenuGroup = {
     icon: CreditCard,
     items: [
         {
+            id: 'admin-pricing-management',
+            label: 'إدارة باقات الاشتراك والأسعار',
+            icon: DollarSign,
+            href: '/dashboard/admin/pricing-management',
+            color: 'text-emerald-600',
+            bgColor: 'bg-emerald-50',
+            permission: { action: 'manage', resource: 'financials' }
+        },
+        {
             id: 'admin-payments',
             label: '\u0627\u0644\u0633\u062c\u0644 \u0627\u0644\u0645\u0627\u0644\u064a',
             icon: CreditCard,
