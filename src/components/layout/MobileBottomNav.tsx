@@ -66,7 +66,7 @@ function getBottomTabs(accountType: string): NavTab[] {
     case 'admin':
       return [
         { id: 'dashboard', icon: Home, href: '/dashboard/admin' },
-        { id: 'admin-users-management', icon: Users, href: '/dashboard/admin/users-management' },
+        { id: 'admin-users-management', icon: Users, href: '/dashboard/admin/users' },
         { id: 'admin-payments', icon: BarChart3, href: '/dashboard/admin/payments' },
         { id: 'admin-reports', icon: Building, href: '/dashboard/admin/reports' },
       ];

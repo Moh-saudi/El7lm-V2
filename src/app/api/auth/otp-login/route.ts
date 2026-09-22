@@ -11,16 +11,10 @@ import { cleanPhoneNumber, generatePhoneVariants } from '@/lib/validation/phone-
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
 import crypto from 'crypto';
 
-const SEARCH_COLLECTIONS = ['clubs', 'academies', 'trainers', 'agents', 'marketers', 'admins', 'players', 'users'];
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isUUID = (v: unknown): v is string => typeof v === 'string' && UUID_REGEX.test(v);
 
-const TABLE_TO_ACCOUNT_TYPE: Record<string, string> = {
-  players: 'player', clubs: 'club', academies: 'academy',
-  trainers: 'trainer', agents: 'agent', marketers: 'marketer',
-  admins: 'admin', users: 'player',
-};
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,31 +45,7 @@ export async function POST(request: NextRequest) {
     let userEmail = '';
     let cachedSupabaseUid: string | null = null;
 
-    outer:
-    for (const coll of SEARCH_COLLECTIONS) {
-      for (const phoneVariant of phoneVariants) {
-        const { data } = await db
-          .from(coll)
-          .select('id, uid, full_name, name, email')
-          .eq('phone', phoneVariant)
-          .limit(1)
-          .maybeSingle();
-
-        if (data) {
-          userId = (data as any).id;
-          userName = (data as any).full_name || (data as any).name || '';
-          accountType = TABLE_TO_ACCOUNT_TYPE[coll] || 'player';
-          userEmail = (data as any).email || '';
-          // نتأكد أن uid هو Supabase UUID وليس Firebase UID
-          const rawUid = (data as any).uid;
-          cachedSupabaseUid = isUUID(rawUid) ? rawUid : null;
-          break outer;
-        }
-      }
-    }
-
-    // The centralized lookup is authoritative. In particular, it preserves
-    // accountType when the matching record is found in the shared users table.
+    // Resolve once using the centralized lookup, including legacy phone formats.
     const resolvedAccount = await findAccountByPhone(phoneNumber);
     if (resolvedAccount.found) {
       userId = resolvedAccount.id;
@@ -85,6 +55,23 @@ export async function POST(request: NextRequest) {
       cachedSupabaseUid = isUUID(resolvedAccount.uid)
         ? resolvedAccount.uid
         : null;
+    }
+
+    // Preserve OTP access for admins, who are not part of the public lookup.
+    if (!userId) {
+      const { data: admin } = await db
+        .from('admins')
+        .select('id, uid, full_name, name, email')
+        .in('phone', phoneVariants)
+        .limit(1)
+        .maybeSingle();
+      if (admin) {
+        userId = admin.id;
+        accountType = 'admin';
+        userName = admin.full_name || admin.name || '';
+        userEmail = admin.email || '';
+        cachedSupabaseUid = isUUID(admin.uid) ? admin.uid : null;
+      }
     }
 
     if (!userId) {

@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { Modal, Form, Input, InputNumber, Switch, Tabs, Button, Space, List, Typography, Empty, Tag } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Modal, Form, Input, InputNumber, Switch, Tabs, Button, Space, List, Typography, Empty, Tag, Select } from 'antd';
 import { PlusOutlined, DeleteOutlined, CheckOutlined, StarOutlined, SettingOutlined } from '@ant-design/icons';
 import { ConfigProvider } from 'antd';
 import arEG from 'antd/locale/ar_EG';
+import toast from 'react-hot-toast';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -21,13 +22,15 @@ interface SubscriptionPlan {
     bonusFeatures?: string[];
     isActive: boolean;
     order?: number;
+    overrides?: any;
+    accountTypeOverrides?: any;
 }
 
 interface EditPlanModalProps {
     plan: SubscriptionPlan;
     isOpen: boolean;
     onClose: () => void;
-    onSave: (updatedPlan: SubscriptionPlan) => void;
+    onSave: (updatedPlan: SubscriptionPlan) => Promise<void> | void;
 }
 
 const ANTD_THEME = {
@@ -36,24 +39,31 @@ const ANTD_THEME = {
 
 export default function EditPlanModal({ plan, isOpen, onClose, onSave }: EditPlanModalProps) {
     const [form] = Form.useForm();
-    const [features, setFeatures] = React.useState<string[]>([]);
-    const [bonusFeatures, setBonusFeatures] = React.useState<string[]>([]);
-    const [newFeature, setNewFeature] = React.useState('');
-    const [newBonus, setNewBonus] = React.useState('');
-    const [isSaving, setIsSaving] = React.useState(false);
+    const [activeTab, setActiveTab] = useState('basic');
+    const [features, setFeatures] = useState<string[]>([]);
+    const [bonusFeatures, setBonusFeatures] = useState<string[]>([]);
+    const [newFeature, setNewFeature] = useState('');
+    const [newBonus, setNewBonus] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (plan && isOpen) {
+            const rawPlan = plan as any;
             form.setFieldsValue({
-                title: plan.title,
-                subtitle: plan.subtitle || '',
-                period: plan.period,
-                base_original_price: plan.base_original_price,
-                base_price: plan.base_price,
-                isActive: plan.isActive,
+                title: rawPlan.title || rawPlan.name || '',
+                subtitle: rawPlan.subtitle || rawPlan.description || '',
+                period: rawPlan.period || '',
+                base_currency: rawPlan.base_currency || 'USD',
+                base_original_price: Number(rawPlan.base_original_price ?? rawPlan.baseOriginalPrice ?? 0),
+                base_price: Number(rawPlan.base_price ?? rawPlan.basePrice ?? 0),
+                isActive: rawPlan.isActive ?? true,
             });
-            setFeatures(plan.features || []);
-            setBonusFeatures(plan.bonusFeatures || []);
+            const rawFeatures = Array.isArray(rawPlan.features) ? rawPlan.features : [];
+            setFeatures(rawFeatures.map((f: any) => typeof f === 'string' ? f : f?.name || f?.title || '').filter(Boolean));
+            
+            const rawBonus = Array.isArray(rawPlan.bonusFeatures) ? rawPlan.bonusFeatures : [];
+            setBonusFeatures(rawBonus.map((b: any) => typeof b === 'string' ? b : b?.name || b?.title || '').filter(Boolean));
+            setActiveTab('basic');
         }
     }, [plan, isOpen, form]);
 
@@ -61,15 +71,26 @@ export default function EditPlanModal({ plan, isOpen, onClose, onSave }: EditPla
         try {
             const values = await form.validateFields();
             setIsSaving(true);
+            const cleanFeatures = features.map(f => typeof f === 'string' ? f : (f as any)?.name || '').filter(Boolean);
+            const cleanBonus = bonusFeatures.map(b => typeof b === 'string' ? b : (b as any)?.name || '').filter(Boolean);
+            
             await onSave({
                 ...plan,
                 ...values,
-                features,
-                bonusFeatures,
+                base_price: Number(values.base_price),
+                base_original_price: Number(values.base_original_price || 0),
+                features: cleanFeatures,
+                bonusFeatures: cleanBonus,
             });
             onClose();
-        } catch {
-            // validation failed
+        } catch (err: any) {
+            if (err?.errorFields && err.errorFields.length > 0) {
+                setActiveTab('basic');
+                toast.error('يرجى التأكد من ملء جميع الحقول المطلوبة بشكل صحيح');
+            } else {
+                console.error('[EditPlanModal] Error saving plan:', err);
+                toast.error(err?.message || 'فشل حفظ التعديلات');
+            }
         } finally {
             setIsSaving(false);
         }
@@ -90,6 +111,7 @@ export default function EditPlanModal({ plan, isOpen, onClose, onSave }: EditPla
     const tabItems = [
         {
             key: 'basic',
+            forceRender: true,
             label: (
                 <span className="flex items-center gap-1.5">
                     <SettingOutlined /> المعلومات الأساسية
@@ -230,7 +252,7 @@ export default function EditPlanModal({ plan, isOpen, onClose, onSave }: EditPla
                     <Space>
                         <SettingOutlined style={{ color: '#2563eb' }} />
                         <span>تعديل الباقة</span>
-                        {plan && <Tag color="blue">{plan.title}</Tag>}
+                        {plan && <Tag color="blue">{plan.title || (plan as any).name}</Tag>}
                     </Space>
                 }
                 onOk={handleSave}
@@ -240,7 +262,13 @@ export default function EditPlanModal({ plan, isOpen, onClose, onSave }: EditPla
                 width={600}
                 destroyOnClose
             >
-                <Tabs items={tabItems} size="small" />
+                <Tabs
+                    activeKey={activeTab}
+                    onChange={setActiveTab}
+                    items={tabItems}
+                    size="small"
+                    destroyInactiveTabPane={false}
+                />
             </Modal>
         </ConfigProvider>
     );

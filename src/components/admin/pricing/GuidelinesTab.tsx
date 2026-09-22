@@ -60,9 +60,22 @@ function GuidelinesContent() {
         setIsSaving(true);
         try {
             const plan = plans.find(p => p.id === selectedPlanId);
-            await PricingService.updatePlan({ ...plan, badges, highlights, recommendedFor, description });
-            message.success('تم حفظ الإرشادات');
-            loadPlans();
+            await PricingService.updatePlan({
+                ...plan,
+                badges,
+                highlights,
+                recommendedFor,
+                description,
+                overrides: {
+                    ...(plan?.overrides || {}),
+                    badges,
+                    highlights,
+                    recommendedFor,
+                    description,
+                }
+            });
+            message.success('تم حفظ الإرشادات بنجاح');
+            await loadPlans();
         } catch {
             message.error('فشل الحفظ');
         } finally {

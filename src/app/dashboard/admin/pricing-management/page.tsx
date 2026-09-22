@@ -288,12 +288,14 @@ function PlansTab({ plans, onUpdate }: { plans: SubscriptionPlan[]; onUpdate: ()
                 subtitle: vals.subtitle || '',
                 period: vals.period,
                 base_currency: vals.base_currency || 'USD',
-                base_original_price: vals.base_original_price || 0,
-                base_price: vals.base_price,
+                base_original_price: Number(vals.base_original_price || 0),
+                base_price: Number(vals.base_price || 0),
                 features: [],
                 bonusFeatures: [],
                 isActive: vals.isActive ?? true,
                 order: plans.length + 1,
+                overrides: {},
+                accountTypeOverrides: {},
             };
             await PricingService.updatePlan(newPlan as any);
             toast.success('تم إنشاء الباقة');
@@ -431,6 +433,7 @@ function PlanCard({ plan, onUpdate }: { plan: SubscriptionPlan; onUpdate: () => 
             const finalOriginalPrice = Number(updatedPlan.base_original_price !== undefined ? updatedPlan.base_original_price : 0);
 
             await PricingService.updatePlan({
+                ...plan,
                 ...updatedPlan,
                 title: finalTitle,
                 name: finalTitle,
@@ -439,6 +442,8 @@ function PlanCard({ plan, onUpdate }: { plan: SubscriptionPlan; onUpdate: () => 
                 base_original_price: finalOriginalPrice,
                 features: updatedPlan.features?.map((f: any) => typeof f === 'string' ? f : f?.name || ''),
                 bonusFeatures: updatedPlan.bonusFeatures?.map((b: any) => typeof b === 'string' ? b : b?.name || ''),
+                overrides: updatedPlan.overrides || plan.overrides || {},
+                accountTypeOverrides: updatedPlan.accountTypeOverrides || plan.accountTypeOverrides || {},
             });
             toast.success('تم حفظ التغييرات بنجاح');
             setShowEdit(false);

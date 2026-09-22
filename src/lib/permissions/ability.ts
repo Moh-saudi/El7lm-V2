@@ -28,21 +28,20 @@ export function defineAbilityFor(userData: any, role?: Role) {
     const userRole = userData.roleId || userData.employeeRole || userData.role || userData.accountType;
     const userPermissions = userData.permissions;
 
-    // المدير الحقيقي هو من نوع admin وليس لديه أي دور أو صلاحيات أو تعريف موظف محدد
-    const hasSpecificPermissions =
-        (userData.permissions && userData.permissions.length > 0) ||
-        userData.roleId ||
-        userData.employeeRole ||
-        userData.role ||
-        userData.employeeId ||
-        userData.isEmployee;
+    // إذا كان نوع الحساب أدمن أو الدور أدمن (وليس موظفاً مقيداً بدور خاص غير الأدمن)
+    const isExplicitRestrictedEmployee = Boolean(
+        userData.isEmployee &&
+        userData.employeeRole &&
+        userData.employeeRole !== 'admin' &&
+        userData.employeeRole !== 'super_admin'
+    );
 
-    if (userData.accountType === 'admin' && !hasSpecificPermissions) {
+    if ((userData.accountType === 'admin' || userRole === 'admin' || userData.isAdmin) && !isExplicitRestrictedEmployee) {
         can('manage', 'all');
         return build();
     }
 
-    // 2. استخدام الصلاحيات المخزنة مباشرة في userData (من Firestore)
+    // 2. استخدام الصلاحيات المخزنة مباشرة في userData
     // إذا كان الموظف لديه قائمة صلاحيات مباشرة
     if (userPermissions && Array.isArray(userPermissions) && userPermissions.length > 0) {
         userPermissions.forEach((permission: string) => {
@@ -53,6 +52,17 @@ export function defineAbilityFor(userData: any, role?: Role) {
                     can(action, resource, { country: { $in: userData.allowedCountries } });
                 } else {
                     can(action, resource);
+                }
+
+                // ربط تلقائي: صلاحيات المالية والاشتراكات تمنح صلاحيات التسعير والباقات
+                if (resource === 'financials' || resource === 'subscriptions') {
+                    can(action, 'pricing');
+                    if (action === 'manage') {
+                        can('create', 'pricing');
+                        can('read', 'pricing');
+                        can('update', 'pricing');
+                        can('delete', 'pricing');
+                    }
                 }
             }
         });

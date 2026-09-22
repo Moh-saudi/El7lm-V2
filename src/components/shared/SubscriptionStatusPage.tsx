@@ -237,10 +237,14 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
           const expiresAt = pSubData.expires_at ? new Date(pSubData.expires_at) : (pSubData.end_date ? new Date(pSubData.end_date) : null);
           const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
 
+          const matchedParentPlan = allPlans.find(p => p.id === pSubData.packageType);
+          const parentPlanName = matchedParentPlan?.title || pSubData.plan_name || pSubData.package_name;
+          const parentDuration = matchedParentPlan?.period || pSubData.package_duration;
+
           setSubscription({
             status: pSubData.status === 'active' && daysLeft > 0 ? 'active' : (pSubData.status === 'active' && daysLeft <= 0 ? 'expired' : pSubData.status || 'inactive'),
-            plan_name: pSubData.plan_name || pSubData.package_name || t('subStatus.parentMembership'),
-            package_duration: pSubData.package_duration || (pSubData.packageType === 'subscription_6months' ? t('subStatus.period6Months') : pSubData.packageType === 'subscription_annual' ? t('subStatus.period12Months') : t('subStatus.period3Months')),
+            plan_name: parentPlanName || t('subStatus.parentMembership'),
+            package_duration: parentDuration || (pSubData.packageType === 'subscription_6months' ? t('subStatus.period6Months') : pSubData.packageType === 'subscription_annual' ? t('subStatus.period12Months') : t('subStatus.period3Months')),
             packageType: pSubData.packageType,
             expires_at: expiresAt,
             daysLeft: daysLeft,

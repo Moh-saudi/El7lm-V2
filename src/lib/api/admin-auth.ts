@@ -112,30 +112,46 @@ export async function authorizeAdmin(request: NextRequest): Promise<AdminAuthori
     const userId = user.id;
     try {
       const admin = getSupabaseAdmin();
-      const [adminById, adminByUid, employeeByAuthId, employeeById, userById] =
-        await Promise.all([
-          admin.from('admins').select('id,isActive').eq('id', userId).maybeSingle(),
-          admin.from('admins').select('id,isActive').eq('uid', userId).maybeSingle(),
-          admin
-            .from('employees')
-            .select('id,isActive,role,roleId,roleName')
-            .eq('authUserId', userId)
-            .maybeSingle(),
-          admin
-            .from('employees')
-            .select('id,isActive,role,roleId,roleName')
-            .eq('id', userId)
-            .maybeSingle(),
-          admin
-            .from('users')
-            .select('id,accountType,isAdmin,role')
-            .eq('id', userId)
-            .maybeSingle(),
-        ]);
+      const queries: Promise<any>[] = [
+        admin.from('admins').select('id,isActive').eq('id', userId).maybeSingle(),
+        admin.from('admins').select('id,isActive').eq('uid', userId).maybeSingle(),
+        admin
+          .from('employees')
+          .select('id,isActive,role,roleId,roleName')
+          .eq('authUserId', userId)
+          .maybeSingle(),
+        admin
+          .from('employees')
+          .select('id,isActive,role,roleId,roleName')
+          .eq('id', userId)
+          .maybeSingle(),
+        admin
+          .from('users')
+          .select('id,accountType,isAdmin,role')
+          .eq('id', userId)
+          .maybeSingle(),
+      ];
 
-      const adminRecord = adminById?.data || adminByUid?.data;
+      if (email) {
+        queries.push(admin.from('users').select('id,accountType,isAdmin,role').eq('email', email).maybeSingle());
+        queries.push(admin.from('admins').select('id,isActive').eq('email', email).maybeSingle());
+        queries.push(admin.from('employees').select('id,isActive,role,roleId,roleName').eq('email', email).maybeSingle());
+      }
+
+      const results = await Promise.all(queries);
+      const adminById = results[0];
+      const adminByUid = results[1];
+      const employeeByAuthId = results[2];
+      const employeeById = results[3];
+      const userById = results[4];
+      const userByEmail = email ? results[5] : null;
+      const adminByEmail = email ? results[6] : null;
+      const employeeByEmail = email ? results[7] : null;
+
+      const adminRecord = adminById?.data || adminByUid?.data || adminByEmail?.data;
       const isAdminRecord = Boolean(adminRecord?.id) && adminRecord?.isActive !== false;
-      const employeeRecord = employeeByAuthId?.data || employeeById?.data;
+
+      const employeeRecord = employeeByAuthId?.data || employeeById?.data || employeeByEmail?.data;
       const employeeRole = String(
         employeeRecord?.roleId || employeeRecord?.role || employeeRecord?.roleName || ''
       ).toLowerCase();
@@ -144,7 +160,7 @@ export async function authorizeAdmin(request: NextRequest): Promise<AdminAuthori
         employeeRecord?.isActive !== false &&
         ['admin', 'supervisor', 'super_admin', 'super-admin'].includes(employeeRole);
 
-      const userRow = userById?.data;
+      const userRow = userById?.data || userByEmail?.data;
       const isUserAdmin = Boolean(
         userRow && (
           userRow.accountType === 'admin' ||

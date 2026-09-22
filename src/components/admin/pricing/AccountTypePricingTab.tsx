@@ -49,7 +49,8 @@ function AccountTypePricingContent() {
     const currentPlan = plans.find(p => p.id === selectedPlan);
 
     const handleEdit = (typeCode: string) => {
-        const override = currentPlan?.accountTypeOverrides?.[typeCode];
+        const overrides = currentPlan?.accountTypeOverrides || currentPlan?.overrides?.accountTypeOverrides || {};
+        const override = overrides[typeCode];
         setEditingType(typeCode);
         form.setFieldsValue({
             original_price: override?.original_price ?? currentPlan?.base_original_price ?? undefined,
@@ -64,20 +65,29 @@ function AccountTypePricingContent() {
         try {
             const values = await form.validateFields();
             setIsSaving(true);
+            const currentOverrides = currentPlan.accountTypeOverrides || currentPlan.overrides?.accountTypeOverrides || {};
             const updatedOverrides = {
-                ...currentPlan.accountTypeOverrides,
+                ...currentOverrides,
                 [editingType]: {
-                    original_price: values.original_price || undefined,
-                    price: values.price || undefined,
-                    discount_percentage: values.discount_percentage || undefined,
-                    active: values.active,
+                    original_price: values.original_price !== undefined && values.original_price !== null ? Number(values.original_price) : undefined,
+                    price: values.price !== undefined && values.price !== null ? Number(values.price) : undefined,
+                    discount_percentage: values.discount_percentage !== undefined && values.discount_percentage !== null ? Number(values.discount_percentage) : undefined,
+                    active: values.active ?? true,
                 },
             };
-            await PricingService.updatePlan({ ...currentPlan, accountTypeOverrides: updatedOverrides });
-            message.success('تم حفظ التسعير');
+            await PricingService.updatePlan({
+                ...currentPlan,
+                accountTypeOverrides: updatedOverrides,
+                overrides: {
+                    ...(currentPlan.overrides || {}),
+                    accountTypeOverrides: updatedOverrides
+                }
+            });
+            message.success('تم حفظ التسعير بنجاح');
             setEditingType(null);
-            loadPlans();
-        } catch {
+            await loadPlans();
+        } catch (err) {
+            console.error('Save account type error:', err);
             message.error('فشل الحفظ');
         } finally {
             setIsSaving(false);
@@ -87,11 +97,18 @@ function AccountTypePricingContent() {
     const handleRemove = async (typeCode: string) => {
         if (!currentPlan) return;
         try {
-            const updatedOverrides = { ...currentPlan.accountTypeOverrides };
-            delete updatedOverrides[typeCode];
-            await PricingService.updatePlan({ ...currentPlan, accountTypeOverrides: updatedOverrides });
+            const currentOverrides = { ...(currentPlan.accountTypeOverrides || currentPlan.overrides?.accountTypeOverrides || {}) };
+            delete currentOverrides[typeCode];
+            await PricingService.updatePlan({
+                ...currentPlan,
+                accountTypeOverrides: currentOverrides,
+                overrides: {
+                    ...(currentPlan.overrides || {}),
+                    accountTypeOverrides: currentOverrides
+                }
+            });
             message.success('تم حذف التسعير الخاص');
-            loadPlans();
+            await loadPlans();
         } catch {
             message.error('فشل الحذف');
         }

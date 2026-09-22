@@ -177,27 +177,27 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
   const getPlanTitle = (plan?: Partial<SubscriptionPlan> | null) => {
     if (!plan?.id) return plan?.title || '';
-    return getTranslatedValue(`payment.plans.${plan.id}.title`, plan.title || '');
+    return plan.title || getTranslatedValue(`payment.plans.${plan.id}.title`, plan.title || '');
   };
 
   const getPlanSubtitle = (plan?: Partial<SubscriptionPlan> | null) => {
     if (!plan?.id) return (plan as any)?.subtitle || '';
-    return getTranslatedValue(`payment.plans.${plan.id}.subtitle`, (plan as any)?.subtitle || '');
+    return (plan as any)?.subtitle || getTranslatedValue(`payment.plans.${plan.id}.subtitle`, (plan as any)?.subtitle || '');
   };
 
   const getPlanDescription = (plan?: Partial<SubscriptionPlan> | null) => {
     if (!plan?.id) return (plan as any)?.description || '';
-    return getTranslatedValue(`payment.plans.${plan.id}.description`, (plan as any)?.description || (plan as any)?.subtitle || '');
+    return (plan as any)?.description || (plan as any)?.subtitle || getTranslatedValue(`payment.plans.${plan.id}.description`, (plan as any)?.description || (plan as any)?.subtitle || '');
   };
 
   const getPlanPeriod = (plan?: Partial<SubscriptionPlan> | null) => {
     if (!plan?.id) return plan?.period || '';
-    return getTranslatedValue(`payment.plans.${plan.id}.period`, plan.period || '');
+    return plan.period || getTranslatedValue(`payment.plans.${plan.id}.period`, plan.period || '');
   };
 
   const getPlanFeature = (planId: string, feature: any, index: number) => {
     const fallback = typeof feature === 'string' ? feature : feature?.name || '';
-    return getTranslatedValue(`payment.plans.${planId}.features.${index}`, fallback);
+    return fallback || getTranslatedValue(`payment.plans.${planId}.features.${index}`, fallback);
   };
 
   const getPaymentMethodName = (method: any) => (
@@ -653,7 +653,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   // derived state
   const packages = availablePlans.reduce((acc, plan) => {
     const currency = getCurrentCurrency();
-    const resolved = PricingService.resolvePrice(plan, selectedCountry || 'US', currency, currencyRates);
+    const resolved = PricingService.resolvePrice(plan, selectedCountry || 'US', currency, currencyRates, accountType);
     const discountPercent = Math.round(((resolved.originalPrice - resolved.price) / resolved.originalPrice) * 100);
     return {
       ...acc,

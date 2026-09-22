@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
       name,
       purpose = 'registration',
       channel = 'auto',
+      expectedAccountType,
     } = body;
 
     if (!phoneNumber) {
@@ -42,6 +43,19 @@ export async function POST(request: NextRequest) {
         code: 'ACCOUNT_ALREADY_EXISTS',
         accountType: account.accountType,
         error: 'رقم الهاتف هذا مسجل بالفعل. يرجى تسجيل الدخول بدلاً من ذلك.',
+      }, { status: 409 });
+    }
+    if (
+      purpose === 'login' &&
+      account.found &&
+      expectedAccountType &&
+      String(expectedAccountType).trim().toLowerCase() !== account.accountType
+    ) {
+      return NextResponse.json({
+        success: false,
+        code: 'ACCOUNT_TYPE_MISMATCH',
+        accountType: account.accountType,
+        error: 'This phone number is registered under another account type.',
       }, { status: 409 });
     }
 
@@ -99,6 +113,7 @@ export async function GET() {
         phoneNumber: 'string (required) - رقم الهاتف',
         name: 'string (optional) - اسم المستخدم',
         purpose: 'string (optional) - registration | login | password_reset | verification',
+        expectedAccountType: 'string (optional) - player | club | academy | agent | trainer | marketer',
         channel: 'string (optional) - whatsapp | sms | firebase_phone | auto',
         instanceId: 'string (optional) - Instance ID لـ WhatsApp'
       }

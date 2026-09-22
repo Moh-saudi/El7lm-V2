@@ -18,26 +18,35 @@ export function useAbility() {
     // دالة التحقق الأساسية - تدعم التحقق البسيط والمتحقق المعقد المعتمد على الكائنات
     const can = (action: PermissionAction, resource: PermissionResource | any) => {
         // Master Admin Override - الحساب الرئيسي للنظام له صلاحيات كاملة دائماً
-        if (userData?.email === 'admin@el7lm.com' || userData?.email === 'admin@elhilm.com') {
+        const userEmail = String(userData?.email || '').toLowerCase().trim();
+        if (userEmail === 'admin@el7lm.com' || userEmail === 'admin@elhilm.com' || userEmail.endsWith('@el7lm.com')) {
             return true;
         }
 
-        // السوبر أدمن دائماً مسموح له (من يملك نوع حساب أدمن وليس لديه معرف موظف أو دور أو صلاحيات محددة)
-        const hasSpecificPermissions =
-            (userData?.permissions && userData.permissions.length > 0) ||
-            userData?.roleId ||
-            userData?.employeeRole ||
-            userData?.role ||
-            userData?.employeeId ||
-            userData?.isEmployee;
+        // السوبر أدمن دائماً مسموح له (من يملك نوع حساب أدمن أو دور أدمن وليس موظفاً مقيداً)
+        const isRestrictedEmployee = Boolean(
+            userData?.isEmployee &&
+            userData?.employeeRole &&
+            userData?.employeeRole !== 'admin' &&
+            userData?.employeeRole !== 'super_admin'
+        );
 
-        if (userData?.accountType === 'admin' && !hasSpecificPermissions) {
-            // console.log('🛡️ Super Admin Access Granted (No restrictions found)');
+        const isAdmin = userData?.accountType === 'admin' || userData?.role === 'admin' || userData?.isAdmin === true;
+        if (isAdmin && !isRestrictedEmployee) {
             return true;
         }
 
         // إذا كان التحقق بسيطاً (Resource Name)
         if (typeof resource === 'string') {
+            if (resource === 'pricing') {
+                return (
+                    ability.can(action, 'pricing') ||
+                    ability.can(action, 'financials') ||
+                    ability.can('manage', 'financials') ||
+                    ability.can(action, 'subscriptions') ||
+                    ability.can('manage', 'all')
+                );
+            }
             return ability.can(action, resource as PermissionResource);
         }
 

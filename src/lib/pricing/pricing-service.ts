@@ -97,23 +97,47 @@ const DEFAULT_PLANS: SubscriptionPlan[] = [
 export const PricingService = {
     async getAllPlans(): Promise<SubscriptionPlan[]> {
         try {
-            const { data } = await supabase.from(TABLE_NAME).select('*').order('order');
+            const { data, error } = await supabase.from(TABLE_NAME).select('*').order('order');
+            if (error) {
+                console.warn('Error fetching plans via supabase client, trying API fallback:', error);
+                if (typeof window !== 'undefined') {
+                    const res = await fetch('/api/admin/pricing').catch(() => null);
+                    if (res && res.ok) {
+                        const json = await res.json();
+                        if (json.data && json.data.length > 0) return json.data;
+                    }
+                }
+            }
             if (!data?.length) {
-                console.log('No plans found, initializing defaults...');
-                await this.initializeDefaults();
                 return DEFAULT_PLANS;
             }
-            return data as SubscriptionPlan[];
+            return (data as any[]).map(p => ({
+                ...p,
+                accountTypeOverrides: p.accountTypeOverrides || p.overrides?.accountTypeOverrides || {},
+                badges: p.badges || p.overrides?.badges || [],
+                highlights: p.highlights || p.overrides?.highlights || [],
+                recommendedFor: p.recommendedFor || p.overrides?.recommendedFor || '',
+                description: p.description || p.overrides?.description || p.subtitle || '',
+            })) as SubscriptionPlan[];
         } catch (error) {
             console.error('Error fetching plans:', error);
-            return [];
+            return DEFAULT_PLANS;
         }
     },
 
     async getPlan(id: string): Promise<SubscriptionPlan | null> {
         try {
             const { data } = await supabase.from(TABLE_NAME).select('*').eq('id', id).limit(1);
-            return data?.length ? data[0] as SubscriptionPlan : null;
+            if (!data?.length) return null;
+            const p = data[0] as any;
+            return {
+                ...p,
+                accountTypeOverrides: p.accountTypeOverrides || p.overrides?.accountTypeOverrides || {},
+                badges: p.badges || p.overrides?.badges || [],
+                highlights: p.highlights || p.overrides?.highlights || [],
+                recommendedFor: p.recommendedFor || p.overrides?.recommendedFor || '',
+                description: p.description || p.overrides?.description || p.subtitle || '',
+            } as SubscriptionPlan;
         } catch (error) {
             console.error('Error fetching plan:', error);
             return null;
@@ -147,6 +171,16 @@ export const PricingService = {
             for (const col of ALLOWED_COLUMNS) {
                 if ((plan as any)[col] !== undefined) cleanPlan[col] = (plan as any)[col];
             }
+            const overrides = typeof cleanPlan.overrides === 'object' && cleanPlan.overrides !== null
+                ? { ...cleanPlan.overrides }
+                : {};
+            if ((plan as any).accountTypeOverrides) overrides.accountTypeOverrides = (plan as any).accountTypeOverrides;
+            if ((plan as any).badges) overrides.badges = (plan as any).badges;
+            if ((plan as any).highlights) overrides.highlights = (plan as any).highlights;
+            if ((plan as any).recommendedFor) overrides.recommendedFor = (plan as any).recommendedFor;
+            if ((plan as any).description) overrides.description = (plan as any).description;
+            cleanPlan.overrides = overrides;
+
             const { error } = await admin.from(TABLE_NAME).upsert(cleanPlan);
             if (error) throw error;
             return true;
@@ -217,37 +251,62 @@ export const PricingService = {
         userCountryCode: string,
         targetCurrency: string,
         rates: Record<string, number>,
-        accountType?: 'club' | 'academy' | 'trainer' | 'agent' | 'player'
+        accountType?: string
     ): PriceResult {
-        let baseOriginalPrice = plan.base_original_price;
-        let basePrice = plan.base_price;
+        let baseOriginalPrice = Number(plan.base_original_price ?? 0);
+        let basePrice = Number(plan.base_price ?? 0);
         let accountTypeDiscount = 0;
 
-        if (accountType && plan.accountTypeOverrides?.[accountType]?.active) {
-            const accountOverride = plan.accountTypeOverrides[accountType];
-            if (accountOverride.price !== undefined) {
-                basePrice = accountOverride.price;
-                baseOriginalPrice = accountOverride.original_price || baseOriginalPrice;
+        const allAccountOverrides = plan.accountTypeOverrides || (plan as any).overrides?.accountTypeOverrides || {};
+        const normalizedType = accountType ? accountType.toLowerCase().trim() : undefined;
+
+        if (normalizedType && allAccountOverrides[normalizedType]?.active) {
+            const accountOverride = allAccountOverrides[normalizedType];
+            if (accountOverride.price !== undefined && accountOverride.price !== null && !isNaN(Number(accountOverride.price))) {
+                basePrice = Number(accountOverride.price);
+                if (accountOverride.original_price !== undefined && !isNaN(Number(accountOverride.original_price))) {
+                    baseOriginalPrice = Number(accountOverride.original_price);
+                }
             } else if (accountOverride.discount_percentage) {
-                accountTypeDiscount = accountOverride.discount_percentage;
+                accountTypeDiscount = Number(accountOverride.discount_percentage);
                 basePrice = basePrice * (1 - accountTypeDiscount / 100);
             }
         }
 
-        if (plan.overrides && plan.overrides[userCountryCode] && plan.overrides[userCountryCode].active) {
-            const override = plan.overrides[userCountryCode];
-            let finalPrice = override.price;
+        const countryKey = (userCountryCode || '').toUpperCase();
+        if (plan.overrides && plan.overrides[countryKey] && plan.overrides[countryKey].active) {
+            const override = plan.overrides[countryKey];
+            let finalPrice = Number(override.price ?? basePrice);
             if (accountTypeDiscount > 0) finalPrice = finalPrice * (1 - accountTypeDiscount / 100);
-            return { currency: override.currency, originalPrice: override.original_price, price: Math.ceil(finalPrice), isOverride: true, accountTypeDiscount };
+            const finalOriginal = Number(override.original_price ?? baseOriginalPrice);
+            return {
+                currency: override.currency || targetCurrency,
+                originalPrice: Math.ceil(finalOriginal),
+                price: Math.ceil(finalPrice),
+                isOverride: true,
+                accountTypeDiscount
+            };
         }
 
         if (targetCurrency === plan.base_currency) {
-            return { currency: plan.base_currency, originalPrice: Math.ceil(baseOriginalPrice), price: Math.ceil(basePrice), isOverride: false, accountTypeDiscount };
+            return {
+                currency: plan.base_currency || 'USD',
+                originalPrice: Math.ceil(baseOriginalPrice),
+                price: Math.ceil(basePrice),
+                isOverride: false,
+                accountTypeDiscount
+            };
         }
 
-        const convertedPrice = convertCurrency(basePrice, plan.base_currency, targetCurrency, rates as any);
-        const convertedOriginal = convertCurrency(baseOriginalPrice, plan.base_currency, targetCurrency, rates as any);
+        const convertedPrice = convertCurrency(basePrice, plan.base_currency || 'USD', targetCurrency, rates as any);
+        const convertedOriginal = convertCurrency(baseOriginalPrice, plan.base_currency || 'USD', targetCurrency, rates as any);
 
-        return { currency: targetCurrency, originalPrice: Math.ceil(convertedOriginal), price: Math.ceil(convertedPrice), isOverride: false, accountTypeDiscount };
+        return {
+            currency: targetCurrency,
+            originalPrice: Math.ceil(convertedOriginal),
+            price: Math.ceil(convertedPrice),
+            isOverride: false,
+            accountTypeDiscount
+        };
     }
 };
