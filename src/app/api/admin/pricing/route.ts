@@ -91,6 +91,10 @@ export async function POST(request: NextRequest) {
       overrides.description = body.description;
     }
 
+    if (cleanPlan.base_price !== undefined) cleanPlan.base_price = Number(cleanPlan.base_price);
+    if (cleanPlan.base_original_price !== undefined) cleanPlan.base_original_price = Number(cleanPlan.base_original_price);
+    if (cleanPlan.order !== undefined) cleanPlan.order = Number(cleanPlan.order);
+
     cleanPlan.overrides = overrides;
 
     const admin = getSupabaseAdmin();

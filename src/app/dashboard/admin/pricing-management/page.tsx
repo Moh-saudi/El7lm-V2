@@ -609,7 +609,9 @@ function CustomPricingTab() {
     }, []);
 
     const currentPlan = plans.find(p => p.id === selectedPlanId);
-    const overrides: [string, any][] = currentPlan?.overrides ? Object.entries(currentPlan.overrides) : [];
+    const overrides: [string, any][] = currentPlan?.overrides
+        ? Object.entries(currentPlan.overrides).filter(([code, val]) => /^[A-Z]{2}$/i.test(code) && typeof val === 'object' && val !== null)
+        : [];
 
     const openAdd = () => {
         setEditingCode(null);

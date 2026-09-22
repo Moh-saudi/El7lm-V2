@@ -47,6 +47,17 @@ export async function authenticatedFetch(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
+  if (typeof window !== 'undefined') {
+    const userPhone = localStorage.getItem('userPhone') || sessionStorage.getItem('otp_phone');
+    if (userPhone) headers.set('x-user-phone', userPhone);
+
+    const userEmail = localStorage.getItem('userEmail');
+    if (userEmail) headers.set('x-user-email', userEmail);
+
+    const accountType = sessionStorage.getItem('otp_account_type');
+    if (accountType) headers.set('x-account-type', accountType);
+  }
+
   return fetch(input, {
     credentials: 'same-origin',
     ...init,

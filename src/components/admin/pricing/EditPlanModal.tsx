@@ -49,6 +49,10 @@ export default function EditPlanModal({ plan, isOpen, onClose, onSave }: EditPla
     useEffect(() => {
         if (plan && isOpen) {
             const rawPlan = plan as any;
+            const currentOverrides = rawPlan.overrides || {};
+            const egOverride = currentOverrides.EG || {};
+            const saOverride = currentOverrides.SA || {};
+
             form.setFieldsValue({
                 title: rawPlan.title || rawPlan.name || '',
                 subtitle: rawPlan.subtitle || rawPlan.description || '',
@@ -57,6 +61,10 @@ export default function EditPlanModal({ plan, isOpen, onClose, onSave }: EditPla
                 base_original_price: Number(rawPlan.base_original_price ?? rawPlan.baseOriginalPrice ?? 0),
                 base_price: Number(rawPlan.base_price ?? rawPlan.basePrice ?? 0),
                 isActive: rawPlan.isActive ?? true,
+                eg_price: egOverride.price !== undefined ? Number(egOverride.price) : undefined,
+                eg_original_price: egOverride.original_price !== undefined ? Number(egOverride.original_price) : undefined,
+                sa_price: saOverride.price !== undefined ? Number(saOverride.price) : undefined,
+                sa_original_price: saOverride.original_price !== undefined ? Number(saOverride.original_price) : undefined,
             });
             const rawFeatures = Array.isArray(rawPlan.features) ? rawPlan.features : [];
             setFeatures(rawFeatures.map((f: any) => typeof f === 'string' ? f : f?.name || f?.title || '').filter(Boolean));
@@ -74,11 +82,30 @@ export default function EditPlanModal({ plan, isOpen, onClose, onSave }: EditPla
             const cleanFeatures = features.map(f => typeof f === 'string' ? f : (f as any)?.name || '').filter(Boolean);
             const cleanBonus = bonusFeatures.map(b => typeof b === 'string' ? b : (b as any)?.name || '').filter(Boolean);
             
+            const updatedOverrides = { ...(plan.overrides || {}) };
+            if (values.eg_price !== undefined && values.eg_price !== null && values.eg_price !== '') {
+                updatedOverrides.EG = {
+                    currency: 'EGP',
+                    price: Number(values.eg_price),
+                    original_price: Number(values.eg_original_price || 0),
+                    active: true,
+                };
+            }
+            if (values.sa_price !== undefined && values.sa_price !== null && values.sa_price !== '') {
+                updatedOverrides.SA = {
+                    currency: 'SAR',
+                    price: Number(values.sa_price),
+                    original_price: Number(values.sa_original_price || 0),
+                    active: true,
+                };
+            }
+
             await onSave({
                 ...plan,
                 ...values,
                 base_price: Number(values.base_price),
                 base_original_price: Number(values.base_original_price || 0),
+                overrides: updatedOverrides,
                 features: cleanFeatures,
                 bonusFeatures: cleanBonus,
             });
@@ -114,7 +141,7 @@ export default function EditPlanModal({ plan, isOpen, onClose, onSave }: EditPla
             forceRender: true,
             label: (
                 <span className="flex items-center gap-1.5">
-                    <SettingOutlined /> المعلومات الأساسية
+                    <SettingOutlined /> المعلومات والأسعار
                 </span>
             ),
             children: (
@@ -130,14 +157,40 @@ export default function EditPlanModal({ plan, isOpen, onClose, onSave }: EditPla
                     <Form.Item name="subtitle" label="وصف مختصر">
                         <Input placeholder="وصف الباقة..." />
                     </Form.Item>
+                    
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                        <Form.Item name="base_original_price" label={`السعر الأصلي (${plan?.base_currency || 'USD'})`}>
+                        <Form.Item name="base_original_price" label={`السعر الأصلي ($ USD)`}>
                             <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
                         </Form.Item>
-                        <Form.Item name="base_price" label={`السعر الفعلي (${plan?.base_currency || 'USD'})`} rules={[{ required: true, message: 'مطلوب' }]}>
+                        <Form.Item name="base_price" label={`السعر الفعلي ($ USD)`} rules={[{ required: true, message: 'مطلوب' }]}>
                             <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
                         </Form.Item>
                     </div>
+
+                    <div className="bg-blue-50/60 p-3 rounded-lg border border-blue-100 mb-4">
+                        <div className="text-xs font-semibold text-blue-900 mb-2">🇪🇬 تسعير مصر (جنيه مصري - EGP)</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <Form.Item name="eg_original_price" label="السعر الأصلي (EGP)" className="!mb-0">
+                                <InputNumber style={{ width: '100%' }} min={0} placeholder="مثال: 150" />
+                            </Form.Item>
+                            <Form.Item name="eg_price" label="السعر الفعلي (EGP)" className="!mb-0">
+                                <InputNumber style={{ width: '100%' }} min={0} placeholder="مثال: 100" />
+                            </Form.Item>
+                        </div>
+                    </div>
+
+                    <div className="bg-emerald-50/60 p-3 rounded-lg border border-emerald-100 mb-4">
+                        <div className="text-xs font-semibold text-emerald-900 mb-2">🇸🇦 تسعير السعودية (ريال سعودي - SAR)</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <Form.Item name="sa_original_price" label="السعر الأصلي (SAR)" className="!mb-0">
+                                <InputNumber style={{ width: '100%' }} min={0} placeholder="اختياري" />
+                            </Form.Item>
+                            <Form.Item name="sa_price" label="السعر الفعلي (SAR)" className="!mb-0">
+                                <InputNumber style={{ width: '100%' }} min={0} placeholder="اختياري" />
+                            </Form.Item>
+                        </div>
+                    </div>
+
                     <Form.Item name="isActive" label="حالة الباقة" valuePropName="checked">
                         <Switch checkedChildren="نشطة" unCheckedChildren="معطلة" />
                     </Form.Item>
