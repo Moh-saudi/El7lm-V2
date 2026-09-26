@@ -10,7 +10,7 @@
  * - تخزين في Firestore
  */
 
-import { storeOTPInFirestore, hasActiveOTP } from './firestore-otp-manager';
+import { storeOTPInFirestore, hasActiveOTP, verifyOTPInFirestore, deleteOTPFromFirestore } from './otp-manager';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 // تنسيق رقم الهاتف
@@ -361,7 +361,7 @@ export async function sendOTP(options: SendOTPOptions): Promise<SendOTPResult> {
  * التحقق من OTP
  * (يستخدم Firestore OTP Manager)
  */
-export { verifyOTPInFirestore as verifyOTP } from './firestore-otp-manager';
+export { verifyOTPInFirestore as verifyOTP } from './otp-manager';
 
 /**
  * حذف OTP

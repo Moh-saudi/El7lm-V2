@@ -1,2 +1,2 @@
-// Backward compat — الكود انتقل إلى @/lib/supabase/auth-provider
+"use client";
 export * from '@/lib/supabase/auth-provider';

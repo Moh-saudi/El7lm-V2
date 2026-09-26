@@ -1,2 +1,0 @@
-# قم بتنزيل ملف service-account.json من Firebase Console
-# ثم ضعه في مجلد المشروع 

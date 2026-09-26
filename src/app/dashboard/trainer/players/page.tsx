@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/firebase/auth-provider';
+import { useAuth } from '@/lib/supabase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -84,15 +84,46 @@ export default function TrainerPlayersPage() {
     try {
       setLoading(true);
 
-      const { data: snapshot } = await supabase
+      const { data: snapshot, error } = await supabase
         .from('players')
-        .select('*')
-        .eq('trainer_id', user?.id);
+        .select(`
+          id,
+          full_name,
+          name,
+          email,
+          phone,
+          whatsapp,
+          nationality,
+          city,
+          primary_position,
+          position,
+          secondary_position,
+          birth_date,
+          height,
+          weight,
+          profile_image,
+          videos,
+          additional_images,
+          subscription_status,
+          subscription_end,
+          createdAt,
+          created_at,
+          updated_at,
+          referralCodeUsed,
+          trainer_id,
+          joinedViaReferral,
+          organizationJoinedAt,
+          organizationApprovedBy,
+          isDeleted
+        `)
+        .eq('trainer_id', user?.id)
+        .eq('isDeleted', false);
 
-      const playersData = (snapshot || [])
-        .filter((p: any) => !p.isDeleted) as Player[];
+      if (error) throw error;
 
-      // Manual sorting on the client-side
+      const playersData = (snapshot || []) as unknown as Player[];
+
+      // Keep sorting client-side because the user can change the sort without refetching.
       playersData.sort((a, b) => {
           const aValue = a[sortBy as keyof Player] as any;
           const bValue = b[sortBy as keyof Player] as any;

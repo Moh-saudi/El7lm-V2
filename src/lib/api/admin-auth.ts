@@ -165,7 +165,7 @@ export async function authorizeAdmin(request: NextRequest): Promise<AdminAuthori
 
     try {
       const admin = getSupabaseAdmin();
-      const queries: Promise<any>[] = [
+      const queries: PromiseLike<any>[] = [
         admin.from('admins').select('id,isActive').eq('id', userId).maybeSingle(),
         admin.from('admins').select('id,isActive').eq('uid', userId).maybeSingle(),
         admin

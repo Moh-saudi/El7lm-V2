@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '@/lib/firebase/auth-provider';
+import { useAuth } from '@/lib/supabase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
 import { Bell, Settings, MoreHorizontal, Check, Trash2, CheckCheck, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';

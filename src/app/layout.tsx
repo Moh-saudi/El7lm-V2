@@ -15,7 +15,7 @@ import '../styles/analytics.css';
 import './globals.css';
 import { Providers } from './providers';
 import '@/lib/utils/initialize-location-fix';
-import '@/lib/firebase/connection-fix';
+import '@/lib/supabase/connection-fix';
 import '@/utils/console-filter';
 
 export const viewport: Viewport = {

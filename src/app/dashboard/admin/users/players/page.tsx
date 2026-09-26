@@ -127,6 +127,7 @@ export default function PlayersManagement() {
   const [players, setPlayers] = useState<PlayerData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedPosition, setSelectedPosition] = useState('all');
   const [selectedCountry, setSelectedCountry] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -146,19 +147,12 @@ export default function PlayersManagement() {
   });
 
   useEffect(() => {
-    fetchPlayers(true);
-  }, [selectedPosition, selectedCountry, selectedStatus, selectedAge]);
-
-  useEffect(() => {
-    if (searchTerm) {
-      const delayedSearch = setTimeout(() => {
-        fetchPlayers(true);
-      }, 500);
-      return () => clearTimeout(delayedSearch);
-    } else {
+    const delayedFetch = setTimeout(() => {
       fetchPlayers(true);
-    }
-  }, [searchTerm]);
+    }, 300);
+
+    return () => clearTimeout(delayedFetch);
+  }, [searchTerm, selectedPosition, selectedCountry, selectedStatus, selectedAge]);
 
   const fetchPlayers = async (reset = false) => {
     try {
@@ -176,21 +170,107 @@ export default function PlayersManagement() {
 
       let query = supabase
         .from('players')
-        .select('*')
+        .select(`
+          id,
+          full_name,
+          name,
+          email,
+          phone,
+          whatsapp,
+          birth_date,
+          country,
+          city,
+          nationality,
+          primary_position,
+          position,
+          preferred_foot,
+          height,
+          weight,
+          profile_image_url,
+          isVerifiedLocal,
+          isActive,
+          createdAt,
+          updatedAt,
+          current_club,
+          contract_status,
+          achievements,
+          brief,
+          additional_images,
+          videos,
+          documents
+        `)
         .order('createdAt', { ascending: false })
         .range(currentOffset, currentOffset + pageSize - 1);
+
+      if (debouncedSearchTerm.trim()) {
+        const safeSearch = debouncedSearchTerm.trim().replace(/[,%()]/g, ' ');
+        if (safeSearch) {
+          query = query.or(
+            `full_name.ilike.%${safeSearch}%,name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%,phone.ilike.%${safeSearch}%,primary_position.ilike.%${safeSearch}%`
+          );
+        }
+      }
+
+      if (selectedPosition !== 'all') {
+        query = query.eq('primary_position', selectedPosition);
+      }
+
+      if (selectedCountry !== 'all') {
+        query = query.eq('country', selectedCountry);
+      }
+
+      if (selectedStatus === 'verified') {
+        query = query.eq('isVerifiedLocal', true);
+      } else if (selectedStatus === 'unverified') {
+        query = query.eq('isVerifiedLocal', false);
+      } else if (selectedStatus === 'active') {
+        query = query.eq('isActive', true);
+      } else if (selectedStatus === 'inactive') {
+        query = query.eq('isActive', false);
+      }
 
       const { data: rows, error } = await query;
 
       if (error) throw error;
 
       if (rows && rows.length > 0) {
-        const playersData = await Promise.all(
-          rows.map(async (data: any) => {
-            // حساب العمر
-            let age = 0;
-            if (data.dateOfBirth) {
-              const birthDate = new Date(data.dateOfBirth);
+        const playerIds = rows.map((row: any) => String(row.id));
+
+        // One batched stats query instead of one request per player.
+        const { data: statsRows } = await supabase
+          .from('player_stats')
+          .select('id, profileViews, videoViews, matches, goals, assists')
+          .in('id', playerIds);
+
+        const statsByPlayerId = new Map(
+          (statsRows || []).map((row: any) => [
+            String(row.id),
+            {
+              profileViews: row.profileViews || 0,
+              videoViews: row.videoViews || 0,
+              matches: row.matches || 0,
+              goals: row.goals || 0,
+              assists: row.assists || 0
+            }
+          ])
+        );
+
+        const countJsonItems = (value: unknown): number => {
+          if (Array.isArray(value)) return value.length;
+          if (value && typeof value === 'object') return Object.keys(value as Record<string, unknown>).length;
+          return 0;
+        };
+
+        const playersData = rows.map((data: any) => {
+          const fullName = String(data.full_name || data.name || '').trim();
+          const nameParts = fullName.split(/\s+/);
+          const firstName = nameParts.shift() || '';
+          const lastName = nameParts.join(' ');
+
+          let age = 0;
+          if (data.birth_date) {
+            const birthDate = new Date(data.birth_date);
+            if (!Number.isNaN(birthDate.getTime())) {
               const today = new Date();
               age = today.getFullYear() - birthDate.getFullYear();
               const monthDiff = today.getMonth() - birthDate.getMonth();
@@ -198,58 +278,65 @@ export default function PlayersManagement() {
                 age--;
               }
             }
+          }
 
-            // جلب إحصائيات الميديا
-            const mediaCount = await getPlayerMediaCount(data.id);
+          const stats = statsByPlayerId.get(String(data.id)) || {
+            profileViews: 0,
+            videoViews: 0,
+            matches: 0,
+            goals: 0,
+            assists: 0
+          };
 
-            // جلب الإحصائيات
-            const stats = await getPlayerStats(data.id);
-
-            return {
-              id: data.id,
-              firstName: data.firstName || '',
-              lastName: data.lastName || '',
-              email: data.email,
-              phone: data.phone,
-              dateOfBirth: data.dateOfBirth,
-              age,
-              nationality: data.nationality,
-              country: data.country,
-              city: data.city,
-              position: data.position,
-              preferredFoot: data.preferredFoot,
-              height: data.height,
-              weight: data.weight,
-              profileImageUrl: data.profile_image_url || data.profileImageUrl,
-              isVerified: data.isVerified || false,
-              isActive: data.isActive !== false,
-              registrationDate: data.createdAt,
-              lastLogin: data.lastLogin,
-              stats,
-              mediaCount,
-              bio: data.bio,
-              achievements: data.achievements || [],
-              marketValue: data.marketValue || 0,
-              currentClub: data.currentClub,
-              contractEndDate: data.contractEndDate
-            } as PlayerData;
-          })
-        );
+          return {
+            id: String(data.id),
+            firstName,
+            lastName,
+            email: data.email,
+            phone: data.phone,
+            whatsapp: data.whatsapp,
+            dateOfBirth: data.birth_date,
+            age,
+            nationality: data.nationality,
+            country: data.country,
+            city: data.city,
+            position: data.primary_position || data.position,
+            preferredFoot: data.preferred_foot,
+            height: data.height,
+            weight: data.weight,
+            profileImageUrl: data.profile_image_url,
+            isVerified: Boolean(data.isVerifiedLocal),
+            isActive: data.isActive !== false,
+            registrationDate: data.createdAt,
+            lastLogin: data.lastLogin,
+            stats,
+            mediaCount: {
+              images: countJsonItems(data.additional_images),
+              videos: countJsonItems(data.videos),
+              documents: countJsonItems(data.documents)
+            },
+            bio: data.brief,
+            achievements: Array.isArray(data.achievements) ? data.achievements : [],
+            marketValue: 0,
+            currentClub: data.current_club,
+            contractEndDate: data.contract_end_date
+          } as PlayerData;
+        });
 
         // تطبيق الفلاتر
         let filteredPlayers = playersData;
 
-        if (searchTerm) {
+        if (debouncedSearchTerm) {
           filteredPlayers = playersData.filter(player => {
             const playerName = `${player.firstName || ''} ${player.lastName || ''}`.trim();
             const playerEmail = player.email || '';
             const playerPhone = player.phone || '';
             const playerPosition = player.position || '';
 
-            return playerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              playerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              playerPhone.includes(searchTerm) ||
-              playerPosition.toLowerCase().includes(searchTerm.toLowerCase());
+            return playerName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+              playerEmail.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+              playerPhone.includes(debouncedSearchTerm) ||
+              playerPosition.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
           });
         }
 
@@ -316,81 +403,6 @@ export default function PlayersManagement() {
       setLoading(false);
       setLoadingMore(false);
     }
-  };
-
-  const getPlayerMediaCount = async (playerId: string) => {
-    const mediaCount = {
-      images: 0,
-      videos: 0,
-      documents: 0
-    };
-
-    try {
-      const buckets = ['playeravatar', 'player-images', 'videos'];
-
-      for (const bucket of buckets) {
-        try {
-          const { data: files } = await supabase.storage
-            .from(bucket)
-            .list(playerId);
-
-          if (files) {
-            const images = files.filter(f =>
-              f.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-            );
-            const videos = files.filter(f =>
-              f.name.match(/\.(mp4|avi|mov|wmv|webm)$/i)
-            );
-            const docs = files.filter(f =>
-              f.name.match(/\.(pdf|doc|docx|txt)$/i)
-            );
-
-            mediaCount.images += images.length;
-            mediaCount.videos += videos.length;
-            mediaCount.documents += docs.length;
-          }
-        } catch (error) {
-          // تجاهل الأخطاء لبوكتات غير موجودة
-        }
-      }
-    } catch (error) {
-      console.error('Error getting media count:', error);
-    }
-
-    return mediaCount;
-  };
-
-  const getPlayerStats = async (playerId: string) => {
-    // إحصائيات افتراضية حقيقية (أصفار) - لا توجد بيانات وهمية
-    const defaultStats = {
-      profileViews: 0,
-      videoViews: 0,
-      matches: 0,
-      goals: 0,
-      assists: 0
-    };
-
-    try {
-      const { data, error } = await supabase
-        .from('player_stats')
-        .select('*')
-        .eq('id', playerId)
-        .maybeSingle();
-
-      if (!error && data) {
-        return {
-          profileViews: data.profileViews || 0,
-          videoViews: data.videoViews || 0,
-          matches: data.matches || 0,
-          goals: data.goals || 0,
-          assists: data.assists || 0
-        };
-      }
-    } catch (error: any) {
-      // معالجة صامتة للأخطاء - الإحصائيات ليست حرجة
-    }
-
-    return defaultStats;
   };
 
   const togglePlayerVerification = async (playerId: string, isVerified: boolean) => {

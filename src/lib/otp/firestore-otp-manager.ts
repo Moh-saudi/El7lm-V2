@@ -1,2 +1,7 @@
-// Backward compat — الكود انتقل إلى @/lib/otp/otp-manager
-export * from '@/lib/otp/otp-manager';
+export {
+  storeOTPInFirestore,
+  verifyOTPInFirestore,
+  deleteOTPFromFirestore,
+  hasActiveOTP,
+  cleanupExpiredOTPs,
+} from './otp-manager';
