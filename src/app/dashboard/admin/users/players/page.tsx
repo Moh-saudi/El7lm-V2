@@ -201,6 +201,15 @@ export default function PlayersManagement() {
         .order('createdAt', { ascending: false })
         .range(currentOffset, currentOffset + pageSize - 1);
 
+      if (searchTerm.trim()) {
+        const safeSearch = searchTerm.trim().replace(/[,%()]/g, ' ');
+        if (safeSearch) {
+          query = query.or(
+            `full_name.ilike.%${safeSearch}%,name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%,phone.ilike.%${safeSearch}%,primary_position.ilike.%${safeSearch}%`
+          );
+        }
+      }
+
       if (selectedPosition !== 'all') {
         query = query.eq('primary_position', selectedPosition);
       }
@@ -253,7 +262,7 @@ export default function PlayersManagement() {
 
         const playersData = rows.map((data: any) => {
           const fullName = String(data.full_name || data.name || '').trim();
-          const nameParts = fullName.split(/\\s+/);
+          const nameParts = fullName.split(/\s+/);
           const firstName = nameParts.shift() || '';
           const lastName = nameParts.join(' ');
 
