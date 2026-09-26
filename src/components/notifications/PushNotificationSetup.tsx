@@ -1,13 +1,13 @@
 'use client';
 
-import { useAuth } from '@/lib/firebase/auth-provider';
+import { useAuth } from '@/lib/supabase/auth-provider';
 import {
   getFCMToken,
   getNotificationPermission,
   isNotificationSupported,
   setupForegroundNotifications,
   testLocalNotification
-} from '@/lib/firebase/push-notifications';
+} from '@/lib/supabase/push-notifications';
 import { Bell, BellOff, Check, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
