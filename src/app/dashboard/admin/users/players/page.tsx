@@ -127,6 +127,7 @@ export default function PlayersManagement() {
   const [players, setPlayers] = useState<PlayerData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedPosition, setSelectedPosition] = useState('all');
   const [selectedCountry, setSelectedCountry] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -201,8 +202,8 @@ export default function PlayersManagement() {
         .order('createdAt', { ascending: false })
         .range(currentOffset, currentOffset + pageSize - 1);
 
-      if (searchTerm.trim()) {
-        const safeSearch = searchTerm.trim().replace(/[,%()]/g, ' ');
+      if (debouncedSearchTerm.trim()) {
+        const safeSearch = debouncedSearchTerm.trim().replace(/[,%()]/g, ' ');
         if (safeSearch) {
           query = query.or(
             `full_name.ilike.%${safeSearch}%,name.ilike.%${safeSearch}%,email.ilike.%${safeSearch}%,phone.ilike.%${safeSearch}%,primary_position.ilike.%${safeSearch}%`
@@ -325,17 +326,17 @@ export default function PlayersManagement() {
         // تطبيق الفلاتر
         let filteredPlayers = playersData;
 
-        if (searchTerm) {
+        if (debouncedSearchTerm) {
           filteredPlayers = playersData.filter(player => {
             const playerName = `${player.firstName || ''} ${player.lastName || ''}`.trim();
             const playerEmail = player.email || '';
             const playerPhone = player.phone || '';
             const playerPosition = player.position || '';
 
-            return playerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              playerEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              playerPhone.includes(searchTerm) ||
-              playerPosition.toLowerCase().includes(searchTerm.toLowerCase());
+            return playerName.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+              playerEmail.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+              playerPhone.includes(debouncedSearchTerm) ||
+              playerPosition.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
           });
         }
 
