@@ -121,7 +121,7 @@ export default function TrainerPlayersPage() {
 
       if (error) throw error;
 
-      const playersData = (snapshot || []) as Player[];
+      const playersData = (snapshot || []) as unknown as Player[];
 
       // Keep sorting client-side because the user can change the sort without refetching.
       playersData.sort((a, b) => {
