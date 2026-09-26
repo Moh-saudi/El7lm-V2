@@ -32,16 +32,6 @@ export async function authenticatedFetch(
     } catch {}
   }
 
-  // Fallback 2: check Firebase Auth
-  if (!token) {
-    try {
-      const { auth } = await import('@/lib/firebase/config');
-      if (auth.currentUser) {
-        token = await auth.currentUser.getIdToken();
-      }
-    } catch {}
-  }
-
   const headers = new Headers(init.headers);
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
