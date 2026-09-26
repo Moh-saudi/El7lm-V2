@@ -94,7 +94,7 @@ export default function EmailMigration() {
           console.log(`📊 Email Migration - Found ${snapDocs.length} documents in ${collectionName}`);
 
           // تحميل دالة إنشاء البريد الإلكتروني مرة واحدة
-          const { generateTypedFirebaseEmail } = await import('@/lib/utils/firebase-email-generator');
+          const { generateTypedFirebaseEmail } = await import('@/lib/utils/email-generator');
 
           snapDocs.forEach(data => {
             const email = data.email || '';
