@@ -14,7 +14,7 @@
  */
 
 import LogoutScreen from '@/components/auth/LogoutScreen';
-import { useAuth } from '@/lib/firebase/auth-provider';
+import { useAuth } from '@/lib/supabase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
 import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 import { EmployeeRole, RolePermissions } from '@/types/employees';
