@@ -179,6 +179,7 @@ export default function PlayersManagement() {
           birth_date,
           country,
           city,
+          nationality,
           primary_position,
           position,
           preferred_foot,
@@ -192,6 +193,7 @@ export default function PlayersManagement() {
           current_club,
           contract_status,
           achievements,
+          brief,
           additional_images,
           videos,
           documents
