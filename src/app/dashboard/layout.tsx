@@ -3,7 +3,7 @@
 import AppShell from '@/components/layout/AppShell';
 import PushNotificationSetup from '@/components/notifications/PushNotificationSetup';
 import FloatingChatWidget from '@/components/support/FloatingChatWidget';
-import { useAuth } from '@/lib/firebase/auth-provider';
+import { useAuth } from '@/lib/supabase/auth-provider';
 import { usePathname, useRouter } from 'next/navigation';
 import { useMemo } from 'react';
 import { Toaster } from 'sonner';
