@@ -684,7 +684,7 @@ export default function NotificationsManager({
         createTestInteractionNotification,
         createTestPaymentNotification,
         createTestWarningNotification
-      } = await import('@/lib/firebase/test-notifications');
+      } = await import('@/lib/supabase/test-notifications');
 
       await Promise.all([
         createTestNotification(user.id),
@@ -705,7 +705,7 @@ export default function NotificationsManager({
     if (!user?.id) return;
 
     try {
-      const { createTestNotification } = await import('@/lib/firebase/test-notifications');
+      const { createTestNotification } = await import('@/lib/supabase/test-notifications');
 
       const promises = [];
       for (let i = 0; i < 10; i++) {
