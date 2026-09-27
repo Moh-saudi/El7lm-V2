@@ -86,6 +86,7 @@ const DEFAULT_PAYMENT_METHODS = {
     { id: 'bank_transfer', nameKey: 'payment.methodBank', icon: '🏦', descKey: 'payment.methodBankDesc', discount: 0, popular: false }
   ],
   QA: [
+    { id: 'skipcash', nameKey: 'payment.methodCard', icon: '💳', descKey: 'payment.methodCardDesc', discount: 0, popular: true },
     { id: 'fawran', nameKey: 'payment.methodFawran', icon: '⚡', descKey: 'payment.methodFawranDesc', discount: 0, popular: true, details: '70900058' },
     { id: 'bank_transfer', nameKey: 'payment.methodBank', icon: '🏦', descKey: 'payment.methodBankDesc', discount: 0, popular: false }
   ],
@@ -844,7 +845,14 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         return;
       }
 
-      // Step 1: Create Invoice in database (Order Pre-creation)
+      // SkipCash is fully canonical: do not create a legacy invoice.
+      if (selectedPaymentMethod === 'skipcash') {
+        await handleSkipCashPayment();
+        return;
+      }
+
+      // Legacy invoice pre-creation remains temporarily for Geidea/manual methods
+      // until those flows are moved to canonical payments.
       const invoiceData = {
         userId: user.id,
         amount: finalPrice,
@@ -862,15 +870,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
 
       const invoiceId = await InvoiceService.createPendingInvoice(invoiceData);
 
-      // Step 2: Route based on method
-
-      // A. SkipCash
-      if (selectedPaymentMethod === 'skipcash') {
-        await handleSkipCashPayment(invoiceId);
-        return;
-      }
-
-      // B. Geidea
+      // Geidea
       if (selectedPaymentMethod === 'geidea') {
         let convertedAmountEGP = Math.round(finalPrice);
         if (currentCurrencyCode !== 'EGP') {
@@ -919,30 +919,37 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
     }
   };
 
-  const handleSkipCashPayment = async (invoiceId: string) => {
+  const handleSkipCashPayment = async () => {
     try {
+      if (!user?.id) throw new Error('Authentication required');
+
+      const targetPlayerIds = accountType === 'player'
+        ? [user.id]
+        : selectedPlayers.map((player) => player.id);
+
       const response = await fetch('/api/skipcash/create-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: finalPrice,
-          customerEmail: user?.email || 'customer@example.com',
-          // @ts-ignore
-          customerPhone: user?.phoneNumber || user?.phone || '33333333',
-          customerName: user?.user_metadata?.full_name || 'Customer',
-          transactionId: invoiceId, // CRITICAL: Use invoiceId as transactionId
-          returnUrl: `${window.location.origin}/payment/success?method=skipcash&amount=${finalPrice}`,
-          custom1: `${user?.id || 'guest'}:${selectedPackage}`
-        })
+          payerId: user.id,
+          payerType: accountType,
+          planId: selectedPackage,
+          targetPlayerIds,
+          customerEmail: user.email || '',
+          // @ts-ignore - auth providers expose phone under different compatible keys.
+          customerPhone: user.phoneNumber || user.phone || userData?.phone || '',
+          customerName: user.user_metadata?.full_name || userData?.name || 'Customer',
+          returnUrl: `${window.location.origin}/dashboard/admin/skipcash/return`,
+        }),
       });
 
       const data = await response.json();
       if (data.success && data.payUrl) {
         window.location.href = data.payUrl;
-      } else {
-        const errorMsg = data.error || t('payment.paymentInitFailed');
-        toast.error(errorMsg);
+        return;
       }
+
+      toast.error(data.error || t('payment.paymentInitFailed'));
     } catch (error) {
       console.error(error);
       toast.error(t('payment.skipCashError'));
