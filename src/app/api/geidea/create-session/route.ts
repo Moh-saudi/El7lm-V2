@@ -54,14 +54,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!body.payerId || !body.payerType || !body.planId || !body.targetPlayerIds?.length || !body.countryCode) {
+      return NextResponse.json(
+        { success: false, error: 'Canonical subscription checkout fields are required' },
+        { status: 400 },
+      );
+    }
+
     let canonicalPaymentId: string | null = null;
     let sessionAmount = body.amount;
     let sessionCurrency = body.currency;
     let merchantReferenceId = body.merchantReferenceId;
 
-    // Subscription checkout uses the canonical ledger. Other Geidea callers
-    // remain compatible until their own domain flows are migrated.
-    if (body.payerId && body.payerType && body.planId && body.targetPlayerIds?.length) {
+    // Geidea subscription checkout is canonical-only.
+    {
       const payer = await resolveAuthenticatedPayer(authorization.user.id, body.payerType);
       if (!payer || (body.payerId && body.payerId !== payer.payerId)) {
         return NextResponse.json({ success: false, error: 'Payer identity mismatch' }, { status: 403 });
