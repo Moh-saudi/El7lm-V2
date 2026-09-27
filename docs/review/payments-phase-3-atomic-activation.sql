@@ -79,4 +79,40 @@ $$;
 revoke all on function public.activate_canonical_payment_subscriptions(text) from public, anon, authenticated;
 grant execute on function public.activate_canonical_payment_subscriptions(text) to service_role;
 
+
+create or replace function public.approve_manual_payment(
+  p_payment_id text,
+  p_reviewed_by text
+)
+returns table(target_player_id text, subscription_id text)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_payment public.payments%rowtype;
+  v_now timestamptz := now();
+begin
+  select * into v_payment from public.payments where id=p_payment_id for update;
+  if not found then raise exception 'payment not found'; end if;
+  if v_payment.provider <> 'manual' then raise exception 'only manual payments require review'; end if;
+
+  if v_payment.status <> 'paid' then
+    if v_payment.status <> 'pending_review' or coalesce(v_payment.review_status,'') <> 'pending' then
+      raise exception 'payment is not pending review';
+    end if;
+    update public.payments set
+      status='paid', review_status='approved', reviewed_by=p_reviewed_by,
+      reviewed_at=v_now, paid_at=v_now, updated_at=v_now
+    where id=p_payment_id;
+  end if;
+
+  return query
+    select * from public.activate_canonical_payment_subscriptions(p_payment_id);
+end;
+$$;
+
+revoke all on function public.approve_manual_payment(text,text) from public, anon, authenticated;
+grant execute on function public.approve_manual_payment(text,text) to service_role;
+
 commit;
