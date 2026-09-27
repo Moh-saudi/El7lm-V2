@@ -76,16 +76,16 @@ SELECT
   created_at
 FROM academys
 ON CONFLICT (id) DO UPDATE SET
-  uid = COALESCE(academies.uid, EXCLUDED.uid),
-  email = COALESCE(academies.email, EXCLUDED.email),
-  "accountType" = COALESCE(academies."accountType", EXCLUDED."accountType"),
-  full_name = COALESCE(academies.full_name, EXCLUDED.full_name),
-  profile_image = COALESCE(academies.profile_image, EXCLUDED.profile_image),
-  country = COALESCE(academies.country, EXCLUDED.country),
-  phone = COALESCE(academies.phone, EXCLUDED.phone),
-  "firebaseEmail" = COALESCE(academies."firebaseEmail", EXCLUDED."firebaseEmail"),
+  uid = COALESCE(NULLIF(BTRIM(academies.uid), ''), EXCLUDED.uid),
+  email = COALESCE(NULLIF(BTRIM(academies.email), ''), EXCLUDED.email),
+  "accountType" = COALESCE(NULLIF(BTRIM(academies."accountType"), ''), EXCLUDED."accountType"),
+  full_name = COALESCE(NULLIF(BTRIM(academies.full_name), ''), EXCLUDED.full_name),
+  profile_image = COALESCE(NULLIF(BTRIM(academies.profile_image), ''), EXCLUDED.profile_image),
+  country = COALESCE(NULLIF(BTRIM(academies.country), ''), EXCLUDED.country),
+  phone = COALESCE(NULLIF(BTRIM(academies.phone), ''), EXCLUDED.phone),
+  "firebaseEmail" = COALESCE(NULLIF(BTRIM(academies."firebaseEmail"), ''), EXCLUDED."firebaseEmail"),
   "isActive" = COALESCE(academies."isActive", EXCLUDED."isActive"),
-  "organizationCode" = COALESCE(academies."organizationCode", EXCLUDED."organizationCode"),
+  "organizationCode" = COALESCE(NULLIF(BTRIM(academies."organizationCode"), ''), EXCLUDED."organizationCode"),
   "isDeleted" = COALESCE(academies."isDeleted", EXCLUDED."isDeleted"),
   "deletedAt" = COALESCE(academies."deletedAt", EXCLUDED."deletedAt"),
   "deletedBy" = COALESCE(academies."deletedBy", EXCLUDED."deletedBy"),
@@ -112,12 +112,12 @@ SELECT
     FROM academies c
     JOIN academys l ON l.id = c.id
     WHERE
-      (c.uid IS NULL AND l.uid IS NOT NULL) OR
-      (c.email IS NULL AND l.email IS NOT NULL) OR
-      (c.full_name IS NULL AND l.full_name IS NOT NULL) OR
-      (c.phone IS NULL AND l.phone IS NOT NULL) OR
-      (c.profile_image IS NULL AND l.profile_image IS NOT NULL) OR
-      (c."organizationCode" IS NULL AND l."organizationCode" IS NOT NULL)
+      (NULLIF(BTRIM(c.uid), '') IS NULL AND NULLIF(BTRIM(l.uid), '') IS NOT NULL) OR
+      (NULLIF(BTRIM(c.email), '') IS NULL AND NULLIF(BTRIM(l.email), '') IS NOT NULL) OR
+      (NULLIF(BTRIM(c.full_name), '') IS NULL AND NULLIF(BTRIM(l.full_name), '') IS NOT NULL) OR
+      (NULLIF(BTRIM(c.phone), '') IS NULL AND NULLIF(BTRIM(l.phone), '') IS NOT NULL) OR
+      (NULLIF(BTRIM(c.profile_image), '') IS NULL AND NULLIF(BTRIM(l.profile_image), '') IS NOT NULL) OR
+      (NULLIF(BTRIM(c."organizationCode"), '') IS NULL AND NULLIF(BTRIM(l."organizationCode"), '') IS NOT NULL)
   ) AS missed_fillable_identity_values;
 
 COMMIT;
