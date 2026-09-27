@@ -1250,7 +1250,6 @@ model TournamentRegistration {
   clubName              String?
   clubPlayers           Json?
   players               Json?
-  selectedPlayers       Json?
   registrationType      String?
   registrationDate      DateTime?
   paymentStatus         String?
@@ -1268,7 +1267,6 @@ model TournamentRegistration {
   paymentDate           DateTime?
   notes                 String?
   status                String?
-  createdBy             String?
   createdAt             DateTime?
   updatedAt             DateTime?
 
