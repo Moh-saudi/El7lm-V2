@@ -2087,7 +2087,7 @@ model CareerApplication {
   status      String?
   createdAt   DateTime?
 
-  @@map("careerApplications")
+  @@map("career_applications")
 }
 
 model RealtimeStat {
