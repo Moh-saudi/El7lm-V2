@@ -22,6 +22,19 @@ BEGIN
     RAISE EXCEPTION 'Payments Phase 2 guard failed: public.payments is no longer empty';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='payments' AND column_name='playerId'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='payments' AND column_name='transactionId'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='payments' AND column_name='createdAt'
+  ) THEN
+    RAISE EXCEPTION 'Payments Phase 2 guard failed: public.payments schema drifted from audited contract';
+  END IF;
+
   IF EXISTS (
     SELECT id FROM public.players
     GROUP BY id HAVING count(*) > 1
@@ -47,15 +60,14 @@ ALTER TABLE public.payments
   ADD COLUMN rejection_reason text,
   ADD COLUMN paid_at timestamptz,
   ADD COLUMN source_table text,
-  ADD COLUMN source_id text;
+  ADD COLUMN source_id text,
+  ADD COLUMN metadata jsonb NOT NULL DEFAULT '{}'::jsonb;
 
 -- Reuse compatible existing columns and normalize their types/names.
 ALTER TABLE public.payments
   ALTER COLUMN amount TYPE numeric(18,2) USING amount::numeric,
   ALTER COLUMN currency SET DEFAULT 'EGP',
-  ALTER COLUMN status SET DEFAULT 'pending',
-  ALTER COLUMN metadata SET DEFAULT '{}'::jsonb,
-  ALTER COLUMN metadata TYPE jsonb USING COALESCE(metadata, '{}'::json)::jsonb;
+  ALTER COLUMN status SET DEFAULT 'pending';
 
 ALTER TABLE public.payments
   RENAME COLUMN "transactionId" TO legacy_transaction_id;
