@@ -177,6 +177,36 @@ export function NotificationFeed() {
         supabase.from('interaction_notifications').select('*').eq('userId', user.id).order('createdAt', { ascending: false }).limit(50)
       ]);
 
+      const rows = [...(sysDocs || []), ...(intDocs || [])];
+      const senderIds = [...new Set(rows.map(row => {
+        const metadata = normalizeNotificationMetadata(row.metadata);
+        return row.senderId || metadata?.senderId;
+      }).filter((id): id is string => Boolean(id) && !senderCache.current.has(id)))];
+
+      if (senderIds.length) {
+        const tables = ['users', 'players', 'clubs', 'academies'];
+        const senderResults = await Promise.all(
+          tables.map(tableName => supabase.from(tableName).select('*').in('id', senderIds))
+        );
+
+        senderResults.forEach(({ data }, index) => {
+          const tableName = tables[index];
+          for (const row of data || []) {
+            const senderId = String(row.id);
+            if (senderCache.current.has(senderId)) continue;
+            const name = row.displayName || row.name || row.full_name || row.fullName;
+            const avatar = row.photoURL || row.avatar || row.image || row.logo || row.profileImage;
+            const type = row.accountType || (tableName === 'users' ? undefined : tableName.slice(0, -1));
+            senderCache.current.set(senderId, {
+              senderId,
+              senderName: name || null,
+              senderAvatar: resolveAvatarUrl(avatar, { senderAccountType: type }),
+              senderAccountType: type
+            });
+          }
+        });
+      }
+
       const p1 = (sysDocs || []).map(d => enrichNotification(d, 'system'));
       const p2 = (intDocs || []).map(d => enrichNotification(d, 'interaction'));
       const results = await Promise.all([...p1, ...p2]);
