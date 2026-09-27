@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { activatePaymentSubscriptions } from '@/lib/payments/subscription-activation-service';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -8,14 +9,17 @@ export const dynamic = 'force-dynamic';
 type ReviewBody = {
   paymentId: string;
   action: 'approve' | 'reject';
-  reviewedBy: string;
+  reviewedBy?: string;
   rejectionReason?: string;
 };
 
 export async function POST(request: NextRequest) {
+  const authorization = await authorizeAdmin(request);
+  if (!authorization.ok) return authorization.response;
+
   try {
     const body = (await request.json()) as ReviewBody;
-    if (!body.paymentId || !body.reviewedBy || !['approve', 'reject'].includes(body.action)) {
+    if (!body.paymentId || !['approve', 'reject'].includes(body.action)) {
       return NextResponse.json({ success: false, error: 'Invalid review request' }, { status: 400 });
     }
 
@@ -40,7 +44,7 @@ export async function POST(request: NextRequest) {
       const { error } = await db.from('payments').update({
         status: 'rejected',
         review_status: 'rejected',
-        reviewed_by: body.reviewedBy,
+        reviewed_by: authorization.user.id,
         reviewed_at: now,
         rejection_reason: body.rejectionReason || null,
         updated_at: now,
@@ -57,7 +61,7 @@ export async function POST(request: NextRequest) {
       const { error } = await db.from('payments').update({
         status: 'paid',
         review_status: 'approved',
-        reviewed_by: body.reviewedBy,
+        reviewed_by: authorization.user.id,
         reviewed_at: now,
         paid_at: now,
         updated_at: now,
