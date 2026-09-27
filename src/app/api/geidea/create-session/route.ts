@@ -7,6 +7,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createGeideaSession, GeideaSessionRequest } from '@/lib/geidea/client';
+import { createCanonicalPayment, PayerType } from '@/lib/payments/canonical-payment-service';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,6 +23,11 @@ type CreateSessionBody = {
   returnUrl?: string;
   callbackUrl?: string;
   metadata?: Record<string, any>;
+  payerId?: string;
+  payerType?: PayerType;
+  planId?: string;
+  targetPlayerIds?: string[];
+  countryCode?: string;
 };
 
 /**
@@ -42,13 +49,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let canonicalPaymentId: string | null = null;
+    let sessionAmount = body.amount;
+    let sessionCurrency = body.currency;
+    let merchantReferenceId = body.merchantReferenceId;
+
+    // Subscription checkout uses the canonical ledger. Other Geidea callers
+    // remain compatible until their own domain flows are migrated.
+    if (body.payerId && body.payerType && body.planId && body.targetPlayerIds?.length) {
+      const db = getSupabaseAdmin();
+      const { data: plans, error: planError } = await db
+        .from('subscription_plans')
+        .select('id, base_price, base_currency, overrides, isActive')
+        .eq('id', body.planId)
+        .limit(1);
+      if (planError) throw planError;
+      const plan = plans?.[0] as Record<string, any> | undefined;
+      if (!plan || plan.isActive === false) {
+        return NextResponse.json({ success: false, error: 'Invalid or inactive plan' }, { status: 400 });
+      }
+
+      const country = (body.countryCode || 'EG').toUpperCase();
+      const override = plan.overrides?.[country];
+      const unitPrice = Number(override?.price ?? plan.base_price);
+      const currency = String(override?.currency ?? plan.base_currency ?? body.currency).toUpperCase();
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) throw new Error('Invalid plan price');
+
+      sessionAmount = unitPrice * body.targetPlayerIds.length;
+      sessionCurrency = currency;
+      const canonical = await createCanonicalPayment({
+        payerId: body.payerId,
+        payerType: body.payerType,
+        planId: body.planId,
+        countryCode: country,
+        amount: sessionAmount,
+        currency: sessionCurrency,
+        method: 'card',
+        provider: 'geidea',
+        targetPlayerIds: body.targetPlayerIds,
+        metadata: { checkout_source: 'geidea_create_session' },
+      });
+      canonicalPaymentId = canonical.id;
+      merchantReferenceId = canonical.id;
+    }
+
     // استخدام المكتبة المركزية
     const sessionRequest: GeideaSessionRequest = {
-      amount: body.amount,
-      currency: body.currency,
+      amount: sessionAmount,
+      currency: sessionCurrency,
       customerEmail: body.customerEmail,
       customerName: body.customerName,
-      merchantReferenceId: body.merchantReferenceId,
+      merchantReferenceId,
       returnUrl: body.returnUrl,
       callbackUrl: body.callbackUrl,
       metadata: body.metadata,
@@ -57,6 +108,10 @@ export async function POST(request: NextRequest) {
     const result = await createGeideaSession(sessionRequest);
 
     if (!result.success) {
+      if (canonicalPaymentId) {
+        const db = getSupabaseAdmin();
+        await db.from('payments').update({ status: 'failed', updated_at: new Date().toISOString() }).eq('id', canonicalPaymentId);
+      }
       return NextResponse.json(
         {
           success: false,
@@ -67,8 +122,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (canonicalPaymentId) {
+      const db = getSupabaseAdmin();
+      await db.from('payments').update({
+        status: 'processing',
+        provider_reference_id: result.orderId || result.sessionId || null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', canonicalPaymentId);
+    }
+
     return NextResponse.json({
       success: true,
+      canonicalPaymentId,
       sessionId: result.sessionId,
       orderId: result.orderId,
       redirectUrl: result.redirectUrl,
