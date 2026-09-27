@@ -15,7 +15,7 @@ export type TableName =
   | 'interaction_notifications' | 'player_notifications' | 'join_request_notifications' | 'support_notifications'
   | 'payments' | 'bulkPayments' | 'geidea_payments' | 'invoices' | 'subscriptions'
   | 'subscription_plans' | 'payment_action_logs' | 'payment_results' | 'payment_settings'
-  | 'tournaments' | 'tournament_registrations' | 'tournamentRegistrations'
+  | 'tournaments' | 'tournament_registrations'
   | 'player_join_requests' | 'organization_referrals' | 'player_rewards' | 'player_stats' | 'player_action_logs'
   | 'dream_academy_categories' | 'dream_academy_sources' | 'dream_academy_stats' | 'private_sessions_requests'
   | 'ads' | 'content' | 'settings' | 'geidea_settings' | 'system_configs'
