@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
 import { config } from '@/lib/skipcash/config';
 import { activatePaymentSubscriptions } from '@/lib/payments/subscription-activation-service';
 
@@ -13,7 +13,7 @@ function nearlyEqual(a: number, b: number): boolean {
 }
 
 export async function verifyAndActivateSkipCashPayment(providerPaymentId: string) {
-  const db = getSupabaseAdmin();
+  const db = getSupabaseServiceRole();
 
   const { data: paymentRows, error: lookupError } = await db
     .from('payments')
