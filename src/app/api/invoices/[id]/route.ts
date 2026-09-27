@@ -10,12 +10,8 @@ const TABLES = [
   'invoices',
   'geidea_payments',
   'bulkPayments',
-  'bulk_payments',
-  'wallet',
-  'instapay',
   'payments',
   'payment_results',
-  'tournament_payments',
 ];
 
 const toDate = (value: unknown): Date | null => {
@@ -44,9 +40,8 @@ const formatDate = (value?: Date | null) => {
 
 const SOURCE_LABELS: Record<string, string> = {
   invoices: 'نظام الفواتير', geidea_payments: 'بطاقة بنكية (Geidea)',
-  bulkPayments: 'دفع جماعي', bulk_payments: 'دفع جماعي',
-  wallet: 'محفظة', instapay: 'InstaPay', payments: 'دفع عام',
-  payment_results: 'نتائج الدفع', tournament_payments: 'مدفوعات البطولات',
+  bulkPayments: 'دفع جماعي', payments: 'دفع عام',
+  payment_results: 'نتائج الدفع',
 };
 const METHOD_LABELS: Record<string, string> = {
   geidea: 'بطاقة بنكية', bank_transfer: 'تحويل بنكي', instapay: 'InstaPay',
