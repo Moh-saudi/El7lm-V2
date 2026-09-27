@@ -43,6 +43,12 @@ BEGIN
   END IF;
 END $$;
 
+-- Remove the two audited legacy owner policies before removing their legacy identity columns.
+-- Do NOT replace them with a simplistic payer_id = auth.uid() policy:
+-- organization payers require an explicit membership/ownership authorization contract.
+DROP POLICY IF EXISTS payment_owner_select ON public.payments;
+DROP POLICY IF EXISTS payment_owner_insert ON public.payments;
+
 -- 1) Reshape the EMPTY payments table in place as the canonical ledger.
 -- Because it is audited empty, remove obsolete columns instead of carrying duplicate contracts forward.
 ALTER TABLE public.payments
