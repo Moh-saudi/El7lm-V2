@@ -4,6 +4,7 @@ import { SkipCashPaymentRequest } from '@/lib/skipcash/types';
 import { getSupabaseServiceRole } from '@/lib/supabase/admin';
 import { authorizeUser } from '@/lib/api/user-auth';
 import { resolveAuthenticatedPayer, assertPaymentTargetOwnership } from '@/lib/payments/payer-authorization';
+import { assertCountryCardProvider } from '@/lib/payments/provider-routing-service';
 import { createCanonicalPayment, PayerType } from '@/lib/payments/canonical-payment-service';
 
 export const runtime = 'nodejs';
@@ -45,6 +46,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Payer identity mismatch' }, { status: 403 });
     }
     const targetPlayerIds = await assertPaymentTargetOwnership(payer.payerId, payer.payerType, body.targetPlayerIds);
+
+    await assertCountryCardProvider('QA', 'skipcash');
 
     const db = getSupabaseServiceRole();
     const { data: planRows, error: planError } = await db
