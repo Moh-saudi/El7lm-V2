@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
 import { authorizeAdmin, withPrivateResponseHeaders } from '@/lib/api/admin-auth';
 
 export const runtime = 'nodejs';
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    const db = getSupabaseAdmin();
+    const db = getSupabaseServiceRole();
     let query = db
       .from('payments')
       .select('id,payer_id,payer_type,plan_id,country_code,amount,currency,method,provider,status,provider_transaction_id,provider_reference_id,receipt_url,review_status,reviewed_by,reviewed_at,rejection_reason,paid_at,metadata,created_at,updated_at,payment_targets(id,target_player_id,amount_allocated,status)', { count: 'exact' })
