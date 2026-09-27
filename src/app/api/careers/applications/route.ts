@@ -12,22 +12,16 @@ export async function GET(request: NextRequest) {
     }
 
     const db = getSupabaseAdmin();
-    const tables = ['career_applications', 'careerApplications'];
-    const allItems: unknown[] = [];
+    const { data, error } = await db
+      .from('career_applications')
+      .select('*')
+      .order('createdAt', { ascending: false });
 
-    for (const table of tables) {
-      try {
-        const { data } = await db.from(table).select('*').order('createdAt', { ascending: false });
-        const items = (data ?? []).filter((row: Record<string, unknown>) => row.fullName || row.email || row.phone);
-        if (items.length > 0) allItems.push(...items);
-      } catch {}
-    }
+    if (error) throw error;
 
-    allItems.sort((a: unknown, b: unknown) => {
-      const aRow = a as Record<string, unknown>;
-      const bRow = b as Record<string, unknown>;
-      return new Date(String(bRow.createdAt ?? 0)).getTime() - new Date(String(aRow.createdAt ?? 0)).getTime();
-    });
+    const allItems = (data ?? []).filter(
+      (row: Record<string, unknown>) => row.fullName || row.email || row.phone
+    );
 
     return withPrivateResponseHeaders(NextResponse.json({ success: true, items: allItems }));
   } catch (error) {
