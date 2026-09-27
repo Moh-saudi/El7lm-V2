@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
 import { authorizeUser } from '@/lib/api/user-auth';
 
 export const runtime = 'nodejs';
@@ -137,7 +137,7 @@ export async function GET(
     const format = request.nextUrl.searchParams.get('format') || 'html';
     if (!paymentId) return NextResponse.json({ error: 'Payment ID is required' }, { status: 400 });
 
-    const db = getSupabaseAdmin();
+    const db = getSupabaseServiceRole();
     const { data: rows, error } = await db
       .from('payments')
       .select('id,payer_id,payer_type,plan_id,amount,currency,method,provider,status,provider_transaction_id,provider_reference_id,paid_at,created_at,payment_targets(target_player_id)')
