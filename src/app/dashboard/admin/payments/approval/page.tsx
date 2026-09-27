@@ -5,7 +5,7 @@ import { addPaymentNotification, addSmartCelebrationNotification } from '@/lib/s
 import { supabase } from '@/lib/supabase/config';
 import { PricingService } from '@/lib/pricing/pricing-service';
 import { SubscriptionPlan } from '@/types/pricing';
-import { useAuth } from '@/lib/firebase/auth-provider';
+import { useAuth } from '@/lib/supabase/auth-provider';
 import {
   CheckCircle, XCircle, Clock, AlertTriangle,
   Search, Filter, RefreshCw, Eye, Check, X,
