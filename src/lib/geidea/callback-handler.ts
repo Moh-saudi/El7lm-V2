@@ -65,8 +65,7 @@ export async function processGeideaCallback(
   };
 
   // Canonical subscription payments use merchantReferenceId as payments.id.
-  // If this is a canonical payment, stop here: no legacy geidea_payments,
-  // subscriptions, or users writes are allowed.
+  // If this is a canonical payment, stop here: no parallel legacy payment or subscription writes are allowed.
   if (merchantReferenceId && amount !== null) {
     const canonicalResult = await applyVerifiedGeideaPayment({
       orderId,
