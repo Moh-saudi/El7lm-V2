@@ -8,7 +8,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createGeideaSession, GeideaSessionRequest } from '@/lib/geidea/client';
 import { createCanonicalPayment, PayerType } from '@/lib/payments/canonical-payment-service';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
+import { authorizeUser } from '@/lib/api/user-auth';
+import { resolveAuthenticatedPayer, assertPaymentTargetOwnership } from '@/lib/payments/payer-authorization';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,16 +36,19 @@ type CreateSessionBody = {
  * POST - إنشاء جلسة دفع جديدة
  */
 export async function POST(request: NextRequest) {
+  const authorization = await authorizeUser(request);
+  if (!authorization.ok) return authorization.response;
+
   try {
     const body = (await request.json()) as CreateSessionBody;
 
     // التحقق من البيانات المطلوبة
-    if (!body?.amount || !body?.currency || !body?.customerEmail) {
+    if (!body?.customerEmail) {
       return NextResponse.json(
         {
           success: false,
           error: 'Missing required fields',
-          details: 'amount, currency, and customerEmail are required',
+          details: 'customerEmail is required',
         },
         { status: 400 }
       );
@@ -57,7 +62,12 @@ export async function POST(request: NextRequest) {
     // Subscription checkout uses the canonical ledger. Other Geidea callers
     // remain compatible until their own domain flows are migrated.
     if (body.payerId && body.payerType && body.planId && body.targetPlayerIds?.length) {
-      const db = getSupabaseAdmin();
+      const payer = await resolveAuthenticatedPayer(authorization.user.id, body.payerType);
+      if (!payer || (body.payerId && body.payerId !== payer.payerId)) {
+        return NextResponse.json({ success: false, error: 'Payer identity mismatch' }, { status: 403 });
+      }
+      const targetPlayerIds = await assertPaymentTargetOwnership(payer.payerId, payer.payerType, body.targetPlayerIds);
+      const db = getSupabaseServiceRole();
       const { data: plans, error: planError } = await db
         .from('subscription_plans')
         .select('id, base_price, base_currency, overrides, isActive')
@@ -75,18 +85,18 @@ export async function POST(request: NextRequest) {
       const currency = String(override?.currency ?? plan.base_currency ?? body.currency).toUpperCase();
       if (!Number.isFinite(unitPrice) || unitPrice < 0) throw new Error('Invalid plan price');
 
-      sessionAmount = unitPrice * body.targetPlayerIds.length;
+      sessionAmount = unitPrice * targetPlayerIds.length;
       sessionCurrency = currency;
       const canonical = await createCanonicalPayment({
-        payerId: body.payerId,
-        payerType: body.payerType,
+        payerId: payer.payerId,
+        payerType: payer.payerType,
         planId: body.planId,
         countryCode: country,
         amount: sessionAmount,
         currency: sessionCurrency,
         method: 'card',
         provider: 'geidea',
-        targetPlayerIds: body.targetPlayerIds,
+        targetPlayerIds,
         metadata: { checkout_source: 'geidea_create_session' },
       });
       canonicalPaymentId = canonical.id;
@@ -109,7 +119,7 @@ export async function POST(request: NextRequest) {
 
     if (!result.success) {
       if (canonicalPaymentId) {
-        const db = getSupabaseAdmin();
+        const db = getSupabaseServiceRole();
         await db.from('payments').update({ status: 'failed', updated_at: new Date().toISOString() }).eq('id', canonicalPaymentId);
       }
       return NextResponse.json(
@@ -123,7 +133,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (canonicalPaymentId) {
-      const db = getSupabaseAdmin();
+      const db = getSupabaseServiceRole();
       await db.from('payments').update({
         status: 'processing',
         provider_reference_id: result.orderId || result.sessionId || null,
