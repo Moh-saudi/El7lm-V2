@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
 import { activatePaymentSubscriptions } from '@/lib/payments/subscription-activation-service';
 import { authorizeAdmin } from '@/lib/api/admin-auth';
 
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid review request' }, { status: 400 });
     }
 
-    const db = getSupabaseAdmin();
+    const db = getSupabaseServiceRole();
     const { data: rows, error: lookupError } = await db
       .from('payments')
       .select('id, status, review_status, provider')
