@@ -28,7 +28,6 @@ import { SubscriptionPlan } from '@/types/pricing';
 import { COMPANY_INFO, getPrimaryWhatsAppNumber } from '@/config/company-info';
 
 import { supabase } from '@/lib/supabase/config';
-import { InvoiceService } from '@/lib/payments/invoice-service';
 import { storageManager } from '@/lib/storage';
 import { isSkipCashAvailable, skipCashUnavailableMessage } from '@/lib/skipcash/config';
 
@@ -859,42 +858,41 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         return;
       }
 
-      // Legacy invoice pre-creation remains temporarily for manual methods.
-      const invoiceData = {
-        userId: user.id,
-        amount: finalPrice,
-        currency: currentCurrencyCode,
-        paymentMethod: selectedPaymentMethod,
-        packageType: selectedPackage,
-        packageName: selectedPkg?.title || t('payment.genericSub'),
-        packageDuration: selectedPkg?.period || t('payment.undefinedDuration'),
-        package_duration: selectedPkg?.period || t('payment.undefinedDuration'),
-        playerCount: countForCalculation,
-        players: accountType === 'player' ? [user.id] : selectedPlayers.map(p => p.id),
-        customerEmail: user.email || '',
-        customerName: user.user_metadata?.full_name || '',
-      };
-
-      const invoiceId = await InvoiceService.createPendingInvoice(invoiceData);
-
-      // C. PayPal
       if (selectedPaymentMethod === 'paypal') {
         toast(t('payment.paypalSoon'));
         setLoading(false);
         return;
       }
 
-      // D. Manual Methods (Upload Receipt)
       if (isManualMethod && receiptFile) {
         toast.loading(t('payment.processingReceiptUpload'), { id: 'upload' });
 
+        const receiptId = crypto.randomUUID();
         const fileExt = receiptFile.name.split('.').pop();
-        const path = `receipts/${user.id}/${invoiceId}.${fileExt}`;
-
+        const path = `receipts/${user.id}/${receiptId}.${fileExt}`;
         const uploadResult = await storageManager.upload('payments', path, receiptFile);
-        const receiptUrl = uploadResult.url;
 
-        await InvoiceService.submitManualReceipt(invoiceId, receiptUrl);
+        const targetPlayerIds = accountType === 'player'
+          ? [user.id]
+          : selectedPlayers.map((player) => player.id);
+
+        const response = await fetch('/api/payments/manual-submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            payerId: user.id,
+            payerType: accountType,
+            planId: selectedPackage,
+            targetPlayerIds,
+            countryCode: selectedCountry || detectedCountry || 'EG',
+            method: selectedPaymentMethod,
+            receiptUrl: uploadResult.url,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Manual payment submission failed');
+        }
 
         toast.success(t('payment.receiptUploadSuccess'), { id: 'upload' });
         setReceiptFile(null);
