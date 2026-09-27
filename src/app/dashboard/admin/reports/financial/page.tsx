@@ -128,20 +128,23 @@ export default function FinancialReports() {
       const allPayments: any[] = [];
       const allUsers: any[] = [];
 
-      // جمع بيانات المدفوعات من localStorage (مصدر احتياطي/قديم)
-      const localStorageData = localStorage.getItem('bulkPaymentHistory');
-      if (localStorageData) {
-        const localPayments = JSON.parse(localStorageData);
-        allPayments.push(...localPayments.map((p: any) => ({
-          ...p,
-          created_at: p.timestamp || new Date().toISOString(),
-          total_amount: p.finalPrice || 0,
-          currency: p.currency || 'EGP',
-          user_id: p.userId,
-          country: p.country,
-          account_type: p.accountType
-        })));
+      // Canonical financial ledger only.
+      const paymentResponse = await fetch('/api/admin/payments?page=1&pageSize=100', { cache: 'no-store' });
+      const paymentPayload = await paymentResponse.json();
+      if (!paymentResponse.ok || !paymentPayload.success) {
+        throw new Error(paymentPayload.error || 'Failed to load canonical payments');
       }
+      allPayments.push(...(paymentPayload.data || []).map((p: any) => ({
+        ...p,
+        created_at: p.created_at,
+        total_amount: Number(p.amount || 0),
+        user_id: p.payer_id,
+        country: p.country_code,
+        account_type: p.payer_type,
+        payment_method: p.method,
+        packageType: p.plan_id,
+        players: (p.payment_targets || []).map((target: any) => ({ id: target.target_player_id })),
+      })));
 
       // جمع بيانات المستخدمين من Supabase
       const tableNames = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents'];
@@ -258,8 +261,8 @@ export default function FinancialReports() {
       .sort(([, a], [, b]) => b - a)[0]?.[0] || 'EGP';
 
     const currencyDiversity = currencyCount.size;
-    const conversionAccuracy = 99.8; // نسبة دقة التحويل (افتراضية)
-    const monthlyGrowth = 15.6; // نمو شهري (افتراضي)
+    const conversionAccuracy = 0; // لا نعرض دقة مصطنعة دون مصدر قياس فعلي
+    const monthlyGrowth = 0; // يُحسب لاحقاً من فترات مكتملة بدلاً من قيمة افتراضية
 
     setMetrics({
       totalRevenueEGP,
