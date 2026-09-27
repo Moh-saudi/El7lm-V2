@@ -24,6 +24,17 @@ SELECT
 FROM careerApplications
 ON CONFLICT (id) DO NOTHING;
 
+-- Some older migrations used a plural snake_case name as well.
+INSERT INTO career_applications (
+  id, fullName, email, phone, country, governorate, experience,
+  linkedin, facebook, notes, roles, role, createdAt, status
+)
+SELECT
+  id, fullName, email, phone, country, governorate, experience,
+  linkedin, facebook, notes, roles, role, createdAt, NULL
+FROM careers_applications
+ON CONFLICT (id) DO NOTHING;
+
 -- High-frequency identity lookups.
 CREATE INDEX IF NOT EXISTS idx_users_uid
   ON users (uid)
