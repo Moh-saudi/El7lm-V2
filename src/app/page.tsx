@@ -8,7 +8,7 @@ import { getOppsSection, OppsSectionData } from '@/lib/content/opps-section-serv
 import { getStoreSection, StoreSectionData } from '@/lib/content/store-section-service';
 import { supabase } from '@/lib/supabase/config';
 import { createClient } from '@supabase/supabase-js';
-import { getExploreOpportunities } from '@/lib/firebase/opportunities';
+import { getExploreOpportunities } from '@/lib/supabase/opportunities';
 import { Opportunity } from '@/types/opportunities';
 
 import { useRouter } from 'next/navigation';
