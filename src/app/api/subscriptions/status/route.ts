@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     const [subscriptionResult, targetsResult] = await Promise.all([
       db
-        .from('subscriptions_v2')
+        .from('subscriptions')
         .select('id,player_id,plan_id,payment_id,status,starts_at,expires_at,activated_at,cancelled_at,auto_renew,amount,currency,created_at,updated_at')
         .eq('player_id', playerId)
         .order('created_at', { ascending: false })
