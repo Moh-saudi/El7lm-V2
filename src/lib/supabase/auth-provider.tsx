@@ -81,6 +81,82 @@ async function fetchUserData(userId: string, email: string, firebaseUid?: string
     };
   }
 
+  // Fast path for the migrated Supabase model: resolve the account from users/employee
+  // first, then touch only the single role table that is actually needed.
+  // The broader legacy fallback below remains for accounts that have not been normalized yet.
+  const [userByIdResult, employeeByAuthResult] = await Promise.all([
+    supabase
+      .from('users')
+      .select('id,uid,email,accountType,full_name,name,phone,profile_image,isDeleted,isActive,employeeId,role,roleId')
+      .eq('id', userId)
+      .maybeSingle(),
+    supabase
+      .from('employees')
+      .select('*')
+      .eq('authUserId', userId)
+      .maybeSingle(),
+  ]);
+
+  if (employeeByAuthResult.data) {
+    return {
+      data: employeeByAuthResult.data as Record<string, unknown>,
+      collection: 'employees',
+      accountType: 'admin',
+    };
+  }
+
+  const userById = userByIdResult.data as Record<string, unknown> | null;
+  const accountTableByRole: Record<string, string> = {
+    player: 'players',
+    club: 'clubs',
+    academy: 'academies',
+    trainer: 'trainers',
+    agent: 'agents',
+    marketer: 'marketers',
+    admin: 'admins',
+  };
+
+  if (userById) {
+    const accountType = String(userById.accountType || '').toLowerCase();
+    const accountTable = accountTableByRole[accountType];
+
+    if (accountTable) {
+      const roleById = await supabase
+        .from(accountTable)
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (roleById.data) {
+        return {
+          data: roleById.data as Record<string, unknown>,
+          collection: accountTable,
+          accountType: accountType as UserRole,
+        };
+      }
+
+      const roleByUid = await supabase
+        .from(accountTable)
+        .select('*')
+        .eq('uid', userId)
+        .maybeSingle();
+
+      if (roleByUid.data) {
+        return {
+          data: roleByUid.data as Record<string, unknown>,
+          collection: accountTable,
+          accountType: accountType as UserRole,
+        };
+      }
+    }
+
+    return {
+      data: userById,
+      collection: 'users',
+      accountType: (accountType as UserRole) || 'player',
+    };
+  }
+
   // Check employees first
   try {
     let { data: employees } = await supabase.from('employees').select('*').eq('authUserId', userId).limit(1);
