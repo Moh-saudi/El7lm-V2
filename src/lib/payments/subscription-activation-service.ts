@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
 
 type PlanDuration = { months: number };
 
@@ -25,7 +25,7 @@ function addCalendarMonths(date: Date, months: number): Date {
 }
 
 export async function activatePaymentSubscriptions(paymentId: string) {
-  const db = getSupabaseAdmin();
+  const db = getSupabaseServiceRole();
 
   const { data: paymentRows, error: paymentError } = await db
     .from('payments')
