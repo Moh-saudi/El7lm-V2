@@ -13,27 +13,35 @@
 BEGIN;
 
 -- Preserve legacy career applications before the application/API is switched to the
--- canonical snake_case table. The two schemas are intentionally compatible.
-INSERT INTO career_applications (
-  id, fullName, email, phone, country, governorate, experience,
-  linkedin, facebook, notes, roles, role, createdAt, status
-)
-SELECT
-  id, fullName, email, phone, country, governorate, experience,
-  linkedin, facebook, notes, roles, role, createdAt, status
-FROM careerApplications
-ON CONFLICT (id) DO NOTHING;
+-- canonical snake_case table. Legacy tables are optional, so guard each copy
+-- with to_regclass and quote the case-sensitive camelCase relation correctly.
+DO $
+BEGIN
+  IF to_regclass('public."careerApplications"') IS NOT NULL THEN
+    INSERT INTO career_applications (
+      id, "fullName", email, phone, country, governorate, experience,
+      linkedin, facebook, notes, roles, role, "createdAt", status
+    )
+    SELECT
+      id, "fullName", email, phone, country, governorate, experience,
+      linkedin, facebook, notes, roles, role, "createdAt", status
+    FROM "careerApplications"
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
 
--- Some older migrations used a plural snake_case name as well.
-INSERT INTO career_applications (
-  id, fullName, email, phone, country, governorate, experience,
-  linkedin, facebook, notes, roles, role, createdAt, status
-)
-SELECT
-  id, fullName, email, phone, country, governorate, experience,
-  linkedin, facebook, notes, roles, role, createdAt, NULL
-FROM careers_applications
-ON CONFLICT (id) DO NOTHING;
+  IF to_regclass('public.careers_applications') IS NOT NULL THEN
+    INSERT INTO career_applications (
+      id, "fullName", email, phone, country, governorate, experience,
+      linkedin, facebook, notes, roles, role, "createdAt", status
+    )
+    SELECT
+      id, "fullName", email, phone, country, governorate, experience,
+      linkedin, facebook, notes, roles, NULL, "createdAt", NULL
+    FROM careers_applications
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+END
+$;
 
 -- High-frequency identity lookups.
 CREATE INDEX IF NOT EXISTS idx_users_uid
