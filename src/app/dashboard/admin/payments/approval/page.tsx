@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { addPaymentNotification, addSmartCelebrationNotification } from '@/lib/firebase/notifications';
+import { addPaymentNotification, addSmartCelebrationNotification } from '@/lib/supabase/notifications';
 import { supabase } from '@/lib/supabase/config';
 import { PricingService } from '@/lib/pricing/pricing-service';
 import { SubscriptionPlan } from '@/types/pricing';
