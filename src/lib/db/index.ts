@@ -22,7 +22,7 @@ export type TableName =
   | 'otp_codes' | 'otp_verifications' | 'backup_otps' | 'passwordResetTokens' | 'otps'
   | 'analytics' | 'analytics_visits' | 'adminLogs' | 'employee_activities' | 'security_logs' | 'email_logs'
   | 'countries' | 'cities' | 'customers' | 'partners' | 'roles' | 'referrals' | 'receipts'
-  | 'careerApplications' | 'careers_applications' | 'real-time-stats' | 'real-time-updates'
+  | 'career_applications' | 'real-time-stats' | 'real-time-updates'
 
 // نوع بيانات المستخدم متعدد الأدوار
 export type UserCollection = 'players' | 'clubs' | 'academies' | 'agents' | 'trainers' | 'marketers' | 'users';
