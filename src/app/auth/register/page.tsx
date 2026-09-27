@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/firebase/auth-provider';
+import { useAuth } from '@/lib/supabase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
 import { getBrandingData, BrandingData } from '@/lib/content/branding-service';
 import { countries, getTranslatedCountryName } from '@/lib/constants/countries';
