@@ -56,7 +56,7 @@ export default function PaymentApprovalPage() {
     try {
       setLoading(true);
 
-      const { data: rows } = await supabase.from('bulk_payments').select('*').order('created_at', { ascending: false });
+      const { data: rows } = await supabase.from('bulkPayments').select('*').order('created_at', { ascending: false });
       const fetchedPayments: PaymentRequest[] = [];
 
       (rows || []).forEach((row) => {
@@ -155,7 +155,7 @@ export default function PaymentApprovalPage() {
       setActionLoading(payment.id);
 
       // تحديث حالة الدفع
-      await supabase.from('bulk_payments').update({
+      await supabase.from('bulkPayments').update({
         status: 'approved',
         approvedAt: new Date().toISOString(),
         approvedBy: user?.id,
@@ -233,7 +233,7 @@ export default function PaymentApprovalPage() {
       setActionLoading(payment.id);
 
       // تحديث حالة الدفع
-      await supabase.from('bulk_payments').update({
+      await supabase.from('bulkPayments').update({
         status: 'rejected',
         rejectedAt: new Date().toISOString(),
         rejectedBy: user?.id,
