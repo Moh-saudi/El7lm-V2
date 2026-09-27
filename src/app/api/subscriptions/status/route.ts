@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
 import { authorizeUser } from '@/lib/api/user-auth';
 
 export const runtime = 'nodejs';
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   if (!authorization.ok) return authorization.response;
 
   try {
-    const db = getSupabaseAdmin();
+    const db = getSupabaseServiceRole();
     const authId = authorization.user.id;
 
     // Canonical beneficiary identity is players.id. Most accounts already share
