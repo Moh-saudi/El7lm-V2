@@ -11,6 +11,7 @@ import { createCanonicalPayment, PayerType } from '@/lib/payments/canonical-paym
 import { getSupabaseServiceRole } from '@/lib/supabase/admin';
 import { authorizeUser } from '@/lib/api/user-auth';
 import { resolveAuthenticatedPayer, assertPaymentTargetOwnership } from '@/lib/payments/payer-authorization';
+import { assertCountryCardProvider } from '@/lib/payments/provider-routing-service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Payer identity mismatch' }, { status: 403 });
       }
       const targetPlayerIds = await assertPaymentTargetOwnership(payer.payerId, payer.payerType, body.targetPlayerIds);
+      await assertCountryCardProvider(body.countryCode, 'geidea');
       const db = getSupabaseServiceRole();
       const { data: plans, error: planError } = await db
         .from('subscription_plans')
