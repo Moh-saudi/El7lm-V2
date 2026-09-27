@@ -1099,26 +1099,6 @@ model PaymentActionLog {
   @@map("payment_action_logs")
 }
 
-model PaymentResult {
-  id                  String    @id
-  orderId             String?
-  merchantReferenceId String?
-  amount              BigInt?
-  currency            String?
-  status              String?
-  paymentMethod       String?
-  cardBrand           String?
-  createdDate         DateTime?
-  updatedDate         DateTime?
-  processedAt         DateTime?
-  webhookReceived     Boolean?
-  isTest              Boolean?
-  transactions        Json?
-  fullWebhookData     Json?
-
-  @@map("payment_results")
-}
-
 model PaymentSetting {
   id          String  @id
   countryCode String?
@@ -1999,17 +1979,6 @@ model Referral {
   createdAt    DateTime?
 
   @@map("referrals")
-}
-
-model Receipt {
-  id        String    @id
-  invoiceId String?
-  url       String?
-  userId    String?
-  status    String?
-  timestamp DateTime?
-
-  @@map("receipts")
 }
 
 model CareerApplication {
