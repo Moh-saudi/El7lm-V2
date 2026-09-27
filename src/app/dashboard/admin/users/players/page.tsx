@@ -104,10 +104,6 @@ interface PlayerData {
   marketValue?: number;
   currentClub?: string;
   contractEndDate?: any;
-  clubId?: string;
-  academyId?: string;
-  trainerId?: string;
-  agentId?: string;
 }
 
 const POSITIONS = [
@@ -857,10 +853,10 @@ export default function PlayersManagement() {
                             name: `${player.firstName} ${player.lastName}`,
                             email: player.email,
                             phone: player.phone,
-                            club_id: player.clubId,
-                            academy_id: player.academyId,
-                            trainer_id: player.trainerId,
-                            agent_id: player.agentId,
+                            club_id: player.club_id,
+                            academy_id: player.academy_id,
+                            trainer_id: player.trainer_id,
+                            agent_id: player.agent_id,
                             ...player
                           }}
                           source="players"
@@ -879,10 +875,10 @@ export default function PlayersManagement() {
                             email: player.email,
                             phone: player.phone,
                             whatsapp: player.whatsapp,
-                            club_id: player.clubId,
-                            academy_id: player.academyId,
-                            trainer_id: player.trainerId,
-                            agent_id: player.agentId,
+                            club_id: player.club_id,
+                            academy_id: player.academy_id,
+                            trainer_id: player.trainer_id,
+                            agent_id: player.agent_id,
                             ...player
                           }}
                           source="players"
