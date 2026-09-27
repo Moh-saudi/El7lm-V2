@@ -3,6 +3,7 @@
  */
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { applyVerifiedGeideaPayment } from '@/lib/payments/geidea-canonical-service';
 
 export interface GeideaCallbackPayload {
   [key: string]: unknown;
@@ -64,22 +65,32 @@ export async function processGeideaCallback(
     transactionId, paidAt, rawPayload: payload,
   };
 
-  try {
-    await saveGeideaPayment(processed);
-    console.log('✅ [Geidea Callback Handler] Payment processed and saved:', { orderId, merchantReferenceId, status, amount, currency });
-  } catch (saveError) {
-    console.error('❌ [Geidea Callback Handler] Failed to save payment:', { orderId, error: saveError instanceof Error ? saveError.message : 'Unknown error' });
-    throw saveError;
+  // Canonical subscription payments use merchantReferenceId as payments.id.
+  // If this is a canonical payment, stop here: no legacy geidea_payments,
+  // subscriptions, or users writes are allowed.
+  if (merchantReferenceId && amount !== null) {
+    const canonicalResult = await applyVerifiedGeideaPayment({
+      orderId,
+      merchantReferenceId,
+      transactionId,
+      amount,
+      currency,
+      status,
+      paidAt,
+    });
+    if (canonicalResult.canonical) {
+      console.log('✅ [Geidea Callback Handler] Canonical payment processed:', canonicalResult);
+      return processed;
+    }
   }
 
-  // تفعيل الاشتراك تلقائياً عند نجاح الدفع
-  if (status === 'success') {
-    try {
-      await activateGeideaSubscription(processed);
-    } catch (activateError) {
-      // لا نوقف العملية إذا فشل التفعيل — يمكن للأدمن التفعيل يدوياً
-      console.error('⚠️ [Geidea Callback Handler] Auto-activation failed (admin can activate manually):', activateError instanceof Error ? activateError.message : activateError);
-    }
+  // Transitional compatibility for non-subscription Geidea callers.
+  try {
+    await saveGeideaPayment(processed);
+    console.log('✅ [Geidea Callback Handler] Legacy non-canonical payment saved:', { orderId, merchantReferenceId, status });
+  } catch (saveError) {
+    console.error('❌ [Geidea Callback Handler] Failed to save legacy payment:', { orderId, error: saveError instanceof Error ? saveError.message : 'Unknown error' });
+    throw saveError;
   }
 
   return processed;
