@@ -851,8 +851,15 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         return;
       }
 
-      // Legacy invoice pre-creation remains temporarily for Geidea/manual methods
-      // until those flows are moved to canonical payments.
+      // Geidea subscription checkout is canonical and creates its payment
+      // inside /api/geidea/create-session.
+      if (selectedPaymentMethod === 'geidea') {
+        setShowGeideaModal(true);
+        setLoading(false);
+        return;
+      }
+
+      // Legacy invoice pre-creation remains temporarily for manual methods.
       const invoiceData = {
         userId: user.id,
         amount: finalPrice,
@@ -869,23 +876,6 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       };
 
       const invoiceId = await InvoiceService.createPendingInvoice(invoiceData);
-
-      // Geidea
-      if (selectedPaymentMethod === 'geidea') {
-        let convertedAmountEGP = Math.round(finalPrice);
-        if (currentCurrencyCode !== 'EGP') {
-          const usd = convertCurrencyLib(finalPrice, currentCurrencyCode, 'USD', currencyRates);
-          convertedAmountEGP = Math.round(convertCurrencyLib(usd, 'USD', 'EGP', currencyRates));
-        }
-        if (typeof window !== 'undefined') window.convertedAmountForGeidea = convertedAmountEGP;
-
-        // We can store the invoiceId in localStorage for the success/callback handler
-        localStorage.setItem('pending_invoice_id', invoiceId);
-
-        setShowGeideaModal(true);
-        setLoading(false);
-        return;
-      }
 
       // C. PayPal
       if (selectedPaymentMethod === 'paypal') {
@@ -1453,12 +1443,17 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         onRequestClose={() => setShowGeideaModal(false)}
         onPaymentSuccess={handlePaymentSuccess}
         onPaymentFailure={handlePaymentFailure}
-        amount={typeof window !== 'undefined' && window.convertedAmountForGeidea ? window.convertedAmountForGeidea : Math.round(finalPrice)}
-        currency="EGP"
+        amount={Math.round(finalPrice)}
+        currency={currentCurrencyCode}
         title={t('payment.geideaTitle')}
         description={t('payment.geideaDesc').replace('{{count}}', String(selectedCount))}
         customerEmail={user?.email || 'customer@example.com'}
-        merchantReferenceId={`PAY-${Date.now()}`}
+        merchantReferenceId={undefined}
+        payerId={user?.id}
+        payerType={accountType}
+        planId={selectedPackage}
+        targetPlayerIds={accountType === 'player' ? (user?.id ? [user.id] : []) : selectedPlayers.map((player) => player.id)}
+        countryCode={selectedCountry || 'EG'}
       />
 
       {/* Support Ticket Modal */}
