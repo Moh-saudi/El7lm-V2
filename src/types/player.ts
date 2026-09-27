@@ -242,13 +242,9 @@ export interface Player extends BaseEntity, PlayerFormData {
   organizationInfo?: string;
   avatar?: string;
   club_id?: string;
-  clubId?: string;
   academy_id?: string;
-  academyId?: string;
   trainer_id?: string;
-  trainerId?: string;
   agent_id?: string;
-  agentId?: string;
   convertedToAccount?: boolean;
   firebaseUid?: string;
   club_name?: string;
