@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSkipCashPayment } from '@/lib/skipcash/client';
 import { SkipCashPaymentRequest } from '@/lib/skipcash/types';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
+import { authorizeUser } from '@/lib/api/user-auth';
+import { resolveAuthenticatedPayer, assertPaymentTargetOwnership } from '@/lib/payments/payer-authorization';
 import { createCanonicalPayment, PayerType } from '@/lib/payments/canonical-payment-service';
 
 export const runtime = 'nodejs';
@@ -28,6 +30,9 @@ function getQatarPlanPrice(plan: Record<string, unknown>): number {
 }
 
 export async function POST(request: NextRequest) {
+  const authorization = await authorizeUser(request);
+  if (!authorization.ok) return authorization.response;
+
   try {
     const body = (await request.json()) as CreateSessionBody;
     if (!body.payerId || !body.payerType || !body.planId || !body.targetPlayerIds?.length ||
@@ -35,7 +40,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing required checkout fields' }, { status: 400 });
     }
 
-    const db = getSupabaseAdmin();
+    const payer = await resolveAuthenticatedPayer(authorization.user.id, body.payerType);
+    if (!payer || (body.payerId && body.payerId !== payer.payerId)) {
+      return NextResponse.json({ success: false, error: 'Payer identity mismatch' }, { status: 403 });
+    }
+    const targetPlayerIds = await assertPaymentTargetOwnership(payer.payerId, payer.payerType, body.targetPlayerIds);
+
+    const db = getSupabaseServiceRole();
     const { data: planRows, error: planError } = await db
       .from('subscription_plans')
       .select('id, base_price, base_currency, overrides, isActive')
@@ -48,18 +59,18 @@ export async function POST(request: NextRequest) {
     }
 
     const unitPrice = getQatarPlanPrice(plan);
-    const amount = unitPrice * body.targetPlayerIds.length;
+    const amount = unitPrice * targetPlayerIds.length;
 
     const canonical = await createCanonicalPayment({
-      payerId: body.payerId,
-      payerType: body.payerType,
+      payerId: payer.payerId,
+      payerType: payer.payerType,
       planId: body.planId,
       countryCode: 'QA',
       amount,
       currency: 'QAR',
       method: 'card',
       provider: 'skipcash',
-      targetPlayerIds: body.targetPlayerIds,
+      targetPlayerIds,
       metadata: { checkout_source: 'skipcash_create_session' },
     });
 
