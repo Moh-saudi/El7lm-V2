@@ -68,6 +68,16 @@ function getPhotoURL(user: User): string {
   return String(user.user_metadata?.avatar_url || user.user_metadata?.picture || '');
 }
 
+const ROLE_TABLES: Record<string, string> = {
+  player: 'players',
+  club: 'clubs',
+  academy: 'academies',
+  trainer: 'trainers',
+  agent: 'agents',
+  marketer: 'marketers',
+  admin: 'admins',
+};
+
 // Fetch user data from Supabase tables
 async function fetchUserData(userId: string, email: string, firebaseUid?: string): Promise<{ data: Record<string, unknown>; collection: string; accountType: UserRole } | null> {
   const isSuperAdmin = email === 'admin@el7lm.com' || email === 'admin@elhilm.com';
@@ -106,19 +116,9 @@ async function fetchUserData(userId: string, email: string, firebaseUid?: string
   }
 
   const userById = userByIdResult.data as Record<string, unknown> | null;
-  const accountTableByRole: Record<string, string> = {
-    player: 'players',
-    club: 'clubs',
-    academy: 'academies',
-    trainer: 'trainers',
-    agent: 'agents',
-    marketer: 'marketers',
-    admin: 'admins',
-  };
-
   if (userById) {
     const accountType = String(userById.accountType || '').toLowerCase();
-    const accountTable = accountTableByRole[accountType];
+    const accountTable = ROLE_TABLES[accountType];
 
     if (accountTable) {
       const roleById = await supabase
@@ -646,7 +646,10 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
               const now = new Date().toISOString();
               const reactivatedData = { ...ex, ...additionalData, isDeleted: false, isActive: true, accountType: role, updated_at: now, updatedAt: now };
               await supabase.from('users').update(reactivatedData).eq('id', String(ex.id));
-              if (role !== 'admin') await supabase.from(role + 's').upsert({ id: ex.id, ...(sanitizeForDB(reactivatedData) as any) });
+              if (role !== 'admin') {
+                const roleTable = ROLE_TABLES[role];
+                if (roleTable) await supabase.from(roleTable).upsert({ id: ex.id, ...(sanitizeForDB(reactivatedData) as any) });
+              }
               const ud = reactivatedData as unknown as UserData;
               setUserData(ud);
               return ud;
@@ -683,7 +686,8 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
 
       await supabase.from('users').upsert({ id: authUser.id, ...(sanitizeForDB(userData) as any) });
       if (role !== 'admin') {
-        await supabase.from(role + 's').upsert({ id: authUser.id, ...(sanitizeForDB(userData) as any) });
+        const roleTable = ROLE_TABLES[role];
+        if (roleTable) await supabase.from(roleTable).upsert({ id: authUser.id, ...(sanitizeForDB(userData) as any) });
       }
 
       setUser(authUser);
@@ -716,7 +720,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
     if (!user) return;
     try {
       const accountType = userData?.accountType || 'player';
-      const tableName = accountType === 'admin' ? 'users' : `${accountType}s`;
+      const tableName = accountType === 'admin' ? 'users' : ROLE_TABLES[accountType] || 'users';
       const sanitized = sanitizeForDB({ ...updates, updated_at: new Date().toISOString() }) as Record<string, unknown>;
       if (sanitized && Object.keys(sanitized).length > 0) {
         await supabase.from(tableName).update(sanitized).eq('id', user.id);
