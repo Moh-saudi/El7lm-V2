@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
 import { activatePaymentSubscriptions } from '@/lib/payments/subscription-activation-service';
 
 export interface VerifiedGeideaPayment {
@@ -18,7 +18,7 @@ function sameMoney(a: unknown, b: unknown): boolean {
 }
 
 export async function applyVerifiedGeideaPayment(payment: VerifiedGeideaPayment) {
-  const db = getSupabaseAdmin();
+  const db = getSupabaseServiceRole();
   const canonicalId = payment.merchantReferenceId;
 
   const { data: rows, error: lookupError } = await db
