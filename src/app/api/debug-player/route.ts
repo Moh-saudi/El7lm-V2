@@ -20,7 +20,6 @@ export async function GET(req: NextRequest) {
     const targetUrl = `${String(config.baseUrl || 'https://chataman.com').trim().replace(/\/+$/, '')}/api/templates`;
 
     try {
-      process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
       const response = await fetch(targetUrl, {
         method: 'GET',
         headers: {
