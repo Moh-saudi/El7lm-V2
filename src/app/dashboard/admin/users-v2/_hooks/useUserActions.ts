@@ -18,6 +18,7 @@ export function useUserActions() {
             trainer: 'trainers',
             agent: 'agents',
             marketer: 'marketers',
+            parent: 'users',
             admin: 'users',
         };
         return tables[accountType] || 'users';
