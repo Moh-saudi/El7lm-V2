@@ -105,13 +105,9 @@ interface PlayerFormData {
   address?: string;
   // حقول الربط بالمنظمات
   club_id?: string;
-  clubId?: string;
   academy_id?: string;
-  academyId?: string;
   trainer_id?: string;
-  trainerId?: string;
   agent_id?: string;
-  agentId?: string;
   // إضافة حقول التتبع
   addedBy?: {
     accountType: 'club' | 'academy' | 'trainer' | 'agent';
@@ -481,13 +477,9 @@ export default function SharedPlayerForm({
           const isOwner =
             data.created_by   === user?.id ||
             data.club_id      === user?.id ||
-            data.clubId       === user?.id ||
             data.academy_id   === user?.id ||
-            data.academyId    === user?.id ||
             data.trainer_id   === user?.id ||
-            data.trainerId    === user?.id ||
             data.agent_id     === user?.id ||
-            data.agentId      === user?.id ||
             data.marketerId   === user?.id ||
             accountType       === 'admin';
           if (!isOwner) {
@@ -864,19 +856,19 @@ export default function SharedPlayerForm({
         switch (accountType) {
           case 'club':
             playerData.club_id = user.id;
-            playerData.clubId = user.id;
+            playerData.club_id = user.id;
             break;
           case 'academy':
             playerData.academy_id = user.id;
-            playerData.academyId = user.id;
+            playerData.academy_id = user.id;
             break;
           case 'trainer':
             playerData.trainer_id = user.id;
-            playerData.trainerId = user.id;
+            playerData.trainer_id = user.id;
             break;
           case 'agent':
             playerData.agent_id = user.id;
-            playerData.agentId = user.id;
+            playerData.agent_id = user.id;
             break;
           case 'marketer':
             (playerData as any).marketerId = user.id;
@@ -884,7 +876,7 @@ export default function SharedPlayerForm({
           default:
             // للحالات الأخرى، استخدم club_id كافتراضي
             playerData.club_id = user.id;
-            playerData.clubId = user.id;
+            playerData.club_id = user.id;
         }
 
         const newPlayerId = crypto.randomUUID();
