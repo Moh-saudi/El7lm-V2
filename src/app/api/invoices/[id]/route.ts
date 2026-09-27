@@ -1,18 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeUser } from '@/lib/api/user-auth';
-import { isRecordOwner } from '@/lib/api/record-ownership';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const TABLES = [
-  'invoices',
-  'geidea_payments',
-  'bulkPayments',
-  'payments',
-  'payment_results',
-];
 
 const toDate = (value: unknown): Date | null => {
   if (!value) return null;
@@ -140,76 +131,52 @@ export async function GET(
 ) {
   const authorization = await authorizeUser(request);
   if (!authorization.ok) return authorization.response;
-  try {
-    const invoiceId = params.id;
-    const searchParams = request.nextUrl.searchParams;
-    const format = searchParams.get('format') || 'html';
 
-    if (!invoiceId) {
-      return NextResponse.json({ error: 'Invoice ID is required' }, { status: 400 });
-    }
+  try {
+    const paymentId = params.id;
+    const format = request.nextUrl.searchParams.get('format') || 'html';
+    if (!paymentId) return NextResponse.json({ error: 'Payment ID is required' }, { status: 400 });
 
     const db = getSupabaseAdmin();
-    let invoiceData: Record<string, unknown> | null = null;
-    let source = '';
+    const { data: rows, error } = await db
+      .from('payments')
+      .select('id,payer_id,payer_type,plan_id,amount,currency,method,provider,status,provider_transaction_id,provider_reference_id,paid_at,created_at,payment_targets(target_player_id)')
+      .eq('id', paymentId)
+      .limit(1);
+    if (error) throw error;
+    const payment = rows?.[0] as any;
+    if (!payment) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
 
-    for (const tableName of TABLES) {
-      try {
-        // Search by ID first
-        const { data: byId } = await db.from(tableName).select('*').eq('id', invoiceId).limit(1);
-        if (byId?.length) {
-          invoiceData = byId[0] as Record<string, unknown>;
-          source = tableName;
-          break;
-        }
+    const authId = authorization.user.id;
+    const targetIds = (payment.payment_targets || []).map((target: any) => String(target.target_player_id));
+    let ownsPayment = String(payment.payer_id) === authId || targetIds.includes(authId);
 
-        // Search by invoice number fields
-        const fields = ['invoice_number', 'invoiceNumber', 'orderId', 'merchantReferenceId'];
-        for (const field of fields) {
-          const { data: byField } = await db.from(tableName).select('*').eq(field, invoiceId).limit(1);
-          if (byField?.length) {
-            invoiceData = byField[0] as Record<string, unknown>;
-            source = tableName;
-            break;
-          }
-        }
-
-        if (invoiceData) break;
-      } catch {
-        // Table may not exist, continue
-      }
+    if (!ownsPayment && targetIds.length) {
+      const { data: playerRows } = await db.from('players').select('id').eq('uid', authId).in('id', targetIds).limit(1);
+      ownsPayment = Boolean(playerRows?.length);
     }
+    if (!ownsPayment) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    if (!invoiceData) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-    }
-    if (!isRecordOwner(invoiceData, authorization.user)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const createdAt = toDate(invoiceData.created_at || invoiceData.createdAt || invoiceData.timestamp) || new Date();
-    const paidAt = toDate(invoiceData.paid_at || invoiceData.paidAt || invoiceData.paymentDate) || null;
-
-    const amount = Number(invoiceData.amount ?? invoiceData.total ?? invoiceData.total_amount ?? 0) || 0;
-    const currency = String(invoiceData.currency || invoiceData.currencyCode || 'EGP');
+    const { data: planRows } = payment.plan_id
+      ? await db.from('subscription_plans').select('title').eq('id', payment.plan_id).limit(1)
+      : { data: [] as any[] };
 
     const normalizedRecord: Record<string, unknown> = {
-      id: invoiceData.id,
-      invoiceNumber: invoiceData.invoice_number || invoiceData.invoiceNumber || invoiceData.orderId || invoiceData.merchantReferenceId || `INV-${String(invoiceData.id).slice(0, 8)}`,
-      source,
-      paymentMethod: invoiceData.paymentMethod || invoiceData.method || invoiceData.gateway || source,
-      transactionId: invoiceData.transactionId || invoiceData.transaction_id || null,
-      orderId: invoiceData.orderId || invoiceData.order_id || null,
-      referenceNumber: invoiceData.referenceNumber || invoiceData.merchantReferenceId || null,
-      amount,
-      currency,
-      status: invoiceData.status || invoiceData.paymentStatus || 'pending',
-      createdAt,
-      paidAt,
-      customerName: invoiceData.full_name || invoiceData.name || invoiceData.playerName || invoiceData.customerName || 'غير محدد',
-      customerEmail: invoiceData.user_email || invoiceData.userEmail || invoiceData.customerEmail || invoiceData.email || '',
-      customerPhone: invoiceData.phone || invoiceData.phoneNumber || invoiceData.mobile || invoiceData.whatsapp || '',
-      planName: invoiceData.plan_name || invoiceData.planName || invoiceData.package || invoiceData.packageName || '',
+      id: payment.id,
+      invoiceNumber: `PAY-${String(payment.id).slice(0, 12)}`,
+      source: payment.provider || 'payments',
+      paymentMethod: payment.method,
+      transactionId: payment.provider_transaction_id,
+      referenceNumber: payment.provider_reference_id,
+      amount: Number(payment.amount || 0),
+      currency: payment.currency || 'EGP',
+      status: payment.status || 'pending',
+      createdAt: toDate(payment.created_at) || new Date(),
+      paidAt: toDate(payment.paid_at),
+      customerName: authorization.user.user_metadata?.full_name || authorization.user.email || 'مستخدم',
+      customerEmail: authorization.user.email || '',
+      customerPhone: authorization.user.phone || '',
+      planName: planRows?.[0]?.title || payment.plan_id || '',
     };
 
     if (format === 'pdf') {
@@ -217,9 +184,8 @@ export async function GET(
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://el7lm.com';
-    const invoiceUrl = `${baseUrl}/invoice/${invoiceId}`;
-    const html = generateInvoiceHTML(normalizedRecord, invoiceUrl);
-    return new NextResponse(html, {
+    const invoiceUrl = `${baseUrl}/invoice/${paymentId}`;
+    return new NextResponse(generateInvoiceHTML(normalizedRecord, invoiceUrl), {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'private, no-store, max-age=0',
@@ -229,7 +195,7 @@ export async function GET(
     console.error('❌ [API /invoices/[id]] Error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
