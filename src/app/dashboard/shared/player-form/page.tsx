@@ -856,18 +856,14 @@ export default function SharedPlayerForm({
         switch (accountType) {
           case 'club':
             playerData.club_id = user.id;
-            playerData.club_id = user.id;
             break;
           case 'academy':
-            playerData.academy_id = user.id;
             playerData.academy_id = user.id;
             break;
           case 'trainer':
             playerData.trainer_id = user.id;
-            playerData.trainer_id = user.id;
             break;
           case 'agent':
-            playerData.agent_id = user.id;
             playerData.agent_id = user.id;
             break;
           case 'marketer':
@@ -875,7 +871,6 @@ export default function SharedPlayerForm({
             break;
           default:
             // للحالات الأخرى، استخدم club_id كافتراضي
-            playerData.club_id = user.id;
             playerData.club_id = user.id;
         }
 
