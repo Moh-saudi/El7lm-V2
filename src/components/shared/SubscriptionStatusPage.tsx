@@ -188,128 +188,58 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
         const allPlans = await PricingService.getAllPlans();
         setPlans(allPlans);
 
-        // 1. Parallel fetch for current subscription and parent subscription (if any)
-        const parentAccountId = (accountType === 'player' && userData) ?
-          (userData.club_id || userData.clubId || userData.academy_id || userData.academyId || userData.trainer_id || userData.trainerId || userData.agent_id || userData.agentId) : null;
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) throw new Error('Missing authenticated session');
 
-        const [subResult, parentResult] = await Promise.all([
-          supabase.from('subscriptions').select('*').eq('id', user.id).single(),
-          parentAccountId ? supabase.from('subscriptions').select('*').eq('id', parentAccountId).single() : Promise.resolve({ data: null })
-        ]);
-
-        const subscriptionData = subResult.data;
-        const parentData = parentResult.data;
-
-        if (!!subscriptionData) {
-          const subData = subscriptionData;
-          const expiresAt = subData.expires_at ? new Date(subData.expires_at) : (subData.end_date ? new Date(subData.end_date) : null);
-          const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
-
-          // Smart Dynamic Labeling
-          const matchedPlan = allPlans.find(p => p.id === subData.packageType);
-          let planNameFromPlan = matchedPlan?.title;
-          let durationFromPlan = matchedPlan?.period;
-
-          let planName = planNameFromPlan || subData.plan_name || subData.package_name;
-          let duration = durationFromPlan || subData.package_duration;
-
-          // Ultimate amount-aware fallback for existing records
-          const lastAmount = Number(subData.amount || 0);
-          if ((lastAmount >= 110 && lastAmount < 180) && (!planName || planName.includes('3'))) {
-            planName = planNameFromPlan || t('subStatus.subPlan6Months');
-            duration = durationFromPlan || t('subStatus.period6Months');
-          } else if (lastAmount >= 180 && (!planName || !planName.includes('سنة'))) {
-            planName = planNameFromPlan || t('subStatus.subPlanAnnual');
-            duration = durationFromPlan || t('subStatus.period12Months');
-          }
-
-          setSubscription({
-            status: subData.status === 'active' && daysLeft > 0 ? 'active' : (subData.status === 'active' && daysLeft <= 0 ? 'expired' : subData.status || 'inactive'),
-            plan_name: planName || (subData.packageType === 'subscription_6months' ? t('subStatus.subPlan6Months') : subData.packageType === 'subscription_annual' ? t('subStatus.subPlanAnnual') : t('subStatus.subPlan3Months')),
-            package_duration: duration || (subData.packageType === 'subscription_6months' ? t('subStatus.period6Months') : subData.packageType === 'subscription_annual' ? t('subStatus.period12Months') : t('subStatus.period3Months')),
-            packageType: subData.packageType,
-            expires_at: expiresAt,
-            daysLeft: daysLeft,
-            isFromParent: false
-          });
-        } else if (!!parentData) {
-          const pSubData = parentData;
-          const expiresAt = pSubData.expires_at ? new Date(pSubData.expires_at) : (pSubData.end_date ? new Date(pSubData.end_date) : null);
-          const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
-
-          const matchedParentPlan = allPlans.find(p => p.id === pSubData.packageType);
-          const parentPlanName = matchedParentPlan?.title || pSubData.plan_name || pSubData.package_name;
-          const parentDuration = matchedParentPlan?.period || pSubData.package_duration;
-
-          setSubscription({
-            status: pSubData.status === 'active' && daysLeft > 0 ? 'active' : (pSubData.status === 'active' && daysLeft <= 0 ? 'expired' : pSubData.status || 'inactive'),
-            plan_name: parentPlanName || t('subStatus.parentMembership'),
-            package_duration: parentDuration || (pSubData.packageType === 'subscription_6months' ? t('subStatus.period6Months') : pSubData.packageType === 'subscription_annual' ? t('subStatus.period12Months') : t('subStatus.period3Months')),
-            packageType: pSubData.packageType,
-            expires_at: expiresAt,
-            daysLeft: daysLeft,
-            isFromParent: true,
-            parentAccountName: parentData?.name || parentData?.club_name || parentData?.academy_name || t('subStatus.parentAccount')
-          });
+        const statusResponse = await fetch('/api/subscriptions/status', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: 'no-store',
+        });
+        const canonical = await statusResponse.json();
+        if (!statusResponse.ok || !canonical.success) {
+          throw new Error(canonical.error || 'Failed to load subscription');
         }
 
-        // 2. Parallel fetch for History (All relevant collections)
-        const essentialColls = [
-          { name: 'payments', currency: 'EGP' },
-          { name: 'invoices', currency: 'QAR' },
-          { name: 'geidea_payments', currency: 'EGP' },
-          { name: 'bulkPayments', currency: 'EGP' },
-          { name: 'receipts', currency: 'EGP' },
-          { name: 'proofs', currency: 'EGP' },
-          { name: 'instapay', currency: 'EGP' },
-          { name: 'vodafone_cash', currency: 'EGP' },
-          { name: 'etisalat_wallet', currency: 'EGP' },
-          { name: 'orange_money', currency: 'EGP' }
-        ];
+        const subData = canonical.subscription;
+        if (subData) {
+          const expiresAt = subData.expires_at ? new Date(subData.expires_at) : null;
+          const daysLeft = expiresAt
+            ? Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            : 0;
+          const matchedPlan = allPlans.find((plan) => plan.id === subData.plan_id);
 
-        const historyPromises = essentialColls.flatMap(coll => [
-          supabase.from(coll.name).select('*').eq('userId', user.id).limit(10),
-          supabase.from(coll.name).select('*').eq('user_id', user.id).limit(10),
-          // Query for player-specific fields in case of academies/clubs
-          supabase.from(coll.name).select('*').eq('playerId', user.id).limit(10)
-        ]);
-
-        const results = await Promise.all(historyPromises);
-        const historyData: PaymentRecord[] = [];
-
-        results.forEach((result, idx) => {
-          const coll = essentialColls[Math.floor(idx / 3)];
-          const data = result.data || [];
-          data.forEach(d => {
-            if (!historyData.find(ex => ex.id === d.id)) {
-              historyData.push({
-                id: d.id,
-                amount: d.amount || 0,
-                currency: d.currency || coll.currency,
-                status: mapPaymentStatus(d.status, coll.name, d),
-                payment_date: d.createdAt || d.created_at || d.paidAt || d.uploadedAt,
-                createdAt: d.createdAt || d.created_at || d.paidAt || d.uploadedAt,
-                package_name: (d.packageName || d.package_name || d.plan_name) ? (
-                  ((Number(d.amount) >= 110 && Number(d.amount) < 180) && (d.packageName || d.package_name || '').includes('3'))
-                    ? t('subStatus.period6Months')
-                    : (d.packageName || d.package_name || d.plan_name)
-                ) : (
-                  coll.name === 'invoices' ? (Number(d.amount) >= 180 ? t('subStatus.subPlanAnnual') : Number(d.amount) >= 110 ? t('subStatus.subPlan6Months') : t('subStatus.subPlan3Months')) :
-                    coll.name === 'receipts' ? t('subStatus.receiptUploaded') :
-                      coll.name === 'vodafone_cash' ? t('subStatus.vodafoneCash') : t('subStatus.genericSub')
-                ),
-                source: coll.name,
-                notes: d.notes || d.adminNotes || d.rejectionReason || null
-              });
-            }
+          setSubscription({
+            status: subData.status === 'active' && daysLeft <= 0 ? 'expired' : (subData.status || 'inactive'),
+            plan_name: matchedPlan?.title || subData.plan_id || t('subStatus.genericSub'),
+            package_duration: matchedPlan?.period,
+            packageType: subData.plan_id,
+            start_date: subData.starts_at ? new Date(subData.starts_at) : null,
+            expires_at: expiresAt,
+            activated_at: subData.activated_at ? new Date(subData.activated_at) : null,
+            amount: Number(subData.amount || 0),
+            currency: subData.currency || undefined,
+            daysLeft,
+            isFromParent: false,
           });
-        });
+        } else {
+          setSubscription(null);
+        }
 
-        setPayments(historyData.sort((a, b) => {
-          const tA = a.createdAt ? new Date(a.createdAt).getTime() : (a.payment_date ? new Date(a.payment_date).getTime() : 0);
-          const tB = b.createdAt ? new Date(b.createdAt).getTime() : (b.payment_date ? new Date(b.payment_date).getTime() : 0);
-          return tB - tA;
+        const historyData: PaymentRecord[] = (canonical.payments || []).map((payment: any) => ({
+          id: payment.id,
+          amount: Number(payment.amount_allocated ?? payment.amount ?? 0),
+          currency: payment.currency || 'EGP',
+          status: mapPaymentStatus(payment.status, 'payments', payment),
+          payment_date: payment.paid_at || payment.created_at,
+          createdAt: payment.created_at,
+          package_name: allPlans.find((plan) => plan.id === payment.plan_id)?.title || payment.plan_id || t('subStatus.genericSub'),
+          packageType: payment.plan_id || undefined,
+          transaction_id: payment.provider_reference_id || undefined,
+          notes: payment.rejection_reason || undefined,
+          source: 'payments',
         }));
+        setPayments(historyData);
 
       } catch (err) {
         console.error('Fetch error:', err);
