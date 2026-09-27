@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
           details: 'وفقاً لوثائق Geidea الرسمية، لا توفر الشركة API مباشر لاستعراض جميع المعاملات.',
           triedEndpoints: possibleEndpoints,
           lastError,
-          suggestion: 'استخدم "تحديث من Supabase" لعرض جميع المعاملات المحفوظة.',
+          suggestion: 'Use the canonical admin payments ledger for persisted subscription transactions.',
           isExpected: true,
         },
         { status: 200 }
@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
 
     // Diagnostic endpoint only. Canonical subscription callbacks are persisted
     // through payments/payment_targets; this endpoint must never repopulate
-    // the retired geidea_payments ledger.
+    // any retired parallel payment ledger.
     return NextResponse.json({
       success: true,
       source: 'geidea',
