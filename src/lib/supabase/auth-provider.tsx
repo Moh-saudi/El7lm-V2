@@ -157,24 +157,20 @@ async function fetchUserData(userId: string, email: string, firebaseUid?: string
     };
   }
 
-  // Check employees first
-  try {
-    let { data: employees } = await supabase.from('employees').select('*').eq('authUserId', userId).limit(1);
-    if (!employees?.length && email) {
-      const res = await supabase.from('employees').select('*').eq('email', email).limit(1);
-      employees = res.data;
+  // The fast path already checked employees.authUserId. Only the email fallback
+  // remains here for migrated employee accounts that have not been linked yet.
+  if (email) {
+    try {
+      const { data: employees } = await supabase.from('employees').select('*').eq('email', email).limit(1);
       if (employees?.length) {
-        // Auto-link employee account
         await supabase.from('employees').update({ authUserId: userId, updatedAt: new Date().toISOString() })
           .eq('id', String((employees[0] as Record<string, unknown>).id));
         console.log('🔗 Automatically linked employee account via email:', email);
+        return { data: employees[0] as Record<string, unknown>, collection: 'employees', accountType: 'admin' };
       }
+    } catch (err) {
+      console.warn('Error searching employees by email:', err);
     }
-    if (employees?.length) {
-      return { data: employees[0] as Record<string, unknown>, collection: 'employees', accountType: 'admin' };
-    }
-  } catch (err) {
-    console.warn('Error searching employees:', err);
   }
 
   // Check role-specific tables — try by uid (Supabase Auth UUID) first, then by id
