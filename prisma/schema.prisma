@@ -959,7 +959,7 @@ model PaymentTarget {
   @@map("payment_targets")
 }
 
-model SubscriptionV2 {
+model Subscription {
   id                   String    @id
   playerId             String?   @map("player_id")
   planId               String?   @map("plan_id")
@@ -978,102 +978,7 @@ model SubscriptionV2 {
   createdAt            DateTime  @map("created_at")
   updatedAt            DateTime  @map("updated_at")
 
-  @@map("subscriptions_v2")
-}
-
-model BulkPayment {
-  id                   String    @id
-  userId               String?
-  userName             String?
-  userEmail            String?
-  accountType          String?
-  paymentMethod        String?
-  packageType          String?
-  amount               BigInt?
-  currency             String?
-  playerCount          BigInt?
-  transactionId        String?
-  senderName           String?
-  senderAccount        String?
-  receiptUrl           String?
-  description          String?
-  status               String?
-  subscription_status  String?
-  subscription_expires_at DateTime?
-  players              Json?
-  metadata             Json?
-  updatedBy            String?
-  createdAt            DateTime?
-  updatedAt            DateTime?
-  updated_at           DateTime?
-
-  @@map("bulkPayments")
-}
-
-model GeideaPayment {
-  id                      String    @id
-  orderId                 String?
-  geideaOrderId           String?
-  merchantReferenceId     String?
-  ourMerchantReferenceId  String?
-  transactionId           String?
-  amount                  BigInt?
-  currency                String?
-  status                  String?
-  paymentMethod           String?
-  customerName            String?
-  customerEmail           String?
-  customerPhone           String?
-  source                  String?
-  rawPayload              Json?
-  paidAt                  DateTime?
-  callbackReceivedAt      DateTime?
-  fetchedFromGeideaAt     DateTime?
-  createdAt               DateTime?
-  updatedAt               DateTime?
-
-  @@map("geidea_payments")
-}
-
-model Invoice {
-  id               String    @id
-  invoice_number   String?
-  paymentId        String?
-  payment_id       String?
-  transactionId    String?
-  userId           String?
-  user_id          String?
-  userName         String?   @map("user_name")
-  userEmail        String?   @map("user_email")
-  customerName     String?
-  customerEmail    String?
-  country          String?
-  amount           String?
-  currency         String?
-  status           String?
-  provider         String?
-  originalStatus   String?
-  method           String?
-  paymentMethod    String?
-  packageName      String?
-  package_name     String?
-  plan_name        String?
-  packageType      String?
-  packageDuration  String?
-  package_duration String?
-  playerCount      BigInt?
-  players          Json?
-  notes            String?
-  receiptUrl       String?
-  metadata         String?
-  paidAt           DateTime?
-  rejectionDate    DateTime?
-  createdAt        DateTime?
-  created_at       DateTime?
-  updatedAt        DateTime?
-  updated_at       DateTime?
-
-  @@map("invoices")
+  @@map("subscriptions")
 }
 
 model Subscription {
