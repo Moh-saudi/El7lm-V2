@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createProfileSchema, ProfileFormValues } from '../schemas/profile';
 import { supabase } from '@/lib/supabase/config';
-import { useAuth } from '@/lib/firebase/auth-provider';
+import { useAuth } from '@/lib/supabase/auth-provider';
 import { useTranslation } from '@/lib/i18n';
 import { toast } from 'sonner';
 
