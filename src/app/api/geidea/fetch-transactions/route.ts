@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -94,93 +93,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    try {
-      const geideaData = await geideaResponse.json();
-      console.log(`✅ [Geidea Fetch] Received ${geideaData?.transactions?.length || 0} transactions from Geidea`);
+    const geideaData = await geideaResponse.json();
+    const transactions = Array.isArray(geideaData?.transactions) ? geideaData.transactions : [];
 
-      const db = getSupabaseAdmin();
-      const processedTransactions = [];
-
-      if (geideaData?.transactions && Array.isArray(geideaData.transactions)) {
-        for (const transaction of geideaData.transactions) {
-          try {
-            const orderId = transaction.orderId || transaction.id;
-            const merchantRefId = transaction.merchantReferenceId || transaction.reference;
-            const transactionStatus = transaction.status ||
-                                     (transaction.responseCode === '000' ? 'success' : 'failed') ||
-                                     'pending';
-
-            if (!orderId && !merchantRefId) {
-              console.warn('⚠️ [Geidea Fetch] Transaction missing orderId and merchantReferenceId:', transaction);
-              continue;
-            }
-
-            const documentId = orderId || merchantRefId;
-            const now = new Date().toISOString();
-
-            // Check if exists
-            const { data: existing } = await db.from('geidea_payments').select('id').eq('id', documentId).limit(1);
-
-            const docData = {
-              id: documentId,
-              orderId: orderId || null,
-              merchantReferenceId: merchantRefId || null,
-              geideaOrderId: orderId || null,
-              ourMerchantReferenceId: merchantRefId || null,
-              transactionId: transaction.transactionId || transaction.id || null,
-              status: transactionStatus,
-              amount: transaction.amount || null,
-              currency: transaction.currency || 'EGP',
-              responseCode: transaction.responseCode || null,
-              detailedResponseCode: transaction.detailedResponseCode || null,
-              responseMessage: transaction.responseMessage || null,
-              detailedResponseMessage: transaction.detailedResponseMessage || null,
-              customerEmail: transaction.customerEmail || transaction.customer?.email || null,
-              customerName: transaction.customerName || transaction.customer?.name || null,
-              customerPhone: transaction.customerPhone || transaction.customer?.phone || null,
-              paidAt: transaction.paidAt || transaction.timestamp || null,
-              rawTransactionData: transaction,
-              fetchedFromGeideaAt: now,
-              paymentMethod: 'geidea',
-              source: 'geidea_api_fetch',
-              updatedAt: now,
-              ...(!existing?.length ? { createdAt: now } : {}),
-            };
-
-            await db.from('geidea_payments').upsert(docData);
-
-            processedTransactions.push({
-              ...docData,
-              wasNew: !existing?.length,
-            });
-          } catch (error) {
-            console.error('❌ [Geidea Fetch] Error processing transaction:', error, transaction);
-          }
-        }
-      }
-
-      return NextResponse.json({
-        success: true,
-        total: geideaData?.total || processedTransactions.length,
-        transactions: processedTransactions,
-        fetchedAt: new Date().toISOString(),
-        geideaResponse: geideaData,
-      });
-
-    } catch (fetchError) {
-      console.error('❌ [Geidea Fetch] Fetch error:', fetchError);
-      let errorMessage = 'فشل الاتصال بـ Geidea API';
-      if (fetchError instanceof Error) {
-        if (fetchError.message.includes('fetch')) errorMessage = 'فشل الاتصال بالشبكة';
-        else if (fetchError.message.includes('timeout')) errorMessage = 'انتهت مهلة الاتصال';
-        else errorMessage = `خطأ في الاتصال: ${fetchError.message}`;
-      }
-      return NextResponse.json(
-        { success: false, error: errorMessage, details: fetchError instanceof Error ? fetchError.message : 'Unknown error' },
-        { status: 200 }
-      );
-    }
-
+    // Diagnostic endpoint only. Canonical subscription callbacks are persisted
+    // through payments/payment_targets; this endpoint must never repopulate
+    // the retired geidea_payments ledger.
+    return NextResponse.json({
+      success: true,
+      source: 'geidea',
+      persistence: 'disabled',
+      workingEndpoint,
+      count: transactions.length,
+      transactions,
+    });
   } catch (error) {
     console.error('❌ [Geidea Fetch] Error:', error);
     return NextResponse.json(
