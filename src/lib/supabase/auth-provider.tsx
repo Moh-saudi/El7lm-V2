@@ -463,6 +463,11 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
 
         setupUserListener();
       } else {
+        listenerRun += 1;
+        if (realtimeChannel) {
+          void supabase.removeChannel(realtimeChannel);
+          realtimeChannel = null;
+        }
         if (isSubscribed) {
           setUser(null);
           setUserData(null);
