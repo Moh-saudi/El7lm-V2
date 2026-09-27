@@ -30,37 +30,56 @@ BEGIN
   END IF;
 END $$;
 
--- 1) Rebuild the EMPTY payments table as the canonical ledger.
-DROP TABLE public.payments;
+-- 1) Reshape the EMPTY payments table in place as the canonical ledger.
+-- Preserve the table object instead of DROP/CREATE.
+ALTER TABLE public.payments
+  ADD COLUMN payer_id text,
+  ADD COLUMN payer_type text,
+  ADD COLUMN plan_id text,
+  ADD COLUMN country_code text,
+  ADD COLUMN method text,
+  ADD COLUMN provider text,
+  ADD COLUMN provider_transaction_id text,
+  ADD COLUMN provider_reference_id text,
+  ADD COLUMN review_status text,
+  ADD COLUMN reviewed_by text,
+  ADD COLUMN reviewed_at timestamptz,
+  ADD COLUMN rejection_reason text,
+  ADD COLUMN paid_at timestamptz,
+  ADD COLUMN source_table text,
+  ADD COLUMN source_id text;
 
-CREATE TABLE public.payments (
-  id text PRIMARY KEY,
-  payer_id text NOT NULL,
-  payer_type text NOT NULL CHECK (payer_type IN ('player','club','academy','trainer','agent')),
-  plan_id text NULL,
-  country_code text NULL,
-  amount numeric(18,2) NOT NULL CHECK (amount >= 0),
-  currency text NOT NULL,
-  method text NOT NULL,
-  provider text NULL,
-  status text NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending','pending_review','processing','paid','failed','rejected','cancelled','refunded')),
-  provider_transaction_id text NULL,
-  provider_reference_id text NULL,
-  receipt_url text NULL,
-  review_status text NULL
+-- Reuse compatible existing columns and normalize their types/names.
+ALTER TABLE public.payments
+  ALTER COLUMN amount TYPE numeric(18,2) USING amount::numeric,
+  ALTER COLUMN currency SET DEFAULT 'EGP',
+  ALTER COLUMN status SET DEFAULT 'pending',
+  ALTER COLUMN metadata SET DEFAULT '{}'::jsonb,
+  ALTER COLUMN metadata TYPE jsonb USING COALESCE(metadata, '{}'::json)::jsonb;
+
+ALTER TABLE public.payments
+  RENAME COLUMN "transactionId" TO legacy_transaction_id;
+ALTER TABLE public.payments
+  RENAME COLUMN "receiptUrl" TO legacy_receipt_url;
+ALTER TABLE public.payments
+  RENAME COLUMN "createdAt" TO legacy_created_at;
+ALTER TABLE public.payments
+  RENAME COLUMN "updatedAt" TO legacy_updated_at;
+
+ALTER TABLE public.payments
+  ADD COLUMN receipt_url text,
+  ADD COLUMN created_at timestamptz NOT NULL DEFAULT now(),
+  ADD COLUMN updated_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE public.payments
+  ADD CONSTRAINT payments_payer_type_check
+    CHECK (payer_type IS NULL OR payer_type IN ('player','club','academy','trainer','agent')),
+  ADD CONSTRAINT payments_amount_check CHECK (amount IS NULL OR amount >= 0),
+  ADD CONSTRAINT payments_status_check
+    CHECK (status IS NULL OR status IN ('pending','pending_review','processing','paid','failed','rejected','cancelled','refunded')),
+  ADD CONSTRAINT payments_review_status_check
     CHECK (review_status IS NULL OR review_status IN ('pending','approved','rejected')),
-  reviewed_by text NULL,
-  reviewed_at timestamptz NULL,
-  rejection_reason text NULL,
-  paid_at timestamptz NULL,
-  source_table text NULL,
-  source_id text NULL,
-  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT payments_source_identity_unique UNIQUE (source_table, source_id)
-);
+  ADD CONSTRAINT payments_source_identity_unique UNIQUE (source_table, source_id);
 
 CREATE INDEX idx_payments_payer ON public.payments(payer_type, payer_id);
 CREATE INDEX idx_payments_status ON public.payments(status);
