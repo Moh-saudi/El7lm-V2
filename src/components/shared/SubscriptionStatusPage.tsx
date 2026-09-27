@@ -43,7 +43,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useTranslation } from '@/lib/i18n';
 
-const mapPaymentStatus = (status: string, source: string, data: any) => {
+const mapPaymentStatus = (status: string) => {
   const s = (status || '').toLowerCase();
   if (s === 'paid' || s === 'success' || s === 'completed' || s === 'accepted' || s === 'approved') {
     return 'completed' as const;
@@ -53,10 +53,6 @@ const mapPaymentStatus = (status: string, source: string, data: any) => {
   }
   if (s === 'processing' || s === 'waiting' || s === 'inactive' || s === 'pending_review') {
     return s as any;
-  }
-  // Check for manual review status
-  if (source === 'receipts' || source === 'proofs' || data.receiptUrl || data.receiptImage) {
-    return 'pending_review' as const;
   }
   return 'pending' as const;
 };
@@ -75,7 +71,7 @@ interface PaymentRecord {
   customer_email?: string;
   receiptUrl?: string;
   notes?: string;
-  source?: string; // مصدر البيانات: 'bulkPayments', 'geidea_payments', 'bulk_payments'
+  source?: string;
 }
 
 interface SubscriptionInfo {
@@ -230,7 +226,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
           id: payment.id,
           amount: Number(payment.amount_allocated ?? payment.amount ?? 0),
           currency: payment.currency || 'EGP',
-          status: mapPaymentStatus(payment.status, 'payments', payment),
+          status: mapPaymentStatus(payment.status),
           payment_date: payment.paid_at || payment.created_at,
           createdAt: payment.created_at,
           package_name: allPlans.find((plan) => plan.id === payment.plan_id)?.title || payment.plan_id || t('subStatus.genericSub'),
