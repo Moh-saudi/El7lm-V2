@@ -11,17 +11,21 @@ DECLARE
 BEGIN
   SELECT count(*) INTO legacy_only_count
   FROM public.players
-  WHERE ("trainerId" IS NOT NULL AND trainer_id IS NULL)
-     OR ("academyId" IS NOT NULL AND academy_id IS NULL)
-     OR ("clubId" IS NOT NULL AND club_id IS NULL)
-     OR ("agentId" IS NOT NULL AND agent_id IS NULL);
+  WHERE (NULLIF(BTRIM("trainerId"), '') IS NOT NULL AND NULLIF(BTRIM(trainer_id), '') IS NULL)
+     OR (NULLIF(BTRIM("academyId"), '') IS NOT NULL AND NULLIF(BTRIM(academy_id), '') IS NULL)
+     OR (NULLIF(BTRIM("clubId"), '') IS NOT NULL AND NULLIF(BTRIM(club_id), '') IS NULL)
+     OR (NULLIF(BTRIM("agentId"), '') IS NOT NULL AND NULLIF(BTRIM(agent_id), '') IS NULL);
 
   SELECT count(*) INTO conflict_count
   FROM public.players
-  WHERE ("trainerId" IS NOT NULL AND trainer_id IS NOT NULL AND "trainerId" IS DISTINCT FROM trainer_id)
-     OR ("academyId" IS NOT NULL AND academy_id IS NOT NULL AND "academyId" IS DISTINCT FROM academy_id)
-     OR ("clubId" IS NOT NULL AND club_id IS NOT NULL AND "clubId" IS DISTINCT FROM club_id)
-     OR ("agentId" IS NOT NULL AND agent_id IS NOT NULL AND "agentId" IS DISTINCT FROM agent_id);
+  WHERE (NULLIF(BTRIM("trainerId"), '') IS NOT NULL AND NULLIF(BTRIM(trainer_id), '') IS NOT NULL
+         AND NULLIF(BTRIM("trainerId"), '') IS DISTINCT FROM NULLIF(BTRIM(trainer_id), ''))
+     OR (NULLIF(BTRIM("academyId"), '') IS NOT NULL AND NULLIF(BTRIM(academy_id), '') IS NOT NULL
+         AND NULLIF(BTRIM("academyId"), '') IS DISTINCT FROM NULLIF(BTRIM(academy_id), ''))
+     OR (NULLIF(BTRIM("clubId"), '') IS NOT NULL AND NULLIF(BTRIM(club_id), '') IS NOT NULL
+         AND NULLIF(BTRIM("clubId"), '') IS DISTINCT FROM NULLIF(BTRIM(club_id), ''))
+     OR (NULLIF(BTRIM("agentId"), '') IS NOT NULL AND NULLIF(BTRIM(agent_id), '') IS NOT NULL
+         AND NULLIF(BTRIM("agentId"), '') IS DISTINCT FROM NULLIF(BTRIM(agent_id), ''));
 
   IF legacy_only_count <> 0 OR conflict_count <> 0 THEN
     RAISE EXCEPTION 'Player relationship cleanup aborted: legacy_only=%, conflicts=%',
