@@ -22,8 +22,7 @@ export async function fetchPaymentsOptimized(options: {
         { name: 'tournament_payments', sortField: 'createdAt' },
         { name: 'payment_results', sortField: 'createdAt' },
         { name: 'invoices', sortField: 'created_at' },
-        { name: 'bulk_payments', sortField: 'createdAt' },
-        { name: 'receipts', sortField: 'createdAt' },
+          { name: 'receipts', sortField: 'createdAt' },
         { name: 'proofs', sortField: 'createdAt' },
     ];
 
@@ -121,7 +120,7 @@ function extractPlayerInfo(data: Record<string, unknown>, tableName: string) {
     let playerPhone = 'غير محدد';
     let playerEmail = 'غير محدد';
 
-    if (tableName === 'bulkPayments' || tableName === 'bulk_payments') {
+    if (tableName === 'bulkPayments') {
         if (data.players && Array.isArray(data.players) && data.players.length > 0) {
             const players = data.players as Record<string, unknown>[];
             if (players.length === 1) {
