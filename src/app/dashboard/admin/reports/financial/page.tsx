@@ -128,35 +128,6 @@ export default function FinancialReports() {
       const allPayments: any[] = [];
       const allUsers: any[] = [];
 
-      // جمع بيانات المدفوعات من Supabase (bulkPayments)
-      try {
-        const { data: fbStylePayments, error: fbStyleError } = await supabase
-          .from('bulk_payments')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (fbStylePayments && !fbStyleError) {
-          fbStylePayments.forEach((row: any) => {
-            allPayments.push({
-              id: row.id,
-              created_at: row.created_at || new Date().toISOString(),
-              total_amount: row.amount ?? row.total_amount ?? 0,
-              currency: row.currency || 'EGP',
-              user_id: row.user_id || null,
-              account_type: row.account_type || null,
-              country: row.country || null,
-              payment_method: row.payment_method || 'wallet',
-              status: row.status || row.payment_status || 'pending',
-              players: Array.isArray(row.players) ? row.players : []
-            });
-          });
-        } else if (fbStyleError) {
-          console.warn('⚠️ خطأ في قراءة bulk_payments من Supabase:', fbStyleError.message);
-        }
-      } catch (supaErr: any) {
-        console.warn('⚠️ فشل في جلب bulk_payments:', supaErr.message);
-      }
-
       // جمع بيانات المدفوعات من localStorage (مصدر احتياطي/قديم)
       const localStorageData = localStorage.getItem('bulkPaymentHistory');
       if (localStorageData) {
