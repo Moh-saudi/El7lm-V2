@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServiceRole } from '@/lib/supabase/admin';
-import { activatePaymentSubscriptions } from '@/lib/payments/subscription-activation-service';
 import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export const runtime = 'nodejs';
@@ -53,23 +52,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, paymentId: body.paymentId, status: 'rejected' });
     }
 
-    if (payment.status !== 'paid') {
-      if (payment.status !== 'pending_review' || payment.review_status !== 'pending') {
-        return NextResponse.json({ success: false, error: 'Payment is not pending review' }, { status: 409 });
-      }
-      const now = new Date().toISOString();
-      const { error } = await db.from('payments').update({
-        status: 'paid',
-        review_status: 'approved',
-        reviewed_by: authorization.user.id,
-        reviewed_at: now,
-        paid_at: now,
-        updated_at: now,
-      }).eq('id', body.paymentId).eq('status', 'pending_review').eq('review_status', 'pending');
-      if (error) throw error;
-    }
+    const { data: activatedRows, error: approveError } = await db.rpc('approve_manual_payment', {
+      p_payment_id: body.paymentId,
+      p_reviewed_by: authorization.user.id,
+    });
+    if (approveError) throw approveError;
+    const activation = {
+      paymentId: body.paymentId,
+      activatedPlayerIds: (activatedRows || []).map((row: any) => String(row.target_player_id)),
+    };
 
-    const activation = await activatePaymentSubscriptions(body.paymentId);
     return NextResponse.json({ success: true, paymentId: body.paymentId, status: 'paid', activation });
   } catch (error) {
     console.error('❌ [Manual Payment Review] Failed:', error);
