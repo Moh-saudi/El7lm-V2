@@ -2,7 +2,6 @@
  * Geidea Callback Handler - معالج مركزي لجميع callbacks من Geidea
  */
 
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { applyVerifiedGeideaPayment } from '@/lib/payments/geidea-canonical-service';
 
 export interface GeideaCallbackPayload {
@@ -84,129 +83,11 @@ export async function processGeideaCallback(
     }
   }
 
-  // Transitional compatibility for non-subscription Geidea callers.
-  try {
-    await saveGeideaPayment(processed);
-    console.log('✅ [Geidea Callback Handler] Legacy non-canonical payment saved:', { orderId, merchantReferenceId, status });
-  } catch (saveError) {
-    console.error('❌ [Geidea Callback Handler] Failed to save legacy payment:', { orderId, error: saveError instanceof Error ? saveError.message : 'Unknown error' });
-    throw saveError;
-  }
+  // All subscription Geidea sessions are canonical. Unknown merchant references
+  // are rejected instead of being persisted to a parallel legacy ledger.
+  throw new Error('Unknown non-canonical Geidea merchant reference');
 
   return processed;
-}
-
-/**
- * إثراء بيانات الدفع بمعلومات الباقة من بيانات المستخدم
- */
-async function enrichWithPackageInfo(
-  merchantReferenceId: string | null,
-  customerEmail: string | null
-): Promise<{
-  plan_name?: string | null;
-  packageType?: string | null;
-  package_type?: string | null;
-  selectedPackage?: string | null;
-  userId?: string | null;
-} | null> {
-  const db = getSupabaseAdmin();
-
-  try {
-    let userId: string | null = null;
-
-    if (merchantReferenceId) {
-      const parts = merchantReferenceId.split('-');
-      if (parts.length >= 2) {
-        userId = parts[1];
-        console.log('🔍 [Package Info] Extracted UID from merchantReferenceId:', userId);
-      }
-    }
-
-    if (!userId && customerEmail) {
-      console.log('🔍 [Package Info] Searching for user by email:', customerEmail);
-      const { data: users } = await db.from('users').select('id').eq('email', customerEmail).limit(1);
-      if (users?.length) {
-        userId = String(users[0].id);
-        console.log('✅ [Package Info] Found user by email, UID:', userId);
-      }
-    }
-
-    if (!userId) {
-      console.warn('⚠️ [Package Info] Could not find user ID from merchantReferenceId or email');
-      return null;
-    }
-
-    const { data: userData } = await db.from('users').select('selectedPackage, packageType, package_type, plan_name').eq('id', userId).limit(1);
-    if (!userData?.length) {
-      console.warn('⚠️ [Package Info] User document not found:', userId);
-      return { userId };
-    }
-
-    const row = userData[0] as Record<string, unknown>;
-    const packageType = String(row.selectedPackage || row.packageType || row.package_type || '') || null;
-    const plan_name = String(row.plan_name || packageType || '') || null;
-
-    console.log('📦 [Package Info] Retrieved package info:', { userId, packageType, plan_name });
-
-    return { userId, plan_name, packageType, package_type: packageType, selectedPackage: packageType };
-  } catch (error) {
-    console.error('❌ [Package Info] Error enriching with package info:', error);
-    return null;
-  }
-}
-
-/**
- * حفظ الدفعة في Supabase
- */
-async function saveGeideaPayment(processed: ProcessedCallback): Promise<void> {
-  const db = getSupabaseAdmin();
-  const documentId = processed.orderId;
-  const now = new Date().toISOString();
-
-  const { data: existing } = await db.from('geidea_payments').select('id').eq('id', documentId).limit(1);
-
-  const packageInfo = await enrichWithPackageInfo(processed.merchantReferenceId, processed.customerEmail);
-
-  const docData = {
-    id: documentId,
-    orderId: processed.orderId,
-    merchantReferenceId: processed.merchantReferenceId || processed.orderId,
-    geideaOrderId: processed.orderId,
-    ourMerchantReferenceId: processed.merchantReferenceId,
-    transactionId: processed.transactionId,
-    responseCode: processed.responseCode,
-    detailedResponseCode: processed.detailedResponseCode,
-    responseMessage: processed.responseMessage,
-    detailedResponseMessage: processed.detailedResponseMessage,
-    status: processed.status,
-    amount: processed.amount,
-    currency: processed.currency,
-    customerEmail: processed.customerEmail,
-    customerName: processed.customerName,
-    customerPhone: processed.customerPhone,
-    paidAt: processed.paidAt ? processed.paidAt.toISOString() : null,
-    rawPayload: processed.rawPayload,
-    callbackReceivedAt: now,
-    paymentMethod: 'geidea',
-    source: 'geidea_callback',
-    userId: packageInfo?.userId || null,
-    plan_name: packageInfo?.plan_name || null,
-    packageType: packageInfo?.packageType || null,
-    package_type: packageInfo?.package_type || null,
-    selectedPackage: packageInfo?.selectedPackage || null,
-    updatedAt: now,
-    ...(!existing?.length ? { createdAt: now } : {}),
-  };
-
-  await db.from('geidea_payments').upsert(docData);
-
-  if (processed.status === 'failed') {
-    console.warn('⚠️ [Geidea Callback Handler] Failed payment saved:', { documentId, status: 'failed' });
-  } else if (processed.status === 'success') {
-    console.log('✅ [Geidea Callback Handler] Successful payment saved:', { documentId, amount: processed.amount });
-  } else {
-    console.log('ℹ️ [Geidea Callback Handler] Payment saved:', { documentId, status: processed.status });
-  }
 }
 
 
