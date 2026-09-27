@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
 
 export type PayerType = 'player' | 'club' | 'academy' | 'trainer' | 'agent';
 export type PaymentStatus =
@@ -31,7 +31,7 @@ function uniquePlayerIds(ids: string[]): string[] {
 }
 
 export async function createCanonicalPayment(input: CreateCanonicalPaymentInput) {
-  const db = getSupabaseAdmin();
+  const db = getSupabaseServiceRole();
   const targetPlayerIds = uniquePlayerIds(input.targetPlayerIds);
 
   if (!input.payerId || !input.payerType) throw new Error('payer identity is required');
@@ -114,7 +114,7 @@ export async function markCanonicalPayment(
     metadata?: Record<string, unknown>;
   },
 ) {
-  const db = getSupabaseAdmin();
+  const db = getSupabaseServiceRole();
   const { error } = await db.from('payments').update({
     status: patch.status,
     provider_transaction_id: patch.providerTransactionId ?? undefined,
