@@ -2,16 +2,25 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { User, AccountType } from '../_types';
 import { message } from 'antd';
-import { useAuth } from '@/lib/firebase/auth-provider';
+import { useAuth } from '@/lib/supabase/auth-provider';
 import { notifyUserUpdate } from '@/lib/notifications/admin-notifications';
 
 export function useUserActions() {
     const [loading, setLoading] = useState(false);
 
-    // الحصول على اسم الجدول
+    // Use explicit canonical table names. Pluralizing roles is unsafe
+    // (academy -> academys) and can write to legacy tables.
     const getTableName = (accountType: AccountType): string => {
-        if (accountType === 'admin') return 'users';
-        return accountType + 's';
+        const tables: Record<AccountType, string> = {
+            player: 'players',
+            club: 'clubs',
+            academy: 'academies',
+            trainer: 'trainers',
+            agent: 'agents',
+            marketer: 'marketers',
+            admin: 'users',
+        };
+        return tables[accountType] || 'users';
     };
 
     // استيراد بيانات الموظف الحالي
