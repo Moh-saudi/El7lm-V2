@@ -129,7 +129,13 @@ export default function FinancialReports() {
       const allUsers: any[] = [];
 
       // Canonical financial ledger only.
-      const paymentResponse = await fetch('/api/admin/payments?page=1&pageSize=100', { cache: 'no-store' });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error('Missing authenticated admin session');
+      const paymentResponse = await fetch('/api/admin/payments?page=1&pageSize=100', {
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       const paymentPayload = await paymentResponse.json();
       if (!paymentResponse.ok || !paymentPayload.success) {
         throw new Error(paymentPayload.error || 'Failed to load canonical payments');
