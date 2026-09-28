@@ -8,7 +8,6 @@ export const dynamic = 'force-dynamic';
 type ReviewBody = {
   paymentId: string;
   action: 'approve' | 'reject';
-  reviewedBy?: string;
   rejectionReason?: string;
 };
 
@@ -40,15 +39,21 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Paid payment cannot be rejected' }, { status: 409 });
       }
       const now = new Date().toISOString();
-      const { error } = await db.from('payments').update({
+      const { data: rejectedRows, error } = await db.from('payments').update({
         status: 'rejected',
         review_status: 'rejected',
         reviewed_by: authorization.user.id,
         reviewed_at: now,
         rejection_reason: body.rejectionReason || null,
         updated_at: now,
-      }).eq('id', body.paymentId).neq('status', 'paid');
+      }).eq('id', body.paymentId).neq('status', 'paid').select('id, status');
       if (error) throw error;
+      if (!rejectedRows?.length) {
+        return NextResponse.json(
+          { success: false, error: 'Payment changed while being reviewed; refresh and try again' },
+          { status: 409 },
+        );
+      }
       return NextResponse.json({ success: true, paymentId: body.paymentId, status: 'rejected' });
     }
 
