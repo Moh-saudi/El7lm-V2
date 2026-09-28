@@ -27,6 +27,13 @@ function validateReceiptUrl(value: string): string {
   if (url.protocol !== 'https:' || url.username || url.password) {
     throw new Error('Receipt URL must be a credential-free HTTPS URL');
   }
+  const trustedBase = process.env.NEXT_PUBLIC_CLOUDFLARE_PUBLIC_URL
+    || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL
+    || 'https://assets.el7lm.com';
+  const trustedHost = new URL(trustedBase).host;
+  if (url.host !== trustedHost || !url.pathname.startsWith('/payment-receipts/')) {
+    throw new Error('Receipt URL must come from the canonical receipt upload service');
+  }
   return url.toString();
 }
 
