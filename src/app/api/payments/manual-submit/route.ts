@@ -16,6 +16,20 @@ type Body = {
   receiptUrl: string;
 };
 
+function validateReceiptUrl(value: string): string {
+  if (value.length > 2048) throw new Error('Receipt URL is too long');
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('Invalid receipt URL');
+  }
+  if (url.protocol !== 'https:' || url.username || url.password) {
+    throw new Error('Receipt URL must be a credential-free HTTPS URL');
+  }
+  return url.toString();
+}
+
 const MANUAL_METHODS = new Set([
   'vodafone_cash', 'etisalat_cash', 'instapay', 'fawran',
   'bank_transfer', 'stc_pay', 'wallet',
@@ -95,6 +109,8 @@ export async function POST(request: NextRequest) {
     const currency = String(override?.currency ?? plan.base_currency).toUpperCase();
     if (!Number.isFinite(unitPrice) || unitPrice < 0) throw new Error('Invalid plan price');
 
+    const receiptUrl = validateReceiptUrl(body.receiptUrl);
+
     const payment = await createCanonicalPayment({
       payerId: payer.payerId,
       payerType: payer.payerType,
@@ -105,7 +121,7 @@ export async function POST(request: NextRequest) {
       method: body.method,
       provider: 'manual',
       targetPlayerIds,
-      receiptUrl: body.receiptUrl,
+      receiptUrl,
       status: 'pending_review',
       metadata: { submitted_via: 'manual_payment_api', authenticated_user_id: authorization.user.id },
     });
