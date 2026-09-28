@@ -12,6 +12,19 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
+    ignores: [
+      "node_modules/**",
+      ".next/**",
+      "out/**",
+      "dist/**",
+      "public/sw.js",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.spec.ts",
+      "**/*.spec.tsx"
+    ],
+  },
+  {
     rules: {
       // إلغاء قواعد صارمة قد تسبب مشاكل
       "@typescript-eslint/no-unused-vars": "warn",
@@ -20,18 +33,7 @@ const eslintConfig = [
       "no-console": "off",
       "prefer-const": "warn",
       "no-var": "error",
-    },
-    ignorePatterns: [
-      "node_modules/",
-      ".next/",
-      "out/",
-      "dist/",
-      "public/sw.js",
-      "**/*.test.ts",
-      "**/*.test.tsx",
-      "**/*.spec.ts",
-      "**/*.spec.tsx"
-    ]
+    }
   }
 ];
 
