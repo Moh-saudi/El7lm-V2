@@ -981,56 +981,6 @@ model Subscription {
   @@map("subscriptions")
 }
 
-model Subscription {
-  id               String    @id
-  userId           String?
-  user_id          String?
-  plan_name        String?
-  package_name     String?
-  packageName      String?
-  package_duration String?
-  packageDuration  String?
-  package_price    BigInt?
-  packagePrice     BigInt?
-  payment_id       String?
-  paymentId        String?
-  invoice_number   String?
-  receipt_url      String?
-  status           String?
-  features         Json?
-  amount           BigInt?
-  paidAmount       BigInt?
-  currency         String?
-  paymentMethod    String?
-  payment_method   String?
-  transaction_id   String?
-  customer_name    String?
-  customer_email   String?
-  customer_phone   String?
-  billing_address  String?
-  tax_number       String?
-  packageType      String?
-  is_auto_renew    Boolean?
-  autoRenew        Boolean?
-  auto_renew       Boolean?
-  receiptInfo      Json?
-  activated_at     DateTime?
-  activatedAt      DateTime?
-  expires_at       DateTime?
-  expiresAt        DateTime?
-  end_date         DateTime?
-  endDate          DateTime?
-  start_date       DateTime?
-  startDate        DateTime?
-  payment_date     String?
-  created_at       DateTime?
-  createdAt        DateTime?
-  updated_at       DateTime?
-  updatedAt        DateTime?
-
-  @@map("subscriptions")
-}
-
 model SubscriptionPlan {
   id                   String   @id
   title                String?
