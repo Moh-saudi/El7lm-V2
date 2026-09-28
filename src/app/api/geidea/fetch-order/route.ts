@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { GeideaMode, getGeideaEnvConfig, getGeideaMode } from '@/lib/geidea/config';
-import { processGeideaOrderResponse } from '@/lib/geidea/callback-handler';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -88,22 +87,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // التحقق من وجود save parameter
-    const shouldSave = searchParams.get('save') === 'true';
-
-    let savedData = null;
-    if (shouldSave && data?.order) {
-      try {
-        savedData = await processGeideaOrderResponse(data);
-        console.log('✅ [Geidea Fetch Order] Order saved to Firestore:', {
-          orderId: savedData.orderId,
-          status: savedData.status,
-        });
-      } catch (saveError) {
-        console.error('❌ [Geidea Fetch Order] Failed to save order:', saveError);
-        // لا نرمي الخطأ، فقط نعيد البيانات المسترجعة
-      }
-    }
+    // Diagnostic endpoint is read-only. Canonical payment state changes only through verified callbacks/admin flows.
+    const shouldSave = false;
 
     return NextResponse.json({
       success: true,
@@ -112,8 +97,7 @@ export async function GET(request: NextRequest) {
       orderId,
       merchantReferenceId,
       data,
-      saved: shouldSave ? (savedData !== null) : undefined,
-      savedData: savedData || undefined,
+      saved: false,
     });
   } catch (error) {
     console.error('❌ [Geidea Fetch Order] Error:', error);
