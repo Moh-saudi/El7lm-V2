@@ -23,35 +23,12 @@ const CORS_HEADERS = {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Log headers للتحقق من مصدر الطلب
-    const headers = Object.fromEntries(request.headers.entries());
-    console.log('🔄 [Geidea Callback] Received POST request:', {
-      url: request.url,
-      method: request.method,
-      contentType: request.headers.get('content-type'),
-      userAgent: request.headers.get('user-agent'),
-      origin: request.headers.get('origin'),
-      referer: request.headers.get('referer'),
-    });
-
-    // تحليل body
+    // Parse the notification without logging financial/customer payloads.
     const payload = await parseRequestBody(request);
     
-    console.log('🔄 [Geidea Callback] Parsed payload:', JSON.stringify(payload, null, 2));
-    console.log('🔄 [Geidea Callback] Payload keys:', Object.keys(payload));
 
     // معالجة callback باستخدام المكتبة المركزية
     const processed = await processGeideaCallback(payload);
-
-    console.log('✅ [Geidea Callback] Payment saved successfully:', {
-      orderId: processed.orderId,
-      merchantReferenceId: processed.merchantReferenceId,
-      status: processed.status,
-      amount: processed.amount,
-      currency: processed.currency,
-      collection: 'payments',
-      documentId: processed.orderId,
-    });
 
     return NextResponse.json(
       {
