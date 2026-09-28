@@ -108,7 +108,14 @@ export async function POST(request: NextRequest) {
         metadata: { checkout_source: 'geidea_create_session' },
       });
       canonicalPaymentId = canonical.id;
-      merchantReferenceId = canonical.id;
+      // Keep the internal UUID separate from Geidea's merchant reference contract.
+      merchantReferenceId = `EL7LM${canonical.id.replace(/-/g, '').slice(0, 25)}`;
+
+      const { error: referenceError } = await db.from('payments').update({
+        provider_reference_id: merchantReferenceId,
+        updated_at: new Date().toISOString(),
+      }).eq('id', canonical.id);
+      if (referenceError) throw referenceError;
     }
 
     // استخدام المكتبة المركزية
@@ -144,7 +151,7 @@ export async function POST(request: NextRequest) {
       const db = getSupabaseServiceRole();
       await db.from('payments').update({
         status: 'processing',
-        provider_reference_id: result.orderId || result.sessionId || null,
+        provider_transaction_id: result.orderId || result.sessionId || null,
         updated_at: new Date().toISOString(),
       }).eq('id', canonicalPaymentId);
     }
