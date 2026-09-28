@@ -48,13 +48,15 @@ begin
   if v_payment.amount < 0 then raise exception 'payment amount is invalid'; end if;
 
   select count(*) into v_target_count
-  from public.payment_targets where payment_id = p_payment_id;
+  from public.payment_targets pt
+  where pt.payment_id = p_payment_id;
   if v_target_count = 0 then raise exception 'payment has no target players'; end if;
 
   for v_target in
-    select id, target_player_id, amount_allocated
-    from public.payment_targets where payment_id = p_payment_id
-    for update
+    select pt.id, pt.target_player_id, pt.amount_allocated
+    from public.payment_targets pt
+    where pt.payment_id = p_payment_id
+    for update of pt
   loop
     v_subscription_id := 'sub:' || p_payment_id || ':' || v_target.target_player_id;
     v_end := v_start + make_interval(months => v_months);
