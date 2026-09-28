@@ -60,46 +60,24 @@ export async function createCanonicalPayment(input: CreateCanonicalPaymentInput)
   }
 
   const paymentId = crypto.randomUUID();
-  const now = new Date().toISOString();
   const status = input.status ?? 'pending';
 
-  const { error: paymentError } = await db.from('payments').insert({
-    id: paymentId,
-    payer_id: input.payerId,
-    payer_type: input.payerType,
-    plan_id: input.planId ?? null,
-    country_code: input.countryCode ?? null,
-    amount: input.amount,
-    currency: input.currency.toUpperCase(),
-    method: input.method,
-    provider: input.provider ?? null,
-    status,
-    receipt_url: input.receiptUrl ?? null,
-    review_status: status === 'pending_review' ? 'pending' : null,
-    metadata: input.metadata ?? {},
-    created_at: now,
-    updated_at: now,
+  const { error: createError } = await db.rpc('create_canonical_payment', {
+    p_payment_id: paymentId,
+    p_payer_id: input.payerId,
+    p_payer_type: input.payerType,
+    p_plan_id: input.planId ?? null,
+    p_country_code: input.countryCode ?? null,
+    p_amount: input.amount,
+    p_currency: input.currency.toUpperCase(),
+    p_method: input.method,
+    p_provider: input.provider ?? null,
+    p_target_player_ids: targetPlayerIds,
+    p_receipt_url: input.receiptUrl ?? null,
+    p_status: status,
+    p_metadata: input.metadata ?? {},
   });
-  if (paymentError) throw paymentError;
-
-  const allocation = targetPlayerIds.length > 0 ? input.amount / targetPlayerIds.length : null;
-  const targets = targetPlayerIds.map((playerId) => ({
-    id: crypto.randomUUID(),
-    payment_id: paymentId,
-    target_player_id: playerId,
-    amount_allocated: allocation,
-    status: 'pending',
-    metadata: {},
-    created_at: now,
-    updated_at: now,
-  }));
-
-  const { error: targetError } = await db.from('payment_targets').insert(targets);
-  if (targetError) {
-    // Compensate because PostgREST calls are not a cross-request SQL transaction.
-    await db.from('payments').delete().eq('id', paymentId);
-    throw targetError;
-  }
+  if (createError) throw createError;
 
   return { id: paymentId, status, targetPlayerIds };
 }
