@@ -904,8 +904,9 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       if (!user?.id) throw new Error('Authentication required');
 
       const targetPlayerIds = accountType === 'player'
-        ? [user.id]
+        ? (canonicalPlayerId ? [canonicalPlayerId] : [])
         : selectedPlayers.map((player) => player.id);
+      if (targetPlayerIds.length === 0) throw new Error('Canonical payment target is unavailable');
 
       const response = await authenticatedFetch('/api/payments/create-session', {
         method: 'POST',
