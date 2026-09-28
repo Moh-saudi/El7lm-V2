@@ -82,8 +82,8 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const { getSupabaseAdmin } = await import('@/lib/supabase/admin');
-    const db = getSupabaseAdmin();
+    const { getSupabaseServiceRole } = await import('@/lib/supabase/admin');
+    const db = getSupabaseServiceRole();
     const { searchParams } = new URL(request.url);
     const paymentId = searchParams.get('merchantReferenceId') || searchParams.get('paymentId');
 
