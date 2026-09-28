@@ -14,14 +14,13 @@ export async function resolveAuthenticatedPayer(authId: string, requestedType?: 
   for (const payerType of types) {
     const { data, error } = await db
       .from(ACCOUNT_TABLES[payerType])
-      .select('id,uid,countryCode,country')
+      .select('id,uid')
       .or(`id.eq.${authId},uid.eq.${authId}`)
       .limit(1);
     if (error) throw error;
     if (data?.[0]?.id) return {
       payerId: String(data[0].id),
       payerType,
-      countryCode: data[0].countryCode ? String(data[0].countryCode).toUpperCase() : null,
     };
   }
   return null;
