@@ -48,6 +48,14 @@ const STATUS_MAP: Record<string, { text: string; color: string; bg: string }> = 
   cancelled:      { text: 'ملغي',          color: '#6b7280', bg: '#f3f4f6' },
 };
 
+const escapeHtml = (value: unknown) =>
+  String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
 const generateInvoiceHTML = (record: Record<string, unknown>, invoiceUrl = 'https://el7lm.com') => {
   const st = STATUS_MAP[String(record.status)] || { text: String(record.status), color: '#6b7280', bg: '#f3f4f6' };
   const src = SOURCE_LABELS[String(record.source)] || String(record.source);
@@ -59,7 +67,7 @@ const generateInvoiceHTML = (record: Record<string, unknown>, invoiceUrl = 'http
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>فاتورة ${record.invoiceNumber} - منصة الحلم</title>
+  <title>فاتورة ${escapeHtml(record.invoiceNumber)} - منصة الحلم</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet"/>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -91,29 +99,29 @@ const generateInvoiceHTML = (record: Record<string, unknown>, invoiceUrl = 'http
     <div class="logo-area"><img src="https://assets.el7lm.com/logo.png" alt="El7lm" onerror="this.style.display='none'"/></div>
   </div>
   <div class="status-bar">
-    <div class="inv-num">رقم الفاتورة: <span>${record.invoiceNumber}</span></div>
-    <div class="status-badge">${st.text}</div>
+    <div class="inv-num">رقم الفاتورة: <span>${escapeHtml(record.invoiceNumber)}</span></div>
+    <div class="status-badge">${escapeHtml(st.text)}</div>
   </div>
   <div class="body">
     <h2>تفاصيل الفاتورة</h2>
     <table>
-      <tr><th>الخدمة / الباقة</th><td>${record.planName || '—'}</td></tr>
-      <tr><th>طريقة الدفع</th><td>${method}</td></tr>
-      <tr><th>مصدر المعاملة</th><td>${src}</td></tr>
-      ${refNum ? `<tr><th>الرقم المرجعي</th><td>${refNum}</td></tr>` : ''}
+      <tr><th>الخدمة / الباقة</th><td>${escapeHtml(record.planName || '—')}</td></tr>
+      <tr><th>طريقة الدفع</th><td>${escapeHtml(method)}</td></tr>
+      <tr><th>مصدر المعاملة</th><td>${escapeHtml(src)}</td></tr>
+      ${refNum ? `<tr><th>الرقم المرجعي</th><td>${escapeHtml(refNum)}</td></tr>` : ''}
       <tr><th>تاريخ الإنشاء</th><td>${formatDate(record.createdAt as Date | null)}</td></tr>
       ${record.paidAt ? `<tr><th>تاريخ السداد</th><td>${formatDate(record.paidAt as Date | null)}</td></tr>` : ''}
       <tr class="amount-row"><th>المبلغ الإجمالي</th><td>${formatCurrency(Number(record.amount), String(record.currency))}</td></tr>
     </table>
     <h2>بيانات العميل</h2>
     <table>
-      <tr><th>الاسم</th><td>${record.customerName || 'غير محدد'}</td></tr>
-      ${record.customerEmail ? `<tr><th>البريد الإلكتروني</th><td>${record.customerEmail}</td></tr>` : ''}
-      ${record.customerPhone ? `<tr><th>الهاتف</th><td>${record.customerPhone}</td></tr>` : ''}
+      <tr><th>الاسم</th><td>${escapeHtml(record.customerName || 'غير محدد')}</td></tr>
+      ${record.customerEmail ? `<tr><th>البريد الإلكتروني</th><td>${escapeHtml(record.customerEmail)}</td></tr>` : ''}
+      ${record.customerPhone ? `<tr><th>الهاتف</th><td>${escapeHtml(record.customerPhone)}</td></tr>` : ''}
     </table>
     <div class="verify-box">
       <p>يمكنك عرض هذه الفاتورة وطباعتها في أي وقت:</p>
-      <p style="margin-top:6px"><a href="${invoiceUrl}">${invoiceUrl}</a></p>
+      <p style="margin-top:6px"><a href="${escapeHtml(invoiceUrl)}">${escapeHtml(invoiceUrl)}</a></p>
     </div>
   </div>
   <div class="bottom">
