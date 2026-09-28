@@ -19,12 +19,12 @@ function sameMoney(a: unknown, b: unknown): boolean {
 
 export async function applyVerifiedGeideaPayment(payment: VerifiedGeideaPayment) {
   const db = getSupabaseServiceRole();
-  const canonicalId = payment.merchantReferenceId;
+  const merchantReferenceId = payment.merchantReferenceId;
 
   const { data: rows, error: lookupError } = await db
     .from('payments')
     .select('id, amount, currency, status, provider, provider_reference_id')
-    .eq('id', canonicalId)
+    .eq('provider_reference_id', merchantReferenceId)
     .eq('provider', 'geidea')
     .limit(1);
   if (lookupError) throw lookupError;
@@ -40,8 +40,7 @@ export async function applyVerifiedGeideaPayment(payment: VerifiedGeideaPayment)
     const mapped = payment.status === 'cancelled' ? 'cancelled' : payment.status === 'failed' ? 'failed' : 'processing';
     const { error } = await db.from('payments').update({
       status: mapped,
-      provider_reference_id: payment.orderId,
-      provider_transaction_id: payment.transactionId ?? null,
+      provider_transaction_id: payment.transactionId ?? payment.orderId,
       updated_at: new Date().toISOString(),
     }).eq('id', canonical.id).neq('status', 'paid');
     if (error) throw error;
@@ -52,8 +51,7 @@ export async function applyVerifiedGeideaPayment(payment: VerifiedGeideaPayment)
     const paidAt = (payment.paidAt ?? new Date()).toISOString();
     const { error } = await db.from('payments').update({
       status: 'paid',
-      provider_reference_id: payment.orderId,
-      provider_transaction_id: payment.transactionId ?? null,
+      provider_transaction_id: payment.transactionId ?? payment.orderId,
       paid_at: paidAt,
       metadata: { verified_by: 'geidea_callback' },
       updated_at: new Date().toISOString(),
