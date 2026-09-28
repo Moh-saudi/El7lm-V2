@@ -3,6 +3,7 @@
  */
 
 import { applyVerifiedGeideaPayment } from '@/lib/payments/geidea-canonical-service';
+import { fetchVerifiedGeideaOrder } from '@/lib/payments/geidea-provider-verification';
 
 export interface GeideaCallbackPayload {
   [key: string]: unknown;
@@ -36,59 +37,57 @@ const CANCELLED_CODES = new Set(['999']);
 export async function processGeideaCallback(
   payload: GeideaCallbackPayload
 ): Promise<ProcessedCallback> {
-  console.log('🔄 [Geidea Callback Handler] Processing callback:', JSON.stringify(payload, null, 2));
+  // The callback is only a notification. Never trust its amount/status as proof of payment.
+  const nestedOrder =
+    payload.order && typeof payload.order === 'object'
+      ? payload.order as Record<string, unknown>
+      : null;
 
-  const orderId = extractOrderId(payload);
-  if (!orderId) throw new Error('orderId is required in callback payload');
+  const merchantReferenceId =
+    extractString(payload, ['merchantReferenceId', 'merchant_reference_id', 'reference']) ||
+    (nestedOrder
+      ? extractString(nestedOrder, ['merchantReferenceId', 'merchant_reference_id', 'reference'])
+      : null);
 
-  const merchantReferenceId = extractString(payload, ['merchantReferenceId', 'merchant_reference_id', 'reference']);
-  const responseCode = extractString(payload, ['responseCode', 'response_code', 'code']);
-  const detailedResponseCode = extractString(payload, ['detailedResponseCode', 'detailed_response_code']);
-  const responseMessage = extractString(payload, ['responseMessage', 'response_message']);
-  const detailedResponseMessage = extractString(payload, ['detailedResponseMessage', 'detailed_response_message']);
-  const transactionId = extractString(payload, ['transactionId', 'sessionId', 'id', 'paymentId']);
-  const customerEmail = extractString(payload, ['customerEmail', 'customer_email', 'email', 'payerEmail']);
-  const customerName = extractString(payload, ['customerName', 'customer_name', 'name']);
-  const customerPhone = extractString(payload, ['customerPhone', 'customer_phone', 'phone', 'phoneNumber', 'mobile']);
-  const amount = extractNumber(payload, ['amount', 'orderAmount', 'order_amount', 'totalAmount', 'total_amount']);
-  const currency = extractString(payload, ['currency', 'currencyCode', 'orderCurrency']) || 'EGP';
-
-  const timestampValue = extractString(payload, ['timestamp', 'timeStamp', 'paymentDate', 'payment_date', 'createdAt', 'date']);
-  const paidAt = timestampValue ? parseDate(timestampValue) : null;
-
-  const status = determineStatus(payload, responseCode, detailedResponseCode, responseMessage, detailedResponseMessage);
-
-  const processed: ProcessedCallback = {
-    orderId, merchantReferenceId, status, amount, currency, responseCode, detailedResponseCode,
-    responseMessage, detailedResponseMessage, customerEmail, customerName, customerPhone,
-    transactionId, paidAt, rawPayload: payload,
-  };
-
-  // Canonical subscription payments use merchantReferenceId as payments.id.
-  // If this is a canonical payment, stop here: no parallel legacy payment or subscription writes are allowed.
-  if (merchantReferenceId && amount !== null) {
-    const canonicalResult = await applyVerifiedGeideaPayment({
-      orderId,
-      merchantReferenceId,
-      transactionId,
-      amount,
-      currency,
-      status,
-      paidAt,
-    });
-    if (canonicalResult.canonical) {
-      console.log('✅ [Geidea Callback Handler] Canonical payment processed:', canonicalResult);
-      return processed;
-    }
+  if (!merchantReferenceId) {
+    throw new Error('Geidea merchantReferenceId is required');
   }
 
-  // All subscription Geidea sessions are canonical. Unknown merchant references
-  // are rejected instead of being persisted to a parallel legacy ledger.
-  throw new Error('Unknown non-canonical Geidea merchant reference');
+  // Authoritative server-to-server verification using Geidea Basic Auth.
+  const verified = await fetchVerifiedGeideaOrder(merchantReferenceId);
 
-  return processed;
+  const canonicalResult = await applyVerifiedGeideaPayment({
+    orderId: verified.orderId,
+    merchantReferenceId: verified.merchantReferenceId,
+    transactionId: verified.transactionId,
+    amount: verified.amount,
+    currency: verified.currency,
+    status: verified.status,
+    paidAt: verified.paidAt,
+  });
+
+  if (!canonicalResult.canonical) {
+    throw new Error('Unknown non-canonical Geidea merchant reference');
+  }
+
+  return {
+    orderId: verified.orderId,
+    merchantReferenceId: verified.merchantReferenceId,
+    status: verified.status,
+    amount: verified.amount,
+    currency: verified.currency,
+    responseCode: null,
+    detailedResponseCode: null,
+    responseMessage: null,
+    detailedResponseMessage: null,
+    customerEmail: null,
+    customerName: null,
+    customerPhone: null,
+    transactionId: verified.transactionId,
+    paidAt: verified.paidAt,
+    rawPayload: payload,
+  };
 }
-
 
 function extractOrderId(payload: GeideaCallbackPayload): string | null {
   const orderId = extractString(payload, ['orderId', 'order_id', 'id']);
