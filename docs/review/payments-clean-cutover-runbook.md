@@ -14,10 +14,14 @@ select id, "countryCode", currency, methods
 from public.payment_settings
 order by "countryCode";
 ```
-Expected business contract:
-- EG card provider resolves to geidea.
-- QA card provider resolves to skipcash.
-If the JSON shape in methods does not encode these providers, STOP and normalize payment_settings first.
+Verified Production routing (2026-09-28):
+- EG / EGP: default enabled card = geidea.
+- QA / QAR: default enabled card = skipcash.
+- SA / SAR: default enabled card = geidea.
+- GLOBAL / USD: default enabled card = geidea.
+- MA / MAD: enabled card = skipcash (not marked default; it is still the only enabled card method).
+
+The runtime resolver selects enabled methods with type=card only, preferring isDefault=true and otherwise the first enabled card.
 
 ## 2. Install atomic activation
 Execute:
