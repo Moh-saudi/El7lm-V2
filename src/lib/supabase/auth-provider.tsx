@@ -716,17 +716,29 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
   const updateUserData = async (updates: Partial<UserData>): Promise<void> => {
     if (!user) return;
     try {
+      // Client profile edits must never mutate identity, role, permissions, or account state.
+      const allowedProfileFields = new Set([
+        'full_name', 'name', 'phone', 'country', 'city', 'address',
+        'profile_image', 'profileImage', 'profile_image_url', 'avatar',
+        'bio', 'date_of_birth', 'birth_date', 'gender',
+      ]);
+      const safeUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([key]) => allowedProfileFields.has(key)),
+      );
+      const sanitized = sanitizeForDB({
+        ...safeUpdates,
+        updated_at: new Date().toISOString(),
+      }) as Record<string, unknown>;
+
+      if (Object.keys(safeUpdates).length === 0) return;
+
       const accountType = userData?.accountType || 'player';
       const tableName = accountType === 'admin' ? 'users' : ROLE_TABLES[accountType] || 'users';
-      const sanitized = sanitizeForDB({ ...updates, updated_at: new Date().toISOString() }) as Record<string, unknown>;
-      if (sanitized && Object.keys(sanitized).length > 0) {
-        await supabase.from(tableName).update(sanitized).eq('id', user.id);
-        // Also update users table
-        if (tableName !== 'users') {
-          await supabase.from('users').update(sanitized).eq('id', user.id);
-        }
+      await supabase.from(tableName).update(sanitized).eq('id', user.id);
+      if (tableName !== 'users') {
+        await supabase.from('users').update(sanitized).eq('id', user.id);
       }
-      if (userData) setUserData({ ...userData, ...updates });
+      if (userData) setUserData({ ...userData, ...safeUpdates });
     } catch (error) {
       console.error('Error updating user data:', error);
       setError('Failed to update user data');
