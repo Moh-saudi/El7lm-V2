@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
 import { CheckCircle, Clock, ExternalLink, RefreshCw, Shield, XCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 type Payment = {
   id: string;
@@ -35,7 +36,7 @@ export default function PaymentsManagementPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: '20', status });
-      const response = await fetch(`/api/admin/payments?${params}`, { cache: 'no-store' });
+      const response = await authenticatedFetch(`/api/admin/payments?${params}`, { cache: 'no-store' });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error || 'Failed to load payments');
       setPayments(result.data || []);
@@ -56,7 +57,7 @@ export default function PaymentsManagementPage() {
     }
     setReviewing(paymentId);
     try {
-      const response = await fetch('/api/admin/payments/review', {
+      const response = await authenticatedFetch('/api/admin/payments/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paymentId, action, rejectionReason }),
