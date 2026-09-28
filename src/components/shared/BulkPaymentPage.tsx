@@ -28,7 +28,7 @@ import { SubscriptionPlan } from '@/types/pricing';
 import { COMPANY_INFO, getPrimaryWhatsAppNumber } from '@/config/company-info';
 
 import { supabase } from '@/lib/supabase/config';
-import { storageManager } from '@/lib/storage';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 import { isSkipCashAvailable, skipCashUnavailableMessage } from '@/lib/skipcash/config';
 
 // Extend Window interface
@@ -867,16 +867,22 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       if (isManualMethod && receiptFile) {
         toast.loading(t('payment.processingReceiptUpload'), { id: 'upload' });
 
-        const receiptId = crypto.randomUUID();
-        const fileExt = receiptFile.name.split('.').pop();
-        const path = `receipts/${user.id}/${receiptId}.${fileExt}`;
-        const uploadResult = await storageManager.upload('payments', path, receiptFile);
+        const receiptForm = new FormData();
+        receiptForm.append('file', receiptFile);
+        const uploadResponse = await authenticatedFetch('/api/payments/receipt-upload', {
+          method: 'POST',
+          body: receiptForm,
+        });
+        const uploadResult = await uploadResponse.json();
+        if (!uploadResponse.ok || !uploadResult.success || !uploadResult.receiptUrl) {
+          throw new Error(uploadResult.error || 'Receipt upload failed');
+        }
 
         const targetPlayerIds = accountType === 'player'
           ? [user.id]
           : selectedPlayers.map((player) => player.id);
 
-        const response = await fetch('/api/payments/manual-submit', {
+        const response = await authenticatedFetch('/api/payments/manual-submit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -886,7 +892,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
             targetPlayerIds,
             countryCode: selectedCountry || detectedCountry || 'EG',
             method: selectedPaymentMethod,
-            receiptUrl: uploadResult.url,
+            receiptUrl: uploadResult.receiptUrl,
           }),
         });
         const result = await response.json();
@@ -915,7 +921,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         ? [user.id]
         : selectedPlayers.map((player) => player.id);
 
-      const response = await fetch('/api/skipcash/create-session', {
+      const response = await authenticatedFetch('/api/payments/create-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -928,6 +934,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
           customerPhone: user.phoneNumber || user.phone || userData?.phone || '',
           customerName: user.user_metadata?.full_name || userData?.name || 'Customer',
           returnUrl: `${window.location.origin}/dashboard/admin/skipcash/return`,
+          countryCode: selectedCountry || detectedCountry || 'QA',
         }),
       });
 
