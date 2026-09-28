@@ -4,14 +4,15 @@ function providerFromMethods(methods: unknown): string | null {
   if (!methods) return null;
   if (typeof methods === 'string') return methods.trim().toLowerCase() || null;
   if (Array.isArray(methods)) {
-    const card = methods.find((item: any) =>
-      typeof item === 'string'
-        ? ['geidea', 'skipcash'].includes(item.toLowerCase())
-        : item?.type === 'card' || item?.method === 'card' || item?.enabled === true
+    const enabledCards = methods.filter((item: any) =>
+      typeof item === 'object' &&
+      item !== null &&
+      item.enabled !== false &&
+      (item.type === 'card' || item.method === 'card')
     );
-    if (typeof card === 'string') return card.toLowerCase();
-    const value = card?.provider || card?.gateway || card?.id || card?.name;
-    return value ? String(value).toLowerCase() : null;
+    const card = enabledCards.find((item: any) => item.isDefault === true) ?? enabledCards[0];
+    const value = card?.provider || card?.gateway || card?.id;
+    return value ? String(value).trim().toLowerCase() : null;
   }
   if (typeof methods === 'object') {
     const value = (methods as any).card?.provider ??
