@@ -10,7 +10,7 @@ interface PlayerPaymentProps {
   loading: boolean;
 }
 
-const PlayerPayment = memo(({ userData, loading }: PlayerPaymentProps) => {
+const PlayerPayment = memo(({ loading }: PlayerPaymentProps) => {
   if (loading) {
     return (
       <div className="space-y-6">
