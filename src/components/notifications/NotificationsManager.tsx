@@ -246,7 +246,10 @@ export default function NotificationsManager({
         return;
       }
 
-      const processed = await processSystemNotificationRows(data ?? []);
+      const rows = (data ?? []) as Notification[];
+      const senderIds = rows.map(getSenderCandidateId).filter((id): id is string => Boolean(id));
+      const senderMap = await fetchSenderInfoBatch(senderIds);
+      const processed = processSystemNotificationRows(rows, senderMap);
 
       // ترتيب البيانات حسب التاريخ
       const sortedData = processed.sort((a, b) => {
