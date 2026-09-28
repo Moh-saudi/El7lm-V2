@@ -102,6 +102,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
+  const [canonicalPlayerId, setCanonicalPlayerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
@@ -197,6 +198,8 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
           throw new Error(canonical.error || 'Failed to load subscription');
         }
 
+        setCanonicalPlayerId(canonical.playerId ? String(canonical.playerId) : null);
+
         const subData = canonical.subscription;
         if (subData) {
           const expiresAt = subData.expires_at ? new Date(subData.expires_at) : null;
@@ -248,11 +251,21 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
 
     fetchSubscriptionData();
 
-    // 3. Setup real-time listeners (Only for primary status)
+  }, [user?.id, userData, accountType]);
+
+  // Realtime must follow the canonical beneficiary identity, not subscriptions.id.
+  useEffect(() => {
+    if (!canonicalPlayerId) return;
+
     const channel = supabase
-      .channel(`subscriptions-${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'subscriptions', filter: `id=eq.${user.id}` }, (payload) => {
+      .channel(`subscriptions-player-${canonicalPlayerId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'subscriptions', filter: `player_id=eq.${canonicalPlayerId}` }, (payload) => {
         const d = payload.new as any;
+        if (!d || !d.id) {
+          // Deletes/invalidations are safest to resolve through the canonical API.
+          window.location.reload();
+          return;
+        }
         const exp = d.expires_at ? new Date(d.expires_at) : null;
         const dl = exp ? Math.ceil((exp.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
         setSubscription(prev => ({
@@ -269,7 +282,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, userData, accountType]);
+  }, [canonicalPlayerId]);
 
   // عداد انتهاء ديناميكي يحدث كل ثانية
   useEffect(() => {
