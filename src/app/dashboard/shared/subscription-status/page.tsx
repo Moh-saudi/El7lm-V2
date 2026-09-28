@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import SubscriptionStatusPage from '@/components/shared/SubscriptionStatusPage';
 import { useAccountTypeAuth } from '@/hooks/useAccountTypeAuth';
 import { Shield, AlertCircle } from 'lucide-react';
@@ -23,24 +23,6 @@ export default function SharedSubscriptionStatusPage() {
     allowedTypes: ['academy', 'trainer', 'agent', 'club', 'marketer', 'admin', 'player', 'parent'],
     redirectTo: '/dashboard'
   });
-
-  // Add Geidea real-time listener
-  useEffect(() => {
-    const handleGeideaMessage = (event: MessageEvent) => {
-      if (event.origin === 'https://geidea.net' && event.data === 'payment_success') {
-        // Handle successful payment, e.g., refresh subscription status
-        console.log('Geidea payment successful! Refreshing subscription status...');
-        // You might want to trigger a re-fetch of subscription data here
-        // For example, if you have a state management solution or a refetch function
-      }
-    };
-
-    window.addEventListener('message', handleGeideaMessage);
-
-    return () => {
-      window.removeEventListener('message', handleGeideaMessage);
-    };
-  }, []);
 
   // شاشة التحميل أثناء التحقق من الصلاحيات
   if (isCheckingAuth) {
