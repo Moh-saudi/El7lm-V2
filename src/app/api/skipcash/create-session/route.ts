@@ -20,14 +20,18 @@ type CreateSessionBody = {
   customerPhone: string;
   customerName?: string;
   returnUrl?: string;
+  countryCode?: string;
 };
 
-function getQatarPlanPrice(plan: Record<string, unknown>): number {
+function getCountryPlanPrice(plan: Record<string, unknown>, countryCode: string) {
   const overrides = plan.overrides as Record<string, Record<string, unknown>> | null;
-  const qa = overrides?.QA;
-  const price = Number(qa?.price ?? plan.base_price);
-  if (!Number.isFinite(price) || price < 0) throw new Error('invalid Qatar plan price');
-  return price;
+  const override = overrides?.[countryCode];
+  const price = Number(override?.price ?? plan.base_price);
+  const currency = String(override?.currency ?? plan.base_currency ?? '').toUpperCase();
+  if (!Number.isFinite(price) || price < 0 || !currency) {
+    throw new Error(`invalid plan price for ${countryCode}`);
+  }
+  return { price, currency };
 }
 
 export async function POST(request: NextRequest) {
@@ -47,7 +51,8 @@ export async function POST(request: NextRequest) {
     }
     const targetPlayerIds = await assertPaymentTargetOwnership(payer.payerId, payer.payerType, body.targetPlayerIds);
 
-    await assertCountryCardProvider('QA', 'skipcash');
+    const countryCode = String(body.countryCode || 'QA').trim().toUpperCase();
+    await assertCountryCardProvider(countryCode, 'skipcash');
 
     const db = getSupabaseServiceRole();
     const { data: planRows, error: planError } = await db
@@ -61,16 +66,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid or inactive plan' }, { status: 400 });
     }
 
-    const unitPrice = getQatarPlanPrice(plan);
+    const { price: unitPrice, currency } = getCountryPlanPrice(plan, countryCode);
     const amount = unitPrice * targetPlayerIds.length;
 
     const canonical = await createCanonicalPayment({
       payerId: payer.payerId,
       payerType: payer.payerType,
       planId: body.planId,
-      countryCode: 'QA',
+      countryCode,
       amount,
-      currency: 'QAR',
+      currency,
       method: 'card',
       provider: 'skipcash',
       targetPlayerIds,
@@ -79,7 +84,7 @@ export async function POST(request: NextRequest) {
 
     const paymentRequest: SkipCashPaymentRequest = {
       amount,
-      currency: 'QAR',
+      currency,
       customerEmail: body.customerEmail,
       customerPhone: body.customerPhone,
       customerName: body.customerName,
