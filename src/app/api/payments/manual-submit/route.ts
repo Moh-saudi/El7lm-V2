@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServiceRole } from '@/lib/supabase/admin';
 import { authorizeUser } from '@/lib/api/user-auth';
 import { createCanonicalPayment, PayerType } from '@/lib/payments/canonical-payment-service';
+import { assertPaymentTargetOwnership, resolveAuthenticatedPayer } from '@/lib/payments/payer-authorization';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,42 +42,6 @@ const MANUAL_METHODS = new Set([
   'vodafone_cash', 'etisalat_cash', 'instapay', 'fawran',
   'bank_transfer', 'stc_pay', 'wallet',
 ]);
-const ACCOUNT_TABLES: Record<PayerType, string> = {
-  player: 'players', club: 'clubs', academy: 'academies', trainer: 'trainers', agent: 'agents',
-};
-const PLAYER_LINKS: Partial<Record<PayerType, string>> = {
-  club: 'club_id', academy: 'academy_id', trainer: 'trainer_id', agent: 'agent_id',
-};
-
-async function resolvePayer(authId: string, requestedType?: PayerType) {
-  const db = getSupabaseServiceRole();
-  const types: PayerType[] = requestedType ? [requestedType] : ['player', 'club', 'academy', 'trainer', 'agent'];
-  for (const type of types) {
-    const table = ACCOUNT_TABLES[type];
-    const { data, error } = await db.from(table).select('id,uid').or(`id.eq.${authId},uid.eq.${authId}`).limit(1);
-    if (error) throw error;
-    if (data?.[0]?.id) return { payerId: String(data[0].id), payerType: type };
-  }
-  return null;
-}
-
-async function assertTargetOwnership(payerId: string, payerType: PayerType, targetIds: string[]) {
-  const db = getSupabaseServiceRole();
-  const uniqueTargets = [...new Set(targetIds.map(String).map((id) => id.trim()).filter(Boolean))];
-  if (!uniqueTargets.length) throw new Error('At least one target player is required');
-
-  if (payerType === 'player') {
-    if (uniqueTargets.length !== 1 || uniqueTargets[0] !== payerId) throw new Error('Player may only pay for their own subscription');
-    return uniqueTargets;
-  }
-
-  const linkColumn = PLAYER_LINKS[payerType];
-  if (!linkColumn) throw new Error('Unsupported payer type');
-  const { data, error } = await db.from('players').select('id').in('id', uniqueTargets).eq(linkColumn, payerId);
-  if (error) throw error;
-  if ((data?.length || 0) !== uniqueTargets.length) throw new Error('One or more target players are not linked to this payer');
-  return uniqueTargets;
-}
 
 export async function POST(request: NextRequest) {
   const authorization = await authorizeUser(request);
@@ -91,12 +56,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unsupported manual payment method' }, { status: 400 });
     }
 
-    const payer = await resolvePayer(authorization.user.id, body.payerType);
+    const payer = await resolveAuthenticatedPayer(authorization.user.id, body.payerType);
     if (!payer) return NextResponse.json({ success: false, error: 'Authenticated payer account not found' }, { status: 403 });
     if (body.payerId && body.payerId !== payer.payerId) {
       return NextResponse.json({ success: false, error: 'Payer identity mismatch' }, { status: 403 });
     }
-    const targetPlayerIds = await assertTargetOwnership(payer.payerId, payer.payerType, body.targetPlayerIds);
+    const targetPlayerIds = await assertPaymentTargetOwnership(payer.payerId, payer.payerType, body.targetPlayerIds);
 
     const db = getSupabaseServiceRole();
     const { data: plans, error: planError } = await db
