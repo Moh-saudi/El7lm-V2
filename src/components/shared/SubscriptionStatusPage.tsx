@@ -64,8 +64,8 @@ interface PaymentRecord {
   status: 'pending' | 'completed' | 'failed' | 'cancelled' | 'success' | 'pending_review' | 'accepted' | 'approved' | 'rejected' | 'processing' | 'waiting' | 'inactive';
   payment_date: any;
   createdAt?: any;
-  package_name?: string;
-  packageType?: string;
+  plan_name?: string;
+  plan_id?: string;
   transaction_id?: string;
   customer_name?: string;
   customer_email?: string;
@@ -77,10 +77,9 @@ interface PaymentRecord {
 interface SubscriptionInfo {
   status: 'active' | 'expired' | 'pending' | 'inactive' | 'completed' | 'success' | 'cancelled' | 'failed' | 'rejected' | 'processing' | 'waiting' | 'pending_review';
   plan_name?: string;
-  package_name?: string;
-  packageType?: string;
-  package_duration?: string;
-  start_date?: any;
+  plan_id?: string;
+  plan_period?: string;
+  starts_at?: any;
   end_date?: any;
   expires_at?: any;
   activated_at?: any;
@@ -211,9 +210,9 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
           setSubscription({
             status: subData.status === 'active' && daysLeft <= 0 ? 'expired' : (subData.status || 'inactive'),
             plan_name: matchedPlan?.title || subData.plan_id || t('subStatus.genericSub'),
-            package_duration: matchedPlan?.period,
-            packageType: subData.plan_id,
-            start_date: subData.starts_at ? new Date(subData.starts_at) : null,
+            plan_period: matchedPlan?.period,
+            plan_id: subData.plan_id,
+            starts_at: subData.starts_at ? new Date(subData.starts_at) : null,
             expires_at: expiresAt,
             activated_at: subData.activated_at ? new Date(subData.activated_at) : null,
             amount: Number(subData.amount || 0),
@@ -232,8 +231,8 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
           status: mapPaymentStatus(payment.status),
           payment_date: payment.paid_at || payment.created_at,
           createdAt: payment.created_at,
-          package_name: allPlans.find((plan) => plan.id === payment.plan_id)?.title || payment.plan_id || t('subStatus.genericSub'),
-          packageType: payment.plan_id || undefined,
+          plan_name: allPlans.find((plan) => plan.id === payment.plan_id)?.title || payment.plan_id || t('subStatus.genericSub'),
+          plan_id: payment.plan_id || undefined,
           transaction_id: payment.provider_reference_id || undefined,
           notes: payment.rejection_reason || undefined,
           source: 'payments',
@@ -270,7 +269,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
         const dl = exp ? Math.ceil((exp.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
         setSubscription(prev => ({
           ...prev!,
-          status: d.status === 'active' && dl > 0 ? 'active' : d.status || 'inactive',
+          status: d.status === 'active' && dl <= 0 ? 'expired' : (d.status || 'inactive'),
           daysLeft: dl,
           expires_at: exp
         }));
@@ -394,9 +393,9 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
                 </Badge>
                 <h1 className="text-3xl font-black text-slate-900 flex items-center gap-2">
                   {subscription?.plan_name}
-                  {subscription?.package_duration && (
+                  {subscription?.plan_period && (
                     <span className={`text-lg font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100 ${isRTL ? 'mr-2' : 'ml-2'}`}>
-                      ({subscription.package_duration})
+                      ({subscription.plan_period})
                     </span>
                   )}
                 </h1>
@@ -502,7 +501,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
                               <CreditCard className="w-6 h-6" />
                             </div>
                             <div>
-                              <h4 className="font-bold text-slate-900 leading-none mb-1">{p.package_name || t('subStatus.genericSub') || 'اشتراك منصة الحلم'}</h4>
+                              <h4 className="font-bold text-slate-900 leading-none mb-1">{p.plan_name || t('subStatus.genericSub') || 'اشتراك منصة الحلم'}</h4>
                               <div className="flex items-center gap-2 text-xs text-slate-500 font-medium font-mono">
                                 <span>#{p.id.slice(-6).toUpperCase()}</span>
                                 <span className="w-1 h-1 bg-slate-300 rounded-full mx-1"></span>
@@ -571,7 +570,7 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
               <ul className="space-y-4">
                 {[
                   { label: t('subStatus.accountTypeLabel') || 'نوع الحساب', val: accountType === 'player' ? (t('common.player') || 'لاعب محترف') : accountType, icon: Zap },
-                  { label: t('subStatus.packageDurationLabel') || 'مدة الاشتراك', val: subscription?.package_duration || t('payment.undefinedDuration') || 'غير محددة', icon: Calendar },
+                  { label: t('subStatus.packageDurationLabel') || 'مدة الاشتراك', val: subscription?.plan_period || t('payment.undefinedDuration') || 'غير محددة', icon: Calendar },
                   { label: t('subStatus.contactEmailLabel') || 'بريد التواصل', val: user?.email, icon: AlertCircle },
                   { label: t('subStatus.digitalIdLabel') || 'المعرف الرقمي', val: user?.id.slice(0, 10), icon: CreditCard },
                 ].map((item, idx) => (
