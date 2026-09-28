@@ -209,12 +209,9 @@ export default function GeideaPaymentModal({
 
     localStorage.setItem('geidea_payment_error', JSON.stringify(errorData));
 
-    // إغلاق المودال
-    onRequestClose();
-
     onPaymentFailure(error);
 
-    // إغلاق المودال
+    // إغلاق المودال مرة واحدة بعد تسجيل الفشل
     onRequestClose();
   };
 
