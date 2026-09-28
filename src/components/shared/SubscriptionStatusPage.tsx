@@ -42,6 +42,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useTranslation } from '@/lib/i18n';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 const mapPaymentStatus = (status: string) => {
   const s = (status || '').toLowerCase();
@@ -183,12 +184,8 @@ const SubscriptionStatusPage: React.FC<SubscriptionStatusPageProps> = ({ account
         const allPlans = await PricingService.getAllPlans();
         setPlans(allPlans);
 
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData.session?.access_token;
-        if (!accessToken) throw new Error('Missing authenticated session');
-
-        const statusResponse = await fetch('/api/subscriptions/status', {
-          headers: { Authorization: `Bearer ${accessToken}` },
+        const statusResponse = await authenticatedFetch('/api/subscriptions/status', {
+          method: 'GET',
           cache: 'no-store',
         });
         const canonical = await statusResponse.json();
