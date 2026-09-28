@@ -3,6 +3,11 @@
 
 begin;
 
+-- Idempotency guard independent of generated subscription IDs.
+create unique index if not exists subscriptions_v2_payment_player_unique
+  on public.subscriptions_v2(payment_id, player_id)
+  where payment_id is not null and player_id is not null;
+
 create or replace function public.activate_canonical_payment_subscriptions(p_payment_id text)
 returns table(target_player_id text, subscription_id text)
 language plpgsql
@@ -18,6 +23,7 @@ declare
   v_end timestamptz;
   v_now timestamptz := now();
   v_subscription_id text;
+  v_target_count integer := 0;
 begin
   select * into v_payment from public.payments where id = p_payment_id for update;
   if not found then raise exception 'payment not found'; end if;
@@ -39,6 +45,11 @@ begin
   if v_months is null then raise exception 'subscription plan duration is not supported'; end if;
 
   v_start := coalesce(v_payment.paid_at, v_now);
+  if v_payment.amount < 0 then raise exception 'payment amount is invalid'; end if;
+
+  select count(*) into v_target_count
+  from public.payment_targets where payment_id = p_payment_id;
+  if v_target_count = 0 then raise exception 'payment has no target players'; end if;
 
   for v_target in
     select id, target_player_id, amount_allocated
@@ -72,7 +83,6 @@ begin
     return next;
   end loop;
 
-  if not found then raise exception 'payment has no target players'; end if;
 end;
 $$;
 
