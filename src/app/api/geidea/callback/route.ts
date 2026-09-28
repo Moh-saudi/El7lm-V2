@@ -7,6 +7,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { processGeideaCallback } from '@/lib/geidea/callback-handler';
+import { authorizeUser } from '@/lib/api/user-auth';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
+import { resolveAuthenticatedPayer } from '@/lib/payments/payer-authorization';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -58,8 +61,10 @@ export async function POST(request: NextRequest) {
  * GET - canonical payment status lookup by payments.id.
  */
 export async function GET(request: NextRequest) {
+  const authorization = await authorizeUser(request);
+  if (!authorization.ok) return authorization.response;
+
   try {
-    const { getSupabaseServiceRole } = await import('@/lib/supabase/admin');
     const db = getSupabaseServiceRole();
     const { searchParams } = new URL(request.url);
     const paymentId = searchParams.get('merchantReferenceId') || searchParams.get('paymentId');
@@ -70,7 +75,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await db
       .from('payments')
-      .select('id,status,amount,currency,provider,provider_transaction_id,provider_reference_id,paid_at,updated_at')
+      .select('id,status,amount,currency,provider,provider_transaction_id,provider_reference_id,paid_at,updated_at,payer_id,payer_type')
       .eq('id', paymentId)
       .eq('provider', 'geidea')
       .limit(1);
@@ -79,7 +84,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, status: 'not_found' }, { status: 404, headers: CORS_HEADERS });
     }
 
-    return NextResponse.json({ success: true, payment: data[0] }, { headers: CORS_HEADERS });
+    const payment = data[0];
+    const payer = await resolveAuthenticatedPayer(authorization.user.id, payment.payer_type);
+    if (!payer || payer.payerId !== String(payment.payer_id)) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403, headers: CORS_HEADERS });
+    }
+
+    const { payer_id: _payerId, payer_type: _payerType, ...safePayment } = payment;
+    return NextResponse.json({ success: true, payment: safePayment }, { headers: CORS_HEADERS });
   } catch (error) {
     console.error('❌ [Geidea Callback] Canonical status lookup failed:', error);
     return NextResponse.json({ error: 'Failed to check payment status' }, { status: 500, headers: CORS_HEADERS });
