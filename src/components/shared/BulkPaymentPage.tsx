@@ -135,6 +135,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   const [ticketSubject, setTicketSubject] = useState('');
   const [ticketMessage, setTicketMessage] = useState('');
   const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+  const [canonicalPlayerId, setCanonicalPlayerId] = useState<string | null>(null);
   const [activeSubscriptionData, setActiveSubscriptionData] = useState<{
     isActive: boolean;
     planName: string;
@@ -232,6 +233,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         }
 
         const statusPayload = await statusResponse.json();
+        const resolvedPlayerId = statusPayload?.playerId ? String(statusPayload.playerId) : null;
+        if (accountType === 'player') setCanonicalPlayerId(resolvedPlayerId);
         const subscription = statusPayload?.subscription || null;
 
         if (subscription?.status === 'active') {
@@ -861,8 +864,9 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         }
 
         const targetPlayerIds = accountType === 'player'
-          ? [user.id]
+          ? (canonicalPlayerId ? [canonicalPlayerId] : [])
           : selectedPlayers.map((player) => player.id);
+        if (targetPlayerIds.length === 0) throw new Error('Canonical payment target is unavailable');
 
         const response = await authenticatedFetch('/api/payments/manual-submit', {
           method: 'POST',
@@ -1439,7 +1443,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         payerId={user?.id}
         payerType={accountType}
         planId={selectedPackage}
-        targetPlayerIds={accountType === 'player' ? (user?.id ? [user.id] : []) : selectedPlayers.map((player) => player.id)}
+        targetPlayerIds={accountType === 'player' ? (canonicalPlayerId ? [canonicalPlayerId] : []) : selectedPlayers.map((player) => player.id)}
         countryCode={selectedCountry || 'EG'}
       />
 
