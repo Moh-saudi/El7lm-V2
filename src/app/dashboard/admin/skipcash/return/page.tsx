@@ -1,5 +1,6 @@
 'use client';
 
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -28,7 +29,7 @@ export default function SkipCashReturnPage() {
             }
 
             try {
-                const res = await fetch('/api/skipcash/verify-payment', {
+                const res = await authenticatedFetch('/api/skipcash/verify-payment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
