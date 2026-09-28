@@ -160,8 +160,8 @@ export const PricingService = {
             }
 
             // Server-side fallback using admin client
-            const { getSupabaseAdmin } = await import('@/lib/supabase/admin');
-            const admin = getSupabaseAdmin();
+            const { getSupabaseServiceRole } = await import('@/lib/supabase/admin');
+            const admin = getSupabaseServiceRole();
             const ALLOWED_COLUMNS = [
                 'id', 'title', 'subtitle', 'period', 'base_currency',
                 'base_original_price', 'base_price', 'features', 'bonusFeatures',
@@ -203,8 +203,8 @@ export const PricingService = {
                 return true;
             }
 
-            const { getSupabaseAdmin } = await import('@/lib/supabase/admin');
-            const admin = getSupabaseAdmin();
+            const { getSupabaseServiceRole } = await import('@/lib/supabase/admin');
+            const admin = getSupabaseServiceRole();
             const { error } = await admin.from(TABLE_NAME).delete().eq('id', planId);
             if (error) throw error;
             return true;
