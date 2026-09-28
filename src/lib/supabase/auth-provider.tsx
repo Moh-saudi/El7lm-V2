@@ -163,9 +163,7 @@ async function fetchUserData(userId: string, email: string, firebaseUid?: string
     try {
       const { data: employees } = await supabase.from('employees').select('*').eq('email', email).limit(1);
       if (employees?.length) {
-        await supabase.from('employees').update({ authUserId: userId, updatedAt: new Date().toISOString() })
-          .eq('id', String((employees[0] as Record<string, unknown>).id));
-        console.log('🔗 Automatically linked employee account via email:', email);
+        // Compatibility read only: identity linking must happen on a trusted server path.
         return { data: employees[0] as Record<string, unknown>, collection: 'employees', accountType: 'admin' };
       }
     } catch (err) {
@@ -237,10 +235,8 @@ async function fetchUserData(userId: string, email: string, firebaseUid?: string
       if (r.status === 'fulfilled' && r.value.data?.length) {
         const accountType: UserRole = accountTypes[i] === 'admins' ? 'admin' : (accountTypes[i].slice(0, -1) as UserRole);
         const rowData = r.value.data[0] as Record<string, unknown>;
-        // ربط تلقائي: تحديث uid بالـ Supabase UUID الحالي لتسريع عمليات البحث المستقبلية
-        void supabase.from(accountTypes[i]).update({ uid: userId }).eq('id', String(rowData.id)).then(() => {
-          console.log(`🔗 [fetchUserData] Auto-linked ${accountTypes[i]} via email: ${email}`);
-        });
+        // Compatibility read only: never mutate canonical identity from the browser.
+        // OTP and migration/server flows own uid linking.
         return { data: rowData, collection: accountTypes[i], accountType };
       }
     }
