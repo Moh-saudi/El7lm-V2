@@ -3,6 +3,7 @@
 import { analyzeGeideaError, handleGeideaError } from '@/lib/geidea-error-handler';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 declare global {
   interface Window {
@@ -422,7 +423,7 @@ export default function GeideaPaymentModal({
         countryCode,
       };
 
-      const response = await fetch('/api/geidea/create-session', {
+      const response = await authenticatedFetch('/api/payments/create-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
