@@ -219,45 +219,29 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       let activeSubscriptionData_raw: any = null;
 
       try {
-        // 1. Check user's individual subscription directly in the source of truth
-        const { data: userSubData } = await supabase.from('subscriptions').select('*').eq('id', user.id).single();
-        if (userSubData) {
-          const data = userSubData;
-          if (data.status === 'active') {
-            isCurrentlyActive = true;
-            activeSubscriptionData_raw = data;
+        // Canonical subscription status is resolved server-side from the authenticated
+        // user to players.id and subscriptions.player_id. Do not infer ownership from
+        // subscriptions.id or legacy package fields in the client.
+        const statusResponse = await authenticatedFetch('/api/subscriptions/status', {
+          method: 'GET',
+          cache: 'no-store',
+        });
 
-            // Use PricingService to get the best matched plan details
-            const amount = Number(data.package_price || data.amount || 0);
-            const pkgType = data.packageType || data.package_type || '';
-            const bestMatch = PricingService.getBestMatchedPlan(amount, pkgType, availablePlans);
-
-            detectedPlanName = getPlanTitle(bestMatch.plan || ({ id: pkgType, title: bestMatch.title } as any));
-            detectedPkgId = bestMatch.plan?.id || pkgType;
-          }
+        if (!statusResponse.ok) {
+          throw new Error(`Subscription status request failed: ${statusResponse.status}`);
         }
 
-        // 2. Fallback: Check parent subscription (for players in clubs/academies)
-        if (!isCurrentlyActive && accountType === 'player' && userData) {
-          const parentId = userData.club_id || userData.clubId || userData.academy_id || userData.academyId || userData.trainer_id || userData.agent_id;
-          if (parentId) {
-            const { data: parentSubData } = await supabase.from('subscriptions').select('*').eq('id', parentId).single();
-            if (parentSubData) {
-              const data = parentSubData;
-              if (data.status === 'active') {
-                isCurrentlyActive = true;
-                activeSubscriptionData_raw = data;
+        const statusPayload = await statusResponse.json();
+        const subscription = statusPayload?.subscription || null;
 
-                // Use PricingService for parent subscription as well
-                const amount = Number(data.package_price || data.amount || 0);
-                const pkgType = data.packageType || data.package_type || '';
-                const bestMatch = PricingService.getBestMatchedPlan(amount, pkgType, availablePlans);
+        if (subscription?.status === 'active') {
+          isCurrentlyActive = true;
+          activeSubscriptionData_raw = subscription;
 
-                detectedPlanName = getPlanTitle(bestMatch.plan || ({ id: pkgType, title: bestMatch.title } as any));
-                detectedPkgId = bestMatch.plan?.id || pkgType;
-              }
-            }
-          }
+          const planId = String(subscription.plan_id || '');
+          const currentPlan = availablePlans.find((plan) => plan.id === planId);
+          detectedPlanName = getPlanTitle(currentPlan || ({ id: planId, title: planId || t('payment.activeSubscription') } as any));
+          detectedPkgId = currentPlan?.id || planId;
         }
 
         // SMART BLOCKER: Only auto-trigger the modal if:
@@ -270,18 +254,17 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
           const currentPrice = currentPlan?.base_price || 0;
           const hasHigherPlan = availablePlans.some(p => p.isActive && (p.base_price || 0) > currentPrice);
 
-          // Calculate remaining days
           const expiresAt = activeSubscriptionData_raw?.expires_at
             ? new Date(activeSubscriptionData_raw.expires_at)
-            : (activeSubscriptionData_raw?.end_date ? new Date(activeSubscriptionData_raw.end_date) : null);
+            : null;
           const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
 
           setActiveSubscriptionData({
             isActive: true,
             planName: detectedPlanName,
-            planDuration: getPlanPeriod(currentPlan) || activeSubscriptionData_raw?.package_duration || activeSubscriptionData_raw?.packageDuration || t('payment.undefinedDuration'),
+            planDuration: getPlanPeriod(currentPlan) || t('payment.undefinedDuration'),
             isMaxPlan: !hasHigherPlan,
-            daysLeft: daysLeft,
+            daysLeft,
             expiryDate: expiresAt || undefined
           });
 
@@ -289,7 +272,6 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
           setIsActionModalOpen(true);
         } else if (actionParam === 'renew' || actionParam === 'upgrade') {
           console.log('✨ [Detection] Manual action requested. Setting up modal behavior.');
-          // Don't auto-open if it's already active and they specifically came here to manage
           if (!isCurrentlyActive) {
             setIsActionModalOpen(true);
           }
@@ -304,7 +286,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
     if (!loading && availablePlans.length > 0) {
       detectSubscription();
     }
-  }, [loading, availablePlans, user, userData, accountType, actionParam, t]);
+  }, [loading, availablePlans, user, accountType, actionParam, t]);
 
   const handleSubmitTicket = async () => {
     if (!ticketSubject.trim() || !ticketMessage.trim() || !user) {
@@ -850,8 +832,8 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         return;
       }
 
-      // Geidea subscription checkout is canonical and creates its payment
-      // inside /api/geidea/create-session.
+      // Geidea subscription checkout is canonical; the modal calls
+      // /api/payments/create-session and the server selects the provider.
       if (selectedPaymentMethod === 'geidea') {
         setShowGeideaModal(true);
         setLoading(false);
