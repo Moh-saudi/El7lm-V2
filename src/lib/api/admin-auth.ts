@@ -6,8 +6,6 @@ type AdminAuthorization =
   | { ok: true; user: User; response?: never }
   | { ok: false; user?: never; response: NextResponse };
 
-const SUPER_ADMIN_EMAILS = new Set(['admin@el7lm.com', 'admin@elhilm.com']);
-
 function denied(status: 401 | 403): AdminAuthorization {
   return {
     ok: false,
@@ -36,50 +34,39 @@ export async function authorizeAdmin(request: NextRequest): Promise<AdminAuthori
     if (error || !user) return denied(401);
 
     const email = String(user.email || '').toLowerCase().trim();
-    if (SUPER_ADMIN_EMAILS.has(email) || email.endsWith('@el7lm.com') || email.endsWith('@elhilm.com')) {
-      return { ok: true, user };
-    }
-
-    const metaRole = String(
-      user.app_metadata?.role ||
-      user.user_metadata?.role ||
-      user.user_metadata?.accountType ||
-      ''
-    ).toLowerCase();
-    if (['admin', 'super_admin', 'super-admin'].includes(metaRole)) {
-      return { ok: true, user };
-    }
-
     const userId = user.id;
-    const queries: PromiseLike<any>[] = [
+
+    // Authorization is DB-backed only. Auth metadata and email domains are not privileges.
+    const adminLookups = [
       admin.from('admins').select('id,isActive').eq('id', userId).maybeSingle(),
-      admin.from('admins').select('id,isActive').eq('uid', userId).maybeSingle(),
+      ...(email
+        ? [admin.from('admins').select('id,isActive').eq('email', email).maybeSingle()]
+        : []),
+    ];
+    const adminResults = await Promise.all(adminLookups);
+    for (const result of adminResults) {
+      if (result.error) throw result.error;
+      if (result.data?.id && result.data.isActive !== false) {
+        return { ok: true, user };
+      }
+    }
+
+    const employeeLookups = [
       admin.from('employees').select('id,isActive,role,roleId,roleName').eq('authUserId', userId).maybeSingle(),
       admin.from('employees').select('id,isActive,role,roleId,roleName').eq('id', userId).maybeSingle(),
-      admin.from('users').select('id,accountType,isAdmin,role').eq('id', userId).maybeSingle(),
-      admin.from('users').select('id,accountType,isAdmin,role').eq('uid', userId).maybeSingle(),
+      ...(email
+        ? [admin.from('employees').select('id,isActive,role,roleId,roleName').eq('email', email).maybeSingle()]
+        : []),
     ];
-    if (email) {
-      queries.push(admin.from('admins').select('id,isActive').eq('email', email).maybeSingle());
-      queries.push(admin.from('employees').select('id,isActive,role,roleId,roleName').eq('email', email).maybeSingle());
-      queries.push(admin.from('users').select('id,accountType,isAdmin,role').eq('email', email).maybeSingle());
-    }
-
-    const results = await Promise.all(queries);
-    for (const res of results) {
-      const row = res?.data;
-      if (!row) continue;
-      if ('accountType' in row && (
-        row.accountType === 'admin' ||
-        row.isAdmin === true ||
-        ['admin', 'super_admin'].includes(String(row.role || '').toLowerCase())
-      )) return { ok: true, user };
-
+    const employeeResults = await Promise.all(employeeLookups);
+    for (const result of employeeResults) {
+      if (result.error) throw result.error;
+      const row = result.data;
+      if (!row || row.isActive === false) continue;
       const role = String(row.roleId || row.role || row.roleName || '').toLowerCase();
-      if (row.isActive !== false && (
-        ['admin', 'supervisor', 'super_admin', 'super-admin'].includes(role) ||
-        (!('accountType' in row) && !('role' in row) && row.id)
-      )) return { ok: true, user };
+      if (['admin', 'supervisor', 'super_admin', 'super-admin'].includes(role)) {
+        return { ok: true, user };
+      }
     }
 
     return denied(403);
