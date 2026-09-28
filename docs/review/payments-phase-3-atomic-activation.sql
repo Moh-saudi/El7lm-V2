@@ -69,11 +69,13 @@ begin
       coalesce(v_target.amount_allocated, v_payment.amount), v_payment.currency,
       jsonb_build_object('activation_source','canonical_payment_rpc'), v_now, v_now
     )
-    on conflict (id) do update set
+    on conflict (payment_id, player_id) where payment_id is not null and player_id is not null
+    do update set
       status='active', starts_at=excluded.starts_at, expires_at=excluded.expires_at,
       activated_at=coalesce(public.subscriptions_v2.activated_at, excluded.activated_at),
       cancelled_at=null, amount=excluded.amount, currency=excluded.currency,
-      updated_at=v_now;
+      updated_at=v_now
+    returning id into v_subscription_id;
 
     update public.payment_targets
       set status='active', updated_at=v_now where id=v_target.id;
