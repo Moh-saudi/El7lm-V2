@@ -80,7 +80,6 @@ interface SubscriptionInfo {
   plan_id?: string;
   plan_period?: string;
   starts_at?: any;
-  end_date?: any;
   expires_at?: any;
   activated_at?: any;
   amount?: number;
