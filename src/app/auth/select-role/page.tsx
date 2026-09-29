@@ -217,11 +217,13 @@ export default function SelectRolePage() {
                 throw new Error(data.error || t('auth.otpVerificationFailed'));
             }
 
-            // 2. Switch to the old phone account session
-            await supabase.auth.signInWithPassword({
-                email: data.authEmail,
-                password: data.authPassword,
+            // 2. Switch to the verified phone account session without exposing credentials.
+            if (!data.tokenHash) throw new Error(t('auth.loginFailed'));
+            const { error: sessionError } = await supabase.auth.verifyOtp({
+                token_hash: data.tokenHash,
+                type: 'magiclink',
             });
+            if (sessionError) throw new Error(sessionError.message);
 
             // 3. Update the phone account with the current user's Google email if available
             const currentEmail = user?.email;
