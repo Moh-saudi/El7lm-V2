@@ -303,4 +303,12 @@ WITH CHECK (
   AND status = 'pending'
 );
 
+
+-- Tournament organizer identity and activation state are server-owned.
+-- Clients may edit profile fields through RLS, but cannot relink or self-activate.
+REVOKE UPDATE (supabase_auth_id, is_active, created_at)
+  ON public.tournament_clients FROM authenticated;
+REVOKE UPDATE (supabase_auth_id, is_active, created_at)
+  ON public.tournament_clients FROM anon;
+
 COMMIT;
