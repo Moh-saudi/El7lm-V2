@@ -75,6 +75,24 @@ CREATE UNIQUE INDEX IF NOT EXISTS organization_referrals_code_ci_unique
 CREATE INDEX IF NOT EXISTS idx_player_rewards_player_id
   ON public.player_rewards ("playerId");
 
+-- Store order arithmetic integrity. Product pricing remains server-flow work;
+-- these checks prevent internally inconsistent or negative order totals.
+DO $
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.store_orders'::regclass AND conname='store_orders_quantity_positive') THEN
+    ALTER TABLE public.store_orders
+      ADD CONSTRAINT store_orders_quantity_positive CHECK (quantity > 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.store_orders'::regclass AND conname='store_orders_prices_nonnegative') THEN
+    ALTER TABLE public.store_orders
+      ADD CONSTRAINT store_orders_prices_nonnegative CHECK (unit_price >= 0 AND total_price >= 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.store_orders'::regclass AND conname='store_orders_total_matches_quantity') THEN
+    ALTER TABLE public.store_orders
+      ADD CONSTRAINT store_orders_total_matches_quantity CHECK (total_price = unit_price * quantity);
+  END IF;
+END $;
+
 -- Canonical player video policies.
 DROP POLICY IF EXISTS "Players can insert own videos" ON public.player_videos;
 DROP POLICY IF EXISTS "Players can update own pending videos" ON public.player_videos;
