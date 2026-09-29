@@ -8,11 +8,7 @@ function isUuid(val: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 }
 
-// In-memory fallback store for dev tournaments
-const devRefereesMap = new Map<string, any[]>();
-
 export async function GET(req: NextRequest) {
-  const tid = req.nextUrl.searchParams.get('tournament_id');
   if (!tid) return NextResponse.json({ error: 'tournament_id required' }, { status: 400 });
 
   if (!isUuid(tid)) return NextResponse.json({ error: 'Invalid tournament_id' }, { status: 400 });
@@ -26,14 +22,9 @@ export async function GET(req: NextRequest) {
       .select('*')
       .eq('tournament_id', tid)
       .order('name');
-    if (error) {
-      console.warn('[referees] Supabase query note:', error.message);
-      return NextResponse.json({ referees: devRefereesMap.get(tid) || [] });
-    }
+    if (error) return NextResponse.json({ error: 'Failed to load referees' }, { status: 500 });
     return NextResponse.json({ referees: data || [] });
-  } catch {
-    return NextResponse.json({ referees: devRefereesMap.get(tid) || [] });
-  }
+  } catch { return NextResponse.json({ error: 'Failed to load referees' }, { status: 500 }); }
 }
 
 export async function POST(req: NextRequest) {
@@ -50,11 +41,7 @@ export async function POST(req: NextRequest) {
       .from('tournament_referees')
       .insert({ tournament_id, name, phone: phone || null, level: level || null, notes: notes || null })
       .select().single();
-    if (error) {
-      console.warn('[referees] Supabase insert note:', error.message);
-      const fallbackRef = { id: `ref-${Date.now()}`, tournament_id, name, phone, level, notes };
-      return NextResponse.json({ referee: fallbackRef });
-    }
+    if (error) return NextResponse.json({ error: 'Failed to create referee' }, { status: 500 });
     return NextResponse.json({ referee: data });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Failed to create referee' }, { status: 500 });
@@ -77,7 +64,5 @@ export async function DELETE(req: NextRequest) {
     const { error } = await supa.from('tournament_referees').delete().eq('id', id).eq('tournament_id', resource.tournament_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ ok: true });
-  }
+  } catch { return NextResponse.json({ error: 'Failed to delete referee' }, { status: 500 }); }
 }
