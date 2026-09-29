@@ -127,6 +127,22 @@ BEGIN
   END IF;
 END $;
 
+-- Public private-session requests may be submitted without authentication,
+-- but their numeric inputs must remain structurally valid.
+DO $
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.private_sessions_requests'::regclass AND conname='private_sessions_requests_amount_nonnegative') THEN
+    ALTER TABLE public.private_sessions_requests
+      ADD CONSTRAINT private_sessions_requests_amount_nonnegative
+      CHECK (amount IS NULL OR amount >= 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.private_sessions_requests'::regclass AND conname='private_sessions_requests_duration_positive') THEN
+    ALTER TABLE public.private_sessions_requests
+      ADD CONSTRAINT private_sessions_requests_duration_positive
+      CHECK ("durationMinutes" IS NULL OR "durationMinutes" > 0);
+  END IF;
+END $;
+
 -- Canonical player video policies.
 DROP POLICY IF EXISTS "Players can insert own videos" ON public.player_videos;
 DROP POLICY IF EXISTS "Players can update own pending videos" ON public.player_videos;
