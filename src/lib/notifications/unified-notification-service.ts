@@ -61,14 +61,25 @@ export class UnifiedNotificationService {
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) throw authError || new Error('Authentication required');
 
+    const { data: receiver, error: receiverError } = await supabase
+      .from('players')
+      .select('uid')
+      .eq('id', data.receiverId)
+      .maybeSingle();
+    if (receiverError) throw receiverError;
+    const receiverId = String(receiver?.uid ?? '').trim();
+    if (!receiverId) throw new Error('Receiver has no authenticated identity');
+
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
     const messageData = { ...data };
     delete messageData.senderId;
+    delete messageData.receiverId;
     const { error } = await supabase.from('messages').insert({
       id,
       ...messageData,
       senderId: authData.user.id,
+      receiverId,
       read: false,
       isRead: false,
       createdAt: now,
