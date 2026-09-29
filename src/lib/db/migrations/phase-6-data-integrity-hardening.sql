@@ -348,3 +348,8 @@ $$;
 
 REVOKE ALL ON FUNCTION public.mark_interaction_notification_read(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.mark_interaction_notification_read(text) TO authenticated;
+
+
+-- Messages RLS: remove legacy permissive policies that bypass participant ownership.
+DROP POLICY IF EXISTS "users_all_insert_messages" ON public.messages;
+DROP POLICY IF EXISTS "users_all_select_messages" ON public.messages;
