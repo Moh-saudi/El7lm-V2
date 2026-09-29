@@ -13,11 +13,12 @@ export async function POST(req: NextRequest) {
 
     try {
         const supa = getSupabaseAdmin();
-        const { data: category } = await supa
+        const { data: category, error: categoryError } = await supa
             .from('tournament_categories')
             .select('tournament_id')
             .eq('id', category_id)
             .maybeSingle();
+        if (categoryError) return NextResponse.json({ error: categoryError.message }, { status: 500 });
         if (!category?.tournament_id) return NextResponse.json({ error: 'Category not found' }, { status: 404 });
 
         const authorization = await authorizeTournamentOwnership(req, category.tournament_id);
@@ -25,9 +26,11 @@ export async function POST(req: NextRequest) {
 
         // First: clear group_id for all teams in this category
         if (category_id) {
-            await supa.from('tournament_teams')
+            const { error: clearError } = await supa.from('tournament_teams')
                 .update({ group_id: null })
-                .eq('category_id', category_id);
+                .eq('category_id', category_id)
+                .eq('tournament_id', category.tournament_id);
+            if (clearError) return NextResponse.json({ error: clearError.message }, { status: 500 });
         }
 
         // Then assign each team to its group
@@ -35,7 +38,12 @@ export async function POST(req: NextRequest) {
             for (const team of group.teams) {
                 const updates: any = { group_id: group.id };
                 if (!team.category_id && category_id) updates.category_id = category_id;
-                await supa.from('tournament_teams').update(updates).eq('id', team.id).eq('tournament_id', category.tournament_id);
+                const { error: updateError } = await supa.from('tournament_teams')
+                    .update(updates)
+                    .eq('id', team.id)
+                    .eq('tournament_id', category.tournament_id)
+                    .eq('category_id', category_id);
+                if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
             }
         }
 
