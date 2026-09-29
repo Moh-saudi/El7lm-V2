@@ -113,26 +113,23 @@ async function hasDuplicateRecent(
 }
 
 async function getPhoneForUser(userId: string): Promise<string | null> {
-    const db = getSupabaseAdmin();
-    const { data, error } = await db.from('users').select('phone, phoneNumber').eq('id', userId).limit(1);
+  const db = getSupabaseAdmin();
+
+  const users = await db.from('users').select('phone, phoneNumber').eq('id', userId).limit(1);
+  if (users.error) throw users.error;
+  if (users.data?.length) return String(users.data[0].phone ?? users.data[0].phoneNumber ?? '').trim() || null;
+
+  const players = await db.from('players').select('phone, phoneNumber').eq('id', userId).limit(1);
+  if (players.error) throw players.error;
+  if (players.data?.length) return String(players.data[0].phone ?? players.data[0].phoneNumber ?? '').trim() || null;
+
+  for (const table of ['clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'] as const) {
+    const { data, error } = await db.from(table).select('phone').eq('id', userId).limit(1);
     if (error) throw error;
-    if (data?.length) {
-      const row = data[0] as Record<string, unknown>;
-      if (row.phone) return String(row.phone);
-      if (row.phoneNumber) return String(row.phoneNumber);
-    }
-    for (const col of ['players', 'clubs', 'academies', 'agents', 'trainers']) {
-      const { data: rows, error: rowsError } = await db.from(col).select('phone, phoneNumber').eq('id', userId).limit(1);
-      if (rowsError) throw rowsError;
-      if (rows?.length) {
-        const r = rows[0] as Record<string, unknown>;
-        if (r.phone) return String(r.phone);
-        if (r.phoneNumber) return String(r.phoneNumber);
-      }
-    }
+    if (data?.length) return String(data[0].phone ?? '').trim() || null;
+  }
   return null;
 }
-
 async function getChatAmanConfig(db: ReturnType<typeof getSupabaseAdmin>): Promise<{ apiKey: string; baseUrl: string; isActive: boolean } | null> {
     const { data, error } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);
     if (error) throw error;
