@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { authorizeTournamentOwnership } from '@/lib/api/tournament-auth';
+import { authorizeTournamentOwnership, categoryBelongsToTournament } from '@/lib/api/tournament-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +15,9 @@ export async function GET(req: NextRequest) {
     const authorization = await authorizeTournamentOwnership(req, tournament_id);
     if (!authorization.user) return authorization.response!;
     const supa = getSupabaseAdmin();
+    if (category_id && category_id !== 'all' && !(await categoryBelongsToTournament(category_id, tournament_id))) {
+        return NextResponse.json({ error: 'Category does not belong to tournament' }, { status: 400 });
+    }
 
     let q = supa.from('tournament_groups').select('id, name, sort_order')
         .eq('tournament_id', tournament_id).order('sort_order');
@@ -35,6 +38,9 @@ export async function POST(req: NextRequest) {
     const authorization = await authorizeTournamentOwnership(req, tournament_id);
     if (!authorization.user) return authorization.response!;
     const supa = getSupabaseAdmin();
+    if (category_id && category_id !== 'all' && !(await categoryBelongsToTournament(category_id, tournament_id))) {
+        return NextResponse.json({ error: 'Category does not belong to tournament' }, { status: 400 });
+    }
 
     if (count) {
         const n = Number(count);
