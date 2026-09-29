@@ -9,6 +9,7 @@ import { authorizeAdmin } from '@/lib/api/admin-auth';
 import { sendChatAmanTemplate } from '@/lib/server/chataman-provider';
 
 const BATCH_SIZE = 10;
+const MAX_RECIPIENTS_PER_REQUEST = 500;
 
 interface Targeting {
   positions?: string[];
@@ -149,30 +150,6 @@ export async function POST(req: NextRequest) {
     const cfg = cfgRows[0] as Record<string, unknown>;
     if (!cfg.isActive || !cfg.apiKey || !cfg.baseUrl) return NextResponse.json({ success: false, error: 'ChatAman inactive or incomplete config' }, { status: 400 });
 
-    // Write broadcast doc
-    if (broadcastData) {
-      if (typeof broadcastData !== 'object' || Array.isArray(broadcastData)) {
-        return NextResponse.json({ success: false, error: 'Invalid broadcastData' }, { status: 400 });
-      }
-      const safeBroadcast = broadcastData as Record<string, unknown>;
-      const { error: broadcastError } = await db.from('broadcasts').insert({
-        id: crypto.randomUUID(),
-        opportunityId: safeBroadcast.opportunityId,
-        opportunityTitle: safeBroadcast.opportunityTitle,
-        opportunityType: safeBroadcast.opportunityType,
-        organizerName: safeBroadcast.organizerName,
-        organizerType: safeBroadcast.organizerType,
-        eventType,
-        title: safeBroadcast.title,
-        message: safeBroadcast.message,
-        actionUrl: typeof safeBroadcast.actionUrl === 'string' ? safeBroadcast.actionUrl : '/dashboard/opportunities',
-        targetType: safeBroadcast.targetType,
-        data: safeBroadcast.data,
-        createdAt: new Date().toISOString(),
-      });
-      if (broadcastError) throw broadcastError;
-    }
-
     const hasTargeting = targeting && Object.keys(targeting).some(k => {
       const v = targeting[k];
       return v !== undefined && v !== null && v !== 'both' && (!Array.isArray(v) || v.length > 0);
@@ -196,6 +173,37 @@ export async function POST(req: NextRequest) {
       });
       phones = Array.from(phoneSet);
       matched = phones.length;
+    }
+
+    if (phones.length > MAX_RECIPIENTS_PER_REQUEST) {
+      return NextResponse.json(
+        { success: false, error: 'Too many recipients for a synchronous broadcast', matched: phones.length, limit: MAX_RECIPIENTS_PER_REQUEST },
+        { status: 413 },
+      );
+    }
+
+    // Write broadcast doc
+    if (broadcastData) {
+      if (typeof broadcastData !== 'object' || Array.isArray(broadcastData)) {
+        return NextResponse.json({ success: false, error: 'Invalid broadcastData' }, { status: 400 });
+      }
+      const safeBroadcast = broadcastData as Record<string, unknown>;
+      const { error: broadcastError } = await db.from('broadcasts').insert({
+        id: crypto.randomUUID(),
+        opportunityId: safeBroadcast.opportunityId,
+        opportunityTitle: safeBroadcast.opportunityTitle,
+        opportunityType: safeBroadcast.opportunityType,
+        organizerName: safeBroadcast.organizerName,
+        organizerType: safeBroadcast.organizerType,
+        eventType,
+        title: safeBroadcast.title,
+        message: safeBroadcast.message,
+        actionUrl: typeof safeBroadcast.actionUrl === 'string' ? safeBroadcast.actionUrl : '/dashboard/opportunities',
+        targetType: safeBroadcast.targetType,
+        data: safeBroadcast.data,
+        createdAt: new Date().toISOString(),
+      });
+      if (broadcastError) throw broadcastError;
     }
 
     if (phones.length === 0) {
