@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase/config';
 import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { checkAccountStatus, updateLastLogin } from './account-status-checker';
+import { checkAccountStatus } from './account-status-checker';
 
 // User data interface
 interface AuthContextType {
@@ -437,8 +437,6 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
         await supabase.auth.signOut();
         throw new Error(accountStatus.message);
       }
-
-      try { await updateLastLogin(authUser.id); } catch (e) { console.warn('Failed to update last login:', e); }
 
       setUser(authUser);
       setUserData(userData);
