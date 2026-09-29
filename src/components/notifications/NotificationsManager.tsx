@@ -607,53 +607,6 @@ export default function NotificationsManager({
     }
   };
 
-  // إنشاء إشعارات تجريبية
-  const createTestNotifications = async () => {
-    if (!user?.id) return;
-
-    try {
-      // استيراد ديناميكي لتجنب مشاكل في وقت البناء
-      const {
-        createTestNotification,
-        createTestInteractionNotification,
-        createTestPaymentNotification,
-        createTestWarningNotification
-      } = await import('@/lib/supabase/test-notifications');
-
-      await Promise.all([
-        createTestNotification(user.id),
-        createTestInteractionNotification(user.id),
-        createTestPaymentNotification(user.id),
-        createTestWarningNotification(user.id)
-      ]);
-
-      toast.success(nt('testCreated'));
-    } catch (error) {
-      console.error('خطأ في إنشاء الإشعارات التجريبية:', error);
-      toast.error(nt('testCreateFailed'));
-    }
-  };
-
-  // إنشاء إشعارات متعددة
-  const createMultipleNotifications = async () => {
-    if (!user?.id) return;
-
-    try {
-      const { createTestNotification } = await import('@/lib/supabase/test-notifications');
-
-      const promises = [];
-      for (let i = 0; i < 10; i++) {
-        promises.push(createTestNotification(user.id));
-      }
-
-      await Promise.all(promises);
-      toast.success(nt('tenCreated'));
-    } catch (error) {
-      console.error('خطأ في إنشاء الإشعارات المتعددة:', error);
-      toast.error(nt('multipleCreateFailed'));
-    }
-  };
-
   // معالجة حالة عدم وجود مستخدم
   if (!user) {
     return (
@@ -700,8 +653,6 @@ export default function NotificationsManager({
       onDelete={deleteNotification}
       onReply={replyToNotification}
       onForward={forwardNotification}
-      onCreateTestNotifications={showTestButtons ? createTestNotifications : undefined}
-      onCreateMultipleNotifications={showTestButtons ? createMultipleNotifications : undefined}
       showSenderInfo={showSenderInfo}
       title={displayTitle}
       description={displayDescription}
