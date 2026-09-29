@@ -10,7 +10,7 @@ export interface AccountStatus {
 
 export async function checkAccountStatus(userId: string): Promise<AccountStatus> {
   try {
-    const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players', 'users'];
+    const accountTypes = ['users', 'admins', 'clubs', 'academies', 'trainers', 'agents', 'players', 'marketers'];
     let userData: Record<string, unknown> | null = null;
 
     const results = await Promise.allSettled(
@@ -56,32 +56,6 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
         message: `تم إيقاف حسابك مؤقتاً.\n\nالسبب: ${suspendReason}\n\nيرجى التواصل مع الإدارة لإعادة تفعيل الحساب.`,
         messageType: 'error'
       };
-    }
-
-    if (userData.subscription) {
-      const subscription = userData.subscription as Record<string, unknown>;
-      const now = new Date();
-      const expiresAt = subscription.expiresAt ? new Date(String(subscription.expiresAt)) : null;
-
-      if (subscription.status === 'expired' || (expiresAt && expiresAt < now)) {
-        return {
-          isActive: true,
-          canLogin: true,
-          message: 'انتهت صلاحية اشتراكك. يمكنك الدخول ولكن بعض الميزات قد تكون محدودة.',
-          messageType: 'warning',
-          redirectTo: '/dashboard/subscription'
-        };
-      }
-
-      if (subscription.status === 'cancelled') {
-        return {
-          isActive: true,
-          canLogin: true,
-          message: 'تم إلغاء اشتراكك. يمكنك الدخول ولكن بعض الميزات قد تكون محدودة.',
-          messageType: 'warning',
-          redirectTo: '/dashboard/subscription'
-        };
-      }
     }
 
     return {
