@@ -321,12 +321,9 @@ const ModernMessageCenter: React.FC = () => {
         try {
             await UnifiedNotificationService.createMessage({
                 conversationId: selectedConversation.id,
-                senderId: user.id,
                 receiverId: otherParticipantId,
                 senderName: userData?.full_name || user.email || 'مستخدم',
                 message: newMessage.trim(),
-                timestamp: new Date().toISOString(),
-                isRead: false,
                 messageType: 'text',
                 isPinned: false
             });
@@ -576,13 +573,10 @@ const ModernMessageCenter: React.FC = () => {
 
             await UnifiedNotificationService.createMessage({
                 conversationId: selectedConversation.id,
-                senderId: user.id,
                 receiverId: otherParticipantId,
                 senderName: userData?.full_name || user.email || 'مستخدم',
                 message: '📷 صورة',
                 imageUrl: imageUrl,
-                timestamp: new Date().toISOString(),
-                isRead: false,
                 messageType: 'image',
                 isPinned: false
             });
@@ -634,13 +628,10 @@ const ModernMessageCenter: React.FC = () => {
             // حفظ الرسالة في Supabase مع رابط الملف
             await UnifiedNotificationService.createMessage({
                 conversationId: selectedConversation.id,
-                senderId: user.id,
                 receiverId: otherParticipantId,
                 senderName: userData?.full_name || user.email || 'مستخدم',
                 message: `🎤 رسالة صوتية (${recordingTime} ثانية)`,
                 voiceUrl: voiceUrl,
-                timestamp: new Date().toISOString(),
-                isRead: false,
                 messageType: 'voice',
                 voiceDuration: recordingTime,
                 isPinned: false
