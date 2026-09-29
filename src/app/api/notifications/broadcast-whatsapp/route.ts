@@ -56,17 +56,17 @@ async function getTargetedPhones(targeting: Targeting, db: ReturnType<typeof get
     }
 
     const playerAge = typeof p.age === 'number' ? p.age : calcAge(p.birth_date ?? p.birthDate);
-    if (targeting.ageMin !== undefined && playerAge !== null && playerAge < targeting.ageMin) continue;
-    if (targeting.ageMax !== undefined && playerAge !== null && playerAge > targeting.ageMax) continue;
+    if (targeting.ageMin !== undefined && (playerAge === null || playerAge < targeting.ageMin)) continue;
+    if (targeting.ageMax !== undefined && (playerAge === null || playerAge > targeting.ageMax)) continue;
 
     if (targeting.country) {
       const playerCountry = String(p.country ?? p.nationality ?? '').toLowerCase();
-      if (playerCountry && !playerCountry.includes(targeting.country.toLowerCase())) continue;
+      if (!playerCountry || !playerCountry.includes(targeting.country.toLowerCase())) continue;
     }
 
     if (targeting.gender && targeting.gender !== 'both') {
       const playerGender = String(p.gender ?? '').toLowerCase();
-      if (playerGender && playerGender !== targeting.gender.toLowerCase()) continue;
+      if (!playerGender || playerGender !== targeting.gender.toLowerCase()) continue;
     }
 
     const raw = p.phone ?? p.phoneNumber;
@@ -109,7 +109,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { eventType = 'new_opportunity', templateName = 'opp_pick_up_3', params = [], targeting, broadcastData } = body;
 
-    if (!Array.isArray(params)) return NextResponse.json({ success: false, error: 'params must be an array' }, { status: 400 });
+    if (typeof templateName !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(templateName)) {
+      return NextResponse.json({ success: false, error: 'Invalid templateName' }, { status: 400 });
+    }
+    if (!Array.isArray(params) || params.length > 20 || params.some(p => typeof p !== 'string' || p.length > 1024)) {
+      return NextResponse.json({ success: false, error: 'Invalid template params' }, { status: 400 });
+    }
+    if (targeting && (typeof targeting !== 'object' || Array.isArray(targeting))) {
+      return NextResponse.json({ success: false, error: 'Invalid targeting' }, { status: 400 });
+    }
 
     const db = getSupabaseAdmin();
 
@@ -122,10 +130,24 @@ export async function POST(req: NextRequest) {
 
     // Write broadcast doc
     if (broadcastData) {
+      if (typeof broadcastData !== 'object' || Array.isArray(broadcastData)) {
+        return NextResponse.json({ success: false, error: 'Invalid broadcastData' }, { status: 400 });
+      }
+      const safeBroadcast = broadcastData as Record<string, unknown>;
       const { error: broadcastError } = await db.from('broadcasts').insert({
-        id: crypto.randomUUID(), ...broadcastData, eventType,
+        id: crypto.randomUUID(),
+        opportunityId: safeBroadcast.opportunityId,
+        opportunityTitle: safeBroadcast.opportunityTitle,
+        opportunityType: safeBroadcast.opportunityType,
+        organizerName: safeBroadcast.organizerName,
+        organizerType: safeBroadcast.organizerType,
+        eventType,
+        title: safeBroadcast.title,
+        message: safeBroadcast.message,
+        actionUrl: typeof safeBroadcast.actionUrl === 'string' ? safeBroadcast.actionUrl : '/dashboard/opportunities',
+        targetType: safeBroadcast.targetType,
+        data: safeBroadcast.data,
         createdAt: new Date().toISOString(),
-        actionUrl: broadcastData.actionUrl || '/dashboard/opportunities',
       });
       if (broadcastError) throw broadcastError;
     }
