@@ -57,16 +57,15 @@ async function resolveActorIdentity(authUserId: string): Promise<{ id: string; n
   ] as const;
 
   for (const [table, accountType] of tables) {
-    const select = table === 'users' ? 'id, full_name, name, displayName' : 'id, full_name, name';
     for (const authColumn of ['uid', 'id'] as const) {
-      const { data, error } = await db.from(table).select(select).eq(authColumn, authUserId).limit(1);
+      const { data, error } = await db.from(table).select('id, full_name, name').eq(authColumn, authUserId).limit(1);
       if (error) throw error;
       if (!data?.length) continue;
 
-      const row = data[0] as Record<string, unknown>;
+      const row = data[0] as unknown as Record<string, unknown>;
       const id = String(row.id || '').trim();
       if (!id) return null;
-      const name = String(row.full_name ?? row.displayName ?? row.name ?? '').trim() || 'مستخدم';
+      const name = String(row.full_name ?? row.name ?? '').trim() || 'مستخدم';
       return { id, name, accountType };
     }
   }
