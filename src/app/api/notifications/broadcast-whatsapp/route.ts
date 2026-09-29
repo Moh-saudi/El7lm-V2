@@ -118,6 +118,27 @@ export async function POST(req: NextRequest) {
     if (targeting && (typeof targeting !== 'object' || Array.isArray(targeting))) {
       return NextResponse.json({ success: false, error: 'Invalid targeting' }, { status: 400 });
     }
+    if (targeting) {
+      const t = targeting as Targeting;
+      if (t.positions && (!Array.isArray(t.positions) || t.positions.length > 20 || t.positions.some(p => typeof p !== 'string' || p.length > 64))) {
+        return NextResponse.json({ success: false, error: 'Invalid targeting positions' }, { status: 400 });
+      }
+      if (t.ageMin !== undefined && (!Number.isInteger(t.ageMin) || t.ageMin < 0 || t.ageMin > 120)) {
+        return NextResponse.json({ success: false, error: 'Invalid ageMin' }, { status: 400 });
+      }
+      if (t.ageMax !== undefined && (!Number.isInteger(t.ageMax) || t.ageMax < 0 || t.ageMax > 120)) {
+        return NextResponse.json({ success: false, error: 'Invalid ageMax' }, { status: 400 });
+      }
+      if (t.ageMin !== undefined && t.ageMax !== undefined && t.ageMin > t.ageMax) {
+        return NextResponse.json({ success: false, error: 'ageMin cannot exceed ageMax' }, { status: 400 });
+      }
+      if (t.country !== undefined && (typeof t.country !== 'string' || t.country.length > 100)) {
+        return NextResponse.json({ success: false, error: 'Invalid targeting country' }, { status: 400 });
+      }
+      if (t.gender !== undefined && !['male', 'female', 'both'].includes(t.gender)) {
+        return NextResponse.json({ success: false, error: 'Invalid targeting gender' }, { status: 400 });
+      }
+    }
 
     const db = getSupabaseAdmin();
 
@@ -126,7 +147,7 @@ export async function POST(req: NextRequest) {
     if (configError) throw configError;
     if (!cfgRows?.length) return NextResponse.json({ success: false, error: 'ChatAman config not found' }, { status: 400 });
     const cfg = cfgRows[0] as Record<string, unknown>;
-    if (!cfg.isActive || !cfg.apiKey) return NextResponse.json({ success: false, error: 'ChatAman inactive or missing apiKey' }, { status: 400 });
+    if (!cfg.isActive || !cfg.apiKey || !cfg.baseUrl) return NextResponse.json({ success: false, error: 'ChatAman inactive or incomplete config' }, { status: 400 });
 
     // Write broadcast doc
     if (broadcastData) {
