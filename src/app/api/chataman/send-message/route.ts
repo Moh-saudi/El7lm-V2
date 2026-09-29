@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authorizeAdmin } from '@/lib/api/admin-auth';
+import { authorizeAdmin, withPrivateResponseHeaders } from '@/lib/api/admin-auth';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 function getChatAmanBaseUrl(value: unknown): string | null {
   try {
@@ -13,57 +14,52 @@ function getChatAmanBaseUrl(value: unknown): string | null {
 }
 
 export async function POST(req: NextRequest) {
+  const authorization = await authorizeAdmin(req, 'manage:communications');
+  if (!authorization.ok) return authorization.response;
+
   try {
-    const authorization = await authorizeAdmin(req, 'manage:communications');
-    if (!authorization.ok) return authorization.response;
+    const { payload } = await req.json();
+    if (!payload) return NextResponse.json({ success: false, error: 'Missing payload' }, { status: 400 });
 
-    const { payload, apiKey, baseUrl } = await req.json();
+    const db = getSupabaseAdmin();
+    const { data, error } = await db
+      .from('system_configs')
+      .select('apiKey,baseUrl,isActive')
+      .eq('id', 'chataman_config')
+      .maybeSingle();
 
-    if (!payload || !apiKey || !baseUrl) {
-      return NextResponse.json({ success: false, error: 'Missing required parameters: payload, apiKey, or baseUrl' }, { status: 400 });
+    const baseUrl = getChatAmanBaseUrl(data?.baseUrl);
+    const apiKey = String(data?.apiKey || '').trim();
+    if (error || !data?.isActive || !baseUrl || !apiKey) {
+      return withPrivateResponseHeaders(
+        NextResponse.json({ success: false, error: 'Messaging provider is not configured' }, { status: 503 }),
+      );
     }
 
-    const safeBaseUrl = getChatAmanBaseUrl(baseUrl);
-    if (!safeBaseUrl) {
-      return NextResponse.json({ success: false, error: 'Invalid ChatAman URL' }, { status: 400 });
-    }
-    const targetUrl = `${safeBaseUrl}/api/send`;
-
-    console.log(`[Proxy-Message] Forwarding to: ${targetUrl}`);
-
-    const response = await fetch(targetUrl, {
+    const response = await fetch(`${baseUrl}/api/send`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey.trim()}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        Accept: 'application/json',
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000),
     });
 
-    let data;
-    try {
-      data = await response.json();
-    } catch (e) {
-      const text = await response.text();
-      console.log(`[Proxy-Message] Raw text response from ChatAman:`, text);
-      data = { success: response.ok, message: text || 'Empty response from provider' };
-    }
-    
-    console.log(`[Proxy-Message] Response from ChatAman:`, JSON.stringify(data, null, 2));
+    const providerData = await response.json().catch(() => null);
+    const success = response.ok && providerData?.status !== 'error' && providerData?.success !== false;
 
-    if (!response.ok || data.status === 'error' || data.success === false) {
-      return NextResponse.json({ 
-        success: false, 
-        message: data.message || 'Failed to send message through provider', 
-        error: data 
-      }, { status: response.ok ? 400 : response.status });
-    }
-
-    return NextResponse.json({ success: true, data: data });
-
-  } catch (error: any) {
-    console.error('ChatAman Messenger Proxy Error:', error);
-    return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });
+    return withPrivateResponseHeaders(
+      NextResponse.json(
+        { success, data: success ? providerData : undefined, error: success ? undefined : 'Failed to send message through provider' },
+        { status: success ? 200 : 502 },
+      ),
+    );
+  } catch (error) {
+    console.error('[chataman/send-message] failed:', error);
+    return withPrivateResponseHeaders(
+      NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 }),
+    );
   }
 }
