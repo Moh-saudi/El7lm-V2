@@ -21,7 +21,6 @@ export async function POST(req: NextRequest) {
     if (!authorization.user) return authorization.response!;
     const supa = getSupabaseAdmin();
     if (!(await categoryBelongsToTournament(category_id, tournament_id))) return NextResponse.json({ error: 'Category does not belong to tournament' }, { status: 400 });
-  if (!(await categoryBelongsToTournament(category_id, tournament_id))) return NextResponse.json({ error: 'Category does not belong to tournament' }, { status: 400 });
 
     // Fetch groups for this category
     const { data: groups, error: grpErr } = await supa
