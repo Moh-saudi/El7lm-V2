@@ -34,6 +34,13 @@ export interface MessageData {
   receiverAvatar?: string;
   senderAccountType?: string;
   receiverAccountType?: string;
+  conversationId?: string;
+  subject?: string | null;
+  imageUrl?: string;
+  voiceUrl?: string;
+  voiceDuration?: number;
+  isPinned?: boolean;
+  deliveryStatus?: string;
   read?: boolean;
   metadata?: Record<string, unknown>;
 }
