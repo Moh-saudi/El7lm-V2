@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeAdmin } from '@/lib/api/admin-auth';
 
+function getChatAmanBaseUrl(value: unknown): string | null {
+  try {
+    const url = new URL(String(value || 'https://chataman.com'));
+    if (url.protocol !== 'https:') return null;
+    if (url.hostname !== 'chataman.com' && !url.hostname.endsWith('.chataman.com')) return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest) {
   const authorization = await authorizeAdmin(req);
   if (!authorization.ok) return authorization.response;
@@ -19,7 +30,10 @@ export async function GET(req: NextRequest) {
     }
 
     const apiKey = String(config.apiKey).trim();
-    const cleanBaseUrl = String(config.baseUrl || 'https://chataman.com').trim().replace(/\/+$/, '');
+    const cleanBaseUrl = getChatAmanBaseUrl(config.baseUrl);
+    if (!cleanBaseUrl) {
+      return NextResponse.json({ success: false, error: 'Invalid ChatAman URL' }, { status: 400 });
+    }
 
     const payloadTemplate = {
       phone: "+201026567954",
