@@ -18,9 +18,12 @@ export type NotificationEventType =
 export interface DispatchOptions {
   eventType: NotificationEventType;
   targetUserId: string;
-  actorId: string;
-  actorName: string;
-  actorAccountType: string;
+  /** @deprecated Actor identity is derived server-side from the authenticated session. */
+  actorId?: string;
+  /** @deprecated Actor identity is derived server-side from the authenticated session. */
+  actorName?: string;
+  /** @deprecated Actor identity is derived server-side from the authenticated session. */
+  actorAccountType?: string;
   metadata?: {
     videoId?: string;
     commentText?: string;
@@ -38,7 +41,11 @@ export async function dispatchNotification(opts: DispatchOptions): Promise<void>
     const res = await authenticatedFetch('/api/notifications/dispatch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(opts),
+      body: JSON.stringify({
+        eventType: opts.eventType,
+        targetUserId: opts.targetUserId,
+        metadata: opts.metadata,
+      }),
     });
     const data = await res.json().catch(() => ({}));
     if (process.env.NODE_ENV === 'development') {
