@@ -47,15 +47,34 @@ export interface MessageData {
 
 export class UnifiedNotificationService {
 
+  private static async resolveAuthUserId(identifier: string): Promise<string> {
+    const matches = new Set<string>();
+    for (const table of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'] as const) {
+      const byId = await supabase.from(table).select('uid').eq('id', identifier).limit(1);
+      if (byId.error) throw byId.error;
+      if (byId.data?.[0]?.uid) matches.add(String(byId.data[0].uid).trim());
+
+      const byUid = await supabase.from(table).select('uid').eq('uid', identifier).limit(1);
+      if (byUid.error) throw byUid.error;
+      if (byUid.data?.[0]?.uid) matches.add(String(byUid.data[0].uid).trim());
+    }
+    matches.delete('');
+    if (matches.size === 0) throw new Error('Target has no authenticated identity');
+    if (matches.size > 1) throw new Error('Target identity is ambiguous');
+    return [...matches][0];
+  }
+
   static async createNotification(data: NotificationData): Promise<string> {
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) throw authError || new Error('Authentication required');
 
+    const targetUserId = await this.resolveAuthUserId(data.userId);
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
     const payload = normalizeNotificationPayload({
       id,
       ...data,
+      userId: targetUserId,
       senderId: authData.user.id,
       read: false,
       isRead: false,
@@ -71,25 +90,7 @@ export class UnifiedNotificationService {
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) throw authError || new Error('Authentication required');
 
-    let receiverId = '';
-    for (const table of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'] as const) {
-      const byId = await supabase.from(table).select('uid').eq('id', data.receiverId).limit(1);
-      if (byId.error) throw byId.error;
-      const idMatch = byId.data?.[0];
-      if (idMatch?.uid) {
-        receiverId = String(idMatch.uid).trim();
-        break;
-      }
-
-      const byUid = await supabase.from(table).select('uid').eq('uid', data.receiverId).limit(1);
-      if (byUid.error) throw byUid.error;
-      const uidMatch = byUid.data?.[0];
-      if (uidMatch?.uid) {
-        receiverId = String(uidMatch.uid).trim();
-        break;
-      }
-    }
-    if (!receiverId) throw new Error('Receiver has no authenticated identity');
+    const receiverId = await this.resolveAuthUserId(data.receiverId);
 
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
