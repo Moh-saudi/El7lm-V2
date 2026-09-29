@@ -40,58 +40,28 @@ export function createPortalClient(): SupabaseClient {
 
 // ── تسجيل الدخول ────────────────────────────────────────────
 export async function signInClient(email: string, password: string) {
+    const supabase = createPortalClient();
     const cleanEmail = email.trim().toLowerCase();
-
-    // 1. Try Portal Auth API first (verifies credentials against registered tournament clients)
-    try {
-        const res = await fetch('/api/tournament-portal/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: cleanEmail, password }),
-        });
-
-        if (res.ok) {
-            const json = await res.json();
-            if (json.success && json.client) {
-                if (typeof window !== 'undefined') {
-                    localStorage.setItem('portal-client-session', JSON.stringify(json.client));
-                    localStorage.setItem('portal-auth-token', json.token);
-                }
-                return {
-                    user: { id: json.client.supabase_auth_id || json.client.id, email: json.client.email },
-                    session: { access_token: json.token },
-                };
-            } else if (json.error && !json.error.includes('غير مسجل')) {
-                // Return specific error (e.g. account disabled or bad password)
-                throw new Error(json.error);
-            }
-        }
-    } catch (apiErr: any) {
-        if (apiErr.message && !apiErr.message.includes('fetch')) {
-            throw apiErr;
-        }
+    const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+    if (error || !data?.user || !data.session) {
+        throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة');
     }
 
-    // 2. Fallback to Supabase Auth if needed
-    const supabase = createPortalClient();
-    try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-        if (!error && data?.user) {
-            const { data: client } = await supabase
-                .from('tournament_clients')
-                .select('*')
-                .eq('supabase_auth_id', data.user.id)
-                .maybeSingle();
+    const { data: client, error: clientError } = await supabase
+        .from('tournament_clients')
+        .select('*')
+        .eq('supabase_auth_id', data.user.id)
+        .maybeSingle();
 
-            if (client && typeof window !== 'undefined') {
-                localStorage.setItem('portal-client-session', JSON.stringify(client));
-                localStorage.setItem('portal-auth-token', data.session?.access_token || client.id);
-            }
-            return data;
-        }
-    } catch {}
+    if (clientError || !client || client.is_active === false) {
+        await supabase.auth.signOut();
+        throw new Error('حساب بوابة البطولات غير متاح');
+    }
 
-    throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('portal-client-session', JSON.stringify(client));
+    }
+    return data;
 }
 
 // ── تسجيل خروج ──────────────────────────────────────────────
@@ -116,10 +86,6 @@ export async function portalAuthenticatedFetch(
         const { data: { session } } = await supabase.auth.getSession();
         token = session?.access_token || null;
     } catch {}
-
-    if (!token && typeof window !== 'undefined') {
-        token = localStorage.getItem('portal-auth-token');
-    }
 
     const headers = new Headers(init.headers);
     if (token) {
@@ -156,20 +122,6 @@ export async function signUpClient(params: {
 
 // ── جلب المستخدم الحالي ──────────────────────────────────────
 export async function getCurrentClient(): Promise<TournamentClient | null> {
-    // 1. Check local active portal session
-    if (typeof window !== 'undefined') {
-        const raw = localStorage.getItem('portal-client-session');
-        if (raw) {
-            try {
-                const parsed = JSON.parse(raw);
-                if (parsed?.id && parsed?.name) {
-                    return parsed as TournamentClient;
-                }
-            } catch {}
-        }
-    }
-
-    // 2. Check Supabase auth session
     const supabase = createPortalClient();
     try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -181,15 +133,14 @@ export async function getCurrentClient(): Promise<TournamentClient | null> {
             .eq('supabase_auth_id', session.user.id)
             .maybeSingle();
 
-        if (client) {
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('portal-client-session', JSON.stringify(client));
-            }
-            return client;
+        if (!client || client.is_active === false) return null;
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('portal-client-session', JSON.stringify(client));
         }
-    } catch {}
-
-    return null;
+        return client;
+    } catch {
+        return null;
+    }
 }
 
 // ── Types ────────────────────────────────────────────────────
