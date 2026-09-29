@@ -160,6 +160,11 @@ BEGIN
   END IF;
 END $;
 
+-- Tournament player lookups are team-centric; this table showed repeated
+-- sequential scans and previously had only its primary-key index.
+CREATE INDEX IF NOT EXISTS idx_tournament_players_team_id
+  ON public.tournament_players (team_id);
+
 -- Canonical player video policies.
 DROP POLICY IF EXISTS "Players can insert own videos" ON public.player_videos;
 DROP POLICY IF EXISTS "Players can update own pending videos" ON public.player_videos;
