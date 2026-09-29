@@ -1,30 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authorizeTournamentOwnership } from '@/lib/api/tournament-auth';
 
-// Twilio credentials (optional — set in .env to enable real SMS)
-const TWILIO_SID   = process.env.TWILIO_ACCOUNT_SID;
+const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_FROM  = process.env.TWILIO_PHONE_NUMBER;
+const TWILIO_FROM = process.env.TWILIO_PHONE_NUMBER;
+const MAX_RECIPIENTS = 100;
+const MAX_MESSAGE_LENGTH = 1000;
 
 export async function POST(req: NextRequest) {
-  const { phones, message } = await req.json() as { phones: string[]; message: string };
-  if (!phones?.length || !message) {
-    return NextResponse.json({ error: 'phones and message required' }, { status: 400 });
+  const { tournament_id, phones, message } = await req.json() as {
+    tournament_id?: string;
+    phones?: string[];
+    message?: string;
+  };
+
+  if (!tournament_id || !Array.isArray(phones) || phones.length === 0 || !message?.trim()) {
+    return NextResponse.json({ error: 'tournament_id, phones and message required' }, { status: 400 });
+  }
+  if (phones.length > MAX_RECIPIENTS || message.length > MAX_MESSAGE_LENGTH) {
+    return NextResponse.json({ error: 'SMS request exceeds allowed limits' }, { status: 400 });
   }
 
-  // If Twilio is not configured, return a helpful guide
+  const authorization = await authorizeTournamentOwnership(req, tournament_id);
+  if (!authorization.user) return authorization.response!;
+
   if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_FROM) {
-    return NextResponse.json({
-      sent: 0,
-      warning: 'Twilio not configured. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER in .env to enable real SMS.',
-      phones,
-    });
+    return NextResponse.json({ sent: 0, error: 'SMS provider is not configured' }, { status: 503 });
   }
 
-  const results: { phone: string; success: boolean; error?: string }[] = [];
-
+  const results: { success: boolean; error?: string }[] = [];
   for (const rawPhone of phones) {
-    const phone = rawPhone.replace(/\D/g, '');
-    if (!phone) { results.push({ phone: rawPhone, success: false, error: 'invalid phone' }); continue; }
+    const phone = String(rawPhone).replace(/\D/g, '');
+    if (phone.length < 8 || phone.length > 15) {
+      results.push({ success: false, error: 'invalid phone' });
+      continue;
+    }
 
     try {
       const res = await fetch(
@@ -35,17 +45,22 @@ export async function POST(req: NextRequest) {
             Authorization: `Basic ${Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64')}`,
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: new URLSearchParams({ To: `+${phone}`, From: TWILIO_FROM, Body: message }),
-        }
+          body: new URLSearchParams({ To: `+${phone}`, From: TWILIO_FROM, Body: message.trim() }),
+          signal: AbortSignal.timeout(15000),
+        },
       );
-      const json = await res.json();
-      if (json.error_code) results.push({ phone, success: false, error: json.message });
-      else results.push({ phone, success: true });
-    } catch (e: any) {
-      results.push({ phone, success: false, error: e.message });
+      const json = await res.json().catch(() => null);
+      results.push(res.ok && !json?.error_code
+        ? { success: true }
+        : { success: false, error: 'provider rejected message' });
+    } catch {
+      results.push({ success: false, error: 'provider request failed' });
     }
   }
 
-  const sent = results.filter(r => r.success).length;
-  return NextResponse.json({ sent, total: phones.length, results });
+  return NextResponse.json({
+    sent: results.filter(r => r.success).length,
+    total: phones.length,
+    failed: results.filter(r => !r.success).length,
+  });
 }
