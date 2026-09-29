@@ -93,6 +93,40 @@ BEGIN
   END IF;
 END $;
 
+-- Legacy tournament registrations remain on the original tournaments system.
+-- Client-created registrations must begin in a non-authoritative payment state.
+DROP POLICY IF EXISTS tournament_registration_owner_insert ON public.tournament_registrations;
+
+CREATE POLICY tournament_registration_owner_insert
+ON public.tournament_registrations
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  (
+    "userId" = (SELECT auth.uid())::text
+    OR "playerId" = (SELECT auth.uid())::text
+  )
+  AND coalesce("paymentStatus", 'pending') IN ('pending','review')
+  AND coalesce(status, 'pending') IN ('pending','pending_review')
+  AND nullif("geideaOrderId",'') IS NULL
+  AND nullif("geideaTransactionId",'') IS NULL
+  AND "geideaPaymentData" IS NULL
+);
+
+DO $
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.tournament_registrations'::regclass AND conname='tournament_registrations_payment_amount_nonnegative') THEN
+    ALTER TABLE public.tournament_registrations
+      ADD CONSTRAINT tournament_registrations_payment_amount_nonnegative
+      CHECK ("paymentAmount" IS NULL OR "paymentAmount" >= 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.tournament_registrations'::regclass AND conname='tournament_registrations_total_amount_nonnegative') THEN
+    ALTER TABLE public.tournament_registrations
+      ADD CONSTRAINT tournament_registrations_total_amount_nonnegative
+      CHECK ("totalAmount" IS NULL OR "totalAmount" >= 0);
+  END IF;
+END $;
+
 -- Canonical player video policies.
 DROP POLICY IF EXISTS "Players can insert own videos" ON public.player_videos;
 DROP POLICY IF EXISTS "Players can update own pending videos" ON public.player_videos;
