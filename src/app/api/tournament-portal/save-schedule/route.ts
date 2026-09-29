@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeTournamentOwnership } from '@/lib/api/tournament-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,24 @@ export async function PATCH(req: NextRequest) {
 
   const errors: string[] = [];
   const supa = getSupabaseAdmin();
+  const matchIds = matches.map((m: { id?: string }) => m.id).filter(Boolean) as string[];
+  const { data: ownedMatches, error: lookupError } = await supa
+    .from('tournament_matches')
+    .select('id, tournament_id')
+    .in('id', matchIds);
+
+  if (lookupError || !ownedMatches || ownedMatches.length !== new Set(matchIds).size) {
+    return NextResponse.json({ error: 'One or more matches were not found' }, { status: 404 });
+  }
+
+  const tournamentIds = [...new Set(ownedMatches.map(m => m.tournament_id))];
+  if (tournamentIds.length !== 1) {
+    return NextResponse.json({ error: 'Matches must belong to one tournament' }, { status: 400 });
+  }
+
+  const tournamentId = tournamentIds[0];
+  const authorization = await authorizeTournamentOwnership(req, tournamentId);
+  if (!authorization.user) return authorization.response!;
 
   for (const m of matches) {
     if (!m.id) continue;
@@ -40,7 +59,7 @@ export async function PATCH(req: NextRequest) {
 
     if (Object.keys(patch).length === 0) continue;
 
-    const { error } = await supa.from('tournament_matches').update(patch).eq('id', m.id);
+    const { error } = await supa.from('tournament_matches').update(patch).eq('id', m.id).eq('tournament_id', tournamentId);
     if (error) errors.push(`${m.id}: ${error.message}`);
   }
 
