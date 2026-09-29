@@ -149,21 +149,12 @@ async function fetchUserData(userId: string, _email: string): Promise<{ data: Re
   // Check role-specific tables — try by uid (Supabase Auth UUID) first, then by id
   const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players', 'marketers'];
 
-  // البحث بالـ uid (Supabase UUID) - الأكثر موثوقية بعد الهجرة
-  const uidResults = await Promise.allSettled(
-    accountTypes.map(t => supabase.from(t).select('*').eq('uid', userId).limit(1))
-  );
-  for (let i = 0; i < uidResults.length; i++) {
-    const r = uidResults[i];
-    if (r.status === 'fulfilled' && r.value.data?.length) {
-      const accountType: UserRole = accountTypes[i] === 'admins' ? 'admin' : (accountTypes[i].slice(0, -1) as UserRole);
-      return { data: r.value.data[0] as Record<string, unknown>, collection: accountTypes[i], accountType };
-    }
-  }
-
-  // البحث بالـ id (Firebase UID القديم) كبديل
+  // Legacy fallback: resolve either the Supabase uid or historical id in one
+  // request per role table instead of scanning every table twice.
   const results = await Promise.allSettled(
-    accountTypes.map(t => supabase.from(t).select('*').eq('id', userId).limit(1))
+    accountTypes.map(t =>
+      supabase.from(t).select('*').or(`uid.eq.${userId},id.eq.${userId}`).limit(1)
+    )
   );
   for (let i = 0; i < results.length; i++) {
     const r = results[i];
