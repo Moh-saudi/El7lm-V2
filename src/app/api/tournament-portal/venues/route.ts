@@ -8,12 +8,8 @@ function isUuid(val: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 }
 
-// In-memory fallback store for dev tournaments (when tournament_id is not a UUID)
-const devVenuesMap = new Map<string, any[]>();
-
 // GET /api/tournament-portal/venues?tournament_id=
 export async function GET(req: NextRequest) {
-  const tid = req.nextUrl.searchParams.get('tournament_id');
   if (!tid) return NextResponse.json({ error: 'tournament_id required' }, { status: 400 });
 
   if (!isUuid(tid)) return NextResponse.json({ error: 'Invalid tournament_id' }, { status: 400 });
@@ -27,14 +23,9 @@ export async function GET(req: NextRequest) {
       .select('*')
       .eq('tournament_id', tid)
       .order('name');
-    if (error) {
-      console.warn('[venues] Supabase query note:', error.message);
-      return NextResponse.json({ venues: devVenuesMap.get(tid) || [] });
-    }
+    if (error) return NextResponse.json({ error: 'Failed to load venues' }, { status: 500 });
     return NextResponse.json({ venues: data || [] });
-  } catch {
-    return NextResponse.json({ venues: devVenuesMap.get(tid) || [] });
-  }
+  } catch { return NextResponse.json({ error: 'Failed to load venues' }, { status: 500 }); }
 }
 
 // POST — create venue
@@ -53,11 +44,7 @@ export async function POST(req: NextRequest) {
       .from('tournament_venues')
       .insert({ tournament_id, name, address: address || null, city: city || null, capacity: capacity || null, notes: notes || null })
       .select().single();
-    if (error) {
-      console.warn('[venues] Supabase insert note:', error.message);
-      const fallbackVenue = { id: `venue-${Date.now()}`, tournament_id, name, address, city, capacity, notes };
-      return NextResponse.json({ venue: fallbackVenue });
-    }
+    if (error) return NextResponse.json({ error: 'Failed to create venue' }, { status: 500 });
     return NextResponse.json({ venue: data });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Failed to create venue' }, { status: 500 });
@@ -109,7 +96,5 @@ export async function DELETE(req: NextRequest) {
     const { error } = await supa.from('tournament_venues').delete().eq('id', id).eq('tournament_id', resource.tournament_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ ok: true });
-  }
+  } catch { return NextResponse.json({ error: 'Failed to delete venue' }, { status: 500 }); }
 }
