@@ -132,9 +132,7 @@ export async function POST(request: NextRequest) {
     await db.from(tableName).insert(userDoc);
 
     // كتابة في جدول users أيضاً (للتوافق)
-    if (tableName !== 'users') {
-      try { await db.from('users').insert(userDoc); } catch { }
-    }
+    try { await db.from('users').insert(userDoc); } catch { }
 
     const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
       type: 'magiclink',
