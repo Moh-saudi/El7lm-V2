@@ -16,7 +16,6 @@ export interface NotificationData {
   accountType: string;
   read?: boolean;
   metadata?: Record<string, unknown>;
-  [key: string]: unknown;
 }
 
 export interface MessageData {
