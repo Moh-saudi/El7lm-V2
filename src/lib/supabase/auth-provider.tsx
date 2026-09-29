@@ -413,17 +413,6 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
       if (isEmployee && foundData.roleId) {
         const { data: roleRows } = await supabase.from('roles').select('*').eq('id', String(foundData.roleId)).limit(1);
         if (roleRows?.length) permissions = (roleRows[0] as Record<string, unknown>).permissions as string[] || [];
-        // Sync employee to users table
-        try {
-          await supabase.from('users').upsert({
-            id: authUser.id,
-            ...foundData,
-            employeeId: String(foundData.id || ''),
-            employeeRole: foundData.roleId || foundData.role,
-            role: foundData.roleId || foundData.role,
-            updated_at: new Date().toISOString(),
-          });
-        } catch (e) { console.warn('Error syncing employee data:', e); }
       }
 
       const userData: UserData = {
@@ -601,10 +590,6 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
 
       let permissions: string[] = [];
       if (foundCollection === 'employees' && foundData.roleId) {
-        // Sync employee to users
-        try {
-          await supabase.from('users').upsert({ id: user.id, ...foundData, employeeId: foundData.id, employeeRole: foundData.roleId, updated_at: new Date().toISOString() });
-        } catch (e) { /* ignore */ }
         const { data: roleRows } = await supabase.from('roles').select('*').eq('id', String(foundData.roleId)).limit(1);
         if (roleRows?.length) permissions = (roleRows[0] as Record<string, unknown>).permissions as string[] || [];
       }
