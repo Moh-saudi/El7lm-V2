@@ -80,17 +80,6 @@ const ROLE_TABLES: Record<string, string> = {
 
 // Fetch user data from Supabase tables
 async function fetchUserData(userId: string, email: string, firebaseUid?: string): Promise<{ data: Record<string, unknown>; collection: string; accountType: UserRole } | null> {
-  const isSuperAdmin = email === 'admin@el7lm.com' || email === 'admin@elhilm.com';
-
-  if (isSuperAdmin) {
-    const { data } = await supabase.from('users').select('*').eq('id', userId).limit(1);
-    return {
-      data: data?.[0] as Record<string, unknown> || { id: userId, email, full_name: 'Super Admin', accountType: 'admin', isAdmin: true },
-      collection: 'users',
-      accountType: 'admin',
-    };
-  }
-
   // Fast path for the migrated Supabase model: resolve the account from users/employee
   // first, then touch only the single role table that is actually needed.
   // The broader legacy fallback below remains for accounts that have not been normalized yet.
