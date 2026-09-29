@@ -362,6 +362,7 @@ const ModernMessageCenter: React.FC = () => {
             }
 
             await supabase.from('conversations').insert({
+                id: crypto.randomUUID(),
                 participants: [user.id, selectedUser.id],
                 participantNames: {
                     [user.id]: userData?.full_name || user.email || 'مستخدم',
