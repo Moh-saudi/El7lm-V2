@@ -110,29 +110,16 @@ async function fetchUserData(userId: string, _email: string): Promise<{ data: Re
     const accountTable = ROLE_TABLES[accountType];
 
     if (accountTable) {
-      const roleById = await supabase
+      const roleProfile = await supabase
         .from(accountTable)
         .select('*')
-        .eq('id', userId)
+        .or(`id.eq.${userId},uid.eq.${userId}`)
+        .limit(1)
         .maybeSingle();
 
-      if (roleById.data) {
+      if (roleProfile.data) {
         return {
-          data: roleById.data as Record<string, unknown>,
-          collection: accountTable,
-          accountType: accountType as UserRole,
-        };
-      }
-
-      const roleByUid = await supabase
-        .from(accountTable)
-        .select('*')
-        .eq('uid', userId)
-        .maybeSingle();
-
-      if (roleByUid.data) {
-        return {
-          data: roleByUid.data as Record<string, unknown>,
+          data: roleProfile.data as Record<string, unknown>,
           collection: accountTable,
           accountType: accountType as UserRole,
         };
