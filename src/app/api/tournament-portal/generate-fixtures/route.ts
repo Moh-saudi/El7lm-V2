@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { authorizeTournamentOwnership } from '@/lib/api/tournament-auth';
+import { authorizeTournamentOwnership, categoryBelongsToTournament } from '@/lib/api/tournament-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
   const authorization = await authorizeTournamentOwnership(req, tournament_id);
   if (!authorization.user) return authorization.response!;
   const supa = getSupabaseAdmin();
+  if (!(await categoryBelongsToTournament(category_id, tournament_id))) return NextResponse.json({ error: 'Category does not belong to tournament' }, { status: 400 });
 
   // Fetch category
   const { data: cat } = await supa
