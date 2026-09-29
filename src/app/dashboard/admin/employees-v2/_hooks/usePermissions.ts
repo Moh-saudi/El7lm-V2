@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useAuth } from '@/lib/firebase/auth-provider';
+import { useAuth } from '@/lib/supabase/auth-provider';
 import { defineAbilityFor } from '@/lib/permissions/ability';
 import { PermissionAction, PermissionResource } from '@/lib/permissions/types';
 
