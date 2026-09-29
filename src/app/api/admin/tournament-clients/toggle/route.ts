@@ -6,7 +6,7 @@ import { toggleLocalTournamentClient } from '@/lib/tournament-clients-store';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-    const authorization = await authorizeAdmin(req);
+    const authorization = await authorizeAdmin(req, 'manage:tournaments');
     if (!authorization.ok) return authorization.response;
     const { id, is_active } = await req.json();
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
