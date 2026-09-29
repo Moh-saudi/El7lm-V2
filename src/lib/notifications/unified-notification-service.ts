@@ -61,13 +61,18 @@ export class UnifiedNotificationService {
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) throw authError || new Error('Authentication required');
 
-    const { data: receiver, error: receiverError } = await supabase
-      .from('players')
-      .select('uid')
-      .eq('id', data.receiverId)
-      .maybeSingle();
-    if (receiverError) throw receiverError;
-    const receiverId = String(receiver?.uid ?? '').trim();
+    let receiverId = '';
+    for (const table of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'] as const) {
+      const { data: receiver, error: receiverError } = await supabase
+        .from(table)
+        .select('uid')
+        .or(`id.eq.${data.receiverId},uid.eq.${data.receiverId}`)
+        .limit(1);
+      if (receiverError) throw receiverError;
+      if (!receiver?.length) continue;
+      receiverId = String(receiver[0].uid ?? '').trim();
+      if (receiverId) break;
+    }
     if (!receiverId) throw new Error('Receiver has no authenticated identity');
 
     const now = new Date().toISOString();
