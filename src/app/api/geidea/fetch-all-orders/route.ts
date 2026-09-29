@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 import { getGeideaMode, getGeideaEnvConfig } from '@/lib/geidea/config';
 
 export const runtime = 'nodejs';
@@ -11,6 +12,8 @@ export const revalidate = 0;
  * جلب المعاملات من Geidea باستخدام merchantReferenceId
  */
 export async function POST(request: NextRequest) {
+  const authorization = await authorizeAdmin(request, 'read:financials');
+  if (!authorization.ok) return authorization.response;
   try {
     const body = await request.json();
     const merchantReferenceIds = body.merchantReferenceIds || [];
