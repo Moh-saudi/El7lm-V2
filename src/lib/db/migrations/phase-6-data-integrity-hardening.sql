@@ -312,3 +312,39 @@ REVOKE UPDATE (supabase_auth_id, is_active, created_at)
   ON public.tournament_clients FROM anon;
 
 COMMIT;
+
+
+-- Restrict interaction notification owners to read-state changes only.
+-- Direct UPDATE is intentionally removed; the RPC verifies auth.uid() ownership.
+DROP POLICY IF EXISTS interaction_owner_update ON public.interaction_notifications;
+REVOKE UPDATE ON TABLE public.interaction_notifications FROM authenticated;
+
+CREATE OR REPLACE FUNCTION public.mark_interaction_notification_read(p_notification_id text)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_updated integer;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN false;
+  END IF;
+
+  UPDATE public.interaction_notifications
+  SET "isRead" = true,
+      "updatedAt" = now()
+  WHERE id = p_notification_id
+    AND (
+      "profileOwnerId" = auth.uid()::text
+      OR "userId" = auth.uid()::text
+    );
+
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+  RETURN v_updated > 0;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.mark_interaction_notification_read(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.mark_interaction_notification_read(text) TO authenticated;
