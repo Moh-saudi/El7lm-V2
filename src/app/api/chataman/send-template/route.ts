@@ -14,7 +14,7 @@ function getChatAmanBaseUrl(value: unknown): string | null {
 
 export async function POST(req: NextRequest) {
   try {
-    const authorization = await authorizeAdmin(req);
+    const authorization = await authorizeAdmin(req, 'manage:communications');
     if (!authorization.ok) return authorization.response;
 
     const { payload, apiKey, baseUrl } = await req.json();
