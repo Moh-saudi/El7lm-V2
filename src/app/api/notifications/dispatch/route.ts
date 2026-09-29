@@ -50,35 +50,23 @@ function buildInAppContent(payload: DispatchPayload) {
 
 async function resolveActorIdentity(authUserId: string): Promise<{ id: string; name: string; accountType: string } | null> {
   const db = getSupabaseAdmin();
-  const tables = ['players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins', 'users'] as const;
+  const tables = [
+    ['players', 'player'], ['clubs', 'club'], ['academies', 'academy'],
+    ['agents', 'agent'], ['trainers', 'trainer'], ['marketers', 'marketer'],
+    ['admins', 'admin'], ['users', 'user'],
+  ] as const;
 
-  for (const table of tables) {
-    for (const authColumn of ['authUserId', 'uid', 'id'] as const) {
-      const { data, error } = await db
-        .from(table)
-        .select('id, full_name, name, displayName')
-        .eq(authColumn, authUserId)
-        .limit(1);
-
-      if (error) {
-        const message = error.message.toLowerCase();
-        if (message.includes('column') && (message.includes('does not exist') || message.includes('not found'))) continue;
-        throw error;
-      }
+  for (const [table, accountType] of tables) {
+    const select = table === 'users' ? 'id, full_name, name, displayName' : 'id, full_name, name';
+    for (const authColumn of ['uid', 'id'] as const) {
+      const { data, error } = await db.from(table).select(select).eq(authColumn, authUserId).limit(1);
+      if (error) throw error;
       if (!data?.length) continue;
 
       const row = data[0] as Record<string, unknown>;
       const id = String(row.id || '').trim();
       if (!id) return null;
       const name = String(row.full_name ?? row.displayName ?? row.name ?? '').trim() || 'مستخدم';
-      const accountType = table === 'players' ? 'player'
-        : table === 'clubs' ? 'club'
-        : table === 'academies' ? 'academy'
-        : table === 'agents' ? 'agent'
-        : table === 'trainers' ? 'trainer'
-        : table === 'marketers' ? 'marketer'
-        : table === 'admins' ? 'admin'
-        : 'user';
       return { id, name, accountType };
     }
   }
