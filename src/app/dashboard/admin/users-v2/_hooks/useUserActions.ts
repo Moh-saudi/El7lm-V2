@@ -187,15 +187,9 @@ export function useUserActions() {
             if (data.phone) updateData.phone = data.phone;
             if (data.country) updateData.country = data.country;
             if (data.city) updateData.city = data.city;
-            if (data.accountType) updateData.accountType = data.accountType;
-
             // تحديث في الجدول الخاص
             if (tableName !== 'users') {
-                if (data.accountType && data.accountType !== user.accountType) {
-                    // منطق تغيير النوع يتم التعامل معه في changeAccountType
-                } else {
-                    await supabase.from(tableName).update(updateData).eq('id', user.id);
-                }
+                await supabase.from(tableName).update(updateData).eq('id', user.id);
             }
 
             // تحديث في users
