@@ -194,6 +194,24 @@ WHERE nullif("password",'') IS NOT NULL
 REVOKE UPDATE ("password","confirmPassword","tempPassword")
   ON public.users FROM authenticated;
 
+-- Verification, moderation and staff authority state is server-owned.
+REVOKE UPDATE ("isVerified") ON public.academies FROM authenticated;
+REVOKE UPDATE ("isVerified") ON public.agents FROM authenticated;
+REVOKE UPDATE ("isVerified") ON public.clubs FROM authenticated;
+REVOKE UPDATE ("isVerified","verificationStatus") ON public.trainers FROM authenticated;
+REVOKE UPDATE (status,"verificationStatus") ON public.players FROM authenticated;
+
+REVOKE UPDATE ("emergencyAccess","lastEmergencyAccess",status)
+  ON public.users FROM authenticated;
+REVOKE UPDATE (
+  "statusChangedBy","statusChangedAt",
+  "suspensionReason","suspendedAt","suspensionEndDate",
+  verified,"verificationStatus","verifiedAt","verifiedBy",
+  "deletedBy","deletedAt"
+) ON public.users FROM authenticated;
+REVOKE UPDATE ("roleName",department,"allowedCountries")
+  ON public.users FROM authenticated;
+
 -- Canonical player video policies.
 DROP POLICY IF EXISTS "Players can insert own videos" ON public.player_videos;
 DROP POLICY IF EXISTS "Players can update own pending videos" ON public.player_videos;
