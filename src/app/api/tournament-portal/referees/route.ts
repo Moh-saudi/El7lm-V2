@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeTournamentOwnership } from '@/lib/api/tournament-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,9 +15,9 @@ export async function GET(req: NextRequest) {
   const tid = req.nextUrl.searchParams.get('tournament_id');
   if (!tid) return NextResponse.json({ error: 'tournament_id required' }, { status: 400 });
 
-  if (!isUuid(tid)) {
-    return NextResponse.json({ referees: devRefereesMap.get(tid) || [] });
-  }
+  if (!isUuid(tid)) return NextResponse.json({ error: 'Invalid tournament_id' }, { status: 400 });
+  const authorization = await authorizeTournamentOwnership(req, tid);
+  if (!authorization.user) return authorization.response!;
 
   try {
     const supa = getSupabaseAdmin();
@@ -39,20 +40,9 @@ export async function POST(req: NextRequest) {
   const { tournament_id, name, phone, level, notes } = await req.json();
   if (!tournament_id || !name) return NextResponse.json({ error: 'tournament_id and name required' }, { status: 400 });
 
-  if (!isUuid(tournament_id)) {
-    const newRef = {
-      id: `ref-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      tournament_id,
-      name,
-      phone: phone || null,
-      level: level || null,
-      notes: notes || null,
-      created_at: new Date().toISOString(),
-    };
-    const list = devRefereesMap.get(tournament_id) || [];
-    devRefereesMap.set(tournament_id, [...list, newRef]);
-    return NextResponse.json({ referee: newRef });
-  }
+  if (!isUuid(tournament_id)) return NextResponse.json({ error: 'Invalid tournament_id' }, { status: 400 });
+  const authorization = await authorizeTournamentOwnership(req, tournament_id);
+  if (!authorization.user) return authorization.response!;
 
   try {
     const supa = getSupabaseAdmin();
@@ -76,17 +66,15 @@ export async function DELETE(req: NextRequest) {
   const tid = req.nextUrl.searchParams.get('tournament_id');
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
-  if (tid && devRefereesMap.has(tid)) {
-    devRefereesMap.set(tid, (devRefereesMap.get(tid) || []).filter(r => r.id !== id));
-  }
-
-  if (!isUuid(id)) {
-    return NextResponse.json({ ok: true });
-  }
+  if (!isUuid(id)) return NextResponse.json({ error: 'Invalid referee id' }, { status: 400 });
 
   try {
     const supa = getSupabaseAdmin();
-    const { error } = await supa.from('tournament_referees').delete().eq('id', id);
+    const { data: resource } = await supa.from('tournament_referees').select('tournament_id').eq('id', id).maybeSingle();
+    if (!resource?.tournament_id) return NextResponse.json({ error: 'Referee not found' }, { status: 404 });
+    const authorization = await authorizeTournamentOwnership(req, resource.tournament_id);
+    if (!authorization.user) return authorization.response!;
+    const { error } = await supa.from('tournament_referees').delete().eq('id', id).eq('tournament_id', resource.tournament_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
   } catch {
