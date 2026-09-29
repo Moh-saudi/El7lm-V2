@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export async function GET(request: NextRequest) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, 'read:content');
   if (!authorization.ok) return authorization.response;
   try {
     if (process.env.NEXT_PHASE === 'phase-production-build') {
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, 'manage:content');
   if (!authorization.ok) return authorization.response;
   try {
     const { title, content, type, status } = await request.json();
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, 'manage:content');
   if (!authorization.ok) return authorization.response;
   try {
     const { id, title, content, type, status } = await request.json();
@@ -86,7 +86,7 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, 'manage:content');
   if (!authorization.ok) return authorization.response;
   try {
     const { searchParams } = new URL(request.url);
