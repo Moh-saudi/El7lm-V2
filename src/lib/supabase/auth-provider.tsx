@@ -548,9 +548,11 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
 
       const accountType = userData?.accountType || 'player';
       const tableName = accountType === 'admin' ? 'users' : ROLE_TABLES[accountType] || 'users';
-      await supabase.from(tableName).update(sanitized).eq('id', user.id);
+      const { error: profileError } = await supabase.from(tableName).update(sanitized).eq('id', user.id);
+      if (profileError) throw profileError;
       if (tableName !== 'users') {
-        await supabase.from('users').update(sanitized).eq('id', user.id);
+        const { error: usersError } = await supabase.from('users').update(sanitized).eq('id', user.id);
+        if (usersError) throw usersError;
       }
       if (userData) setUserData({ ...userData, ...safeUpdates });
     } catch (error) {
