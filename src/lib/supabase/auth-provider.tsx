@@ -429,7 +429,8 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
       const foundCollection = result?.collection || 'users';
 
       if (!foundData) {
-        foundData = await createBasicUserDocument(authUser.id, email, userAccountType);
+        await supabase.auth.signOut();
+        throw new Error('تعذر ربط الحساب بهوية موثوقة. يرجى إكمال ربط الحساب أو اختيار نوع الحساب.');
       }
 
       const isEmployee = foundCollection === 'employees';
