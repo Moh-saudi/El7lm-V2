@@ -113,10 +113,11 @@ const InteractionNotifications: React.FC = () => {
   // تحديد الإشعار كمقروء
   const markAsRead = async (notificationId: string) => {
     try {
-      await supabase
-        .from('interaction_notifications')
-        .update({ isRead: true })
-        .eq('id', notificationId);
+      const { data, error } = await supabase.rpc('mark_interaction_notification_read', {
+        p_notification_id: notificationId,
+      });
+      if (error) throw error;
+      if (!data) throw new Error('Notification not found or not owned by current user');
       toast.success('تم تحديد الإشعار كمقروء');
     } catch (error) {
       console.error('خطأ في تحديث حالة الإشعار:', error);
