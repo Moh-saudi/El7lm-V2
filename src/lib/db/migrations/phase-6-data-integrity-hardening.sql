@@ -422,3 +422,10 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.mark_message_read(text) FROM anon;
 REVOKE EXECUTE ON FUNCTION public.mark_message_read(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.mark_message_read(text) TO authenticated;
+
+
+-- Messaging/notification retention: no direct destructive client path is currently used.
+DROP POLICY IF EXISTS "messages_delete_sender" ON public.messages;
+DROP POLICY IF EXISTS "notifications_delete_own" ON public.notifications;
+REVOKE DELETE ON public.messages FROM authenticated;
+REVOKE DELETE ON public.notifications FROM authenticated;
