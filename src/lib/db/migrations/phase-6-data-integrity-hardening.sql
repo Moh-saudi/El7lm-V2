@@ -194,6 +194,28 @@ WHERE nullif("password",'') IS NOT NULL
 REVOKE UPDATE ("password","confirmPassword","tempPassword")
   ON public.users FROM authenticated;
 
+-- Preserve historical email-based tournament reads, but never create new cross-account email aliases.
+DROP POLICY IF EXISTS tournament_registration_owner_insert ON public.tournament_registrations;
+CREATE POLICY tournament_registration_owner_insert
+ON public.tournament_registrations
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  (
+    "userId" = (SELECT auth.uid())::text
+    OR "playerId" = (SELECT auth.uid())::text
+  )
+  AND (
+    NULLIF("accountEmail",'') IS NULL
+    OR LOWER("accountEmail") = LOWER((SELECT auth.jwt() ->> 'email'))
+  )
+  AND COALESCE("paymentStatus",'pending') IN ('pending','review')
+  AND COALESCE(status,'pending') IN ('pending','pending_review')
+  AND NULLIF("geideaOrderId",'') IS NULL
+  AND NULLIF("geideaTransactionId",'') IS NULL
+  AND "geideaPaymentData" IS NULL
+);
+
 -- Referral organization types are polymorphic but limited to supported account domains.
 ALTER TABLE public.organization_referrals
   ADD CONSTRAINT organization_referrals_type_valid
