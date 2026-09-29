@@ -104,11 +104,16 @@ export async function GET(req: NextRequest) {
                     ? (digits.startsWith('20') ? digits.slice(2) : digits.startsWith('0') ? digits.slice(1) : digits)
                     : digits;
 
-                const { data: byPhone } = await supa
+                const { data: byPhone, error: phoneError } = await supa
                     .from(view)
                     .select(cols)
                     .or(`phone.ilike.%${q}%,phone.ilike.%${coreDigits}%`)
                     .limit(10);
+
+                if (phoneError) {
+                    errors.push(`${view}: ${phoneError.message}`);
+                    return;
+                }
 
                 (byPhone || []).forEach((row: any) => {
                     const existingId = isPlayer ? row.id : row.id;
