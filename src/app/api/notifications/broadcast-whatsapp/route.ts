@@ -182,6 +182,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (phones.length === 0) {
+      return NextResponse.json({ success: true, eventType, templateName, total, matched: 0, sent: 0, failed: 0, message: 'No matching players with phone numbers found' });
+    }
+
     // Write broadcast doc
     if (broadcastData) {
       if (typeof broadcastData !== 'object' || Array.isArray(broadcastData)) {
@@ -204,10 +208,6 @@ export async function POST(req: NextRequest) {
         createdAt: new Date().toISOString(),
       });
       if (broadcastError) throw broadcastError;
-    }
-
-    if (phones.length === 0) {
-      return NextResponse.json({ success: true, eventType, templateName, total, matched: 0, sent: 0, failed: 0, message: 'No matching players with phone numbers found' });
     }
 
     const { sent, failed } = await sendInBatches(phones, templateName, params, cfg as { apiKey: string; baseUrl: string });
