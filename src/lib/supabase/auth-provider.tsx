@@ -87,7 +87,8 @@ async function fetchUserData(userId: string, _email: string): Promise<{ data: Re
     supabase
       .from('users')
       .select('id,uid,email,accountType,full_name,name,phone,profile_image,isDeleted,isActive,employeeId,role,roleId')
-      .eq('id', userId)
+      .or(`id.eq.${userId},uid.eq.${userId}`)
+      .limit(1)
       .maybeSingle(),
     supabase
       .from('employees')
@@ -150,15 +151,6 @@ async function fetchUserData(userId: string, _email: string): Promise<{ data: Re
       return { data: r.value.data[0] as Record<string, unknown>, collection: accountTypes[i], accountType };
     }
   }
-
-  // Fallback to users table
-  const { data: usersData } = await supabase.from('users').select('*').eq('id', userId).limit(1);
-  if (usersData?.length) {
-    const d = usersData[0] as Record<string, unknown>;
-    const accountType = (d.accountType as UserRole) || 'player';
-    return { data: d, collection: 'users', accountType };
-  }
-
 
   return null;
 }
