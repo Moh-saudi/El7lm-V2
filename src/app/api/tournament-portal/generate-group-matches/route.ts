@@ -36,12 +36,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Delete existing group_stage matches for this category
-    await supa
+    const { error: deleteError } = await supa
         .from('tournament_matches')
         .delete()
         .eq('tournament_id', tournament_id)
         .eq('category_id', category_id)
         .eq('round', 'group_stage');
+    if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
 
     const toInsert: any[] = [];
     let matchNumber = 1;
