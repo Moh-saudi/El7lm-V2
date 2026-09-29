@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export async function POST(req: NextRequest) {
-  const authorization = await authorizeAdmin(req);
+  const authorization = await authorizeAdmin(req, 'manage:employees');
   if (!authorization.ok) return authorization.response;
   try {
     const body = await req.json();
