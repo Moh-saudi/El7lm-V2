@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
+import { UnifiedNotificationService } from '@/lib/notifications/unified-notification-service';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -379,7 +380,7 @@ const EnhancedMessageCenter: React.FC = () => {
         deliveryStatus: 'sent'
       };
 
-      await supabase.from('messages').insert({ ...messageData, id: crypto.randomUUID(), timestamp: new Date().toISOString() });
+      await UnifiedNotificationService.createMessage(messageData);
 
       await supabase.from('conversations').update({
         lastMessage: newMessage.trim(),
