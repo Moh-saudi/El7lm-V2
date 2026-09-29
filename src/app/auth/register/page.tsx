@@ -258,68 +258,43 @@ export default function RegisterPage() {
     else otpRefs.current[Math.min(pasted.length, 5)]?.focus();
   };
 
-  /* ─── Step 2: Verify OTP → route ─── */
+  /* ─── Step 2: Verify OTP and create account ─── */
   const handleVerifyOTP = async (otpCode: string) => {
     if (verifyLoading) return;
     setVerifyLoading(true);
     try {
-      const res = await fetch('/api/auth/verify-otp-and-check', {
+      const createRes = await fetch('/api/auth/create-user-with-phone', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phoneNumber: fullPhone, otp: otpCode }),
+        body: JSON.stringify({
+          phoneNumber: fullPhone,
+          accountType,
+          name: name.trim(),
+          otp: otpCode,
+        }),
       });
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        toast.error(data.error || t('auth.forgotPasswordOtpIncorrect'));
-        setOtp(['', '', '', '', '', '']);
-        setTimeout(() => otpRefs.current[0]?.focus(), 50);
-        setVerifyLoading(false);
-        return;
+      const createData = await createRes.json();
+      if (!createRes.ok || !createData.success) {
+        throw new Error(createData.error || t('auth.createAccountFailed'));
       }
 
-      if (!data.isNew) {
-        // Existing user — check if selected type matches
-        if (data.accountType && data.accountType !== accountType) {
-          const typeLabels: Record<string, string> = {
-            player: t('auth.rolePlayer'),
-            club: t('auth.roleClub'),
-            academy: t('auth.roleAcademy'),
-            agent: t('auth.roleAgent'),
-            trainer: t('auth.roleTrainer'),
-            marketer: t('auth.roleMarketer'),
-            admin: t('auth.roleAdmin'),
-          };
-          const typeName = typeLabels[data.accountType] || data.accountType;
-          const msg = t('auth.phoneRegisteredRedirect').replace('{{role}}', typeName);
-          toast.error(msg);
-        }
-        if (data.uid) sessionStorage.setItem('otp_firebase_uid', data.uid);
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: data.authEmail,
-          password: data.authPassword,
-        });
-        if (signInError) throw new Error(signInError.message);
-        showWelcomePopup(data.userName || '', getDashboardRoute(data.accountType));
-      } else {
-        const createRes = await fetch('/api/auth/create-user-with-phone', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phoneNumber: fullPhone, accountType, name: name.trim() }),
-        });
-        const createData = await createRes.json();
-        if (!createRes.ok || !createData.success) throw new Error(createData.error || t('auth.createAccountFailed'));
+      if (createData.uid) sessionStorage.setItem('otp_firebase_uid', createData.uid);
+      if (!createData.tokenHash) throw new Error(t('auth.loginFailed'));
 
-        if (createData.uid) sessionStorage.setItem('otp_firebase_uid', createData.uid);
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: createData.authEmail,
-          password: createData.authPassword,
-        });
-        if (signInError) throw new Error(signInError.message);
-        showWelcomePopup(createData.userName || name.trim(), getDashboardRoute(createData.accountType || accountType));
-      }
+      const { error: signInError } = await supabase.auth.verifyOtp({
+        token_hash: createData.tokenHash,
+        type: 'magiclink',
+      });
+      if (signInError) throw new Error(signInError.message);
+
+      showWelcomePopup(
+        createData.userName || name.trim(),
+        getDashboardRoute(createData.accountType || accountType),
+      );
     } catch (err: any) {
       toast.error(err.message);
+      setOtp(['', '', '', '', '', '']);
+      setTimeout(() => otpRefs.current[0]?.focus(), 50);
       setVerifyLoading(false);
     }
   };
