@@ -522,7 +522,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
         : await profileQuery.or(`id.eq.${user.id},uid.eq.${user.id}`);
       if (profileError) throw profileError;
       if (tableName !== 'users') {
-        const { error: usersError } = await supabase.from('users').update(sanitized).eq('id', user.id);
+        const { error: usersError } = await supabase.from('users').update(sanitized).or(`id.eq.${user.id},uid.eq.${user.id}`);
         if (usersError) throw usersError;
       }
       if (userData) setUserData({ ...userData, ...safeUpdates });
