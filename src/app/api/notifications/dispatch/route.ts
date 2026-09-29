@@ -16,8 +16,8 @@ interface DispatchPayload {
   eventType: NotificationEventType;
   targetUserId: string;
   actorId: string;
-  actorName: string;
-  actorAccountType: string;
+  actorName?: string;
+  actorAccountType?: string;
   metadata?: { videoId?: string; commentText?: string; messagePreview?: string; source?: string };
 }
 
@@ -27,8 +27,9 @@ const ACCOUNT_LABELS: Record<string, string> = {
 };
 
 function buildInAppContent(payload: DispatchPayload) {
-  const actorLabel = ACCOUNT_LABELS[payload.actorAccountType] || payload.actorAccountType;
-  const actor = payload.actorName;
+  const actorType = payload.actorAccountType || 'user';
+  const actorLabel = ACCOUNT_LABELS[actorType] || actorType;
+  const actor = payload.actorName || 'مستخدم';
 
   const map: Record<NotificationEventType, { title: string; message: string; emoji: string; priority: string }> = {
     profile_view:     { title: 'شخص مهتم بك! 👀', message: `${actorLabel} "${actor}" زار ملفك الشخصي`, emoji: '👀', priority: 'medium' },
@@ -40,6 +41,43 @@ function buildInAppContent(payload: DispatchPayload) {
     follow:           { title: 'متابع جديد! ⭐', message: `${actorLabel} "${actor}" بدأ متابعتك`, emoji: '⭐', priority: 'medium' },
   };
   return map[payload.eventType];
+}
+
+async function resolveActorIdentity(authUserId: string): Promise<{ id: string; name: string; accountType: string } | null> {
+  const db = getSupabaseAdmin();
+  const tables = ['players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins', 'users'] as const;
+
+  for (const table of tables) {
+    for (const authColumn of ['authUserId', 'uid', 'id'] as const) {
+      const { data, error } = await db
+        .from(table)
+        .select('id, full_name, name, displayName')
+        .eq(authColumn, authUserId)
+        .limit(1);
+
+      if (error) {
+        const message = error.message.toLowerCase();
+        if (message.includes('column') && (message.includes('does not exist') || message.includes('not found'))) continue;
+        throw error;
+      }
+      if (!data?.length) continue;
+
+      const row = data[0] as Record<string, unknown>;
+      const id = String(row.id || '').trim();
+      if (!id) return null;
+      const name = String(row.full_name ?? row.displayName ?? row.name ?? '').trim() || 'مستخدم';
+      const accountType = table === 'players' ? 'player'
+        : table === 'clubs' ? 'club'
+        : table === 'academies' ? 'academy'
+        : table === 'agents' ? 'agent'
+        : table === 'trainers' ? 'trainer'
+        : table === 'marketers' ? 'marketer'
+        : table === 'admins' ? 'admin'
+        : 'user';
+      return { id, name, accountType };
+    }
+  }
+  return null;
 }
 
 async function hasDuplicateRecent(
@@ -146,14 +184,21 @@ export async function POST(req: NextRequest) {
   if (!authorization.ok) return authorization.response;
   try {
     const body: DispatchPayload = await req.json();
-    const { eventType, targetUserId, actorId, actorName, actorAccountType, metadata } = body;
+    const { eventType, targetUserId, metadata } = body;
 
-    if (!eventType || !targetUserId || !actorId) {
+    if (!eventType || !targetUserId) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
-    if (actorId !== authorization.user.id) {
-      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+
+    const actor = await resolveActorIdentity(authorization.user.id);
+    if (!actor) {
+      return NextResponse.json({ success: false, error: 'Authenticated account identity not found' }, { status: 403 });
     }
+    const actorId = actor.id;
+    const actorName = actor.name;
+    const actorAccountType = actor.accountType;
+    const trustedPayload: DispatchPayload = { ...body, actorId, actorName, actorAccountType };
+
     if (targetUserId === actorId) {
       return NextResponse.json({ success: true, skipped: 'self' });
     }
@@ -166,7 +211,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, skipped: 'duplicate' });
     }
 
-    const content = buildInAppContent(body);
+    const content = buildInAppContent(trustedPayload);
     const db = getSupabaseAdmin();
 
     // 1. Create in-app notification
