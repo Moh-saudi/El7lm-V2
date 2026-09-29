@@ -117,53 +117,40 @@ export default function SelectRolePage() {
 
         setIsSubmitting(true);
         try {
-            const now = new Date().toISOString();
-            const roleData = {
-                accountType: selectedRole,
-                updated_at: now,
-                isActive: true
-            };
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) throw new Error(t('auth.selectRoleErrorToast'));
 
-            // 1. Update 'users' table
-            await supabase.from('users').update(roleData).eq('id', user.id);
+            const response = await fetch('/api/auth/select-role', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({ accountType: selectedRole }),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || t('auth.selectRoleErrorToast'));
+            }
 
-            // 2. Create/Update role-specific table record
-            const baseData = {
-                id: user.id,
-                email: user.email,
-                full_name: userData?.full_name || user.user_metadata?.full_name || '',
-                profile_image: userData?.profile_image || user.user_metadata?.avatar_url || '',
-                phone: userData?.phone || '',
-                ...roleData,
-                created_at: userData?.created_at || now
-            };
-
-            const collectionName = selectedRole === 'academy' ? 'academies' : `${selectedRole}s`;
-            await supabase.from(collectionName).upsert(baseData);
-
-            // 3. Refresh local user data
             await refreshUserData();
-
             toast.success(t('auth.selectRoleSuccessToast'));
 
-            // 4. Redirect
             const routes: Record<string, string> = {
                 player: '/dashboard/player',
                 club: '/dashboard/club',
                 agent: '/dashboard/agent',
                 academy: '/dashboard/academy',
                 trainer: '/dashboard/trainer',
-                admin: '/dashboard/admin',
                 marketer: '/dashboard/marketer',
             };
 
             setTimeout(() => {
-                router.replace(routes[selectedRole]);
+                router.replace(routes[selectedRole] || '/dashboard');
             }, 500);
-
         } catch (error) {
-            console.error('Error updating role:', error);
-            toast.error(t('auth.selectRoleErrorToast'));
+            console.error('Error assigning role:', error);
+            toast.error(error instanceof Error ? error.message : t('auth.selectRoleErrorToast'));
         } finally {
             setIsSubmitting(false);
         }
@@ -225,16 +212,8 @@ export default function SelectRolePage() {
             });
             if (sessionError) throw new Error(sessionError.message);
 
-            // 3. Update the phone account with the current user's Google email if available
-            const currentEmail = user?.email;
-            if (currentEmail && data.userId) {
-                await supabase.from('users').update({
-                    email: currentEmail,
-                    isGoogleLinked: true,
-                    updated_at: new Date().toISOString()
-                }).eq('id', data.userId);
-            }
-
+            // Ownership was proven by OTP. Keep identity linking on trusted server flows;
+            // recovery only switches to the verified account session.
             toast.success(t('auth.selectRoleRestoreSuccessToast'), { id: 'verify-link' });
 
             await refreshUserData();
