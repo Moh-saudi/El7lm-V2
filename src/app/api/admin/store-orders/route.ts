@@ -1,48 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-
-async function assertAdminAccess(request: NextRequest) {
-  const idToken = request.headers.get('Authorization')?.split('Bearer ')[1];
-  if (!idToken) {
-    throw new Error('UNAUTHORIZED');
-  }
-
-  const admin = getSupabaseAdmin();
-  const {
-    data: { user },
-    error,
-  } = await admin.auth.getUser(idToken);
-
-  if (error || !user) {
-    throw new Error('UNAUTHORIZED');
-  }
-
-  const email = String(user.email || '').toLowerCase();
-  if (email === 'admin@el7lm.com' || email === 'admin@elhilm.com') {
-    return user;
-  }
-
-  const userChecks = await Promise.all([
-    admin.from('users').select('accountType').eq('id', user.id).maybeSingle(),
-    admin.from('admins').select('id').eq('id', user.id).maybeSingle(),
-    admin.from('employees').select('role').eq('id', user.id).maybeSingle(),
-  ]);
-
-  const isAdmin =
-    userChecks[0].data?.accountType === 'admin' ||
-    Boolean(userChecks[1].data?.id) ||
-    ['admin', 'supervisor'].includes(String(userChecks[2].data?.role || ''));
-
-  if (!isAdmin) {
-    throw new Error('FORBIDDEN');
-  }
-
-  return user;
-}
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export async function GET(request: NextRequest) {
+  const authorization = await authorizeAdmin(request, 'read:financials');
+  if (!authorization.ok) return authorization.response;
   try {
-    await assertAdminAccess(request);
 
     const status = request.nextUrl.searchParams.get('status');
     const admin = getSupabaseAdmin();
@@ -64,8 +27,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const authorization = await authorizeAdmin(request, 'manage:financials');
+  if (!authorization.ok) return authorization.response;
   try {
-    await assertAdminAccess(request);
 
     const body = await request.json();
     const orderId = String(body.orderId || '').trim();
