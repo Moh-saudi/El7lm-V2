@@ -100,34 +100,33 @@ async function hasDuplicateRecent(
 }
 
 async function getPhoneForUser(userId: string): Promise<string | null> {
-  try {
     const db = getSupabaseAdmin();
-    const { data } = await db.from('users').select('phone, phoneNumber').eq('id', userId).limit(1);
+    const { data, error } = await db.from('users').select('phone, phoneNumber').eq('id', userId).limit(1);
+    if (error) throw error;
     if (data?.length) {
       const row = data[0] as Record<string, unknown>;
       if (row.phone) return String(row.phone);
       if (row.phoneNumber) return String(row.phoneNumber);
     }
     for (const col of ['players', 'clubs', 'academies', 'agents', 'trainers']) {
-      const { data: rows } = await db.from(col).select('phone, phoneNumber').eq('id', userId).limit(1);
+      const { data: rows, error: rowsError } = await db.from(col).select('phone, phoneNumber').eq('id', userId).limit(1);
+      if (rowsError) throw rowsError;
       if (rows?.length) {
         const r = rows[0] as Record<string, unknown>;
         if (r.phone) return String(r.phone);
         if (r.phoneNumber) return String(r.phoneNumber);
       }
     }
-  } catch {}
   return null;
 }
 
 async function getChatAmanConfig(db: ReturnType<typeof getSupabaseAdmin>): Promise<{ apiKey: string; baseUrl: string; isActive: boolean } | null> {
-  try {
-    const { data } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);
+    const { data, error } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);
+    if (error) throw error;
     if (data?.length) {
       const d = data[0] as Record<string, unknown>;
       if (d.isActive && d.apiKey) return d as { apiKey: string; baseUrl: string; isActive: boolean };
     }
-  } catch {}
   return null;
 }
 
@@ -142,8 +141,8 @@ async function getTemplateConfig(db: ReturnType<typeof getSupabaseAdmin>): Promi
     follow: null,
   };
 
-  try {
-    const { data } = await db.from('system_configs').select('*').eq('id', 'notification_templates').limit(1);
+  const { data, error } = await db.from('system_configs').select('*').eq('id', 'notification_templates').limit(1);
+  if (error) throw error;
     if (data?.length) {
       const saved = data[0] as Record<string, unknown>;
       const merged = { ...defaults };
@@ -154,7 +153,6 @@ async function getTemplateConfig(db: ReturnType<typeof getSupabaseAdmin>): Promi
       }
       return merged;
     }
-  } catch {}
   return defaults;
 }
 
