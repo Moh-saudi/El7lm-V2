@@ -387,3 +387,38 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.mark_notification_read(text) FROM anon;
 REVOKE EXECUTE ON FUNCTION public.mark_notification_read(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.mark_notification_read(text) TO authenticated;
+
+
+-- Messages RLS: receiver may mark a message read, not rewrite message content or participants.
+DROP POLICY IF EXISTS "messages_update_participant" ON public.messages;
+REVOKE UPDATE ON public.messages FROM authenticated;
+
+CREATE OR REPLACE FUNCTION public.mark_message_read(p_message_id text)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  affected integer;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'authentication required';
+  END IF;
+
+  UPDATE public.messages
+     SET "read" = true,
+         "isRead" = true,
+         "readAt" = COALESCE("readAt", now()),
+         "updatedAt" = now()
+   WHERE id = p_message_id
+     AND "receiverId" = auth.uid()::text;
+
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  RETURN affected > 0;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.mark_message_read(text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.mark_message_read(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.mark_message_read(text) TO authenticated;
