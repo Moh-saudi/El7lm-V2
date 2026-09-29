@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 import { GeideaMode, getGeideaEnvConfig, getGeideaMode } from '@/lib/geidea/config';
 
 export const runtime = 'nodejs';
@@ -20,6 +21,8 @@ export const revalidate = 0;
  * }
  */
 export async function POST(request: NextRequest) {
+  const authorization = await authorizeAdmin(request, 'read:financials');
+  if (!authorization.ok) return authorization.response;
     try {
         const body = await request.json();
         const { fromDate, toDate, status, page = 1, limit = 10 } = body;
