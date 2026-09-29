@@ -7,7 +7,7 @@ function emptyStats() {
 }
 
 export async function GET(request: NextRequest) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, 'read:media');
   if (!authorization.ok) return authorization.response;
   try {
     if (process.env.NEXT_PHASE === 'phase-production-build') return NextResponse.json(emptyStats());
