@@ -34,7 +34,7 @@ function preparePayload(body: any, isUpdate = false) {
 }
 
 export async function GET(req: NextRequest) {
-  const authorization = await authorizeAdmin(req);
+  const authorization = await authorizeAdmin(req, 'read:opportunities');
   if (!authorization.ok) return authorization.response;
   try {
     const admin = getSupabaseAdmin();
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const authorization = await authorizeAdmin(req);
+  const authorization = await authorizeAdmin(req, 'manage:opportunities');
   if (!authorization.ok) return authorization.response;
   try {
     const admin = getSupabaseAdmin();
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const authorization = await authorizeAdmin(req);
+  const authorization = await authorizeAdmin(req, 'manage:opportunities');
   if (!authorization.ok) return authorization.response;
   try {
     const admin = getSupabaseAdmin();
@@ -137,7 +137,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const authorization = await authorizeAdmin(req);
+  const authorization = await authorizeAdmin(req, 'manage:opportunities');
   if (!authorization.ok) return authorization.response;
   try {
     const admin = getSupabaseAdmin();
