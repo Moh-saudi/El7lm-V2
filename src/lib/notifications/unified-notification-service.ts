@@ -25,7 +25,7 @@ export interface MessageData {
   receiverId: string;
   content?: string;
   message?: string;
-  type?: 'text' | 'image' | 'file' | 'system';
+  type?: 'text' | 'image' | 'file' | 'voice' | 'system';
   messageType?: string;
   priority?: 'low' | 'medium' | 'high';
   senderName: string;
