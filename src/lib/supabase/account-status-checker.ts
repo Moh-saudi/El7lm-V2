@@ -32,7 +32,7 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
     for (let i = 0; i < results.length; i++) {
       const r = results[i];
       if (r.status === 'fulfilled' && r.value.data?.length) {
-        userData = r.value.data[0] as Record<string, unknown>;
+        userData = r.value.data[0] as unknown as Record<string, unknown>;
         break;
       }
     }
