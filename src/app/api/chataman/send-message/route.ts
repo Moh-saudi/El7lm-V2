@@ -18,8 +18,15 @@ export async function POST(req: NextRequest) {
   if (!authorization.ok) return authorization.response;
 
   try {
-    const { payload } = await req.json();
-    if (!payload) return NextResponse.json({ success: false, error: 'Missing payload' }, { status: 400 });
+    const rawBody = await req.text();
+    if (!rawBody || Buffer.byteLength(rawBody, 'utf8') > 64 * 1024) {
+      return NextResponse.json({ success: false, error: 'Invalid request body' }, { status: 400 });
+    }
+    const body = JSON.parse(rawBody) as { payload?: unknown };
+    const payload = body.payload;
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return NextResponse.json({ success: false, error: 'Invalid payload' }, { status: 400 });
+    }
 
     const db = getSupabaseAdmin();
     const { data, error } = await db
