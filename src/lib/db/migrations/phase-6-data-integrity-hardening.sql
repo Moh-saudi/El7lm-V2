@@ -194,6 +194,10 @@ WHERE nullif("password",'') IS NOT NULL
 REVOKE UPDATE ("password","confirmPassword","tempPassword")
   ON public.users FROM authenticated;
 
+-- User creation is server-owned; authenticated clients must not create arbitrary compatibility rows.
+DROP POLICY IF EXISTS users_insert_own ON public.users;
+REVOKE INSERT ON TABLE public.users FROM authenticated;
+
 -- Preserve historical email-based tournament reads, but never create new cross-account email aliases.
 DROP POLICY IF EXISTS tournament_registration_owner_insert ON public.tournament_registrations;
 CREATE POLICY tournament_registration_owner_insert
