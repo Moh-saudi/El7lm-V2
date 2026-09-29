@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { authorizeUser } from '@/lib/api/user-auth';
 
 export const runtime    = 'nodejs';
 export const dynamic    = 'force-dynamic';
@@ -43,6 +44,8 @@ async function urlToBase64Part(url: string) {
 }
 
 export async function POST(req: NextRequest) {
+    const authorization = await authorizeUser(req);
+    if (!authorization.ok) return authorization.response;
     try {
         const { videoUrl, frameUrls, mediaType, playerName, playerPosition, playerAge } = await req.json();
 
