@@ -173,7 +173,7 @@ export default function SendNotificationsPage() {
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('id, display_name, full_name, name, email, phone, phone_number, whatsapp, account_type, is_active, avatar, photo_url, created_at')
+          .select('id, uid, display_name, full_name, name, email, phone, phone_number, whatsapp, account_type, is_active, avatar, photo_url, created_at')
           .eq('is_active', true);
 
         if (error) {
@@ -190,6 +190,7 @@ export default function SendNotificationsPage() {
           const createdAt: Date | null = row.created_at ? new Date(row.created_at) : null;
           return {
             id: row.id,
+            authUserId: row.uid || null,
             displayName,
             email,
             phone,
@@ -242,11 +243,12 @@ export default function SendNotificationsPage() {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('id, display_name, full_name, name, email, phone, phone_number, whatsapp, account_type, is_active, avatar, photo_url, created_at')
+        .select('id, uid, display_name, full_name, name, email, phone, phone_number, whatsapp, account_type, is_active, avatar, photo_url, created_at')
         .eq('is_active', true);
       if (error) throw error;
       const usersData = (data || []).map(row => ({
         id: row.id,
+        authUserId: row.uid || null,
         displayName: row.display_name || row.full_name || row.name || '',
         email: row.email || '',
         phone: row.phone || row.phone_number || row.whatsapp || '',
@@ -444,6 +446,11 @@ export default function SendNotificationsPage() {
       };
 
       // حفظ الإشعارات في Supabase مع استبدال المتغيرات لكل مستخدم
+      const targetsWithoutAuth = targetUsers.filter((targetUser) => !targetUser.authUserId);
+      if (targetsWithoutAuth.length > 0) {
+        throw new Error(`تعذر إرسال الإشعار: ${targetsWithoutAuth.length} حساب بدون هوية دخول مرتبطة`);
+      }
+
       const notificationRows = targetUsers.map((targetUser) => {
         const personalizedMessage = replaceMessageVariables(form.message, targetUser);
         const personalizedTitle = replaceMessageVariables(form.title, targetUser);
@@ -452,13 +459,13 @@ export default function SendNotificationsPage() {
           ...notificationData,
           title: personalizedTitle,
           message: personalizedMessage,
-          userId: targetUser.id,
+          userId: targetUser.authUserId!,
           userEmail: targetUser.email,
           userPhone: targetUser.phone
         }, senderInfo);
         return {
           ...notification,
-          user_id: targetUser.id,
+          user_id: targetUser.authUserId!,
           user_email: targetUser.email,
           user_phone: targetUser.phone,
         };
