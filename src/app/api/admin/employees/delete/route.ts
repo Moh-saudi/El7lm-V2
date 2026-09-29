@@ -1,30 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { authorizeAdmin } from '@/lib/api/admin-auth';
+import { authorizeAdmin, withPrivateResponseHeaders } from '@/lib/api/admin-auth';
+
+function response(body: Record<string, unknown>, status = 200) {
+  return withPrivateResponseHeaders(NextResponse.json(body, { status }));
+}
 
 export async function POST(req: NextRequest) {
   const authorization = await authorizeAdmin(req);
   if (!authorization.ok) return authorization.response;
+
   try {
     const { uid } = await req.json();
-    if (!uid) return NextResponse.json({ error: 'Missing Employee UID' }, { status: 400 });
-
-    console.log(`🚨 Disabling employee account: ${uid}`);
+    const employeeId = typeof uid === 'string' ? uid.trim() : '';
+    if (!employeeId) return response({ success: false, error: 'Missing Employee UID' }, 400);
 
     const db = getSupabaseAdmin();
+    const { data: employee, error: lookupError } = await db
+      .from('employees')
+      .select('id,uid,authUserId,isActive')
+      .or(`id.eq.${employeeId},uid.eq.${employeeId},authUserId.eq.${employeeId}`)
+      .limit(1)
+      .maybeSingle();
 
-    // Disable user in Supabase Auth
-    await db.auth.admin.updateUserById(uid, { ban_duration: 'none' });
+    if (lookupError) throw lookupError;
+    if (!employee) return response({ success: false, error: 'Employee not found' }, 404);
 
-    // Soft delete in DB
-    await db.from('employees').update({ isActive: false, updatedAt: new Date().toISOString() }).eq('id', uid);
+    // Database account status is authoritative for application access.
+    // Do not treat a legacy employee id as a Supabase Auth UUID.
+    const { error: updateError } = await db
+      .from('employees')
+      .update({ isActive: false, updatedAt: new Date().toISOString() })
+      .eq('id', employee.id);
 
-    return NextResponse.json({ success: true, message: 'Employee account disabled' });
+    if (updateError) throw updateError;
+
+    return response({ success: true, message: 'Employee account disabled' });
   } catch (error: unknown) {
-    console.error('Error disabling employee:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal Server Error' },
-      { status: 500 }
+    console.error('[admin/employees/delete]', error);
+    return response(
+      { success: false, error: error instanceof Error ? error.message : 'Internal Server Error' },
+      500,
     );
   }
 }
