@@ -34,7 +34,10 @@ export async function PATCH(req: NextRequest) {
     .select('id, tournament_id')
     .in('id', matchIds);
 
-  if (lookupError || !ownedMatches || ownedMatches.length !== new Set(matchIds).size) {
+  if (lookupError) {
+    return NextResponse.json({ error: lookupError.message }, { status: 500 });
+  }
+  if (!ownedMatches || ownedMatches.length !== new Set(matchIds).size) {
     return NextResponse.json({ error: 'One or more matches were not found' }, { status: 404 });
   }
 
