@@ -106,7 +106,7 @@ async function sendInBatches(phones: string[], templateName: string, params: str
 }
 
 export async function POST(req: NextRequest) {
-  const authorization = await authorizeAdmin(req);
+  const authorization = await authorizeAdmin(req, 'manage:communications');
   if (!authorization.ok) return authorization.response;
   try {
     const body = await req.json();
