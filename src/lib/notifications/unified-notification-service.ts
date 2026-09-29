@@ -19,7 +19,8 @@ export interface NotificationData {
 }
 
 export interface MessageData {
-  senderId: string;
+  /** @deprecated Sender identity is derived from the authenticated session. */
+  senderId?: string;
   receiverId: string;
   content: string;
   type: 'text' | 'image' | 'file' | 'system';
@@ -57,12 +58,18 @@ export class UnifiedNotificationService {
   }
 
   static async createMessage(data: MessageData): Promise<string> {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) throw authError || new Error('Authentication required');
+
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
+    const { senderId: _ignoredSenderId, ...messageData } = data;
     const { error } = await supabase.from('messages').insert({
       id,
-      ...data,
+      ...messageData,
+      senderId: authData.user.id,
       read: false,
+      isRead: false,
       createdAt: now,
       updatedAt: now,
       timestamp: now,
