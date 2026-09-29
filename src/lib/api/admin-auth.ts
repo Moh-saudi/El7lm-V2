@@ -39,9 +39,7 @@ export async function authorizeAdmin(request: NextRequest): Promise<AdminAuthori
     // Authorization is DB-backed only. Auth metadata and email domains are not privileges.
     const adminLookups = [
       admin.from('admins').select('id,isActive').eq('id', userId).maybeSingle(),
-      ...(email
-        ? [admin.from('admins').select('id,isActive').eq('email', email).maybeSingle()]
-        : []),
+      admin.from('admins').select('id,isActive').eq('uid', userId).maybeSingle(),
     ];
     const adminResults = await Promise.all(adminLookups);
     for (const result of adminResults) {
