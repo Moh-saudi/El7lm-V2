@@ -6,8 +6,10 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
+  const authorization = await authorizeAdmin(request, 'read:financials');
+  if (!authorization.ok) return authorization.response;
   try {
-    const auth = await authorizeAdmin(request);
+    const auth = await authorizeAdmin(request, 'read:financials');
     if (!auth.ok) return auth.response;
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '100');
