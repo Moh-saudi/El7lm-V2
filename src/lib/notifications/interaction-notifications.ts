@@ -200,7 +200,11 @@ class InteractionNotificationService {
   }
 
   async markAsRead(notificationId: string): Promise<void> {
-    await supabase.from('interaction_notifications').update({ isRead: true }).eq('id', notificationId);
+    const { data, error } = await supabase.rpc('mark_interaction_notification_read', {
+      p_notification_id: notificationId,
+    });
+    if (error) throw error;
+    if (!data) throw new Error('Notification not found or not owned by current user');
   }
 
   async cleanupExpiredNotifications(): Promise<void> {
