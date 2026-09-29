@@ -353,3 +353,37 @@ GRANT EXECUTE ON FUNCTION public.mark_interaction_notification_read(text) TO aut
 -- Messages RLS: remove legacy permissive policies that bypass participant ownership.
 DROP POLICY IF EXISTS "users_all_insert_messages" ON public.messages;
 DROP POLICY IF EXISTS "users_all_select_messages" ON public.messages;
+
+
+-- Notifications RLS: owners may mark their own notification read, not rewrite notification content.
+DROP POLICY IF EXISTS "notifications_update_own" ON public.notifications;
+REVOKE UPDATE ON public.notifications FROM authenticated;
+
+CREATE OR REPLACE FUNCTION public.mark_notification_read(p_notification_id text)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  affected integer;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'authentication required';
+  END IF;
+
+  UPDATE public.notifications
+     SET "read" = true,
+         "isRead" = true,
+         "updatedAt" = now()
+   WHERE id = p_notification_id
+     AND "userId" = auth.uid()::text;
+
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  RETURN affected > 0;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.mark_notification_read(text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.mark_notification_read(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.mark_notification_read(text) TO authenticated;
