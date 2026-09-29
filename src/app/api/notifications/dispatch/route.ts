@@ -50,28 +50,41 @@ function buildInAppContent(payload: DispatchPayload) {
 
 async function resolveActorIdentity(authUserId: string): Promise<{ id: string; name: string; accountType: string } | null> {
   const db = getSupabaseAdmin();
-  const tables = [
-    ['players', 'player'], ['clubs', 'club'], ['academies', 'academy'],
-    ['agents', 'agent'], ['trainers', 'trainer'], ['marketers', 'marketer'],
-    ['admins', 'admin'], ['users', 'user'],
+
+  const candidates = [
+    { table: 'players', accountType: 'player', select: 'id, uid, full_name, name' },
+    { table: 'clubs', accountType: 'club', select: 'id, uid, full_name, name' },
+    { table: 'academies', accountType: 'academy', select: 'id, uid, full_name, name' },
+    { table: 'agents', accountType: 'agent', select: 'id, uid, full_name' },
+    { table: 'trainers', accountType: 'trainer', select: 'id, uid, full_name' },
+    { table: 'marketers', accountType: 'marketer', select: 'id, uid, full_name' },
+    { table: 'admins', accountType: 'admin', select: 'id, uid, name' },
+    { table: 'users', accountType: 'user', select: 'id, uid, full_name, name, displayName' },
   ] as const;
 
-  for (const [table, accountType] of tables) {
-    for (const authColumn of ['uid', 'id'] as const) {
-      const { data, error } = await db.from(table).select('id, full_name, name').eq(authColumn, authUserId).limit(1);
-      if (error) throw error;
-      if (!data?.length) continue;
-
-      const row = data[0] as unknown as Record<string, unknown>;
-      const id = String(row.id || '').trim();
-      if (!id) return null;
-      const name = String(row.full_name ?? row.name ?? '').trim() || 'مستخدم';
-      return { id, name, accountType };
+  for (const candidate of candidates) {
+    const query = db.from(candidate.table);
+    let result;
+    switch (candidate.table) {
+      case 'players': result = await query.select('id, uid, full_name, name').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
+      case 'clubs': result = await query.select('id, uid, full_name, name').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
+      case 'academies': result = await query.select('id, uid, full_name, name').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
+      case 'agents': result = await query.select('id, uid, full_name').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
+      case 'trainers': result = await query.select('id, uid, full_name').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
+      case 'marketers': result = await query.select('id, uid, full_name').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
+      case 'admins': result = await query.select('id, uid, name').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
+      case 'users': result = await query.select('id, uid, full_name, name, displayName').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
     }
+    if (result.error) throw result.error;
+    if (!result.data?.length) continue;
+    const row = result.data[0] as unknown as Record<string, unknown>;
+    const id = String(row.id || '').trim();
+    if (!id) return null;
+    const name = String(row.full_name ?? row.displayName ?? row.name ?? '').trim() || 'مستخدم';
+    return { id, name, accountType: candidate.accountType };
   }
   return null;
 }
-
 async function targetUserExists(userId: string): Promise<boolean> {
   const db = getSupabaseAdmin();
   for (const table of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'] as const) {
