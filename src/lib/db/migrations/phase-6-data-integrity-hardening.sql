@@ -194,6 +194,11 @@ WHERE nullif("password",'') IS NOT NULL
 REVOKE UPDATE ("password","confirmPassword","tempPassword")
   ON public.users FROM authenticated;
 
+-- Referral organization types are polymorphic but limited to supported account domains.
+ALTER TABLE public.organization_referrals
+  ADD CONSTRAINT organization_referrals_type_valid
+  CHECK ("organizationType" IS NULL OR "organizationType" IN ('academy','agent','club','marketer','trainer'));
+
 -- Subscription plan monetary values must remain nonnegative.
 ALTER TABLE public.subscription_plans
   ADD CONSTRAINT subscription_plans_base_price_nonnegative
