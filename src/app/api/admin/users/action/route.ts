@@ -33,7 +33,7 @@ function isAccountType(value: unknown): value is AccountType {
 }
 
 export async function POST(request: NextRequest) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, 'manage:users');
   if (!authorization.ok) return authorization.response;
 
   try {
