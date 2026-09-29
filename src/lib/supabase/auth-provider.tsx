@@ -79,7 +79,7 @@ const ROLE_TABLES: Record<string, string> = {
 };
 
 // Fetch user data from Supabase tables
-async function fetchUserData(userId: string, email: string, firebaseUid?: string): Promise<{ data: Record<string, unknown>; collection: string; accountType: UserRole } | null> {
+async function fetchUserData(userId: string, _email: string): Promise<{ data: Record<string, unknown>; collection: string; accountType: UserRole } | null> {
   // Fast path for the migrated Supabase model: resolve the account from users/employee
   // first, then touch only the single role table that is actually needed.
   // The broader legacy fallback below remains for accounts that have not been normalized yet.
@@ -179,25 +179,6 @@ async function fetchUserData(userId: string, email: string, firebaseUid?: string
     const d = usersData[0] as Record<string, unknown>;
     const accountType = (d.accountType as UserRole) || 'player';
     return { data: d, collection: 'users', accountType };
-  }
-
-  // إذا لم نجد شيئاً بالـ Supabase UUID، نحاول بالـ Firebase UID (للمستخدمين المهاجرين)
-  if (firebaseUid && firebaseUid !== userId) {
-    const fbResults = await Promise.allSettled(
-      accountTypes.map(t => supabase.from(t).select('*').eq('id', firebaseUid).limit(1))
-    );
-    for (let i = 0; i < fbResults.length; i++) {
-      const r = fbResults[i];
-      if (r.status === 'fulfilled' && r.value.data?.length) {
-        const accountType: UserRole = accountTypes[i] === 'admins' ? 'admin' : (accountTypes[i].slice(0, -1) as UserRole);
-        return { data: { ...r.value.data[0] as Record<string, unknown>, _dbId: firebaseUid }, collection: accountTypes[i], accountType };
-      }
-    }
-    const { data: fbUsers } = await supabase.from('users').select('*').eq('id', firebaseUid).limit(1);
-    if (fbUsers?.length) {
-      const d = fbUsers[0] as Record<string, unknown>;
-      return { data: { ...d, _dbId: firebaseUid }, collection: 'users', accountType: (d.accountType as UserRole) || 'player' };
-    }
   }
 
 
@@ -300,10 +281,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
         const setupUserListener = async () => {
           const runId = ++listenerRun;
           try {
-            // Firebase UID: check metadata first, then sessionStorage (set by OTP login page)
-            const storedFirebaseUid = typeof window !== 'undefined' ? sessionStorage.getItem('otp_firebase_uid') : null;
-            const firebaseUidForFetch = (authUser.user_metadata?.db_id || authUser.user_metadata?.firebase_uid || storedFirebaseUid) as string | undefined;
-            const result = await fetchUserData(authUser.id, authUser.email || '', firebaseUidForFetch);
+            const result = await fetchUserData(authUser.id, authUser.email || '');
             if (!isSubscribed || runId !== listenerRun) return;
             if (!result) {
               if (isSubscribed) { setLoading(false); setHasInitialized(true); }
@@ -396,7 +374,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
               }, async () => {
                 if (!isSubscribed || runId !== listenerRun) return;
                 // Refresh on change
-                const refreshResult = await fetchUserData(authUser.id, authUser.email || '', (authUser.user_metadata?.db_id || authUser.user_metadata?.firebase_uid) as string | undefined);
+                const refreshResult = await fetchUserData(authUser.id, authUser.email || '');
                 if (refreshResult && isSubscribed && runId === listenerRun) {
                   setUserData(prev => ({ ...(prev || {}), ...refreshResult.data } as UserData));
                 }
@@ -445,7 +423,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
       const authUser = authData.user;
       if (!authUser) throw new Error('فشل تسجيل الدخول');
 
-      const result = await fetchUserData(authUser.id, email, (authUser.user_metadata?.db_id || authUser.user_metadata?.firebase_uid) as string | undefined);
+      const result = await fetchUserData(authUser.id, email);
       let foundData = result?.data || null;
       let userAccountType: UserRole = result?.accountType || 'player';
       const foundCollection = result?.collection || 'users';
@@ -716,7 +694,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
   const refreshUserData = async (): Promise<void> => {
     if (!user) return;
     try {
-      const result = await fetchUserData(user.id, user.email || '', (user.user_metadata?.db_id || user.user_metadata?.firebase_uid) as string | undefined);
+      const result = await fetchUserData(user.id, user.email || '');
       if (!result) { setUserData(null); return; }
 
       const { data: foundData, collection: foundCollection, accountType: userAccountType } = result;
