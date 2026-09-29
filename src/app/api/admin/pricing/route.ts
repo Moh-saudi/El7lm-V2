@@ -50,7 +50,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, 'read:pricing');
   if (!authorization.ok) return authorization.response;
 
   try {
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, 'manage:pricing');
   if (!authorization.ok) return authorization.response;
 
   try {
