@@ -6,7 +6,7 @@ import { getLocalTournamentClients } from '@/lib/tournament-clients-store';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-    const authorization = await authorizeAdmin(request);
+    const authorization = await authorizeAdmin(request, 'read:tournaments');
     if (!authorization.ok) return authorization.response;
 
     try {
