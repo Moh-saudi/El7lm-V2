@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeAdmin } from '@/lib/api/admin-auth';
+import { sendChatAmanTemplate } from '@/lib/server/chataman-provider';
 
 const BATCH_SIZE = 10;
 
@@ -77,29 +78,24 @@ async function getTargetedPhones(targeting: Targeting, db: ReturnType<typeof get
   return { phones: Array.from(phoneSet), total, matched: phoneSet.size };
 }
 
-async function sendOne(phone: string, templateName: string, params: string[], config: { apiKey: string; baseUrl: string }, origin: string): Promise<boolean> {
-  try {
-    const payload = {
-      phone,
-      template: {
-        name: templateName, language: { code: 'ar' },
-        components: params.length > 0 ? [{ type: 'body', parameters: params.map(p => ({ type: 'text', text: p })) }] : [],
-      },
-    };
-    const res = await fetch(`${origin}/api/chataman/send-template`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payload, apiKey: config.apiKey.trim(), baseUrl: config.baseUrl.trim() }),
-    });
-    const data = await res.json().catch(() => ({}));
-    return data.success === true;
-  } catch { return false; }
+async function sendOne(phone: string, templateName: string, params: string[], config: { apiKey: string; baseUrl: string }): Promise<boolean> {
+  const payload = {
+    phone,
+    template: {
+      name: templateName,
+      language: { code: 'ar' },
+      components: params.length > 0
+        ? [{ type: 'body', parameters: params.map(p => ({ type: 'text', text: p })) }]
+        : [],
+    },
+  };
+  return sendChatAmanTemplate(payload, config);
 }
 
-async function sendInBatches(phones: string[], templateName: string, params: string[], config: { apiKey: string; baseUrl: string }, origin: string): Promise<{ sent: number; failed: number }> {
+async function sendInBatches(phones: string[], templateName: string, params: string[], config: { apiKey: string; baseUrl: string }): Promise<{ sent: number; failed: number }> {
   let sent = 0; let failed = 0;
   for (let i = 0; i < phones.length; i += BATCH_SIZE) {
-    const results = await Promise.all(phones.slice(i, i + BATCH_SIZE).map(p => sendOne(p, templateName, params, config, origin)));
+    const results = await Promise.all(phones.slice(i, i + BATCH_SIZE).map(p => sendOne(p, templateName, params, config)));
     results.forEach(ok => ok ? sent++ : failed++);
   }
   return { sent, failed };
@@ -131,7 +127,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const origin = new URL(req.url).origin;
     const hasTargeting = targeting && Object.keys(targeting).some(k => {
       const v = targeting[k];
       return v !== undefined && v !== null && v !== 'both' && (!Array.isArray(v) || v.length > 0);
@@ -160,7 +155,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, eventType, templateName, total, matched: 0, sent: 0, failed: 0, message: 'No matching players with phone numbers found' });
     }
 
-    const { sent, failed } = await sendInBatches(phones, templateName, params, cfg as { apiKey: string; baseUrl: string }, origin);
+    const { sent, failed } = await sendInBatches(phones, templateName, params, cfg as { apiKey: string; baseUrl: string });
     return NextResponse.json({ success: true, eventType, templateName, totalPlayers: total, matched, sent, failed });
   } catch (err: unknown) {
     console.error('[broadcast-whatsapp] error:', err);
