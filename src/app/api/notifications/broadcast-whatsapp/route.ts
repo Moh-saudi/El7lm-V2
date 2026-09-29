@@ -43,7 +43,8 @@ function calcAge(birthDate: unknown): number | null {
 }
 
 async function getTargetedPhones(targeting: Targeting, db: ReturnType<typeof getSupabaseAdmin>): Promise<{ phones: string[]; total: number; matched: number }> {
-  const { data } = await db.from('players').select('phone, phoneNumber, position, primary_position, age, birth_date, birthDate, country, nationality, gender');
+  const { data, error } = await db.from('players').select('phone, phoneNumber, position, primary_position, age, birth_date, birthDate, country, nationality, gender');
+  if (error) throw error;
   const players = data ?? [];
   const total = players.length;
   const phoneSet = new Set<string>();
@@ -113,18 +114,20 @@ export async function POST(req: NextRequest) {
     const db = getSupabaseAdmin();
 
     // ChatAman config
-    const { data: cfgRows } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);
+    const { data: cfgRows, error: configError } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);
+    if (configError) throw configError;
     if (!cfgRows?.length) return NextResponse.json({ success: false, error: 'ChatAman config not found' }, { status: 400 });
     const cfg = cfgRows[0] as Record<string, unknown>;
     if (!cfg.isActive || !cfg.apiKey) return NextResponse.json({ success: false, error: 'ChatAman inactive or missing apiKey' }, { status: 400 });
 
     // Write broadcast doc
     if (broadcastData) {
-      await db.from('broadcasts').insert({
+      const { error: broadcastError } = await db.from('broadcasts').insert({
         id: crypto.randomUUID(), ...broadcastData, eventType,
         createdAt: new Date().toISOString(),
         actionUrl: broadcastData.actionUrl || '/dashboard/opportunities',
       });
+      if (broadcastError) throw broadcastError;
     }
 
     const hasTargeting = targeting && Object.keys(targeting).some(k => {
@@ -140,7 +143,8 @@ export async function POST(req: NextRequest) {
       const result = await getTargetedPhones(targeting, db);
       phones = result.phones; total = result.total; matched = result.matched;
     } else {
-      const { data: players } = await db.from('players').select('phone, phoneNumber');
+      const { data: players, error: playersError } = await db.from('players').select('phone, phoneNumber');
+      if (playersError) throw playersError;
       total = (players ?? []).length;
       const phoneSet = new Set<string>();
       (players ?? []).forEach((p: Record<string, unknown>) => {
