@@ -70,8 +70,9 @@ export async function POST(req: NextRequest) {
     if (!name?.trim()) return NextResponse.json({ error: 'name required' }, { status: 400 });
 
     // احسب sort_order
-    const { data: existing } = await supa.from('tournament_groups')
+    const { data: existing, error: existingError } = await supa.from('tournament_groups')
         .select('id').eq('tournament_id', tournament_id);
+    if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 });
     const sort_order = (existing || []).length;
 
     const { data, error } = await supa.from('tournament_groups').insert({
@@ -91,7 +92,8 @@ export async function PATCH(req: NextRequest) {
     if (!id || !name?.trim()) return NextResponse.json({ error: 'id and name required' }, { status: 400 });
 
     const supa = getSupabaseAdmin();
-    const { data: group } = await supa.from('tournament_groups').select('tournament_id').eq('id', id).maybeSingle();
+    const { data: group, error: groupError } = await supa.from('tournament_groups').select('tournament_id').eq('id', id).maybeSingle();
+    if (groupError) return NextResponse.json({ error: groupError.message }, { status: 500 });
     if (!group?.tournament_id) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
     const authorization = await authorizeTournamentOwnership(req, group.tournament_id);
     if (!authorization.user) return authorization.response!;
