@@ -67,6 +67,25 @@ export async function authorizeTournamentClient(
   }
 }
 
+
+export async function authorizeTournamentOwnership(
+  request: NextRequest,
+  tournamentId: string,
+): Promise<TournamentClientAuthorization> {
+  const authorization = await authorizeTournamentClient(request);
+  if (!authorization.user || !authorization.client) return authorization;
+
+  const ownsTournament = await tournamentBelongsToClient(tournamentId, authorization.client.id);
+  if (!ownsTournament) {
+    return {
+      user: null,
+      client: null,
+      response: tournamentAccessDenied(),
+    };
+  }
+  return authorization;
+}
+
 export async function tournamentBelongsToClient(
   tournamentId: string,
   clientId: string
