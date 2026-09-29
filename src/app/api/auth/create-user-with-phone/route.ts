@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber } from '@/lib/validation/phone-validation';
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
+import { verifyOTPInFirestore } from '@/lib/otp/firestore-otp-manager';
+import { verifyPlayReviewOTP } from '@/lib/otp/play-review-otp';
 
 const COLLECTION_MAP = {
   player: 'players',
@@ -25,9 +27,9 @@ function isPublicAccountType(value: unknown): value is PublicAccountType {
 
 export async function POST(request: NextRequest) {
   try {
-    const { phoneNumber, accountType, name = '' } = await request.json();
+    const { phoneNumber, accountType, name = '', otp } = await request.json();
 
-    if (!phoneNumber || !accountType) {
+    if (!phoneNumber || !accountType || !otp) {
       return NextResponse.json({ success: false, error: 'البيانات مطلوبة' }, { status: 400 });
     }
 
@@ -35,28 +37,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'نوع الحساب غير مسموح' }, { status: 400 });
     }
 
+    const reviewResult = await verifyPlayReviewOTP(phoneNumber, otp);
+    const otpResult = reviewResult.isReviewAccount
+      ? reviewResult
+      : await verifyOTPInFirestore(phoneNumber, otp);
+    if (!otpResult.success) {
+      return NextResponse.json(
+        { success: false, error: otpResult.error || 'رمز التحقق غير صحيح أو منتهي الصلاحية' },
+        { status: 400 },
+      );
+    }
+
     const db = getSupabaseAdmin();
     const cleanDigits = cleanPhoneNumber(phoneNumber);
     const otpDocId = `otp_${cleanDigits}`;
-
-    // التحقق من أن OTP تم التحقق منه مسبقاً
-    const { data: otpData } = await db
-      .from('otp_verifications')
-      .select('*')
-      .eq('id', otpDocId)
-      .single();
-
-    if (!otpData || !otpData.verified) {
-      return NextResponse.json({ success: false, error: 'يجب التحقق من رقم الهاتف أولاً' }, { status: 403 });
-    }
-
-    // التحقق من حداثة التحقق (خلال 15 دقيقة)
-    if (otpData.verifiedAt) {
-      const verifiedMs = new Date(otpData.verifiedAt).getTime();
-      if (Date.now() - verifiedMs > 15 * 60 * 1000) {
-        return NextResponse.json({ success: false, error: 'انتهت صلاحية التحقق، يرجى إعادة إرسال الرمز' }, { status: 403 });
-      }
-    }
 
     const e164Phone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
     const constructedEmail = `${cleanDigits}@el7lm.com`;
@@ -142,6 +136,16 @@ export async function POST(request: NextRequest) {
       try { await db.from('users').insert(userDoc); } catch { }
     }
 
+    const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
+      type: 'magiclink',
+      email: constructedEmail,
+    });
+    const tokenHash = linkData?.properties?.hashed_token;
+    if (linkError || !tokenHash) {
+      console.error('❌ [create-user] generateLink error:', linkError);
+      return NextResponse.json({ success: false, error: 'تم إنشاء الحساب وتعذر إنشاء الجلسة، يرجى تسجيل الدخول' }, { status: 500 });
+    }
+
     console.log(`✅ [create-user] Created ${uid} as ${accountType}`);
 
     return NextResponse.json({
@@ -149,8 +153,7 @@ export async function POST(request: NextRequest) {
       uid,
       accountType,
       userName: name,
-      authEmail: constructedEmail,
-      authPassword: password,
+      tokenHash,
     });
 
   } catch (error: any) {
