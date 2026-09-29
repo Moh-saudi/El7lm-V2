@@ -16,27 +16,16 @@ export function defineAbilityFor(userData: any, role?: Role) {
         return build();
     }
 
-    // الحساب الرئيسي للنظام يجب أن يملك صلاحية كاملة دائمًا، حتى لو كانت
-    // هناك بيانات دور/صلاحيات قديمة أو متزامنة جزئيًا في userData.
-    const normalizedEmail = String(userData.email || '').trim().toLowerCase();
-    if (normalizedEmail === 'admin@el7lm.com' || normalizedEmail === 'admin@elhilm.com') {
-        can('manage', 'all');
-        return build();
-    }
-
     // 1. صلاحيات السوبر أدمن (مدير النظام)
     const userRole = userData.roleId || userData.employeeRole || userData.role || userData.accountType;
     const userPermissions = userData.permissions;
 
-    // إذا كان نوع الحساب أدمن أو الدور أدمن (وليس موظفاً مقيداً بدور خاص غير الأدمن)
-    const isExplicitRestrictedEmployee = Boolean(
-        userData.isEmployee &&
-        userData.employeeRole &&
-        userData.employeeRole !== 'admin' &&
-        userData.employeeRole !== 'super_admin'
-    );
+    // accountType='admin' is also used as a dashboard routing bucket for employees.
+    // It must not grant full authority to a restricted employee.
+    const isEmployee = userData.isEmployee === true;
+    const isExplicitAdminRole = userRole === 'admin' || userRole === 'super_admin';
 
-    if ((userData.accountType === 'admin' || userRole === 'admin' || userData.isAdmin) && !isExplicitRestrictedEmployee) {
+    if (userData.isAdmin === true || isExplicitAdminRole || (!isEmployee && userData.accountType === 'admin')) {
         can('manage', 'all');
         return build();
     }
