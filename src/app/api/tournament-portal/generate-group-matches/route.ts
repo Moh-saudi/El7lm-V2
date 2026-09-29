@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeTournamentOwnership } from '@/lib/api/tournament-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,8 @@ export async function POST(req: NextRequest) {
     if (!tournament_id || !category_id) {
         return NextResponse.json({ error: 'tournament_id and category_id required' }, { status: 400 });
     }
+    const authorization = await authorizeTournamentOwnership(req, tournament_id);
+    if (!authorization.user) return authorization.response!;
     const supa = getSupabaseAdmin();
 
     // Fetch groups for this category
