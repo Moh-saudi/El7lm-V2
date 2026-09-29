@@ -84,8 +84,6 @@ export async function PATCH(req: NextRequest) {
     const { id, name } = await req.json();
     if (!id || !name?.trim()) return NextResponse.json({ error: 'id and name required' }, { status: 400 });
 
-    const authorization = await authorizeTournamentOwnership(req, tournament_id);
-    if (!authorization.user) return authorization.response!;
     const supa = getSupabaseAdmin();
     const { data: group } = await supa.from('tournament_groups').select('tournament_id').eq('id', id).maybeSingle();
     if (!group?.tournament_id) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
@@ -102,8 +100,6 @@ export async function DELETE(req: NextRequest) {
     const id = req.nextUrl.searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
-    const authorization = await authorizeTournamentOwnership(req, tournament_id);
-    if (!authorization.user) return authorization.response!;
     const supa = getSupabaseAdmin();
     const { data: group } = await supa.from('tournament_groups').select('tournament_id').eq('id', id).maybeSingle();
     if (!group?.tournament_id) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
