@@ -12,7 +12,6 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
   try {
     const accountTypes = ['clubs', 'academies', 'trainers', 'agents', 'players', 'users'];
     let userData: Record<string, unknown> | null = null;
-    let foundCollection: string | null = null;
 
     const results = await Promise.allSettled(
       accountTypes.map(t => {
@@ -27,7 +26,6 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
       const r = results[i];
       if (r.status === 'fulfilled' && r.value.data?.length) {
         userData = r.value.data[0] as Record<string, unknown>;
-        foundCollection = accountTypes[i];
         break;
       }
     }
