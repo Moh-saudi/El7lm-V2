@@ -15,7 +15,8 @@ export async function GET(req: NextRequest) {
     }
 
     const supa = getSupabaseAdmin();
-    const { data: team } = await supa.from('tournament_teams').select('tournament_id').eq('id', team_id).maybeSingle();
+    const { data: team, error: teamError } = await supa.from('tournament_teams').select('tournament_id').eq('id', team_id).maybeSingle();
+    if (teamError) return NextResponse.json({ error: teamError.message }, { status: 500 });
     if (!team?.tournament_id) return NextResponse.json({ error: 'Team not found' }, { status: 404 });
     const authorization = await authorizeTournamentOwnership(req, team.tournament_id);
     if (!authorization.user) return authorization.response!;
@@ -48,17 +49,19 @@ export async function POST(req: NextRequest) {
     if (!authorization.user) return authorization.response!;
 
     const supa = getSupabaseAdmin();
-    const { data: team } = await supa.from('tournament_teams').select('id').eq('id', team_id).eq('tournament_id', tournament_id).maybeSingle();
+    const { data: team, error: teamError } = await supa.from('tournament_teams').select('id').eq('id', team_id).eq('tournament_id', tournament_id).maybeSingle();
+    if (teamError) return NextResponse.json({ error: teamError.message }, { status: 500 });
     if (!team) return NextResponse.json({ error: 'Team not found in tournament' }, { status: 404 });
 
-    const { data: existing } = await supa
+    const { data: existing, error: existingError } = await supa
         .from('tournament_players')
         .select('id')
         .eq('team_id', team_id)
         .ilike('name', player_name.trim())
         .limit(1)
-        .single();
+        .maybeSingle();
 
+    if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 });
     if (existing) {
         return NextResponse.json({ error: `اللاعب "${player_name}" مضاف مسبقاً لهذا الفريق` }, { status: 409 });
     }
@@ -100,7 +103,10 @@ export async function DELETE(req: NextRequest) {
     if (!player_id) return NextResponse.json({ error: 'player_id required' }, { status: 400 });
 
     const supa = getSupabaseAdmin();
-    const { data: player } = await supa.from('tournament_players').select('tournament_id').eq('id', player_id).maybeSingle();
+    if (!isUuid(player_id)) return NextResponse.json({ error: 'Invalid player_id' }, { status: 400 });
+
+    const { data: player, error: playerError } = await supa.from('tournament_players').select('tournament_id').eq('id', player_id).maybeSingle();
+    if (playerError) return NextResponse.json({ error: playerError.message }, { status: 500 });
     if (!player?.tournament_id) return NextResponse.json({ error: 'Player not found' }, { status: 404 });
     const authorization = await authorizeTournamentOwnership(req, player.tournament_id);
     if (!authorization.user) return authorization.response!;
