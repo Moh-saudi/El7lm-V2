@@ -548,7 +548,10 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
 
       const accountType = userData?.accountType || 'player';
       const tableName = accountType === 'admin' ? 'users' : ROLE_TABLES[accountType] || 'users';
-      const { error: profileError } = await supabase.from(tableName).update(sanitized).eq('id', user.id);
+      const profileQuery = supabase.from(tableName).update(sanitized);
+      const { error: profileError } = tableName === 'users'
+        ? await profileQuery.eq('id', user.id)
+        : await profileQuery.or(`id.eq.${user.id},uid.eq.${user.id}`);
       if (profileError) throw profileError;
       if (tableName !== 'users') {
         const { error: usersError } = await supabase.from('users').update(sanitized).eq('id', user.id);
