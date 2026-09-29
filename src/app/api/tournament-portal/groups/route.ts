@@ -109,7 +109,8 @@ export async function DELETE(req: NextRequest) {
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
     const supa = getSupabaseAdmin();
-    const { data: group } = await supa.from('tournament_groups').select('tournament_id').eq('id', id).maybeSingle();
+    const { data: group, error: groupError } = await supa.from('tournament_groups').select('tournament_id').eq('id', id).maybeSingle();
+    if (groupError) return NextResponse.json({ error: groupError.message }, { status: 500 });
     if (!group?.tournament_id) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
     const authorization = await authorizeTournamentOwnership(req, group.tournament_id);
     if (!authorization.user) return authorization.response!;
