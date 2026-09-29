@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeTournamentOwnership } from '@/lib/api/tournament-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,9 +16,9 @@ export async function GET(req: NextRequest) {
   const tid = req.nextUrl.searchParams.get('tournament_id');
   if (!tid) return NextResponse.json({ error: 'tournament_id required' }, { status: 400 });
 
-  if (!isUuid(tid)) {
-    return NextResponse.json({ venues: devVenuesMap.get(tid) || [] });
-  }
+  if (!isUuid(tid)) return NextResponse.json({ error: 'Invalid tournament_id' }, { status: 400 });
+  const authorization = await authorizeTournamentOwnership(req, tid);
+  if (!authorization.user) return authorization.response!;
 
   try {
     const supa = getSupabaseAdmin();
@@ -42,21 +43,9 @@ export async function POST(req: NextRequest) {
   const { tournament_id, name, address, city, capacity, notes } = body;
   if (!tournament_id || !name) return NextResponse.json({ error: 'tournament_id and name required' }, { status: 400 });
 
-  if (!isUuid(tournament_id)) {
-    const newVenue = {
-      id: `venue-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      tournament_id,
-      name,
-      address: address || null,
-      city: city || null,
-      capacity: capacity || null,
-      notes: notes || null,
-      created_at: new Date().toISOString(),
-    };
-    const list = devVenuesMap.get(tournament_id) || [];
-    devVenuesMap.set(tournament_id, [...list, newVenue]);
-    return NextResponse.json({ venue: newVenue });
-  }
+  if (!isUuid(tournament_id)) return NextResponse.json({ error: 'Invalid tournament_id' }, { status: 400 });
+  const authorization = await authorizeTournamentOwnership(req, tournament_id);
+  if (!authorization.user) return authorization.response!;
 
   try {
     const supa = getSupabaseAdmin();
@@ -80,13 +69,22 @@ export async function PATCH(req: NextRequest) {
   const { id, ...updates } = await req.json();
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
-  if (!isUuid(id)) {
-    return NextResponse.json({ venue: { id, ...updates } });
-  }
+  if (!isUuid(id)) return NextResponse.json({ error: 'Invalid venue id' }, { status: 400 });
 
   try {
     const supa = getSupabaseAdmin();
-    const { data, error } = await supa.from('tournament_venues').update(updates).eq('id', id).select().single();
+    const { data: venue } = await supa.from('tournament_venues').select('tournament_id').eq('id', id).maybeSingle();
+    if (!venue?.tournament_id) return NextResponse.json({ error: 'Venue not found' }, { status: 404 });
+    const authorization = await authorizeTournamentOwnership(req, venue.tournament_id);
+    if (!authorization.user) return authorization.response!;
+    const allowed = {
+      name: updates.name,
+      address: updates.address,
+      city: updates.city,
+      capacity: updates.capacity,
+      notes: updates.notes,
+    };
+    const { data, error } = await supa.from('tournament_venues').update(allowed).eq('id', id).eq('tournament_id', venue.tournament_id).select().single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ venue: data });
   } catch (e: any) {
@@ -100,17 +98,15 @@ export async function DELETE(req: NextRequest) {
   const tid = req.nextUrl.searchParams.get('tournament_id');
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
-  if (tid && devVenuesMap.has(tid)) {
-    devVenuesMap.set(tid, (devVenuesMap.get(tid) || []).filter(v => v.id !== id));
-  }
-
-  if (!isUuid(id)) {
-    return NextResponse.json({ ok: true });
-  }
+  if (!isUuid(id)) return NextResponse.json({ error: 'Invalid venue id' }, { status: 400 });
 
   try {
     const supa = getSupabaseAdmin();
-    const { error } = await supa.from('tournament_venues').delete().eq('id', id);
+    const { data: resource } = await supa.from('tournament_venues').select('tournament_id').eq('id', id).maybeSingle();
+    if (!resource?.tournament_id) return NextResponse.json({ error: 'Venue not found' }, { status: 404 });
+    const authorization = await authorizeTournamentOwnership(req, resource.tournament_id);
+    if (!authorization.user) return authorization.response!;
+    const { error } = await supa.from('tournament_venues').delete().eq('id', id).eq('tournament_id', resource.tournament_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
   } catch {
