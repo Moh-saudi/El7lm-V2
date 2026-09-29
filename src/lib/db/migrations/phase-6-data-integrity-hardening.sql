@@ -194,6 +194,13 @@ WHERE nullif("password",'') IS NOT NULL
 REVOKE UPDATE ("password","confirmPassword","tempPassword")
   ON public.users FROM authenticated;
 
+-- Subscription plan monetary values must remain nonnegative.
+ALTER TABLE public.subscription_plans
+  ADD CONSTRAINT subscription_plans_base_price_nonnegative
+  CHECK (base_price IS NULL OR base_price >= 0),
+  ADD CONSTRAINT subscription_plans_base_original_price_nonnegative
+  CHECK (base_original_price IS NULL OR base_original_price >= 0);
+
 -- Verification, moderation and staff authority state is server-owned.
 REVOKE UPDATE ("isVerified") ON public.academies FROM authenticated;
 REVOKE UPDATE ("isVerified") ON public.agents FROM authenticated;
