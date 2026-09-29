@@ -1,115 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { authorizeAdmin } from '@/lib/api/admin-auth';
-import { addLocalTournamentClient } from '@/lib/tournament-clients-store';
+import { authorizeAdmin, withPrivateResponseHeaders } from '@/lib/api/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/admin/tournament-clients/create
- * Body: { name, organization_name, email, phone, country, password }
- */
 export async function POST(req: NextRequest) {
-    const authorization = await authorizeAdmin(req, 'manage:tournaments');
-    if (!authorization.ok) return authorization.response;
+  const authorization = await authorizeAdmin(req, 'manage:tournaments');
+  if (!authorization.ok) return authorization.response;
 
-    try {
-        const body = await req.json();
-        const { name, organization_name, email, phone, country, password } = body;
+  try {
+    const { name, organization_name, email, phone, country, password } = await req.json();
+    const cleanName = String(name || '').trim();
+    const cleanEmail = String(email || '').trim().toLowerCase();
 
-        if (!name || !email || !password) {
-            return NextResponse.json({ error: 'الاسم والبريد الإلكتروني وكلمة المرور مطلوبة' }, { status: 400 });
-        }
-
-        if (password.length < 8) {
-            return NextResponse.json({ error: 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' }, { status: 400 });
-        }
-
-        const supabaseAdmin = getSupabaseAdmin();
-
-        // Step 1: Create or resolve Supabase Auth user
-        let authUserId: string = crypto.randomUUID();
-        try {
-            const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-                email,
-                password,
-                email_confirm: true,
-                user_metadata: { name, organization_name },
-            });
-
-            if (authData?.user?.id) {
-                authUserId = authData.user.id;
-            } else {
-                // Fallback to signUp
-                const { data: signUpData } = await supabaseAdmin.auth.signUp({
-                    email,
-                    password,
-                    options: { data: { name, organization_name } },
-                });
-                if (signUpData?.user?.id) {
-                    authUserId = signUpData.user.id;
-                }
-            }
-        } catch (authErr) {
-            console.warn('[tournament-clients/create] Auth admin fallback to generated UUID:', authErr);
-        }
-
-        const clientId = crypto.randomUUID();
-        const now = new Date().toISOString();
-
-        const newClientRecord = {
-            id: clientId,
-            supabase_auth_id: authUserId,
-            name: name.trim(),
-            organization_name: organization_name?.trim() || null,
-            email: email.trim().toLowerCase(),
-            password: password,
-            phone: phone?.trim() || null,
-            country: country?.trim() || null,
-            is_active: true,
-            created_at: now,
-            _tournament_count: 0,
-        };
-
-        // Step 2: Try to persist in Supabase DB
-        let dbSaved = false;
-        try {
-            const { data: client, error: clientError } = await supabaseAdmin
-                .from('tournament_clients')
-                .insert({
-                    id: clientId,
-                    supabase_auth_id: authUserId,
-                    name: newClientRecord.name,
-                    organization_name: newClientRecord.organization_name,
-                    email: newClientRecord.email,
-                    phone: newClientRecord.phone,
-                    country: newClientRecord.country,
-                    is_active: true,
-                })
-                .select('id, name, email')
-                .maybeSingle();
-
-            if (!clientError && client) {
-                dbSaved = true;
-            } else if (clientError) {
-                console.warn('[tournament-clients/create] Supabase insert note (RLS/Key):', clientError.message);
-            }
-        } catch (dbErr) {
-            console.warn('[tournament-clients/create] Supabase DB exception:', dbErr);
-        }
-
-        // Always ensure persisted in local client store for resilient access
-        addLocalTournamentClient(newClientRecord);
-
-        return NextResponse.json({
-            client: newClientRecord,
-            success: true,
-            dbSaved,
-        }, { status: 201 });
-
-    } catch (e: any) {
-        console.error('[tournament-clients/create] Unexpected error:', e);
-        return NextResponse.json({ error: e.message || 'حدث خطأ أثناء إنشاء الحساب' }, { status: 500 });
+    if (!cleanName || !cleanEmail || typeof password !== 'string' || password.length < 8) {
+      return NextResponse.json({ error: 'Valid name, email and password are required' }, { status: 400 });
     }
+
+    const admin = getSupabaseAdmin();
+    const { data: authData, error: authError } = await admin.auth.admin.createUser({
+      email: cleanEmail,
+      password,
+      email_confirm: true,
+      user_metadata: { name: cleanName, organization_name: organization_name?.trim() || null },
+    });
+    if (authError || !authData.user) {
+      return withPrivateResponseHeaders(
+        NextResponse.json({ error: 'Failed to create organizer identity' }, { status: 409 }),
+      );
+    }
+
+    const { data: client, error: clientError } = await admin
+      .from('tournament_clients')
+      .insert({
+        supabase_auth_id: authData.user.id,
+        name: cleanName,
+        organization_name: organization_name?.trim() || null,
+        email: cleanEmail,
+        phone: phone?.trim() || null,
+        country: country?.trim() || null,
+        is_active: true,
+      })
+      .select('id,supabase_auth_id,name,organization_name,email,phone,country,is_active,created_at')
+      .single();
+
+    if (clientError || !client) {
+      await admin.auth.admin.deleteUser(authData.user.id).catch(() => undefined);
+      return withPrivateResponseHeaders(
+        NextResponse.json({ error: 'Failed to create organizer profile' }, { status: 500 }),
+      );
+    }
+
+    return withPrivateResponseHeaders(NextResponse.json({ client, success: true }, { status: 201 }));
+  } catch (error) {
+    console.error('[tournament-clients/create] failed:', error);
+    return withPrivateResponseHeaders(
+      NextResponse.json({ error: 'Internal Server Error' }, { status: 500 }),
+    );
+  }
 }
