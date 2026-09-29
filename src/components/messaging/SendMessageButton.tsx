@@ -29,6 +29,7 @@ import {
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { dispatchNotification } from '@/lib/notifications/notification-dispatcher';
+import { UnifiedNotificationService } from '@/lib/notifications/unified-notification-service';
 import { useTranslation } from '@/lib/i18n';
 
 interface SendMessageButtonProps {
@@ -68,46 +69,6 @@ const USER_TYPES = {
 
 // قوالب رسائل جاهزة لتسهيل الإرسال على اللاعب
 const MESSAGE_TEMPLATES = ['trialRequest', 'joinInquiry', 'agentCollab', 'intro'];
-
-const createNotification = async ({
-  userId,
-  title,
-  body,
-  type,
-  senderName,
-  senderId,
-  senderType,
-  link
-}: {
-  userId: string;
-  title: string;
-  body: string;
-  type: string;
-  senderName: string;
-  senderId: string;
-  senderType: string;
-  link: string;
-}) => {
-  const id = crypto.randomUUID();
-  const now = new Date().toISOString();
-  const notificationData = {
-    id,
-    userId,
-    title,
-    body,
-    type,
-    senderName,
-    senderId,
-    senderType,
-    link,
-    isRead: false,
-    createdAt: now,
-    updatedAt: now
-  };
-
-  await supabase.from('notifications').insert(notificationData);
-  return id;
-};
 
 const SendMessageButton: React.FC<SendMessageButtonProps> = ({
   // الخصائص المشتركة
@@ -357,7 +318,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         updatedAt: now
       };
 
-      await supabase.from('messages').insert(messageData);
+      await UnifiedNotificationService.createMessage(messageData);
 
       // تحديث المحادثة بعد إرسال الرسالة
       if (existingConversation) {
@@ -380,21 +341,6 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
           updatedAt: now
         }).eq('id', conversationId);
       }
-
-      // إنشاء إشعار للمستلم
-      const notificationTitle = isNewConversation ? msg('newMessage') : msg('newConversationMessage');
-      const notificationBody = `${getUserDisplayName()}: ${finalMessage.substring(0, 50)}${finalMessage.length > 50 ? '...' : ''}`;
-
-      await createNotification({
-        userId: targetUserId,
-        title: notificationTitle,
-        body: notificationBody,
-        type: 'message',
-        senderName: getUserDisplayName(),
-        senderId: user.id,
-        senderType: userData.accountType,
-        link: `/dashboard/messages?conversation=${conversationId}`
-      });
 
       // التحقق من نجاح العملية
       const { data: verifyConversation } = await supabase
@@ -595,7 +541,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
           updatedAt: now
         };
 
-        await supabase.from('messages').insert(messageData);
+        await UnifiedNotificationService.createMessage(messageData);
 
         // تحديث المحادثة - جلب قيمة unreadCount الحالية ثم تحديثها
         const { data: convData } = await supabase
@@ -615,18 +561,6 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
           },
           updatedAt: now
         }).eq('id', selectedConversation.id);
-
-        // إنشاء إشعار للمستلم
-        await createNotification({
-          userId: receiverId,
-          title: msg('newMessage'),
-          body: `${getUserDisplayName()}: ${newMessage.trim().substring(0, 50)}${newMessage.length > 50 ? '...' : ''}`,
-          type: 'message',
-          senderName: getUserDisplayName(),
-          senderId: user.id,
-          senderType: userData.accountType,
-          link: `/dashboard/messages?conversation=${selectedConversation.id}`
-        });
 
         if (onMessageSent) {
           onMessageSent();
