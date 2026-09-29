@@ -143,6 +143,23 @@ BEGIN
   END IF;
 END $;
 
+-- Catalog and tournament monetary fields must never be negative.
+DO $
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.inventory'::regclass AND conname='inventory_price_nonnegative') THEN
+    ALTER TABLE public.inventory ADD CONSTRAINT inventory_price_nonnegative CHECK (price IS NULL OR price >= 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.inventory'::regclass AND conname='inventory_original_price_nonnegative') THEN
+    ALTER TABLE public.inventory ADD CONSTRAINT inventory_original_price_nonnegative CHECK (original_price IS NULL OR original_price >= 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.dream_academy_categories'::regclass AND conname='dream_academy_categories_base_price_nonnegative') THEN
+    ALTER TABLE public.dream_academy_categories ADD CONSTRAINT dream_academy_categories_base_price_nonnegative CHECK ("basePriceUSD" IS NULL OR "basePriceUSD" >= 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='public.tournament_team_regs'::regclass AND conname='tournament_team_regs_payment_amount_nonnegative') THEN
+    ALTER TABLE public.tournament_team_regs ADD CONSTRAINT tournament_team_regs_payment_amount_nonnegative CHECK (payment_amount IS NULL OR payment_amount >= 0);
+  END IF;
+END $;
+
 -- Canonical player video policies.
 DROP POLICY IF EXISTS "Players can insert own videos" ON public.player_videos;
 DROP POLICY IF EXISTS "Players can update own pending videos" ON public.player_videos;
