@@ -76,20 +76,11 @@ export class UnifiedNotificationService {
   }
 
   static async markMessageAsRead(messageId: string): Promise<void> {
-    const { error } = await supabase
-      .from('messages')
-      .update({ read: true, isRead: true, updatedAt: new Date().toISOString() })
-      .eq('id', messageId);
+    const { data, error } = await supabase.rpc('mark_message_read', {
+      p_message_id: messageId,
+    });
     if (error) throw error;
-  }
-
-  static async markAllMessagesAsRead(userId: string): Promise<void> {
-    const { error } = await supabase
-      .from('messages')
-      .update({ read: true, isRead: true, updatedAt: new Date().toISOString() })
-      .eq('receiverId', userId)
-      .eq('read', false);
-    if (error) throw error;
+    if (!data) throw new Error('Message not found or not owned by current receiver');
   }
 
   static async deleteNotification(notificationId: string): Promise<void> {
