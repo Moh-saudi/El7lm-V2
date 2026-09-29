@@ -10,12 +10,22 @@ export interface AccountStatus {
 
 export async function checkAccountStatus(userId: string): Promise<AccountStatus> {
   try {
-    const accountTypes = ['users', 'admins', 'clubs', 'academies', 'trainers', 'agents', 'players', 'marketers'];
+    const accountTypes = ['users', 'admins', 'clubs', 'academies', 'trainers', 'agents', 'players', 'marketers'] as const;
+    const statusColumns: Record<(typeof accountTypes)[number], string> = {
+      users: 'isDeleted,isActive,suspensionReason',
+      admins: 'isActive',
+      clubs: 'isDeleted,isActive',
+      academies: 'isDeleted,isActive',
+      trainers: 'isDeleted,isActive',
+      agents: 'isDeleted,isActive',
+      players: 'isDeleted,isActive',
+      marketers: 'isActive',
+    };
     let userData: Record<string, unknown> | null = null;
 
     const results = await Promise.allSettled(
       accountTypes.map(t =>
-        supabase.from(t).select('*').or(`id.eq.${userId},uid.eq.${userId}`).limit(1)
+        supabase.from(t).select(statusColumns[t]).or(`id.eq.${userId},uid.eq.${userId}`).limit(1)
       )
     );
 
@@ -46,7 +56,7 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
     }
 
     if (userData.isActive === false) {
-      const suspendReason = String(userData.suspendReason || 'لم يتم تحديد السبب');
+      const suspendReason = String(userData.suspensionReason || 'لم يتم تحديد السبب');
       return {
         isActive: false,
         canLogin: false,
