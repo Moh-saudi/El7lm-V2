@@ -194,6 +194,23 @@ WHERE nullif("password",'') IS NOT NULL
 REVOKE UPDATE ("password","confirmPassword","tempPassword")
   ON public.users FROM authenticated;
 
+-- Preserve legacy admin primary keys for audit history while linking authority to Supabase Auth UUIDs.
+UPDATE public.admins a
+SET uid = au.id::text,
+    "updatedAt" = now()
+FROM auth.users au
+WHERE NULLIF(a.uid,'') IS NULL
+  AND a."isActive" IS DISTINCT FROM false
+  AND au.email IS NOT NULL
+  AND a.email IS NOT NULL
+  AND LOWER(a.email) = LOWER(au.email)
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.admins other
+    WHERE other.id <> a.id
+      AND other.uid = au.id::text
+  );
+
 -- User creation is server-owned; authenticated clients must not create arbitrary compatibility rows.
 DROP POLICY IF EXISTS users_insert_own ON public.users;
 REVOKE INSERT ON TABLE public.users FROM authenticated;
