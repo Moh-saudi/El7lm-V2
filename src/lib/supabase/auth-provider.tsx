@@ -146,20 +146,6 @@ async function fetchUserData(userId: string, email: string, firebaseUid?: string
     };
   }
 
-  // The fast path already checked employees.authUserId. Only the email fallback
-  // remains here for migrated employee accounts that have not been linked yet.
-  if (email) {
-    try {
-      const { data: employees } = await supabase.from('employees').select('*').eq('email', email).limit(1);
-      if (employees?.length) {
-        // Compatibility read only: identity linking must happen on a trusted server path.
-        return { data: employees[0] as Record<string, unknown>, collection: 'employees', accountType: 'admin' };
-      }
-    } catch (err) {
-      console.warn('Error searching employees by email:', err);
-    }
-  }
-
   // Check role-specific tables — try by uid (Supabase Auth UUID) first, then by id
   const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players', 'marketers'];
 
@@ -214,28 +200,6 @@ async function fetchUserData(userId: string, email: string, firebaseUid?: string
     }
   }
 
-  // البحث بالإيميل كـ fallback أخير (مهم لمستخدمي Google OAuth الذين لم يُحدَّث uid عندهم بعد)
-  if (email) {
-    const emailResults = await Promise.allSettled(
-      accountTypes.map(t => supabase.from(t).select('*').eq('email', email).limit(1))
-    );
-    for (let i = 0; i < emailResults.length; i++) {
-      const r = emailResults[i];
-      if (r.status === 'fulfilled' && r.value.data?.length) {
-        const accountType: UserRole = accountTypes[i] === 'admins' ? 'admin' : (accountTypes[i].slice(0, -1) as UserRole);
-        const rowData = r.value.data[0] as Record<string, unknown>;
-        // Compatibility read only: never mutate canonical identity from the browser.
-        // OTP and migration/server flows own uid linking.
-        return { data: rowData, collection: accountTypes[i], accountType };
-      }
-    }
-    // بحث في users table بالإيميل
-    const { data: emailUsers } = await supabase.from('users').select('*').eq('email', email).limit(1);
-    if (emailUsers?.length) {
-      const d = emailUsers[0] as Record<string, unknown>;
-      return { data: d, collection: 'users', accountType: (d.accountType as UserRole) || 'player' };
-    }
-  }
 
   return null;
 }
