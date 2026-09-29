@@ -63,7 +63,8 @@ export class UnifiedNotificationService {
 
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
-    const { senderId: _ignoredSenderId, ...messageData } = data;
+    const messageData = { ...data };
+    delete messageData.senderId;
     const { error } = await supabase.from('messages').insert({
       id,
       ...messageData,
