@@ -83,16 +83,6 @@ export class UnifiedNotificationService {
     if (!data) throw new Error('Message not found or not owned by current receiver');
   }
 
-  static async deleteNotification(notificationId: string): Promise<void> {
-    const { error } = await supabase.from('notifications').delete().eq('id', notificationId);
-    if (error) throw error;
-  }
-
-  static async deleteMessage(messageId: string): Promise<void> {
-    const { error } = await supabase.from('messages').delete().eq('id', messageId);
-    if (error) throw error;
-  }
-
   static async getNotificationStats(userId: string) {
     const { data, error } = await supabase
       .from('notifications')
