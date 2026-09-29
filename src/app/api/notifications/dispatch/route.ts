@@ -21,6 +21,11 @@ interface DispatchPayload {
   metadata?: { videoId?: string; commentText?: string; messagePreview?: string; source?: string };
 }
 
+const EVENT_TYPES = new Set<NotificationEventType>([
+  'profile_view', 'video_view', 'video_like', 'video_comment',
+  'video_share', 'message_received', 'follow',
+]);
+
 const ACCOUNT_LABELS: Record<string, string> = {
   player: 'لاعب', club: 'نادي', academy: 'أكاديمية',
   agent: 'وكيل', trainer: 'مدرب', admin: 'مدير',
@@ -78,6 +83,16 @@ async function resolveActorIdentity(authUserId: string): Promise<{ id: string; n
     }
   }
   return null;
+}
+
+async function targetUserExists(userId: string): Promise<boolean> {
+  const db = getSupabaseAdmin();
+  for (const table of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'] as const) {
+    const { data, error } = await db.from(table).select('id').eq('id', userId).limit(1);
+    if (error) throw error;
+    if (data?.length) return true;
+  }
+  return false;
 }
 
 async function hasDuplicateRecent(
@@ -188,6 +203,12 @@ export async function POST(req: NextRequest) {
 
     if (!eventType || !targetUserId) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
+    }
+    if (!EVENT_TYPES.has(eventType)) {
+      return NextResponse.json({ success: false, error: 'Unsupported event type' }, { status: 400 });
+    }
+    if (!(await targetUserExists(targetUserId))) {
+      return NextResponse.json({ success: false, error: 'Target user not found' }, { status: 404 });
     }
 
     const actor = await resolveActorIdentity(authorization.user.id);
