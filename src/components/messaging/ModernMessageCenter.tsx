@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
+import { UnifiedNotificationService } from '@/lib/notifications/unified-notification-service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -318,7 +319,7 @@ const ModernMessageCenter: React.FC = () => {
         if (!otherParticipantId) return;
 
         try {
-            await supabase.from('messages').insert({
+            await UnifiedNotificationService.createMessage({
                 id: crypto.randomUUID(),
                 conversationId: selectedConversation.id,
                 senderId: user.id,
@@ -329,7 +330,7 @@ const ModernMessageCenter: React.FC = () => {
                 isRead: false,
                 messageType: 'text',
                 isPinned: false
-            }).select().single();
+            });
 
             const currentUnread = selectedConversation.unreadCount || {};
             await supabase.from('conversations').update({
@@ -574,7 +575,7 @@ const ModernMessageCenter: React.FC = () => {
             setIsUploadingImage(true);
             const imageUrl = await uploadImageToCloudflare(selectedImage);
 
-            await supabase.from('messages').insert({
+            await UnifiedNotificationService.createMessage({
                 id: crypto.randomUUID(),
                 conversationId: selectedConversation.id,
                 senderId: user.id,
@@ -633,7 +634,7 @@ const ModernMessageCenter: React.FC = () => {
             const { url: voiceUrl } = await uploadResponse.json();
 
             // حفظ الرسالة في Supabase مع رابط الملف
-            await supabase.from('messages').insert({
+            await UnifiedNotificationService.createMessage({
                 id: crypto.randomUUID(),
                 conversationId: selectedConversation.id,
                 senderId: user.id,
