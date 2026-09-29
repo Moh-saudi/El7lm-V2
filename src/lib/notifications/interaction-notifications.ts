@@ -207,16 +207,16 @@ class InteractionNotificationService {
     if (!data) throw new Error('Notification not found or not owned by current user');
   }
 
-  async cleanupExpiredNotifications(): Promise<void> {
-    await supabase.from('interaction_notifications').delete().lt('expiresAt', new Date().toISOString());
-  }
-
   subscribeToNotifications(userId: string, callback: (data: unknown[]) => void) {
     return supabase
       .channel(`interaction_notif:${userId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'interaction_notifications', filter: `userId=eq.${userId}` },
         async () => {
-          const { data } = await supabase.from('interaction_notifications').select('*').eq('userId', userId).order('createdAt', { ascending: false }).limit(50);
+          const { data, error } = await supabase.from('interaction_notifications').select('*').eq('userId', userId).order('createdAt', { ascending: false }).limit(50);
+          if (error) {
+            console.error('[interaction-notifications] realtime refresh failed:', error);
+            return;
+          }
           callback(data ?? []);
         })
       .subscribe();
