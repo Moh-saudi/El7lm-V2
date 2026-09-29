@@ -28,6 +28,14 @@ export interface ProcessedCallback {
 }
 
 
+function extractString(source: Record<string, unknown>, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return null;
+}
+
 /**
  * معالجة callback من Geidea وتسجيله في Supabase
  */
