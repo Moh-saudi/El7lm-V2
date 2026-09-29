@@ -85,19 +85,18 @@ async function targetUserExists(userId: string): Promise<boolean> {
 async function hasDuplicateRecent(
   targetUserId: string, actorId: string, eventType: string, windowMs: number
 ): Promise<boolean> {
-  try {
-    const db = getSupabaseAdmin();
-    const since = new Date(Date.now() - windowMs).toISOString();
-    const { data } = await db
-      .from('interaction_notifications')
-      .select('createdAt')
-      .eq('userId', targetUserId)
-      .eq('viewerId', actorId)
-      .eq('type', eventType)
-      .gt('createdAt', since)
-      .limit(1);
-    return (data?.length ?? 0) > 0;
-  } catch { return false; }
+  const db = getSupabaseAdmin();
+  const since = new Date(Date.now() - windowMs).toISOString();
+  const { data, error } = await db
+    .from('interaction_notifications')
+    .select('createdAt')
+    .eq('userId', targetUserId)
+    .eq('viewerId', actorId)
+    .eq('type', eventType)
+    .gt('createdAt', since)
+    .limit(1);
+  if (error) throw error;
+  return (data?.length ?? 0) > 0;
 }
 
 async function getPhoneForUser(userId: string): Promise<string | null> {
