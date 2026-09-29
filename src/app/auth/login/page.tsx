@@ -111,16 +111,18 @@ export default function LoginPage() {
         sessionStorage.setItem('otp_account_type', data.accountType || 'player');
       }
 
-      // تسجيل الدخول باستخدام كلمة المرور المؤقتة
-      if (data.authEmail && data.authPassword) {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: data.authEmail,
-          password: data.authPassword,
-        });
-        if (signInError) {
-          console.error('signInWithPassword error:', signInError);
-          throw new Error(`${t('auth.loginFailed')}: ${signInError.message}`);
-        }
+      // Exchange the server-issued one-time token for a Supabase session.
+      // OTP login must not change or expose the user's password.
+      if (!data.tokenHash) {
+        throw new Error(t('auth.loginFailed'));
+      }
+      const { error: signInError } = await supabase.auth.verifyOtp({
+        token_hash: data.tokenHash,
+        type: 'magiclink',
+      });
+      if (signInError) {
+        console.error('verifyOtp error:', signInError);
+        throw new Error(`${t('auth.loginFailed')}: ${signInError.message}`);
       }
 
       toast.dismiss('otp-login');
