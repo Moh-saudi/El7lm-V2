@@ -211,6 +211,22 @@ WHERE NULLIF(a.uid,'') IS NULL
       AND other.uid = au.id::text
   );
 
+-- Keep database RLS authority aligned with trusted admin id/uid identity resolution.
+CREATE OR REPLACE FUNCTION private.is_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.admins a
+    WHERE (a.id = (SELECT auth.uid())::text OR a.uid = (SELECT auth.uid())::text)
+      AND COALESCE(a."isActive", true)
+  );
+$;
+
 -- User creation is server-owned; authenticated clients must not create arbitrary compatibility rows.
 DROP POLICY IF EXISTS users_insert_own ON public.users;
 REVOKE INSERT ON TABLE public.users FROM authenticated;
