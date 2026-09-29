@@ -15,7 +15,7 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
 
     const results = await Promise.allSettled(
       accountTypes.map(t =>
-        supabase.from(t).select('*').or(`id.eq.${userId},uid.eq.${userId}`).limit(1)
+        supabase.from(t).select('isDeleted,isActive,suspendReason').or(`id.eq.${userId},uid.eq.${userId}`).limit(1)
       )
     );
 
