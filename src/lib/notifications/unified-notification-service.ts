@@ -36,22 +36,6 @@ export interface MessageData {
 
 export class UnifiedNotificationService {
 
-  static async createNotification(data: NotificationData): Promise<string> {
-    const now = new Date().toISOString();
-    const payload = normalizeNotificationPayload({
-      ...data,
-      read: false,
-      isRead: false,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    const id = crypto.randomUUID();
-    const { error } = await supabase.from('notifications').insert({ id, ...payload });
-    if (error) throw error;
-    return id;
-  }
-
   static async createMessage(data: MessageData): Promise<string> {
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
