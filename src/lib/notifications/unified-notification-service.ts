@@ -66,15 +66,21 @@ export class UnifiedNotificationService {
 
     let receiverId = '';
     for (const table of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'] as const) {
-      const { data: receiver, error: receiverError } = await supabase
-        .from(table)
-        .select('uid')
-        .or(`id.eq.${data.receiverId},uid.eq.${data.receiverId}`)
-        .limit(1);
-      if (receiverError) throw receiverError;
-      if (!receiver?.length) continue;
-      receiverId = String(receiver[0].uid ?? '').trim();
-      if (receiverId) break;
+      const byId = await supabase.from(table).select('uid').eq('id', data.receiverId).limit(1);
+      if (byId.error) throw byId.error;
+      const idMatch = byId.data?.[0];
+      if (idMatch?.uid) {
+        receiverId = String(idMatch.uid).trim();
+        break;
+      }
+
+      const byUid = await supabase.from(table).select('uid').eq('uid', data.receiverId).limit(1);
+      if (byUid.error) throw byUid.error;
+      const uidMatch = byUid.data?.[0];
+      if (uidMatch?.uid) {
+        receiverId = String(uidMatch.uid).trim();
+        break;
+      }
     }
     if (!receiverId) throw new Error('Receiver has no authenticated identity');
 
