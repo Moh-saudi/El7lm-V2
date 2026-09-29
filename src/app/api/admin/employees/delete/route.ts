@@ -7,7 +7,7 @@ function response(body: Record<string, unknown>, status = 200) {
 }
 
 export async function POST(req: NextRequest) {
-  const authorization = await authorizeAdmin(req);
+  const authorization = await authorizeAdmin(req, 'manage:employees');
   if (!authorization.ok) return authorization.response;
 
   try {
