@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
  * Body: { name, organization_name, email, phone, country, password }
  */
 export async function POST(req: NextRequest) {
-    const authorization = await authorizeAdmin(req);
+    const authorization = await authorizeAdmin(req, 'manage:tournaments');
     if (!authorization.ok) return authorization.response;
 
     try {
