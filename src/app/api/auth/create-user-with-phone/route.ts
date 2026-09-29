@@ -8,14 +8,20 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber } from '@/lib/validation/phone-validation';
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
 
-const COLLECTION_MAP: Record<string, string> = {
+const COLLECTION_MAP = {
   player: 'players',
   club: 'clubs',
   agent: 'agents',
   academy: 'academies',
   trainer: 'trainers',
   marketer: 'marketers',
-};
+} as const;
+
+type PublicAccountType = keyof typeof COLLECTION_MAP;
+
+function isPublicAccountType(value: unknown): value is PublicAccountType {
+  return typeof value === 'string' && Object.hasOwn(COLLECTION_MAP, value);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,6 +29,10 @@ export async function POST(request: NextRequest) {
 
     if (!phoneNumber || !accountType) {
       return NextResponse.json({ success: false, error: 'البيانات مطلوبة' }, { status: 400 });
+    }
+
+    if (!isPublicAccountType(accountType)) {
+      return NextResponse.json({ success: false, error: 'نوع الحساب غير مسموح' }, { status: 400 });
     }
 
     const db = getSupabaseAdmin();
@@ -63,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     // التحقق من عدم وجود الهاتف مسبقاً
-    const tableName = COLLECTION_MAP[accountType] || 'users';
+    const tableName = COLLECTION_MAP[accountType];
     const { data: existingUser } = await db
       .from(tableName)
       .select('id')
@@ -72,6 +82,23 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json({ success: false, error: 'رقم الهاتف مسجل بالفعل، يرجى تسجيل الدخول' }, { status: 409 });
+    }
+
+    // Consume the verified OTP atomically. A verified phone can create only one account,
+    // even when concurrent requests arrive within the verification window.
+    const { data: consumedOtp, error: consumeError } = await db
+      .from('otp_verifications')
+      .delete()
+      .eq('id', otpDocId)
+      .eq('verified', true)
+      .select('id')
+      .maybeSingle();
+
+    if (consumeError || !consumedOtp) {
+      return NextResponse.json(
+        { success: false, error: 'تم استخدام التحقق أو انتهت صلاحيته، يرجى التحقق مرة أخرى' },
+        { status: 409 },
+      );
     }
 
     // إنشاء مستخدم في Supabase Auth
@@ -114,9 +141,6 @@ export async function POST(request: NextRequest) {
     if (tableName !== 'users') {
       try { await db.from('users').insert(userDoc); } catch { }
     }
-
-    // حذف OTP بعد الاستخدام
-    await db.from('otp_verifications').delete().eq('id', otpDocId);
 
     console.log(`✅ [create-user] Created ${uid} as ${accountType}`);
 
