@@ -3,7 +3,7 @@ import { sendEmail, EmailType } from '@/lib/email/sender';
 import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export async function POST(request: NextRequest) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, 'manage:communications');
   if (!authorization.ok) return authorization.response;
   try {
     const body = await request.json();
