@@ -4,6 +4,7 @@ import { User, AccountType } from '../_types';
 import { message } from 'antd';
 import { useAuth } from '@/lib/supabase/auth-provider';
 import { notifyUserUpdate } from '@/lib/notifications/admin-notifications';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 export function useUserActions() {
     const [loading, setLoading] = useState(false);
@@ -47,30 +48,33 @@ export function useUserActions() {
         }
     };
 
+    const runSensitiveAction = async (
+        user: User,
+        action: 'suspend' | 'activate' | 'soft-delete' | 'restore' | 'verify' | 'change-account-type' | 'permanent-delete',
+        extra: Record<string, unknown> = {},
+    ) => {
+        const response = await authenticatedFetch('/api/admin/users/action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: user.id,
+                accountType: user.accountType,
+                action,
+                ...extra,
+            }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Admin action failed');
+        }
+    };
+
     // تعليق حساب
     const suspendUser = useCallback(async (user: User, reason: string) => {
         setLoading(true);
         try {
-            const tableName = getTableName(user.accountType);
-
-            await supabase.from(tableName).update({
-                isActive: false,
-                suspendedAt: new Date().toISOString(),
-                suspendReason: reason,
-            }).eq('id', user.id);
-
-            // تحديث في users أيضاً إذا كان مختلف
-            if (tableName !== 'users') {
-                await supabase.from('users').update({
-                    isActive: false,
-                    suspendedAt: new Date().toISOString(),
-                    suspendReason: reason,
-                }).eq('id', user.id);
-            }
-
-            // إرسال إشعار
+            await runSensitiveAction(user, 'suspend', { reason });
             await sendNotificationIfNeeded(user, 'suspend');
-
             message.success('تم تعليق الحساب بنجاح');
             return true;
         } catch (error: any) {
@@ -86,25 +90,8 @@ export function useUserActions() {
     const activateUser = useCallback(async (user: User) => {
         setLoading(true);
         try {
-            const tableName = getTableName(user.accountType);
-
-            await supabase.from(tableName).update({
-                isActive: true,
-                suspendedAt: null,
-                suspendReason: null,
-            }).eq('id', user.id);
-
-            if (tableName !== 'users') {
-                await supabase.from('users').update({
-                    isActive: true,
-                    suspendedAt: null,
-                    suspendReason: null,
-                }).eq('id', user.id);
-            }
-
-            // إرسال إشعار
+            await runSensitiveAction(user, 'activate');
             await sendNotificationIfNeeded(user, 'activate');
-
             message.success('تم تفعيل الحساب بنجاح');
             return true;
         } catch (error: any) {
@@ -116,35 +103,13 @@ export function useUserActions() {
         }
     }, [userData, isEmployee]);
 
-    // حذف حساب (soft delete)
+    // حذف حساب
     const deleteUser = useCallback(async (user: User, permanent = false) => {
         setLoading(true);
         try {
-            const tableName = getTableName(user.accountType);
-
-            if (permanent) {
-                await supabase.from(tableName).delete().eq('id', user.id);
-                if (tableName !== 'users') {
-                    await supabase.from('users').delete().eq('id', user.id);
-                }
-                message.success('تم حذف الحساب نهائياً');
-            } else {
-                await supabase.from(tableName).update({
-                    isDeleted: true,
-                    deletedAt: new Date().toISOString(),
-                }).eq('id', user.id);
-                if (tableName !== 'users') {
-                    await supabase.from('users').update({
-                        isDeleted: true,
-                        deletedAt: new Date().toISOString(),
-                    }).eq('id', user.id);
-                }
-                message.success('تم حذف الحساب');
-            }
-
-            // إرسال إشعار
+            await runSensitiveAction(user, permanent ? 'permanent-delete' : 'soft-delete');
             await sendNotificationIfNeeded(user, 'delete');
-
+            message.success(permanent ? 'تم حذف الحساب نهائياً' : 'تم حذف الحساب');
             return true;
         } catch (error: any) {
             console.error('Error deleting user:', error);
@@ -159,23 +124,8 @@ export function useUserActions() {
     const restoreUser = useCallback(async (user: User) => {
         setLoading(true);
         try {
-            const tableName = getTableName(user.accountType);
-
-            await supabase.from(tableName).update({
-                isDeleted: false,
-                deletedAt: null,
-            }).eq('id', user.id);
-
-            if (tableName !== 'users') {
-                await supabase.from('users').update({
-                    isDeleted: false,
-                    deletedAt: null,
-                }).eq('id', user.id);
-            }
-
-            // إرسال إشعار (نعتبره تفعيل أو تحديث)
+            await runSensitiveAction(user, 'restore');
             await sendNotificationIfNeeded(user, 'activate');
-
             message.success('تم استعادة الحساب بنجاح');
             return true;
         } catch (error: any) {
@@ -191,23 +141,8 @@ export function useUserActions() {
     const verifyUser = useCallback(async (user: User) => {
         setLoading(true);
         try {
-            const tableName = getTableName(user.accountType);
-
-            await supabase.from(tableName).update({
-                verificationStatus: 'verified',
-                verifiedAt: new Date().toISOString(),
-            }).eq('id', user.id);
-
-            if (tableName !== 'users') {
-                await supabase.from('users').update({
-                    verificationStatus: 'verified',
-                    verifiedAt: new Date().toISOString(),
-                }).eq('id', user.id);
-            }
-
-            // إرسال إشعار (كعملية تحديث)
+            await runSensitiveAction(user, 'verify');
             await sendNotificationIfNeeded(user, 'update');
-
             message.success('تم توثيق الحساب بنجاح');
             return true;
         } catch (error: any) {
@@ -223,11 +158,7 @@ export function useUserActions() {
     const changeAccountType = useCallback(async (user: User, newType: AccountType) => {
         setLoading(true);
         try {
-            // تحديث في users
-            await supabase.from('users').update({
-                accountType: newType,
-            }).eq('id', user.id);
-
+            await runSensitiveAction(user, 'change-account-type', { newAccountType: newType });
             message.success('تم تغيير نوع الحساب بنجاح');
             return true;
         } catch (error: any) {
