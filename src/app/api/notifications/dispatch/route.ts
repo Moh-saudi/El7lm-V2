@@ -217,7 +217,7 @@ export async function POST(req: NextRequest) {
     // 1. Create in-app notification
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const now = new Date().toISOString();
-    await db.from('interaction_notifications').insert({
+    const { error: notificationError } = await db.from('interaction_notifications').insert({
       id: crypto.randomUUID(),
       userId: targetUserId, viewerId: actorId, viewerName: actorName,
       viewerType: ACCOUNT_LABELS[actorAccountType] || actorAccountType,
@@ -226,6 +226,9 @@ export async function POST(req: NextRequest) {
       emoji: content.emoji, isRead: false, priority: content.priority,
       metadata: metadata || {}, createdAt: now, expiresAt,
     });
+    if (notificationError) {
+      return NextResponse.json({ success: false, error: 'Failed to create notification' }, { status: 500 });
+    }
 
     // 2. WhatsApp template
     let whatsappResult: 'sent' | 'skipped' | 'failed' = 'skipped';
