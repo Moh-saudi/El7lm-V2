@@ -56,10 +56,10 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
 
     if (action === 'permanent-delete') {
-      const { error: roleDeleteError } = await db.from(tableName).delete().eq('id', userId);
+      const { error: roleDeleteError } = await db.from(tableName).delete().or(`id.eq.${userId},uid.eq.${userId}`);
       if (roleDeleteError) throw roleDeleteError;
       if (tableName !== 'users') {
-        const { error: usersDeleteError } = await db.from('users').delete().eq('id', userId);
+        const { error: usersDeleteError } = await db.from('users').delete().or(`id.eq.${userId},uid.eq.${userId}`);
         if (usersDeleteError) throw usersDeleteError;
       }
       return response({ success: true });
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       if (!isAccountType(body.newAccountType)) {
         return response({ success: false, error: 'Invalid account type' }, 400);
       }
-      const { error } = await db.from('users').update({ accountType: body.newAccountType }).eq('id', userId);
+      const { error } = await db.from('users').update({ accountType: body.newAccountType }).or(`id.eq.${userId},uid.eq.${userId}`);
       if (error) throw error;
       return response({ success: true });
     }
@@ -108,11 +108,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (tableName !== 'users' && rolePatch) {
-      const { error: roleError } = await db.from(tableName).update(rolePatch).eq('id', userId);
+      const { error: roleError } = await db.from(tableName).update(rolePatch).or(`id.eq.${userId},uid.eq.${userId}`);
       if (roleError) throw roleError;
     }
 
-    const { error: usersError } = await db.from('users').update(usersPatch).eq('id', userId);
+    const { error: usersError } = await db.from('users').update(usersPatch).or(`id.eq.${userId},uid.eq.${userId}`);
     if (usersError) throw usersError;
 
     return response({ success: true });
