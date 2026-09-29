@@ -101,9 +101,3 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
     };
   }
 }
-
-export async function updateLastLogin(_userId: string): Promise<void> {
-  // Retained for API compatibility. Last-login/audit metadata must be written
-  // by a trusted server path where the authenticated identity and request IP
-  // are authoritative; never fan out identity-adjacent writes from the browser.
-}
