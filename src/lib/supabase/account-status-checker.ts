@@ -15,7 +15,12 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
     let foundCollection: string | null = null;
 
     const results = await Promise.allSettled(
-      accountTypes.map(t => supabase.from(t).select('*').eq('id', userId).limit(1))
+      accountTypes.map(t => {
+        const query = supabase.from(t).select('*');
+        return t === 'users'
+          ? query.eq('id', userId).limit(1)
+          : query.or(`id.eq.${userId},uid.eq.${userId}`).limit(1);
+      })
     );
 
     for (let i = 0; i < results.length; i++) {
@@ -99,23 +104,8 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
   }
 }
 
-const ACCOUNT_COLLECTIONS = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers', 'employees'];
-
-export async function updateLastLogin(userId: string): Promise<void> {
-  try {
-    const now = new Date().toISOString();
-    const payload = { lastLogin: now, last_login: now, lastLoginIP: getClientIP() };
-
-    await Promise.allSettled(
-      ACCOUNT_COLLECTIONS.map(tableName =>
-        supabase.from(tableName).update(payload).eq('id', userId)
-      )
-    );
-  } catch (error) {
-    console.warn('Failed to update last login:', error);
-  }
-}
-
-function getClientIP(): string {
-  return typeof window !== 'undefined' ? 'client-side' : 'unknown';
+export async function updateLastLogin(_userId: string): Promise<void> {
+  // Retained for API compatibility. Last-login/audit metadata must be written
+  // by a trusted server path where the authenticated identity and request IP
+  // are authoritative; never fan out identity-adjacent writes from the browser.
 }
