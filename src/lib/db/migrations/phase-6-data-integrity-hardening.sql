@@ -165,6 +165,21 @@ END $;
 CREATE INDEX IF NOT EXISTS idx_tournament_players_team_id
   ON public.tournament_players (team_id);
 
+-- Legacy financial/subscription snapshots remain for historical compatibility,
+-- but authenticated clients must not be able to rewrite them.
+REVOKE UPDATE (
+  "subscriptionStatus",
+  "selectedPackage",
+  "packageType",
+  "subscriptionExpiresAt",
+  "subscriptionEndDate",
+  "lastPaymentId",
+  "lastPaymentDate",
+  "lastPaymentAmount",
+  "lastPaymentMethod",
+  subscription
+) ON public.users FROM authenticated;
+
 -- Canonical player video policies.
 DROP POLICY IF EXISTS "Players can insert own videos" ON public.player_videos;
 DROP POLICY IF EXISTS "Players can update own pending videos" ON public.player_videos;
