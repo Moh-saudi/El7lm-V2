@@ -90,25 +90,36 @@ export async function tournamentBelongsToClient(
   tournamentId: string,
   clientId: string
 ): Promise<boolean> {
-  // 1. Check Supabase DB if tournamentId is a valid UUID
-  if (isUuid(tournamentId) && isUuid(clientId)) {
-    try {
-      const { data } = await getSupabaseAdmin()
-        .from('tournament_new')
-        .select('id')
-        .eq('id', tournamentId)
-        .eq('client_id', clientId)
-        .maybeSingle();
-      if (data) return true;
-    } catch {}
+  if (!isUuid(tournamentId) || !isUuid(clientId)) return false;
+  try {
+    const { data, error } = await getSupabaseAdmin()
+      .from('tournament_new')
+      .select('id')
+      .eq('id', tournamentId)
+      .eq('client_id', clientId)
+      .maybeSingle();
+    return !error && !!data;
+  } catch {
+    return false;
   }
+}
 
-  // 2. Allow mock / local dev tournaments without hitting unsupported Node filesystem APIs in Edge
-  if (tournamentId.startsWith('tourn-') || tournamentId.startsWith('dev-') || tournamentId.startsWith('mock-')) {
-    return true;
+export async function categoryBelongsToTournament(
+  categoryId: string,
+  tournamentId: string,
+): Promise<boolean> {
+  if (!isUuid(categoryId) || !isUuid(tournamentId)) return false;
+  try {
+    const { data, error } = await getSupabaseAdmin()
+      .from('tournament_categories')
+      .select('id')
+      .eq('id', categoryId)
+      .eq('tournament_id', tournamentId)
+      .maybeSingle();
+    return !error && !!data;
+  } catch {
+    return false;
   }
-
-  return false;
 }
 
 export function tournamentAccessDenied() {
