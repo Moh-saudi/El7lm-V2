@@ -16,15 +16,18 @@ export interface NotificationData {
   accountType: string;
   read?: boolean;
   metadata?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 export interface MessageData {
   /** @deprecated Sender identity is derived from the authenticated session. */
   senderId?: string;
   receiverId: string;
-  content: string;
-  type: 'text' | 'image' | 'file' | 'system';
-  priority: 'low' | 'medium' | 'high';
+  content?: string;
+  message?: string;
+  type?: 'text' | 'image' | 'file' | 'system';
+  messageType?: string;
+  priority?: 'low' | 'medium' | 'high';
   senderName: string;
   senderAvatar?: string;
   receiverName?: string;
@@ -80,9 +83,15 @@ export class UnifiedNotificationService {
     const messageData = { ...data };
     delete messageData.senderId;
     delete messageData.receiverId;
+    const content = String(data.content ?? data.message ?? '').trim();
+    if (!content) throw new Error('Message content is required');
     const { error } = await supabase.from('messages').insert({
       id,
       ...messageData,
+      content,
+      message: content,
+      type: data.type ?? 'text',
+      priority: data.priority ?? 'medium',
       senderId: authData.user.id,
       receiverId,
       read: false,
