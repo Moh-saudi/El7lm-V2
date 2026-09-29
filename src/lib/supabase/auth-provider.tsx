@@ -277,7 +277,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
             let permissions: string[] = [];
             let roleName = '';
             if (collectionName === 'employees' && rowData.roleId) {
-              const { data: roleData } = await supabase.from('roles').select('*').eq('id', String(rowData.roleId)).limit(1);
+              const { data: roleData } = await supabase.from('roles').select('permissions,name').eq('id', String(rowData.roleId)).limit(1);
               if (roleData?.length) {
                 permissions = (roleData[0] as Record<string, unknown>).permissions as string[] || [];
                 roleName = String((roleData[0] as Record<string, unknown>).name || '');
@@ -389,7 +389,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
       const isEmployee = foundCollection === 'employees';
       let permissions: string[] = [];
       if (isEmployee && foundData.roleId) {
-        const { data: roleRows } = await supabase.from('roles').select('*').eq('id', String(foundData.roleId)).limit(1);
+        const { data: roleRows } = await supabase.from('roles').select('permissions,name').eq('id', String(foundData.roleId)).limit(1);
         if (roleRows?.length) permissions = (roleRows[0] as Record<string, unknown>).permissions as string[] || [];
       }
 
@@ -571,7 +571,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
 
       let permissions: string[] = [];
       if (foundCollection === 'employees' && foundData.roleId) {
-        const { data: roleRows } = await supabase.from('roles').select('*').eq('id', String(foundData.roleId)).limit(1);
+        const { data: roleRows } = await supabase.from('roles').select('permissions,name').eq('id', String(foundData.roleId)).limit(1);
         if (roleRows?.length) permissions = (roleRows[0] as Record<string, unknown>).permissions as string[] || [];
       }
 
