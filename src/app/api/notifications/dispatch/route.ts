@@ -85,16 +85,20 @@ async function resolveActorIdentity(authUserId: string): Promise<{ id: string; n
   }
   return null;
 }
-async function targetUserExists(userId: string): Promise<boolean> {
+async function resolveTargetIdentity(userId: string): Promise<{ accountId: string; authUid: string } | null> {
   const db = getSupabaseAdmin();
-  for (const table of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'] as const) {
-    const { data, error } = await db.from(table).select('id').eq('id', userId).limit(1);
-    if (error) throw error;
-    if (data?.length) return true;
-  }
-  return false;
-}
 
+  for (const table of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'] as const) {
+    const { data, error } = await db.from(table).select('id, uid').or(`id.eq.${userId},uid.eq.${userId}`).limit(1);
+    if (error) throw error;
+    if (!data?.length) continue;
+    const accountId = String(data[0].id ?? '').trim();
+    const authUid = String(data[0].uid ?? '').trim();
+    if (!accountId || !authUid) return null;
+    return { accountId, authUid };
+  }
+  return null;
+}
 async function hasDuplicateRecent(
   targetUserId: string, actorId: string, eventType: string, windowMs: number
 ): Promise<boolean> {
@@ -201,8 +205,9 @@ export async function POST(req: NextRequest) {
     if (!EVENT_TYPES.has(eventType)) {
       return NextResponse.json({ success: false, error: 'Unsupported event type' }, { status: 400 });
     }
-    if (!(await targetUserExists(targetUserId))) {
-      return NextResponse.json({ success: false, error: 'Target user not found' }, { status: 404 });
+    const target = await resolveTargetIdentity(targetUserId);
+    if (!target) {
+      return NextResponse.json({ success: false, error: 'Target account has no authenticated identity' }, { status: 404 });
     }
 
     const actor = await resolveActorIdentity(authorization.user.id);
@@ -214,7 +219,7 @@ export async function POST(req: NextRequest) {
     const actorAccountType = actor.accountType;
     const trustedPayload: DispatchPayload = { ...body, actorId, actorName, actorAccountType };
 
-    if (targetUserId === actorId) {
+    if (target.authUid === authorization.user.id) {
       return NextResponse.json({ success: true, skipped: 'self' });
     }
 
@@ -222,7 +227,7 @@ export async function POST(req: NextRequest) {
       eventType === 'video_view'   ? 24 * 60 * 60 * 1000 :
       eventType === 'profile_view' ?  1 * 60 * 60 * 1000 : 0;
 
-    if (dedupWindow > 0 && await hasDuplicateRecent(targetUserId, actorId, eventType, dedupWindow)) {
+    if (dedupWindow > 0 && await hasDuplicateRecent(target.authUid, authorization.user.id, eventType, dedupWindow)) {
       return NextResponse.json({ success: true, skipped: 'duplicate' });
     }
 
@@ -234,12 +239,13 @@ export async function POST(req: NextRequest) {
     const now = new Date().toISOString();
     const { error: notificationError } = await db.from('interaction_notifications').insert({
       id: crypto.randomUUID(),
-      userId: targetUserId, viewerId: actorId, viewerName: actorName,
+      userId: target.authUid, profileOwnerId: target.authUid,
+      viewerId: authorization.user.id, viewerName: actorName,
       viewerType: ACCOUNT_LABELS[actorAccountType] || actorAccountType,
       viewerAccountType: actorAccountType,
       type: eventType, title: content.title, message: content.message,
       emoji: content.emoji, isRead: false, priority: content.priority,
-      metadata: metadata || {}, createdAt: now, expiresAt,
+      metadata: { ...(metadata || {}), targetAccountId: target.accountId, actorAccountId: actorId }, createdAt: now, expiresAt,
     });
     if (notificationError) {
       return NextResponse.json({ success: false, error: 'Failed to create notification' }, { status: 500 });
@@ -248,7 +254,7 @@ export async function POST(req: NextRequest) {
     // 2. WhatsApp template
     let whatsappResult: 'sent' | 'skipped' | 'failed' = 'skipped';
     const [chatAmanConfig, templateConfig, phone] = await Promise.all([
-      getChatAmanConfig(db), getTemplateConfig(db), getPhoneForUser(targetUserId),
+      getChatAmanConfig(db), getTemplateConfig(db), getPhoneForUser(target.accountId),
     ]);
 
     if (chatAmanConfig && phone) {
@@ -256,14 +262,14 @@ export async function POST(req: NextRequest) {
       if (tmpl) {
         let recipientName = 'مستخدم';
         const nameLookups = [
-          await db.from('users').select('full_name, name, displayName').eq('id', targetUserId).limit(1),
-          await db.from('players').select('full_name, name').eq('id', targetUserId).limit(1),
-          await db.from('clubs').select('full_name, name').eq('id', targetUserId).limit(1),
-          await db.from('academies').select('full_name, name').eq('id', targetUserId).limit(1),
-          await db.from('agents').select('full_name').eq('id', targetUserId).limit(1),
-          await db.from('trainers').select('full_name').eq('id', targetUserId).limit(1),
-          await db.from('marketers').select('full_name').eq('id', targetUserId).limit(1),
-          await db.from('admins').select('name').eq('id', targetUserId).limit(1),
+          await db.from('users').select('full_name, name, displayName').eq('id', target.accountId).limit(1),
+          await db.from('players').select('full_name, name').eq('id', target.accountId).limit(1),
+          await db.from('clubs').select('full_name, name').eq('id', target.accountId).limit(1),
+          await db.from('academies').select('full_name, name').eq('id', target.accountId).limit(1),
+          await db.from('agents').select('full_name').eq('id', target.accountId).limit(1),
+          await db.from('trainers').select('full_name').eq('id', target.accountId).limit(1),
+          await db.from('marketers').select('full_name').eq('id', target.accountId).limit(1),
+          await db.from('admins').select('name').eq('id', target.accountId).limit(1),
         ];
         for (const result of nameLookups) {
           if (result.error) throw result.error;
