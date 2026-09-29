@@ -237,31 +237,6 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
     }
   }, [loading, hasInitialized, user, userData]);
 
-  // Helper: save basic user doc
-  const createBasicUserDocument = async (userId: string, email: string, role: UserRole = 'player', additionalData: Record<string, unknown> = {}): Promise<UserData> => {
-    const { data: existing } = await supabase.from('users').select('*').eq('id', userId).limit(1);
-    if (existing?.length) return existing[0] as UserData;
-
-    const now = new Date().toISOString();
-    const basicUserData: Record<string, unknown> = {
-      id: userId,
-      uid: userId,
-      email,
-      accountType: role,
-      full_name: additionalData.full_name || additionalData.name || '',
-      phone: additionalData.phone || '',
-      profile_image: additionalData.profile_image || additionalData.profileImage || '',
-      isNewUser: false,
-      isActive: true,
-      created_at: additionalData.created_at || now,
-      updated_at: now,
-      createdAt: additionalData.createdAt || now,
-      updatedAt: now,
-      ...additionalData,
-    };
-    await supabase.from('users').upsert(basicUserData);
-    return basicUserData as unknown as UserData;
-  };
 
   // Auth state listener
   useEffect(() => {
