@@ -9,8 +9,6 @@ import { verifyPlayReviewOTP } from '@/lib/otp/play-review-otp';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber, generatePhoneVariants } from '@/lib/validation/phone-validation';
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
-import crypto from 'crypto';
-
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isUUID = (v: unknown): v is string => typeof v === 'string' && UUID_REGEX.test(v);
@@ -156,18 +154,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'تعذر تحديد حساب المصادقة' }, { status: 500 });
     }
 
-    // 4. إنشاء كلمة مرور مؤقتة وتحديث المستخدم بها لإنشاء جلسة
-    const tempPassword = crypto.randomBytes(32).toString('hex');
-    const { error: updateError } = await db.auth.admin.updateUserById(supabaseUserId, {
-      password: tempPassword,
-      email_confirm: true,
-      user_metadata: { db_id: userId, accountType, phone: phoneNumber, full_name: userName },
+    // 4. Create a one-time Supabase magic-link token for session exchange.
+    // Never rotate or expose the user's password as part of OTP login.
+    const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
+      type: 'magiclink',
+      email: authEmail,
     });
 
-    if (updateError) {
-      console.error('❌ [OTP Login] updateUserById error:', updateError);
-      return NextResponse.json({ success: false, error: 'فشل إنشاء جلسة المصادقة: ' + updateError.message }, { status: 500 });
+    const tokenHash = linkData?.properties?.hashed_token;
+    if (linkError || !tokenHash) {
+      console.error('❌ [OTP Login] generateLink error:', linkError);
+      return NextResponse.json({ success: false, error: 'فشل إنشاء جلسة المصادقة' }, { status: 500 });
     }
+
+    // Keep trusted metadata synchronized without changing credentials.
+    await db.auth.admin.updateUserById(supabaseUserId, {
+      user_metadata: { db_id: userId, accountType, phone: phoneNumber, full_name: userName },
+    });
 
     // ربط Supabase Auth UUID بعمود uid وتحديث آخر تسجيل دخول
     const collectionMap: Record<string, string> = {
@@ -184,8 +187,7 @@ export async function POST(request: NextRequest) {
       uid: userId,
       accountType,
       userName,
-      authEmail,
-      authPassword: tempPassword,
+      tokenHash,
       message: 'تم التحقق بنجاح',
     });
 
