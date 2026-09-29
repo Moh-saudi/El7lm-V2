@@ -438,3 +438,11 @@ ON public.notifications
 FOR INSERT
 TO authenticated
 WITH CHECK ("senderId" = (SELECT auth.uid())::text);
+
+
+-- Interaction notifications: creation is server-side only; clients can only mark owned rows read via RPC.
+DROP POLICY IF EXISTS "interaction_actor_insert" ON public.interaction_notifications;
+REVOKE INSERT ON public.interaction_notifications FROM authenticated;
+REVOKE EXECUTE ON FUNCTION public.mark_interaction_notification_read(text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.mark_interaction_notification_read(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.mark_interaction_notification_read(text) TO authenticated;
