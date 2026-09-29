@@ -542,93 +542,11 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
     throw new Error('يرجى استخدام نظام التحقق الجديد');
   };
 
-  // Register
-  const register = async (
-    email: string,
-    password: string,
-    role: UserRole,
-    additionalData: Record<string, unknown> = {}
-  ): Promise<UserData> => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      if (!email || !password || !role) throw new Error('Email, password, and role are required');
-      if (password.length < 8) throw new Error('يجب أن تتكون كلمة المرور من 8 أحرف على الأقل');
-      if (password.length > 128) throw new Error('Password is too long. Maximum 128 characters allowed');
-
-      const isNumbersOnly = /^\d+$/.test(password);
-      const weakPatterns = [/^(\d)\1+$/, /^(0123456789|9876543210)/, /^12345678$/, /^87654321$/, /^123456/, /^654321/, /^111111/, /^000000/, /^666666/, /^888888/];
-      if (isNumbersOnly && weakPatterns.some(p => p.test(password))) {
-        throw new Error('كلمة المرور ضعيفة جداً. تجنب الأرقام المتسلسلة أو المتكررة');
-      }
-      if (email.length > 254) throw new Error('Email is too long');
-
-      const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
-      if (authError) {
-        if (authError.message?.includes('already registered') || authError.message?.includes('email_exists')) {
-          // Try to reactivate deleted account
-          const { data: existing } = await supabase.from('users').select('*').eq('email', email).limit(1);
-          if (existing?.length) {
-            const ex = existing[0] as Record<string, unknown>;
-            if (ex.isDeleted === true || ex.isActive === false) {
-              const now = new Date().toISOString();
-              const reactivatedData = { ...ex, ...additionalData, isDeleted: false, isActive: true, accountType: role, updated_at: now, updatedAt: now };
-              await supabase.from('users').update(reactivatedData).eq('id', String(ex.id));
-              if (role !== 'admin') {
-                const roleTable = ROLE_TABLES[role];
-                if (roleTable) await supabase.from(roleTable).upsert({ id: ex.id, ...(sanitizeForDB(reactivatedData) as any) });
-              }
-              const ud = reactivatedData as unknown as UserData;
-              setUserData(ud);
-              return ud;
-            }
-          }
-          throw new Error('هذا البريد الإلكتروني مسجل بالفعل. يرجى محاولة تسجيل الدخول بدلاً من ذلك.');
-        }
-        throw authError;
-      }
-
-      const authUser = authData.user!;
-      const now = new Date().toISOString();
-
-      const userData: UserData = {
-        ...additionalData,
-        uid: authUser.id,
-        email: authUser.email || email,
-        accountType: role,
-        full_name: String(additionalData.full_name || additionalData.name || ''),
-        phone: String(additionalData.phone || ''),
-        profile_image: String(additionalData.profile_image || additionalData.profileImage || ''),
-        isNewUser: true,
-        isActive: true,
-        created_at: now,
-        createdAt: now,
-        updated_at: now,
-        updatedAt: now,
-        firebaseEmail: email,
-        originalPhone: String(additionalData.originalPhone || additionalData.phone || ''),
-        lastLogin: now,
-        last_login: now,
-        lastLoginIP: 'registration',
-      } as UserData;
-
-      await supabase.from('users').upsert({ id: authUser.id, ...(sanitizeForDB(userData) as any) });
-      if (role !== 'admin') {
-        const roleTable = ROLE_TABLES[role];
-        if (roleTable) await supabase.from(roleTable).upsert({ id: authUser.id, ...(sanitizeForDB(userData) as any) });
-      }
-
-      setUser(authUser);
-      setUserData(userData);
-      return userData;
-    } catch (error: unknown) {
-      const err = error as Error;
-      console.error('Registration error:', err.message || err);
-      throw new Error(err.message || 'Registration failed');
-    } finally {
-      setLoading(false);
-    }
+  // Legacy password registration is intentionally disabled. Public registration
+  // must use the OTP-backed server flow so account identity and role assignment
+  // are created atomically on trusted server/database paths.
+  const register: AuthContextType['register'] = async () => {
+    throw new Error('استخدم مسار التسجيل الآمن المعتمد على رمز التحقق.');
   };
 
   // Logout
