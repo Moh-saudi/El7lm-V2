@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Spin } from 'antd';
-import { getCurrentClient, createPortalClient, TournamentClient } from '@/lib/tournament-portal/auth';
+import { getCurrentClient, portalAuthenticatedFetch, TournamentClient } from '@/lib/tournament-portal/auth';
 import { PortalShell, usePortalTheme } from '../_components/PortalShell';
 import { TournamentNav } from './_components/TournamentNav';
 import '../portal.css';
@@ -88,7 +88,7 @@ export default function TournamentLayout({ children }: { children: React.ReactNo
       setClient(c);
 
       try {
-        const res = await fetch(`/api/tournament-portal/tournaments?id=${id}`);
+        const res = await portalAuthenticatedFetch(`/api/tournament-portal/tournaments?id=${id}`);
         const json = await res.json();
         if (res.ok && json.tournament) {
           setTournament(json.tournament);
@@ -99,11 +99,6 @@ export default function TournamentLayout({ children }: { children: React.ReactNo
         console.warn('[tournament-layout] API fetch note:', apiErr);
       }
 
-      try {
-        const supabase = createPortalClient();
-        const { data } = await supabase.from('tournament_new').select('id,name,status,type,country,city,logo_url,start_date,end_date').eq('id', id).eq('client_id', c.id).single();
-        setTournament(data);
-      } catch {}
       setLoading(false);
     })();
   }, [id]);
