@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeUser } from '@/lib/api/user-auth';
+import { sendChatAmanTemplate } from '@/lib/server/chataman-provider';
 
 export type NotificationEventType =
   | 'profile_view' | 'video_view' | 'video_like' | 'video_comment'
@@ -120,36 +121,24 @@ async function getTemplateConfig(db: ReturnType<typeof getSupabaseAdmin>): Promi
 
 async function sendWhatsAppTemplate(
   phone: string, templateName: string, bodyParams: string[],
-  config: { apiKey: string; baseUrl: string }, reqUrl: string,
+  config: { apiKey: string; baseUrl: string },
 ): Promise<boolean> {
-  try {
-    let cleaned = phone.replace(/\D/g, '');
-    if (cleaned.startsWith('01') && cleaned.length === 11) cleaned = `20${cleaned.substring(1)}`;
-    else if (cleaned.startsWith('05') && cleaned.length === 10) cleaned = `966${cleaned.substring(1)}`;
-    else if (cleaned.startsWith('0') && cleaned.length >= 9) cleaned = cleaned.substring(1);
-    const formattedPhone = `+${cleaned}`;
+  let cleaned = phone.replace(/\D/g, '');
+  if (cleaned.startsWith('01') && cleaned.length === 11) cleaned = `20${cleaned.substring(1)}`;
+  else if (cleaned.startsWith('05') && cleaned.length === 10) cleaned = `966${cleaned.substring(1)}`;
+  else if (cleaned.startsWith('0') && cleaned.length >= 9) cleaned = cleaned.substring(1);
+  if (cleaned.length < 8) return false;
 
-    const whatsappPayload = {
-      phone: formattedPhone,
-      template: {
-        name: templateName, language: { code: 'ar' },
-        components: bodyParams.length > 0 ? [{ type: 'body', parameters: bodyParams.map(p => ({ type: 'text', text: p })) }] : [],
-      },
-    };
-
-    const origin = new URL(reqUrl).origin;
-    const response = await fetch(`${origin}/api/chataman/send-template`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payload: whatsappPayload, apiKey: config.apiKey.trim(), baseUrl: config.baseUrl.trim() }),
-    });
-
-    const data = await response.json().catch(() => ({}));
-    return !!data.success;
-  } catch (e) {
-    console.error('[dispatch] sendWhatsAppTemplate error:', e);
-    return false;
-  }
+  return sendChatAmanTemplate({
+    phone: `+${cleaned}`,
+    template: {
+      name: templateName,
+      language: { code: 'ar' },
+      components: bodyParams.length > 0
+        ? [{ type: 'body', parameters: bodyParams.map(p => ({ type: 'text', text: p })) }]
+        : [],
+    },
+  }, config);
 }
 
 export async function POST(req: NextRequest) {
@@ -221,7 +210,7 @@ export async function POST(req: NextRequest) {
           commentText: metadata?.commentText?.substring(0, 40) || '',
         };
         const bodyParams = tmpl.params.map(p => paramMap[p] || p);
-        const ok = await sendWhatsAppTemplate(phone, tmpl.templateName, bodyParams, chatAmanConfig, req.url);
+        const ok = await sendWhatsAppTemplate(phone, tmpl.templateName, bodyParams, chatAmanConfig);
         whatsappResult = ok ? 'sent' : 'failed';
       }
     }
