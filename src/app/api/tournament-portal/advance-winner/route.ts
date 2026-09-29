@@ -61,36 +61,48 @@ export async function POST(req: NextRequest) {
     const nextMatchNum  = Math.ceil(match_number / 2);
     const isHome        = match_number % 2 !== 0; // odd → home slot, even → away slot
 
-    const { data: nextMatch } = await supa
+    const { data: nextMatch, error: nextMatchError } = await supa
       .from('tournament_matches')
       .select('id')
       .eq('tournament_id', tournament_id)
       .eq('category_id', category_id)
       .eq('round', nextRound)
       .eq('match_number', nextMatchNum)
-      .single();
+      .maybeSingle();
+
+    if (nextMatchError) return NextResponse.json({ error: nextMatchError.message }, { status: 500 });
 
     if (nextMatch) {
       const updateField = isHome ? 'home_team_id' : 'away_team_id';
-      await supa.from('tournament_matches').update({ [updateField]: winnerId }).eq('id', nextMatch.id);
+      const { error: advanceError } = await supa.from('tournament_matches')
+        .update({ [updateField]: winnerId })
+        .eq('id', nextMatch.id)
+        .eq('tournament_id', tournament_id);
+      if (advanceError) return NextResponse.json({ error: advanceError.message }, { status: 500 });
       results.push(`Winner → ${nextRound} match ${nextMatchNum} (${updateField.replace('_team_id', '')})`);
     }
   }
 
   // ── Place SF losers in 3rd place match ────────────────────────────────────
   if (round === 'SF' && loserId) {
-    const { data: thirdMatch } = await supa
+    const { data: thirdMatch, error: thirdMatchError } = await supa
       .from('tournament_matches')
       .select('id, home_team_id, away_team_id')
       .eq('tournament_id', tournament_id)
       .eq('category_id', category_id)
       .eq('round', '3rd')
-      .single();
+      .maybeSingle();
+
+    if (thirdMatchError) return NextResponse.json({ error: thirdMatchError.message }, { status: 500 });
 
     if (thirdMatch) {
       // SF match 1 loser → home, SF match 2 loser → away
       const updateField = match_number === 1 ? 'home_team_id' : 'away_team_id';
-      await supa.from('tournament_matches').update({ [updateField]: loserId }).eq('id', thirdMatch.id);
+      const { error: thirdPlaceError } = await supa.from('tournament_matches')
+        .update({ [updateField]: loserId })
+        .eq('id', thirdMatch.id)
+        .eq('tournament_id', tournament_id);
+      if (thirdPlaceError) return NextResponse.json({ error: thirdPlaceError.message }, { status: 500 });
       results.push(`Loser → 3rd place match (${updateField.replace('_team_id', '')})`);
     }
   }
