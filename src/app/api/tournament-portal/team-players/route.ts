@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     if (!team_id) return NextResponse.json({ error: 'team_id required' }, { status: 400 });
 
     if (!isUuid(team_id)) {
-        return NextResponse.json({ players: [] });
+        return NextResponse.json({ error: 'Invalid team_id' }, { status: 400 });
     }
 
     const supa = getSupabaseAdmin();
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 /** POST /api/tournament-portal/team-players */
 export async function POST(req: NextRequest) {
     const body = await req.json();
-    const { team_id, tournament_id, player_name, position, date_of_birth, jersey_number, phone, platform_player_id } = body;
+    const { team_id, tournament_id, player_name, position, date_of_birth, jersey_number, phone } = body;
 
     if (!team_id || !tournament_id || !player_name?.trim()) {
         return NextResponse.json({ error: 'team_id, tournament_id, player_name required' }, { status: 400 });
