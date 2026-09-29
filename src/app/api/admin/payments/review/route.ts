@@ -12,7 +12,7 @@ type ReviewBody = {
 };
 
 export async function POST(request: NextRequest) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, 'manage:financials');
   if (!authorization.ok) return authorization.response;
 
   try {
