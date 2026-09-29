@@ -238,7 +238,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
             // Merge users table data if from a different collection
             let legacyData: Record<string, unknown> = {};
             if (collectionName !== 'users') {
-              const { data: usersData } = await supabase.from('users').select('*').eq('id', authUser.id).limit(1);
+              const { data: usersData } = await supabase.from('users').select('*').or(`id.eq.${authUser.id},uid.eq.${authUser.id}`).limit(1);
               if (!isSubscribed || runId !== listenerRun) return;
               if (usersData?.length) legacyData = usersData[0] as Record<string, unknown>;
             }
@@ -518,7 +518,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
       const tableName = accountType === 'admin' ? 'users' : ROLE_TABLES[accountType] || 'users';
       const profileQuery = supabase.from(tableName).update(sanitized);
       const { error: profileError } = tableName === 'users'
-        ? await profileQuery.eq('id', user.id)
+        ? await profileQuery.or(`id.eq.${user.id},uid.eq.${user.id}`)
         : await profileQuery.or(`id.eq.${user.id},uid.eq.${user.id}`);
       if (profileError) throw profileError;
       if (tableName !== 'users') {
@@ -557,7 +557,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
 
       let legacyData: Record<string, unknown> = {};
       if (foundCollection !== 'users') {
-        const { data: usersRows } = await supabase.from('users').select('*').eq('id', user.id).limit(1);
+        const { data: usersRows } = await supabase.from('users').select('*').or(`id.eq.${user.id},uid.eq.${user.id}`).limit(1);
         if (usersRows?.length) legacyData = usersRows[0] as Record<string, unknown>;
       }
 
