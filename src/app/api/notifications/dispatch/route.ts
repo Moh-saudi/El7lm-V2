@@ -254,18 +254,24 @@ export async function POST(req: NextRequest) {
     if (chatAmanConfig && phone) {
       const tmpl = templateConfig[eventType];
       if (tmpl) {
-        // Get recipient name
-        let recipientName = 'اللاعب';
-        try {
-          for (const col of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers']) {
-            const { data } = await db.from(col).select('full_name, name, displayName').eq('id', targetUserId).limit(1);
-            if (data?.length) {
-              const r = data[0] as Record<string, unknown>;
-              const name = String(r.full_name ?? r.displayName ?? r.name ?? '');
-              if (name) { recipientName = name; break; }
-            }
-          }
-        } catch {}
+        let recipientName = 'مستخدم';
+        const nameLookups = [
+          await db.from('users').select('full_name, name, displayName').eq('id', targetUserId).limit(1),
+          await db.from('players').select('full_name, name').eq('id', targetUserId).limit(1),
+          await db.from('clubs').select('full_name, name').eq('id', targetUserId).limit(1),
+          await db.from('academies').select('full_name, name').eq('id', targetUserId).limit(1),
+          await db.from('agents').select('full_name').eq('id', targetUserId).limit(1),
+          await db.from('trainers').select('full_name').eq('id', targetUserId).limit(1),
+          await db.from('marketers').select('full_name').eq('id', targetUserId).limit(1),
+          await db.from('admins').select('name').eq('id', targetUserId).limit(1),
+        ];
+        for (const result of nameLookups) {
+          if (result.error) throw result.error;
+          if (!result.data?.length) continue;
+          const row = result.data[0] as unknown as Record<string, unknown>;
+          const name = String(row.full_name ?? row.displayName ?? row.name ?? '').trim();
+          if (name) { recipientName = name; break; }
+        }
 
         const paramMap: Record<string, string> = {
           recipientName, actorName,
