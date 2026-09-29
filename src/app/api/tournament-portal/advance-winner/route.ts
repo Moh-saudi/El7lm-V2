@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeTournamentOwnership } from '@/lib/api/tournament-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,8 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (mErr || !match) return NextResponse.json({ error: 'Match not found' }, { status: 404 });
+  const authorization = await authorizeTournamentOwnership(req, match.tournament_id);
+  if (!authorization.user) return authorization.response!;
   if (match.status !== 'completed') return NextResponse.json({ error: 'Match not completed yet' }, { status: 400 });
 
   const { home_score: hs, away_score: as_, round, match_number, tournament_id, category_id } = match;
