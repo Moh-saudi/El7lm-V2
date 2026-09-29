@@ -429,3 +429,12 @@ DROP POLICY IF EXISTS "messages_delete_sender" ON public.messages;
 DROP POLICY IF EXISTS "notifications_delete_own" ON public.notifications;
 REVOKE DELETE ON public.messages FROM authenticated;
 REVOKE DELETE ON public.notifications FROM authenticated;
+
+
+-- Notifications INSERT: authenticated clients may only act as themselves.
+DROP POLICY IF EXISTS "notifications_insert_sender" ON public.notifications;
+CREATE POLICY "notifications_insert_sender"
+ON public.notifications
+FOR INSERT
+TO authenticated
+WITH CHECK ("senderId" = (SELECT auth.uid())::text);
