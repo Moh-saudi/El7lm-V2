@@ -180,6 +180,20 @@ REVOKE UPDATE (
   subscription
 ) ON public.users FROM authenticated;
 
+-- Authentication is owned by Supabase Auth. Legacy credential material must
+-- never remain in public profile rows or be client-writable.
+UPDATE public.users
+SET
+  "password" = NULL,
+  "confirmPassword" = NULL,
+  "tempPassword" = NULL
+WHERE nullif("password",'') IS NOT NULL
+   OR nullif("confirmPassword",'') IS NOT NULL
+   OR nullif("tempPassword",'') IS NOT NULL;
+
+REVOKE UPDATE ("password","confirmPassword","tempPassword")
+  ON public.users FROM authenticated;
+
 -- Canonical player video policies.
 DROP POLICY IF EXISTS "Players can insert own videos" ON public.player_videos;
 DROP POLICY IF EXISTS "Players can update own pending videos" ON public.player_videos;
