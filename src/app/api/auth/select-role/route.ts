@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authorizeUser } from '@/lib/api/user-auth';
+import { createClient } from '@supabase/supabase-js';
 import { getSupabaseServiceRole } from '@/lib/supabase/admin';
 
 const ROLE_TABLES = {
@@ -31,80 +32,39 @@ export async function POST(request: NextRequest) {
     }
 
     const authUser = authorization.user;
-    const db = getSupabaseServiceRole();
-
-    // A signed-in user may select a role only before any canonical role is assigned.
-    const roleChecks = await Promise.all(
-      Object.entries(ROLE_TABLES).map(async ([role, table]) => {
-        const { data, error } = await db
-          .from(table)
-          .select('id')
-          .or(`id.eq.${authUser.id},uid.eq.${authUser.id}`)
-          .limit(1)
-          .maybeSingle();
-        if (error) throw error;
-        return data ? role : null;
-      }),
-    );
-
-    const existingRole = roleChecks.find(Boolean);
-    if (existingRole) {
-      return NextResponse.json(
-        { success: false, code: 'ROLE_ALREADY_ASSIGNED', accountType: existingRole },
-        { status: 409, headers: { 'Cache-Control': 'no-store' } },
-      );
+    const authHeader = request.headers.get('authorization');
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!authHeader || !url || !anonKey) {
+      throw new Error('Supabase auth configuration is unavailable');
     }
 
-    const { data: existingUser, error: userLookupError } = await db
-      .from('users')
-      .select('id,uid,full_name,name,email,phone,profile_image,created_at,createdAt')
-      .or(`id.eq.${authUser.id},uid.eq.${authUser.id}`)
-      .limit(1)
-      .maybeSingle();
-    if (userLookupError) throw userLookupError;
-
-    const now = new Date().toISOString();
-    const fullName =
-      existingUser?.full_name ||
-      existingUser?.name ||
-      authUser.user_metadata?.full_name ||
-      authUser.user_metadata?.name ||
-      '';
-
-    const userData = {
-      id: authUser.id,
-      uid: authUser.id,
-      email: authUser.email || existingUser?.email || null,
-      full_name: fullName,
-      phone: existingUser?.phone || authUser.phone || '',
-      profile_image: existingUser?.profile_image || authUser.user_metadata?.avatar_url || '',
-      accountType,
-      isActive: true,
-      isDeleted: false,
-      updated_at: now,
-    };
-
-    const { error: usersError } = await db.from('users').upsert(userData, { onConflict: 'id' });
-    if (usersError) throw usersError;
-
-    const roleData = {
-      ...userData,
-      created_at: existingUser?.created_at || existingUser?.createdAt || now,
-    };
-    const { error: roleError } = await db
-      .from(ROLE_TABLES[accountType])
-      .upsert(roleData, { onConflict: 'id' });
+    // Execute the atomic RPC in the caller's authenticated context so auth.uid()
+    // is the only identity the database will accept.
+    const callerDb = createClient(url, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: assignedRole, error: roleError } = await callerDb.rpc(
+      'assign_initial_account_role',
+      { p_account_type: accountType },
+    );
 
     if (roleError) {
-      // Do not leave a newly-created role marker in users if the canonical role row failed.
-      await db.from('users').update({ accountType: null, updated_at: now }).eq('id', authUser.id);
+      if (roleError.code === '23505') {
+        return NextResponse.json(
+          { success: false, code: 'ROLE_ALREADY_ASSIGNED' },
+          { status: 409, headers: { 'Cache-Control': 'no-store' } },
+        );
+      }
       throw roleError;
     }
 
-    await db.auth.admin.updateUserById(authUser.id, {
+    const admin = getSupabaseServiceRole();
+    await admin.auth.admin.updateUserById(authUser.id, {
       user_metadata: {
         ...authUser.user_metadata,
-        accountType,
+        accountType: assignedRole || accountType,
       },
     });
 
