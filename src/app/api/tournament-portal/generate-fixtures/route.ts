@@ -27,18 +27,20 @@ export async function POST(req: NextRequest) {
     .from('tournament_categories')
     .select('id, type, group_count, teams_per_group')
     .eq('id', category_id)
+    .eq('tournament_id', tournament_id)
     .single();
 
   if (!cat)
     return NextResponse.json({ error: 'الفئة غير موجودة' }, { status: 404 });
 
   // Delete existing scheduled matches (not completed ones)
-  await supa
+  const { error: deleteError } = await supa
     .from('tournament_matches')
     .delete()
     .eq('tournament_id', tournament_id)
     .eq('category_id', category_id)
     .neq('status', 'completed');
+  if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
 
   const toInsert: any[] = [];
   let matchNumber = 1;
