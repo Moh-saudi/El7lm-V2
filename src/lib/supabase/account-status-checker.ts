@@ -14,12 +14,9 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
     let userData: Record<string, unknown> | null = null;
 
     const results = await Promise.allSettled(
-      accountTypes.map(t => {
-        const query = supabase.from(t).select('*');
-        return t === 'users'
-          ? query.eq('id', userId).limit(1)
-          : query.or(`id.eq.${userId},uid.eq.${userId}`).limit(1);
-      })
+      accountTypes.map(t =>
+        supabase.from(t).select('*').or(`id.eq.${userId},uid.eq.${userId}`).limit(1)
+      )
     );
 
     for (let i = 0; i < results.length; i++) {
