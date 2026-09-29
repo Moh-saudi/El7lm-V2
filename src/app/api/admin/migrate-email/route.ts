@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export async function POST(request: NextRequest) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, 'manage:users');
   if (!authorization.ok) return authorization.response;
   try {
     console.log('📊 [Admin API] Starting email migration...');
