@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 import { GeideaMode, getGeideaMode, setGeideaMode } from '@/lib/geidea/config';
 
@@ -6,7 +7,9 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authorization = await authorizeAdmin(request, 'read:financials');
+  if (!authorization.ok) return authorization.response;
   try {
     const mode = await getGeideaMode();
     return NextResponse.json({ success: true, mode });
@@ -17,6 +20,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const authorization = await authorizeAdmin(request, 'manage:financials');
+  if (!authorization.ok) return authorization.response;
   try {
     const body = await request.json();
     const { mode } = body as { mode?: GeideaMode };
