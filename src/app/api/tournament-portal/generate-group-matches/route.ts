@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     for (const group of groups) {
         // Fetch approved teams in this group
-        const { data: teams } = await supa
+        const { data: teams, error: teamsError } = await supa
             .from('tournament_teams')
             .select('id, name')
             .eq('tournament_id', tournament_id)
@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
             .eq('group_id', group.id)
             .eq('status', 'approved');
 
+        if (teamsError) return NextResponse.json({ error: teamsError.message }, { status: 500 });
         if (!teams || teams.length < 2) continue;
 
         // Round-robin: every pair plays once
