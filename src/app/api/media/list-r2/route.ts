@@ -151,7 +151,7 @@ async function listAll(prefix: string, maxItems = 2000) {
 
 // ─── Route ───────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
-    const authorization = await authorizeAdmin(req);
+    const authorization = await authorizeAdmin(req, 'read:media');
     if (!authorization.ok) return authorization.response;
     try {
         const db = getSupabaseAdmin();
