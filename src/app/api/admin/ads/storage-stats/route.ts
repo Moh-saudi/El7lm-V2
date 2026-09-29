@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   try {
-    const authorization = await authorizeAdmin(request);
+    const authorization = await authorizeAdmin(request, 'read:content');
     if (!authorization.user) return authorization.response;
 
     const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID;
