@@ -68,11 +68,11 @@ export class UnifiedNotificationService {
   }
 
   static async markNotificationAsRead(notificationId: string): Promise<void> {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read: true, isRead: true, updatedAt: new Date().toISOString() })
-      .eq('id', notificationId);
+    const { data, error } = await supabase.rpc('mark_notification_read', {
+      p_notification_id: notificationId,
+    });
     if (error) throw error;
+    if (!data) throw new Error('Notification not found or not owned by current user');
   }
 
   static async markMessageAsRead(messageId: string): Promise<void> {
@@ -80,15 +80,6 @@ export class UnifiedNotificationService {
       .from('messages')
       .update({ read: true, isRead: true, updatedAt: new Date().toISOString() })
       .eq('id', messageId);
-    if (error) throw error;
-  }
-
-  static async markAllNotificationsAsRead(userId: string): Promise<void> {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read: true, isRead: true, updatedAt: new Date().toISOString() })
-      .eq('userId', userId)
-      .eq('read', false);
     if (error) throw error;
   }
 
