@@ -142,6 +142,28 @@ export async function POST(request: NextRequest) {
       console.error('[/api/opportunities POST] Supabase error:', JSON.stringify(error));
       return NextResponse.json({ error: error.message, code: error.code, hint: error.hint }, { status: 500 });
     }
+
+    // Active opportunities get one in-app broadcast from this authorized server path.
+    // Do not rely on client INSERT permissions for the broadcasts table.
+    if (payload.status === 'active' && payload.isActive === true) {
+      const { error: broadcastError } = await db.from('broadcasts').insert({
+        id: crypto.randomUUID(),
+        opportunityId: id,
+        opportunityTitle: typeof payload.title === 'string' ? payload.title : '',
+        opportunityType: typeof payload.opportunityType === 'string' ? payload.opportunityType : '',
+        organizerName: typeof payload.organizerName === 'string' ? payload.organizerName : '',
+        organizerType: typeof payload.organizerType === 'string' ? payload.organizerType : '',
+        eventType: 'new_opportunity',
+        title: 'فرصة جديدة 🎯',
+        message: `${typeof payload.organizerName === 'string' ? payload.organizerName : ''} نشر: ${typeof payload.title === 'string' ? payload.title : ''}`,
+        actionUrl: '/dashboard/opportunities',
+        createdAt: now,
+      });
+      if (broadcastError) {
+        console.error('[/api/opportunities POST] broadcast error:', broadcastError.code);
+      }
+    }
+
     return NextResponse.json({ id });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
