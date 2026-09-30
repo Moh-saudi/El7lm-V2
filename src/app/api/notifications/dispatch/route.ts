@@ -87,17 +87,26 @@ async function resolveActorIdentity(authUserId: string): Promise<{ id: string; n
 }
 async function resolveTargetIdentity(userId: string): Promise<{ accountId: string; authUid: string } | null> {
   const db = getSupabaseAdmin();
+  const matches = new Map<string, string>();
 
   for (const table of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'] as const) {
-    const { data, error } = await db.from(table).select('id, uid').or(`id.eq.${userId},uid.eq.${userId}`).limit(1);
-    if (error) throw error;
-    if (!data?.length) continue;
-    const accountId = String(data[0].id ?? '').trim();
-    const authUid = String(data[0].uid ?? '').trim();
-    if (!accountId || !authUid) return null;
-    return { accountId, authUid };
+    const [byId, byUid] = await Promise.all([
+      db.from(table).select('id, uid').eq('id', userId).limit(1),
+      db.from(table).select('id, uid').eq('uid', userId).limit(1),
+    ]);
+    if (byId.error) throw byId.error;
+    if (byUid.error) throw byUid.error;
+
+    for (const row of [...(byId.data ?? []), ...(byUid.data ?? [])]) {
+      const accountId = String(row.id ?? '').trim();
+      const authUid = String(row.uid ?? '').trim();
+      if (accountId && authUid) matches.set(authUid, accountId);
+    }
   }
-  return null;
+
+  if (matches.size !== 1) return null;
+  const [authUid, accountId] = [...matches.entries()][0];
+  return { accountId, authUid };
 }
 async function hasDuplicateRecent(
   targetUserId: string, actorId: string, eventType: string, windowMs: number
