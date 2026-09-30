@@ -29,6 +29,7 @@ interface Notification {
   senderAvatar?: string;
   senderAccountType?: string;
   actionType?: 'profile_view' | 'message_sent' | 'connection_request' | 'follow' | 'like' | 'comment';
+  sourceTable?: 'notifications' | 'interaction_notifications';
 }
 
 type SenderInfo = {
@@ -249,7 +250,7 @@ export default function NotificationsManager({
       const rows = (data ?? []) as Notification[];
       const senderIds = rows.map(getSenderCandidateId).filter((id): id is string => Boolean(id));
       const senderMap = await fetchSenderInfoBatch(senderIds);
-      const processed = processSystemNotificationRows(rows, senderMap);
+      const processed = processSystemNotificationRows(rows, senderMap).map(row => ({ ...row, sourceTable: 'notifications' as const }));
 
       // ترتيب البيانات حسب التاريخ
       const sortedData = processed.sort((a, b) => {
@@ -308,7 +309,8 @@ export default function NotificationsManager({
           updatedAt: row.createdAt,
           actionType: row.type,
           senderId: senderCandidateId || row.senderId,
-          ...senderInfo
+          ...senderInfo,
+          sourceTable: 'interaction_notifications'
         } as Notification;
       });
 
@@ -447,20 +449,14 @@ export default function NotificationsManager({
   // تحديد الإشعار كمقروء
   const markAsRead = async (notificationId: string) => {
     try {
-      // محاولة تحديث في notifications أولاً
-      const { error: notifError } = await supabase
-        .from('notifications')
-        .update({ isRead: true, updatedAt: new Date().toISOString() })
-        .eq('id', notificationId);
-
-      if (notifError) {
-        // إذا فشل، جرب interaction_notifications
-        await supabase
-          .from('interaction_notifications')
-          .update({ isRead: true })
-          .eq('id', notificationId);
-      }
-
+      const notification = notifications.find(n => n.id === notificationId);
+      if (!notification?.sourceTable) throw new Error('Notification source is unknown');
+      const rpc = notification.sourceTable === 'interaction_notifications'
+        ? 'mark_interaction_notification_read'
+        : 'mark_notification_read';
+      const { data, error } = await supabase.rpc(rpc, { p_notification_id: notificationId });
+      if (error) throw error;
+      if (!data) throw new Error('Notification not found or not owned by current user');
       toast.success(nt('markedAsRead'));
     } catch (error) {
       console.error('خطأ في تحديث حالة الإشعار:', error);
@@ -506,22 +502,15 @@ export default function NotificationsManager({
   const markAllAsRead = async () => {
     try {
       const unreadNotifications = notifications.filter(n => !n.isRead);
-      const updatePromises = unreadNotifications.map(async (notification) => {
-        const { error: notifError } = await supabase
-          .from('notifications')
-          .update({ isRead: true, updatedAt: new Date().toISOString() })
-          .eq('id', notification.id);
-
-        if (notifError) {
-          // إذا فشل، جرب interaction_notifications
-          await supabase
-            .from('interaction_notifications')
-            .update({ isRead: true })
-            .eq('id', notification.id);
-        }
-      });
-
-      await Promise.all(updatePromises);
+      await Promise.all(unreadNotifications.map(async (notification) => {
+        if (!notification.sourceTable) throw new Error('Notification source is unknown');
+        const rpc = notification.sourceTable === 'interaction_notifications'
+          ? 'mark_interaction_notification_read'
+          : 'mark_notification_read';
+        const { data, error } = await supabase.rpc(rpc, { p_notification_id: notification.id });
+        if (error) throw error;
+        if (!data) throw new Error('Notification not found or not owned by current user');
+      }));
       toast.success(nt('allMarkedRead'));
     } catch (error) {
       console.error('خطأ في تحديث جميع الإشعارات:', error);
