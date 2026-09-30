@@ -17,9 +17,21 @@ export async function POST(req: NextRequest) {
     const authorization = await authorizeAdmin(req);
     if (!authorization.ok) return authorization.response;
 
-    const { apiKey, baseUrl } = await req.json();
+    const rawBody = await req.text();
+    if (!rawBody || Buffer.byteLength(rawBody, 'utf8') > 64 * 1024) {
+      return NextResponse.json({ success: false, error: 'Invalid request body' }, { status: 400 });
+    }
+    let body: { apiKey?: unknown; baseUrl?: unknown };
+    try {
+      const parsed: unknown = JSON.parse(rawBody);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid body');
+      body = parsed as { apiKey?: unknown; baseUrl?: unknown };
+    } catch {
+      return NextResponse.json({ success: false, error: 'Malformed JSON body' }, { status: 400 });
+    }
+    const { apiKey, baseUrl } = body;
 
-    if (!apiKey) {
+    if (typeof apiKey !== 'string' || !apiKey.trim() || apiKey.length > 4096) {
       return NextResponse.json({ success: false, error: 'Missing Required API key' }, { status: 400 });
     }
 
@@ -36,7 +48,8 @@ export async function POST(req: NextRequest) {
       headers: {
         'Authorization': `Bearer ${apiKey.trim()}`,
         'Accept': 'application/json'
-      }
+      },
+      signal: AbortSignal.timeout(15000),
     });
 
     let data;
@@ -47,9 +60,9 @@ export async function POST(req: NextRequest) {
       } else {
         data = [];
       }
-    } catch (e) {
-      console.log(`[Proxy-GetTemplates] Raw text response from ChatAman:`, text);
-      data = []; // Fallback empty
+    } catch {
+      console.warn('[Proxy-GetTemplates] Provider returned a non-JSON response');
+      data = [];
     }
 
     if (!response.ok) {
@@ -58,8 +71,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: data });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('ChatAman GetTemplates Proxy Error:', error);
-    return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
   }
 }
