@@ -175,18 +175,6 @@ export async function POST(req: NextRequest) {
 
     const db = getSupabaseAdmin();
 
-    if (idempotencyKey) {
-      const { data: existing, error: idempotencyError } = await db
-        .from('broadcasts')
-        .select('id')
-        .eq('idempotencyKey', idempotencyKey)
-        .limit(1);
-      if (idempotencyError) throw idempotencyError;
-      if (existing?.length) {
-        return NextResponse.json({ success: false, error: 'Duplicate broadcast request' }, { status: 409 });
-      }
-    }
-
     // ChatAman config
     const { data: cfgRows, error: configError } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);
     if (configError) throw configError;
@@ -230,29 +218,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, eventType, templateName, total, matched: 0, sent: 0, failed: 0, message: 'No matching players with phone numbers found' });
     }
 
-    // Write broadcast doc
-    if (broadcastData) {
-      if (typeof broadcastData !== 'object' || Array.isArray(broadcastData)) {
-        return NextResponse.json({ success: false, error: 'Invalid broadcastData' }, { status: 400 });
+    // Persist the broadcast before sending. When Idempotency-Key is present,
+    // the unique index makes this insert the atomic reservation step.
+    if (broadcastData !== undefined && (typeof broadcastData !== 'object' || broadcastData === null || Array.isArray(broadcastData))) {
+      return NextResponse.json({ success: false, error: 'Invalid broadcastData' }, { status: 400 });
+    }
+    const safeBroadcast = (broadcastData ?? {}) as Record<string, unknown>;
+    const stringFields: Array<[string, number]> = [
+      ['opportunityId', 200], ['opportunityTitle', 300], ['opportunityType', 100],
+      ['organizerName', 200], ['organizerType', 100], ['title', 300],
+      ['message', 4000], ['actionUrl', 2048], ['targetType', 100],
+    ];
+    if (stringFields.some(([field, max]) => !isOptionalString(safeBroadcast[field], max))) {
+      return NextResponse.json({ success: false, error: 'Invalid broadcastData fields' }, { status: 400 });
+    }
+    if (safeBroadcast.actionUrl !== undefined && safeBroadcast.actionUrl !== null) {
+      const actionUrl = String(safeBroadcast.actionUrl);
+      if (!(actionUrl.startsWith('/') && !actionUrl.startsWith('//'))) {
+        return NextResponse.json({ success: false, error: 'Invalid broadcast actionUrl' }, { status: 400 });
       }
-      const safeBroadcast = broadcastData as Record<string, unknown>;
-      const stringFields: Array<[string, number]> = [
-        ['opportunityId', 200], ['opportunityTitle', 300], ['opportunityType', 100],
-        ['organizerName', 200], ['organizerType', 100], ['title', 300],
-        ['message', 4000], ['actionUrl', 2048], ['targetType', 100],
-      ];
-      if (stringFields.some(([field, max]) => !isOptionalString(safeBroadcast[field], max))) {
-        return NextResponse.json({ success: false, error: 'Invalid broadcastData fields' }, { status: 400 });
-      }
-      if (safeBroadcast.actionUrl !== undefined && safeBroadcast.actionUrl !== null) {
-        const actionUrl = String(safeBroadcast.actionUrl);
-        if (!(actionUrl.startsWith('/') && !actionUrl.startsWith('//'))) {
-          return NextResponse.json({ success: false, error: 'Invalid broadcast actionUrl' }, { status: 400 });
-        }
-      }
-      if (safeBroadcast.data !== undefined && (safeBroadcast.data === null || typeof safeBroadcast.data !== 'object' || Array.isArray(safeBroadcast.data))) {
-        return NextResponse.json({ success: false, error: 'Invalid broadcast data' }, { status: 400 });
-      }
+    }
+    if (safeBroadcast.data !== undefined && (safeBroadcast.data === null || typeof safeBroadcast.data !== 'object' || Array.isArray(safeBroadcast.data))) {
+      return NextResponse.json({ success: false, error: 'Invalid broadcast data' }, { status: 400 });
+    }
+
+    if (broadcastData || idempotencyKey) {
       const { error: broadcastError } = await db.from('broadcasts').insert({
         id: crypto.randomUUID(),
         opportunityId: safeBroadcast.opportunityId,
@@ -269,7 +259,12 @@ export async function POST(req: NextRequest) {
         idempotencyKey,
         createdAt: new Date().toISOString(),
       });
-      if (broadcastError) throw broadcastError;
+      if (broadcastError) {
+        if (broadcastError.code === '23505' && idempotencyKey) {
+          return NextResponse.json({ success: false, error: 'Duplicate broadcast request' }, { status: 409 });
+        }
+        throw broadcastError;
+      }
     }
 
     const { sent, failed } = await sendInBatches(phones, templateName, params, cfg as { apiKey: string; baseUrl: string });
