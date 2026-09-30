@@ -22,7 +22,14 @@ export async function POST(req: NextRequest) {
     if (!rawBody || Buffer.byteLength(rawBody, 'utf8') > 64 * 1024) {
       return NextResponse.json({ success: false, error: 'Invalid request body' }, { status: 400 });
     }
-    const body = JSON.parse(rawBody) as { payload?: unknown };
+    let body: { payload?: unknown };
+    try {
+      const parsed: unknown = JSON.parse(rawBody);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid body');
+      body = parsed as { payload?: unknown };
+    } catch {
+      return NextResponse.json({ success: false, error: 'Malformed JSON body' }, { status: 400 });
+    }
     const payload = body.payload;
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       return NextResponse.json({ success: false, error: 'Invalid payload' }, { status: 400 });
