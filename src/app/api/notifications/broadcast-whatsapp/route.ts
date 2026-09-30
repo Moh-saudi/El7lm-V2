@@ -10,6 +10,12 @@ import { sendChatAmanTemplate } from '@/lib/server/chataman-provider';
 
 const BATCH_SIZE = 10;
 const MAX_RECIPIENTS_PER_REQUEST = 500;
+const MAX_BODY_BYTES = 64 * 1024;
+const EVENT_TYPE_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+function isOptionalString(value: unknown, maxLength: number): boolean {
+  return value === undefined || value === null || (typeof value === 'string' && value.length <= maxLength);
+}
 
 interface Targeting {
   positions?: string[];
@@ -107,9 +113,30 @@ export async function POST(req: NextRequest) {
   const authorization = await authorizeAdmin(req, 'manage:communications');
   if (!authorization.ok) return authorization.response;
   try {
-    const body = await req.json();
+    const contentLength = Number(req.headers.get('content-length') || '0');
+    if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+      return NextResponse.json({ success: false, error: 'Request body too large' }, { status: 413 });
+    }
+
+    const rawBody = await req.text();
+    if (new TextEncoder().encode(rawBody).length > MAX_BODY_BYTES) {
+      return NextResponse.json({ success: false, error: 'Request body too large' }, { status: 413 });
+    }
+
+    let body: Record<string, unknown>;
+    try {
+      const parsed: unknown = JSON.parse(rawBody);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid body');
+      body = parsed as Record<string, unknown>;
+    } catch {
+      return NextResponse.json({ success: false, error: 'Malformed JSON body' }, { status: 400 });
+    }
+
     const { eventType = 'new_opportunity', templateName = 'opp_pick_up_3', params = [], targeting, broadcastData } = body;
 
+    if (typeof eventType !== 'string' || !EVENT_TYPE_RE.test(eventType)) {
+      return NextResponse.json({ success: false, error: 'Invalid eventType' }, { status: 400 });
+    }
     if (typeof templateName !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(templateName)) {
       return NextResponse.json({ success: false, error: 'Invalid templateName' }, { status: 400 });
     }
@@ -192,6 +219,23 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: 'Invalid broadcastData' }, { status: 400 });
       }
       const safeBroadcast = broadcastData as Record<string, unknown>;
+      const stringFields: Array<[string, number]> = [
+        ['opportunityId', 200], ['opportunityTitle', 300], ['opportunityType', 100],
+        ['organizerName', 200], ['organizerType', 100], ['title', 300],
+        ['message', 4000], ['actionUrl', 2048], ['targetType', 100],
+      ];
+      if (stringFields.some(([field, max]) => !isOptionalString(safeBroadcast[field], max))) {
+        return NextResponse.json({ success: false, error: 'Invalid broadcastData fields' }, { status: 400 });
+      }
+      if (safeBroadcast.actionUrl !== undefined && safeBroadcast.actionUrl !== null) {
+        const actionUrl = String(safeBroadcast.actionUrl);
+        if (!(actionUrl.startsWith('/') && !actionUrl.startsWith('//'))) {
+          return NextResponse.json({ success: false, error: 'Invalid broadcast actionUrl' }, { status: 400 });
+        }
+      }
+      if (safeBroadcast.data !== undefined && (safeBroadcast.data === null || typeof safeBroadcast.data !== 'object' || Array.isArray(safeBroadcast.data))) {
+        return NextResponse.json({ success: false, error: 'Invalid broadcast data' }, { status: 400 });
+      }
       const { error: broadcastError } = await db.from('broadcasts').insert({
         id: crypto.randomUUID(),
         opportunityId: safeBroadcast.opportunityId,
