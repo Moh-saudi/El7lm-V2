@@ -168,7 +168,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const idempotencyKey = req.headers.get('idempotency-key')?.trim() || null;
+    if (idempotencyKey && (idempotencyKey.length > 128 || !/^[A-Za-z0-9._:-]+$/.test(idempotencyKey))) {
+      return NextResponse.json({ success: false, error: 'Invalid Idempotency-Key' }, { status: 400 });
+    }
+
     const db = getSupabaseAdmin();
+
+    if (idempotencyKey) {
+      const { data: existing, error: idempotencyError } = await db
+        .from('broadcasts')
+        .select('id')
+        .eq('idempotencyKey', idempotencyKey)
+        .limit(1);
+      if (idempotencyError) throw idempotencyError;
+      if (existing?.length) {
+        return NextResponse.json({ success: false, error: 'Duplicate broadcast request' }, { status: 409 });
+      }
+    }
 
     // ChatAman config
     const { data: cfgRows, error: configError } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);
@@ -249,6 +266,7 @@ export async function POST(req: NextRequest) {
         actionUrl: typeof safeBroadcast.actionUrl === 'string' ? safeBroadcast.actionUrl : '/dashboard/opportunities',
         targetType: safeBroadcast.targetType,
         data: safeBroadcast.data,
+        idempotencyKey,
         createdAt: new Date().toISOString(),
       });
       if (broadcastError) throw broadcastError;
