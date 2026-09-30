@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 });
     }
 
-    const result = await ChatAmanService.handleWebhook(body);
+    const result = await ChatAmanService.handleWebhook(body as Record<string, unknown>);
 
     if (result.success) {
       return NextResponse.json({ status: 'success' }, { status: 200 });
