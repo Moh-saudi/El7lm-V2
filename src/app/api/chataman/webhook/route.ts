@@ -42,7 +42,21 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
+    const rawBody = await req.text();
+    if (!rawBody || Buffer.byteLength(rawBody, 'utf8') > 64 * 1024) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+
+    let body: unknown;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ error: 'Malformed JSON body' }, { status: 400 });
+    }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 });
+    }
+
     const result = await ChatAmanService.handleWebhook(body);
 
     if (result.success) {
