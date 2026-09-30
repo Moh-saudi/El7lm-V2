@@ -1,5 +1,4 @@
 import { UnifiedNotificationService } from '@/lib/notifications/unified-notification-service';
-import { supabase } from '@/lib/supabase/config';
 
 export async function notifyNewApplication(
   organizerId: string,
@@ -32,28 +31,6 @@ export async function notifyApplicationAccepted(
     priority: 'high',
     actionUrl: '/dashboard/opportunities',
     accountType: 'player',
-  });
-}
-
-/**
- * Writes a single document to `broadcasts` table.
- */
-export async function broadcastNewOpportunity(params: {
-  opportunityId: string;
-  opportunityTitle: string;
-  opportunityType: string;
-  organizerName: string;
-  organizerType: string;
-}): Promise<void> {
-  await supabase.from('broadcasts').insert({
-    id: crypto.randomUUID(),
-    opportunityId: params.opportunityId,
-    opportunityTitle: params.opportunityTitle,
-    opportunityType: params.opportunityType,
-    organizerName: params.organizerName,
-    organizerType: params.organizerType,
-    createdAt: new Date().toISOString(),
-    actionUrl: '/dashboard/opportunities',
   });
 }
 
