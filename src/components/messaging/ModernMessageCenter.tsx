@@ -278,7 +278,8 @@ const ModernMessageCenter: React.FC = () => {
 
             for (const msg of unreadMessages) {
                 try {
-                    await supabase.from('messages').update({ isRead: true }).eq('id', msg.id);
+                    const { data: marked, error } = await supabase.rpc('mark_message_read', { p_message_id: msg.id });
+                    if (error || !marked) throw error ?? new Error('Message was not marked as read');
                 } catch (error) {
                     console.error('Error marking message as read:', error);
                 }
@@ -431,12 +432,15 @@ const ModernMessageCenter: React.FC = () => {
     const handleDeleteConversation = async () => {
         if (!selectedConversation || !user) return;
         try {
-            await supabase.from('messages').delete().eq('conversationId', selectedConversation.id);
-            await supabase.from('conversations').delete().eq('id', selectedConversation.id);
+            const currentArchived = selectedConversation.isArchived || {};
+            const { error } = await supabase.from('conversations').update({
+                isArchived: { ...currentArchived, [user.id]: true }
+            }).eq('id', selectedConversation.id);
+            if (error) throw error;
             setSelectedConversation(null);
-            toast.success('تم حذف المحادثة');
+            toast.success('تمت إزالة المحادثة من قائمتك');
         } catch (error) {
-            toast.error('فشل الحذف');
+            toast.error('فشل إزالة المحادثة');
         }
     };
 
