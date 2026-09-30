@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { createOpportunity } from '@/lib/firebase/opportunities';
-import { broadcastNewOpportunity } from '@/lib/opportunities/notifications';
 import { broadcastOpportunityWhatsApp } from '@/lib/notifications/broadcast-dispatcher';
 import { OPPORTUNITY_TYPES, FOOTBALL_POSITIONS } from '@/lib/opportunities/config';
 import { OpportunityType } from '@/types/opportunities';
@@ -443,11 +442,6 @@ export default function AdminCreateOpportunityPage() {
       const { id: newId } = await res.json();
 
       if (form.status === 'active') {
-        broadcastNewOpportunity({
-          opportunityId: newId, opportunityTitle: payload.title,
-          opportunityType: payload.opportunityType, organizerName: payload.organizerName,
-          organizerType: payload.organizerType,
-        }).catch(() => {});
         broadcastOpportunityWhatsApp({
           opportunityId: newId, opportunityTitle: payload.title,
           opportunityType: payload.opportunityType, organizerName: payload.organizerName,
