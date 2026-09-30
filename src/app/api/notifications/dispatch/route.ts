@@ -50,6 +50,7 @@ function buildInAppContent(payload: DispatchPayload) {
 
 async function resolveActorIdentity(authUserId: string): Promise<{ id: string; name: string; accountType: string } | null> {
   const db = getSupabaseAdmin();
+  const matches = new Map<string, { id: string; name: string; accountType: string }>();
 
   const candidates = [
     { table: 'players', accountType: 'player', select: 'id, uid, full_name, name' },
@@ -66,24 +67,27 @@ async function resolveActorIdentity(authUserId: string): Promise<{ id: string; n
     const query = db.from(candidate.table);
     let result;
     switch (candidate.table) {
-      case 'players': result = await query.select('id, uid, full_name, name').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
-      case 'clubs': result = await query.select('id, uid, full_name, name').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
-      case 'academies': result = await query.select('id, uid, full_name, name').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
-      case 'agents': result = await query.select('id, uid, full_name').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
-      case 'trainers': result = await query.select('id, uid, full_name').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
-      case 'marketers': result = await query.select('id, uid, full_name').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
-      case 'admins': result = await query.select('id, uid, name').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
-      case 'users': result = await query.select('id, uid, full_name, name, displayName').or(`uid.eq.${authUserId},id.eq.${authUserId}`).limit(1); break;
+      case 'players': result = await query.select('id, uid, full_name, name').eq('uid', authUserId).limit(1); break;
+      case 'clubs': result = await query.select('id, uid, full_name, name').eq('uid', authUserId).limit(1); break;
+      case 'academies': result = await query.select('id, uid, full_name, name').eq('uid', authUserId).limit(1); break;
+      case 'agents': result = await query.select('id, uid, full_name').eq('uid', authUserId).limit(1); break;
+      case 'trainers': result = await query.select('id, uid, full_name').eq('uid', authUserId).limit(1); break;
+      case 'marketers': result = await query.select('id, uid, full_name').eq('uid', authUserId).limit(1); break;
+      case 'admins': result = await query.select('id, uid, name').eq('uid', authUserId).limit(1); break;
+      case 'users': result = await query.select('id, uid, full_name, name, displayName').eq('uid', authUserId).limit(1); break;
     }
     if (result.error) throw result.error;
     if (!result.data?.length) continue;
     const row = result.data[0] as unknown as Record<string, unknown>;
-    const id = String(row.id || '').trim();
-    if (!id) return null;
+    const id = String(row.id ?? '').trim();
+    const uid = String(row.uid ?? '').trim();
+    if (!id || uid !== authUserId) continue;
     const name = String(row.full_name ?? row.displayName ?? row.name ?? '').trim() || 'مستخدم';
-    return { id, name, accountType: candidate.accountType };
+    matches.set(`${candidate.table}:${id}`, { id, name, accountType: candidate.accountType });
   }
-  return null;
+
+  if (matches.size !== 1) return null;
+  return [...matches.values()][0];
 }
 async function resolveTargetIdentity(userId: string): Promise<{ accountId: string; authUid: string } | null> {
   const db = getSupabaseAdmin();
