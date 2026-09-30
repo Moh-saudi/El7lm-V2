@@ -292,16 +292,13 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
       }
 
       // إنشاء رسالة جديدة
-      const messageId = crypto.randomUUID();
       console.log('إنشاء رسالة جديدة:', {
-        messageId,
         conversationId,
         sender: getUserDisplayName(),
         receiver: receiverName
       });
 
       const messageData = {
-        id: messageId,
         conversationId,
         senderId: user.id,
         receiverId: targetUserId,
@@ -318,7 +315,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         updatedAt: now
       };
 
-      await UnifiedNotificationService.createMessage(messageData);
+      const messageId = await UnifiedNotificationService.createMessage(messageData);
 
       // تحديث المحادثة بعد إرسال الرسالة
       if (existingConversation) {
@@ -523,9 +520,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         }).eq('id', selectedConversation.id);
 
         // إنشاء رسالة جديدة
-        const messageId = crypto.randomUUID();
         const messageData = {
-          id: messageId,
           conversationId: selectedConversation.id,
           senderId: user.id,
           receiverId: receiverId,
