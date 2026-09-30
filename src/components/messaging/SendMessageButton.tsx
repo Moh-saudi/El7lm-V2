@@ -374,8 +374,6 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
           eventType: 'message_received',
           targetUserId,
           actorId: user.id,
-          actorName: getUserDisplayName(),
-          actorAccountType: userData?.accountType || 'user',
           metadata: { messagePreview: finalMessage.substring(0, 40) },
         });
       }
