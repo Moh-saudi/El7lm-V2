@@ -272,11 +272,16 @@ export function NotificationFeed() {
   // --- Actions ---
   const handleMarkRead = async (id: string, category: string) => {
     try {
-      const table = category === 'interaction' ? 'interaction_notifications' : 'notifications';
-      await supabase.from(table).update({ isRead: true }).eq('id', id);
+      const rpc = category === 'interaction' ? 'mark_interaction_notification_read' : 'mark_notification_read';
+      const { data, error } = await supabase.rpc(rpc, { p_notification_id: id });
+      if (error) throw error;
+      if (!data) throw new Error('Notification not found or not owned by current user');
       // Optimistic update
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-    } catch (e) { }
+    } catch (e) {
+      console.error('Failed to mark notification as read:', e);
+      toast.error(copy.error || 'Failed to mark notification as read');
+    }
   };
 
   const handleDelete = async (id: string) => {
