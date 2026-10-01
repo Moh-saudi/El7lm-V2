@@ -382,13 +382,6 @@ const EnhancedMessageCenter: React.FC = () => {
 
       await UnifiedNotificationService.createMessage(messageData);
 
-      await supabase.from('conversations').update({
-        lastMessage: newMessage.trim(),
-        lastMessageTime: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        lastSenderId: user.id
-      }).eq('id', selectedConversation.id);
-
       setNewMessage('');
       toast.success('تم إرسال الرسالة');
     } catch (error) {
