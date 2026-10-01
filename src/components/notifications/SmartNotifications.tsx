@@ -153,10 +153,10 @@ const SmartNotifications: React.FC = () => {
   // تحديد الإشعار كمقروء
   const markAsRead = async (notificationId: string) => {
     try {
-      await supabase
-        .from('smart_notifications')
-        .update({ isRead: true })
-        .eq('id', notificationId);
+      const { error } = await supabase.rpc('mark_smart_notification_read', {
+        p_notification_id: notificationId,
+      });
+      if (error) throw error;
       toast.success('تم تحديد الإشعار كمقروء');
     } catch (error) {
       console.error('خطأ في تحديث حالة الإشعار:', error);
@@ -167,15 +167,8 @@ const SmartNotifications: React.FC = () => {
   // تحديد جميع الإشعارات كمقروءة
   const markAllAsRead = async () => {
     try {
-      const unreadNotifications = notifications.filter(n => !n.isRead);
-      const updatePromises = unreadNotifications.map(notification =>
-        supabase
-          .from('smart_notifications')
-          .update({ isRead: true })
-          .eq('id', notification.id)
-      );
-
-      await Promise.all(updatePromises);
+      const { error } = await supabase.rpc('mark_all_smart_notifications_read');
+      if (error) throw error;
       toast.success('تم تحديد جميع الإشعارات كمقروءة');
     } catch (error) {
       console.error('خطأ في تحديث جميع الإشعارات:', error);
