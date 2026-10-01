@@ -330,14 +330,6 @@ const ModernMessageCenter: React.FC = () => {
                 isPinned: false
             });
 
-            const currentUnread = selectedConversation.unreadCount || {};
-            await supabase.from('conversations').update({
-                lastMessage: newMessage.trim(),
-                lastMessageTime: new Date().toISOString(),
-                lastSenderId: user.id,
-                unreadCount: { ...currentUnread, [otherParticipantId]: (currentUnread[otherParticipantId] || 0) + 1 }
-            }).eq('id', selectedConversation.id);
-
             setNewMessage('');
         } catch (error) {
             console.error('Error sending message:', error);
@@ -570,14 +562,6 @@ const ModernMessageCenter: React.FC = () => {
                 isPinned: false
             });
 
-            const currentUnread = selectedConversation.unreadCount || {};
-            await supabase.from('conversations').update({
-                lastMessage: '📷 صورة',
-                lastMessageTime: new Date().toISOString(),
-                lastSenderId: user.id,
-                unreadCount: { ...currentUnread, [otherParticipantId]: (currentUnread[otherParticipantId] || 0) + 1 }
-            }).eq('id', selectedConversation.id);
-
             setSelectedImage(null);
             setImagePreview(null);
             toast.success('تم إرسال الصورة');
@@ -625,14 +609,6 @@ const ModernMessageCenter: React.FC = () => {
                 voiceDuration: recordingTime,
                 isPinned: false
             });
-
-            const currentUnreadVoice = selectedConversation.unreadCount || {};
-            await supabase.from('conversations').update({
-                lastMessage: '🎤 رسالة صوتية',
-                lastMessageTime: new Date().toISOString(),
-                lastSenderId: user.id,
-                unreadCount: { ...currentUnreadVoice, [otherParticipantId]: (currentUnreadVoice[otherParticipantId] || 0) + 1 }
-            }).eq('id', selectedConversation.id);
 
             setAudioBlob(null);
             setRecordingTime(0);
