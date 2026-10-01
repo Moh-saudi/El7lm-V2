@@ -30,6 +30,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { dispatchNotification } from '@/lib/notifications/notification-dispatcher';
 import { UnifiedNotificationService } from '@/lib/notifications/unified-notification-service';
+import { startConversation } from '@/lib/messages/conversations';
 import { useTranslation } from '@/lib/i18n';
 
 interface SendMessageButtonProps {
@@ -260,37 +261,13 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
           updatedAt: now
         }).eq('id', conversationId);
       } else {
-        // إنشاء محادثة جديدة
-        conversationId = crypto.randomUUID();
-        isNewConversation = true;
-        console.log('إنشاء محادثة جديدة:', {
+        const startedConversation = await startConversation(targetAuthUserId);
+        conversationId = startedConversation.id;
+        isNewConversation = startedConversation.created;
+        console.log('إنشاء/فتح محادثة:', {
           conversationId,
-          participants: [user.id, targetAuthUserId]
+          targetAuthUserId
         });
-
-        const conversationData = {
-          id: conversationId,
-          participants: [user.id, targetAuthUserId],
-          participantNames: {
-            [user.id]: getUserDisplayName(),
-            [targetAuthUserId]: receiverName
-          },
-          participantTypes: {
-            [user.id]: userData.accountType,
-            [targetAuthUserId]: targetUserType
-          },
-          lastMessage: finalMessage,
-          lastMessageTime: now,
-          lastSenderId: user.id,
-          unreadCount: {
-            [user.id]: 0,
-            [targetAuthUserId]: 1
-          },
-          createdAt: now,
-          updatedAt: now,
-          isActive: true
-        };
-        await supabase.from('conversations').insert(conversationData);
       }
 
       // إنشاء رسالة جديدة
@@ -420,54 +397,9 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
     try {
       const targetAuthUserId = await UnifiedNotificationService.resolveAuthUserId(targetUserId);
       if (targetAuthUserId === user.id) throw new Error(msg('cannotMessageSelf'));
-      // البحث عن محادثة موجودة
-      const { data: existingConversations } = await supabase
-        .from('conversations')
-        .select('*')
-        .filter('participants', 'cs', `["${user.id}"]`);
 
-      const existingConversation = existingConversations?.find((conv: any) => {
-        return conv.participants?.includes(targetAuthUserId);
-      });
-
-      if (existingConversation) {
-        // إذا وجدت محادثة، انتقل إليها
-        if (redirectToMessages) {
-          const messagesPath = getMessagesPath();
-          router.push(messagesPath);
-        }
-        return;
-      }
-
-      // إنشاء محادثة جديدة
-      const now = new Date().toISOString();
-      const conversationId = crypto.randomUUID();
-      const conversationData = {
-        id: conversationId,
-        participants: [user.id, targetAuthUserId],
-        participantNames: {
-          [user.id]: getUserDisplayName(),
-          [targetAuthUserId]: targetUserName
-        },
-        participantTypes: {
-          [user.id]: userData.accountType,
-          [targetAuthUserId]: targetUserType
-        },
-        lastMessage: '',
-        lastMessageTime: now,
-        lastSenderId: '',
-        unreadCount: {
-          [user.id]: 0,
-          [targetAuthUserId]: 0
-        },
-        createdAt: now,
-        updatedAt: now,
-        isActive: true
-      };
-
-      await supabase.from('conversations').insert(conversationData);
-
-      toast.success(msg('conversationCreated'));
+      const result = await startConversation(targetAuthUserId);
+      toast.success(result.created ? msg('conversationCreated') : msg('sent'));
 
       if (redirectToMessages) {
         const messagesPath = getMessagesPath();
