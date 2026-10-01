@@ -14,6 +14,12 @@ import { ChatAmanTemplateSelector } from '@/components/messaging/ChatAmanTemplat
 import { AlertCircle, Bell, Check, Clock, DollarSign, Info, MessageSquare, Search, Send, Settings, Shield, Users, Video } from 'lucide-react';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
+import {
+  getAllNotifications,
+  markAsRead as markStoredNotificationAsRead,
+  markAllAsRead as markAllStoredNotificationsAsRead,
+  type AdminNotification as StoredAdminNotification,
+} from '@/lib/notifications/admin-notifications';
 
 interface AdminNotification {
   id?: string;
@@ -86,100 +92,47 @@ export default function AdminNotificationCenterPage() {
     filterNotifications();
   }, [notifications, filter, priorityFilter, searchTerm]);
 
+  const mapStoredNotification = (notification: StoredAdminNotification): AdminNotification => {
+    const typeMap: Record<StoredAdminNotification['type'], AdminNotification['type']> = {
+      user_update: 'user',
+      user_status: 'user',
+      content_update: 'system',
+      payment_action: 'payment',
+      employee_login: 'security',
+      settings_change: 'system',
+      profile_update: 'user',
+      general: 'info',
+    };
+
+    const metadata = notification.metadata || {};
+    const actionUrl = typeof metadata.actionUrl === 'string' ? metadata.actionUrl : undefined;
+    const actionLabel = typeof metadata.actionLabel === 'string' ? metadata.actionLabel : 'فتح';
+
+    return {
+      id: notification.id,
+      type: typeMap[notification.type] || 'info',
+      title: notification.title,
+      message: notification.message,
+      priority: notification.priority,
+      isRead: notification.isRead,
+      adminId: notification.readBy,
+      metadata,
+      createdAt: notification.createdAt,
+      readAt: notification.readAt,
+      action: actionUrl ? { label: actionLabel, url: actionUrl } : undefined,
+    };
+  };
+
   const loadNotifications = async () => {
     try {
       setLoading(true);
-
-      // إشعارات تجريبية للعرض
-      const sampleNotifications: AdminNotification[] = [
-        {
-          id: '1',
-          type: 'payment',
-          title: 'مدفوعات فاشلة تحتاج مراجعة',
-          message: 'هناك 5 مدفوعات فاشلة في الساعة الماضية تحتاج إلى مراجعة فورية',
-          priority: 'high',
-          isRead: false,
-          createdAt: { toDate: () => new Date(Date.now() - 10 * 60 * 1000) },
-          action: { label: 'مراجعة المدفوعات', url: '/dashboard/admin/payments?status=failed' }
-        },
-        {
-          id: '2',
-          type: 'user',
-          title: 'مستخدمين جدد في انتظار التحقق',
-          message: 'هناك 3 مستخدمين جدد يحتاجون موافقة إدارية',
-          priority: 'medium',
-          isRead: false,
-          createdAt: { toDate: () => new Date(Date.now() - 30 * 60 * 1000) },
-          action: { label: 'مراجعة المستخدمين', url: '/dashboard/admin/users?verified=false' }
-        },
-        {
-          id: '3',
-          type: 'system',
-          title: 'تحديث أسعار العملات مطلوب',
-          message: 'لم يتم تحديث أسعار العملات لأكثر من 24 ساعة',
-          priority: 'medium',
-          isRead: true,
-          createdAt: { toDate: () => new Date(Date.now() - 2 * 60 * 60 * 1000) },
-          action: { label: 'تحديث الأسعار', url: '/dashboard/admin/system' }
-        },
-        {
-          id: '4',
-          type: 'video',
-          title: 'فيديوهات جديدة تحتاج مراجعة (3)',
-          message: 'تم رفع 3 فيديوهات جديدة من قبل: أحمد محمد، سارة أحمد، محمد علي. يرجى مراجعة الفيديوهات الجديدة.',
-          priority: 'medium',
-          isRead: false,
-          createdAt: { toDate: () => new Date(Date.now() - 45 * 60 * 1000) },
-          action: { label: 'مراجعة الفيديوهات الجديدة', url: '/dashboard/admin/videos?status=pending&sort=newest' }
-        },
-        {
-          id: '5',
-          type: 'video',
-          title: 'فيديو جديد: مهارات التمرير المتقدمة',
-          message: 'تم رفع فيديو جديد من قبل أحمد محمد (لاعب). يرجى مراجعة الفيديو.',
-          priority: 'medium',
-          isRead: true,
-          createdAt: { toDate: () => new Date(Date.now() - 2 * 60 * 60 * 1000) },
-          action: { label: 'مراجعة الفيديو', url: '/dashboard/admin/videos?video=123' }
-        },
-        {
-          id: '6',
-          type: 'security',
-          title: 'محاولة دخول مشبوهة',
-          message: 'تم رصد محاولة دخول مشبوهة من IP غير معروف',
-          priority: 'critical',
-          isRead: false,
-          createdAt: { toDate: () => new Date(Date.now() - 4 * 60 * 60 * 1000) },
-          action: { label: 'فحص الأمان', url: '/dashboard/admin/security' }
-        },
-        {
-          id: '5',
-          type: 'payment',
-          title: 'اشتراكات منتهية الصلاحية',
-          message: 'هناك 12 اشتراك منتهي الصلاحية يحتاج تجديد',
-          priority: 'high',
-          isRead: false,
-          createdAt: { toDate: () => new Date(Date.now() - 6 * 60 * 60 * 1000) },
-          action: { label: 'مراجعة الاشتراكات', url: '/dashboard/admin/subscriptions?status=expired' }
-        },
-        {
-          id: '6',
-          type: 'system',
-          title: 'نسخة احتياطية مكتملة',
-          message: 'تم إنشاء نسخة احتياطية جديدة بنجاح',
-          priority: 'low',
-          isRead: true,
-          createdAt: { toDate: () => new Date(Date.now() - 8 * 60 * 60 * 1000) },
-          action: { label: 'عرض النسخ الاحتياطية', url: '/dashboard/admin/system/backups' }
-        }
-      ];
-
-      setNotifications(sampleNotifications);
-
-      const unread = sampleNotifications.filter(n => !n.isRead).length;
-      setUnreadCount(unread);
+      const stored = await getAllNotifications(100);
+      const mapped = stored.map(mapStoredNotification);
+      setNotifications(mapped);
+      setUnreadCount(mapped.filter(notification => !notification.isRead).length);
     } catch (error) {
       console.error('خطأ في تحميل الإشعارات:', error);
+      toast.error('فشل تحميل إشعارات الإدارة');
     } finally {
       setLoading(false);
     }
@@ -214,25 +167,36 @@ export default function AdminNotificationCenterPage() {
   };
 
   const markAsRead = async (notificationId: string) => {
-    try {
-      setNotifications(prev =>
-        prev.map(n =>
-          n.id === notificationId ? { ...n, isRead: true } : n
-        )
-      );
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error('خطأ في تحديد الإشعار كمقروء:', error);
+    if (!user?.id) return;
+
+    const notification = notifications.find(item => item.id === notificationId);
+    if (!notification || notification.isRead) return;
+
+    const ok = await markStoredNotificationAsRead(notificationId, user.id);
+    if (!ok) {
+      toast.error('تعذر تحديث حالة الإشعار');
+      return;
     }
+
+    setNotifications(prev =>
+      prev.map(item =>
+        item.id === notificationId ? { ...item, isRead: true } : item
+      )
+    );
+    setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
   const markAllAsRead = async () => {
-    try {
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-      setUnreadCount(0);
-    } catch (error) {
-      console.error('خطأ في تحديد جميع الإشعارات كمقروءة:', error);
+    if (!user?.id || unreadCount === 0) return;
+
+    const ok = await markAllStoredNotificationsAsRead(user.id);
+    if (!ok) {
+      toast.error('تعذر تحديث الإشعارات');
+      return;
     }
+
+    setNotifications(prev => prev.map(item => ({ ...item, isRead: true })));
+    setUnreadCount(0);
   };
 
   const getNotificationIcon = (type: string, priority: string) => {
