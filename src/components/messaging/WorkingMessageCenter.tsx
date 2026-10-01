@@ -630,14 +630,6 @@ const WorkingMessageCenter: React.FC = () => {
 
       await UnifiedNotificationService.createMessage(messageData);
 
-      // تحديث المحادثة
-      await supabase.from('conversations').update({
-        lastMessage: newMessage.trim(),
-        lastMessageTime: now,
-        updatedAt: now,
-        lastSenderId: user.id
-      }).eq('id', selectedConversation.id);
-
       setNewMessage('');
       toast.success(t('sharedComponents.messageCenter.sent'));
 
