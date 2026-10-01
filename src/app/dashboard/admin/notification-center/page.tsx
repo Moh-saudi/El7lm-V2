@@ -76,7 +76,7 @@ export default function AdminNotificationCenterPage() {
   const loadChatAmanSettings = async () => {
     try {
       const config = await ChatAmanService.getConfig();
-      if (config && config.isActive && config.apiKey) {
+      if (config && config.isActive && config.hasApiKey) {
         setUseChatAman(true);
         const fetchedTemplates = await ChatAmanService.getTemplates();
         setChatAmanTemplates(fetchedTemplates);
