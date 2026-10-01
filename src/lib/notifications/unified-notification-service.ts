@@ -27,7 +27,8 @@ export interface MessageData {
   type?: 'text' | 'image' | 'file' | 'voice' | 'system';
   messageType?: string;
   priority?: 'low' | 'medium' | 'high';
-  senderName: string;
+  /** @deprecated Sender display identity is derived from the authenticated account. */
+  senderName?: string;
   senderType?: string;
   senderAvatar?: string;
   receiverName?: string;
