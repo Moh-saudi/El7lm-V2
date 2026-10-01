@@ -3,6 +3,7 @@ import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 export interface ChatAmanConfig {
   apiKey: string;
+  hasApiKey?: boolean;
   baseUrl: string;
   isActive: boolean;
   senderName?: string;
@@ -27,8 +28,21 @@ const CONFIG_ROW_ID = 'chataman_config';
 export const ChatAmanService = {
   getConfig: async (): Promise<ChatAmanConfig | null> => {
     try {
-      const { data } = await supabase.from('system_configs').select('*').eq('id', CONFIG_ROW_ID).limit(1);
-      return data?.length ? data[0] as ChatAmanConfig : null;
+      const response = await authenticatedFetch('/api/chataman/config', {
+        method: 'GET',
+        cache: 'no-store',
+      });
+      if (!response.ok) return null;
+      const result = await response.json();
+      if (!result?.success || !result?.data) return null;
+      return {
+        apiKey: '',
+        hasApiKey: Boolean(result.data.hasApiKey),
+        baseUrl: result.data.baseUrl || 'https://chataman.com',
+        isActive: Boolean(result.data.isActive),
+        senderName: result.data.senderName || '',
+        defaultCountryCode: result.data.defaultCountryCode || '',
+      };
     } catch (error) {
       console.error('Error fetching ChatAman config:', error);
       return null;
@@ -37,18 +51,25 @@ export const ChatAmanService = {
 
   saveConfig: async (config: ChatAmanConfig): Promise<boolean> => {
     try {
-      await supabase.from('system_configs').upsert({ id: CONFIG_ROW_ID, ...config });
-      return true;
+      const response = await authenticatedFetch('/api/chataman/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: config.apiKey || undefined,
+          baseUrl: config.baseUrl,
+          isActive: config.isActive,
+          senderName: config.senderName,
+          defaultCountryCode: config.defaultCountryCode,
+        }),
+      });
+      return response.ok;
     } catch (error) {
       console.error('Error saving ChatAman config:', error);
       return false;
     }
   },
 
-  sendMessage: async (phone: string, message: string, configOverride?: ChatAmanConfig): Promise<{ success: boolean; error?: string; data?: unknown }> => {
-    const config = configOverride || await ChatAmanService.getConfig();
-    if (!config || !config.isActive || !config.apiKey) return { success: false, error: 'ChatAman service is not configured or active' };
-
+  sendMessage: async (phone: string, message: string, _configOverride?: ChatAmanConfig): Promise<{ success: boolean; error?: string; data?: unknown }> => {
     try {
       let cleaned = phone.replace(/\D/g, '');
       if (cleaned.startsWith('01') && cleaned.length === 11) cleaned = `20${cleaned.substring(1)}`;
@@ -58,7 +79,7 @@ export const ChatAmanService = {
       const response = await authenticatedFetch('/api/chataman/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: { phone: formattedPhone, message }, apiKey: config.apiKey, baseUrl: config.baseUrl || 'https://chataman.com' }),
+        body: JSON.stringify({ payload: { phone: formattedPhone, message } }),
       });
 
       const data = await response.json();
@@ -73,28 +94,31 @@ export const ChatAmanService = {
     }
   },
 
-  verifyConnection: async (apiKey: string): Promise<boolean> => {
+  verifyConnection: async (apiKey?: string, baseUrl?: string): Promise<boolean> => {
     try {
-      const response = await fetch('https://chataman.com/api/templates', {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${apiKey.trim()}`, 'Accept': 'application/json' },
+      const response = await authenticatedFetch('/api/chataman/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: apiKey?.trim() || undefined,
+          baseUrl: baseUrl || undefined,
+        }),
       });
-      return response.status === 200;
-    } catch (e) {
-      console.error("Verification failed", e);
+      if (!response.ok) return false;
+      const result = await response.json();
+      return Boolean(result?.success);
+    } catch (error) {
+      console.error('Verification failed', error);
       return false;
     }
   },
 
-  getTemplates: async (apiKey?: string): Promise<ChatAmanTemplate[]> => {
-    const config = apiKey ? { apiKey } as ChatAmanConfig : await ChatAmanService.getConfig();
-    if (!config?.apiKey) { console.error('ChatAman: API Key not found'); return []; }
-
+  getTemplates: async (_apiKey?: string): Promise<ChatAmanTemplate[]> => {
     try {
       const response = await authenticatedFetch('/api/chataman/get-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: config.apiKey, baseUrl: config.baseUrl || 'https://chataman.com' }),
+        body: JSON.stringify({}),
       });
       if (!response.ok) return [];
       const result = await response.json();
@@ -124,11 +148,8 @@ export const ChatAmanService = {
     phone: string,
     templateName: string,
     params: { language: string; bodyParams?: string[]; headerUrl?: string; headerParams?: string[]; buttons?: Record<string, unknown>[] },
-    configOverride?: ChatAmanConfig
+    _configOverride?: ChatAmanConfig
   ): Promise<{ success: boolean; error?: string; data?: unknown }> => {
-    const config = configOverride || await ChatAmanService.getConfig();
-    if (!config || !config.isActive || !config.apiKey) return { success: false, error: 'Service not active' };
-
     try {
       let cleaned = phone.replace(/\D/g, '');
       if (cleaned.length >= 7) {
@@ -155,7 +176,7 @@ export const ChatAmanService = {
       const response = await authenticatedFetch('/api/chataman/send-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload, apiKey: config.apiKey, baseUrl: (config.baseUrl || 'https://chataman.com').trim() }),
+        body: JSON.stringify({ payload }),
       });
 
       const data = await response.json();
