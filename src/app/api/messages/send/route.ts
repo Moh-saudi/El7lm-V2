@@ -66,10 +66,14 @@ export async function POST(request: NextRequest) {
         ? conversation.participants.map(String)
         : [];
 
+      const receiverIsParticipant =
+        participants.includes(receiver.authUid) ||
+        participants.includes(receiverInput);
+
       if (
         !conversation ||
         !participants.includes(sender.authUid) ||
-        !participants.includes(receiver.authUid)
+        !receiverIsParticipant
       ) {
         return NextResponse.json({ success: false, error: 'Conversation participants do not match' }, { status: 403 });
       }
