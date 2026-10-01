@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/firebase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
 import { UnifiedNotificationService } from '@/lib/notifications/unified-notification-service';
 import { startConversation } from '@/lib/messages/conversations';
+import { markConversationRead, setConversationPreference } from '@/lib/messages/conversation-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -288,10 +289,7 @@ const ModernMessageCenter: React.FC = () => {
 
             if (unreadMessages.length > 0) {
                 try {
-                    const currentUnread = selectedConversation.unreadCount || {};
-                    await supabase.from('conversations').update({
-                        unreadCount: { ...currentUnread, [user?.id || '']: 0 }
-                    }).eq('id', selectedConversation.id);
+                    await markConversationRead(selectedConversation.id);
                 } catch (error) {
                     console.error('Error updating unread count:', error);
                 }
@@ -367,10 +365,7 @@ const ModernMessageCenter: React.FC = () => {
         if (!selectedConversation || !user) return;
         try {
             const isMuted = selectedConversation.isMuted?.[user.id] || false;
-            const currentMuted = selectedConversation.isMuted || {};
-            await supabase.from('conversations').update({
-                isMuted: { ...currentMuted, [user.id]: !isMuted }
-            }).eq('id', selectedConversation.id);
+            await setConversationPreference(selectedConversation.id, 'isMuted', !isMuted);
             toast.success(isMuted ? 'تم إلغاء كتم الإشعارات' : 'تم كتم الإشعارات');
         } catch (error) {
             toast.error('فشل تحديث الإشعارات');
@@ -380,10 +375,7 @@ const ModernMessageCenter: React.FC = () => {
     const handleArchiveConversation = async () => {
         if (!selectedConversation || !user) return;
         try {
-            const currentArchived = selectedConversation.isArchived || {};
-            await supabase.from('conversations').update({
-                isArchived: { ...currentArchived, [user.id]: true }
-            }).eq('id', selectedConversation.id);
+            await setConversationPreference(selectedConversation.id, 'isArchived', true);
             setSelectedConversation(null);
             toast.success('تم أرشفة المحادثة');
         } catch (error) {
@@ -396,10 +388,7 @@ const ModernMessageCenter: React.FC = () => {
         try {
             const conv = conversations.find(c => c.id === convId);
             const isPinned = conv?.isPinned?.[user.id] || false;
-            const currentPinned = conv?.isPinned || {};
-            await supabase.from('conversations').update({
-                isPinned: { ...currentPinned, [user.id]: !isPinned }
-            }).eq('id', convId);
+            await setConversationPreference(convId, 'isPinned', !isPinned);
             toast.success(isPinned ? 'تم إلغاء التثبيت' : 'تم تثبيت المحادثة');
         } catch (error) {
             toast.error('فشل التثبيت');
@@ -409,11 +398,7 @@ const ModernMessageCenter: React.FC = () => {
     const handleDeleteConversation = async () => {
         if (!selectedConversation || !user) return;
         try {
-            const currentArchived = selectedConversation.isArchived || {};
-            const { error } = await supabase.from('conversations').update({
-                isArchived: { ...currentArchived, [user.id]: true }
-            }).eq('id', selectedConversation.id);
-            if (error) throw error;
+            await setConversationPreference(selectedConversation.id, 'isArchived', true);
             setSelectedConversation(null);
             toast.success('تمت إزالة المحادثة من قائمتك');
         } catch (error) {
