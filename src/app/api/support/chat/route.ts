@@ -9,12 +9,18 @@ type Body = {
   category?: unknown;
   priority?: unknown;
   message?: unknown;
-  welcomeMessage?: unknown;
+  locale?: unknown;
   messageIds?: unknown;
 };
 
 const CATEGORIES = new Set(['technical', 'billing', 'general', 'bug_report', 'feature_request']);
 const PRIORITIES = new Set(['low', 'medium', 'high', 'urgent']);
+const WELCOME_MESSAGES: Record<string, string> = {
+  ar: 'مرحبًا بك في الدعم الفني. كيف يمكننا مساعدتك؟',
+  en: 'Welcome to support. How can we help you?',
+  es: 'Bienvenido al soporte. ¿Cómo podemos ayudarte?',
+  pt: 'Bem-vindo ao suporte. Como podemos ajudar?',
+};
 
 function cleanString(value: unknown, max: number): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -41,6 +47,22 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Invalid category or priority' }, { status: 400 });
       }
 
+      const { data: activeConversations, error: activeError } = await db
+        .from('support_conversations')
+        .select('id')
+        .eq('userId', identity.authUid)
+        .in('status', ['open', 'in_progress'])
+        .order('updatedAt', { ascending: false })
+        .limit(1);
+      if (activeError) throw activeError;
+      if (activeConversations?.[0]?.id) {
+        return NextResponse.json({
+          success: true,
+          id: String(activeConversations[0].id),
+          created: false,
+        });
+      }
+
       const now = new Date().toISOString();
       const id = crypto.randomUUID();
       const { error } = await db.from('support_conversations').insert({
@@ -59,22 +81,21 @@ export async function POST(request: NextRequest) {
       });
       if (error) throw error;
 
-      const welcomeMessage = cleanString(body.welcomeMessage, 500);
-      if (welcomeMessage) {
-        const { error: welcomeError } = await db.from('support_messages').insert({
-          id: crypto.randomUUID(),
-          conversationId: id,
-          senderId: 'system',
-          senderName: 'Support',
-          senderType: 'system',
-          message: welcomeMessage,
-          timestamp: now,
-          isRead: true,
-        });
-        if (welcomeError) throw welcomeError;
-      }
+      const locale = cleanString(body.locale, 8).toLowerCase();
+      const welcomeMessage = WELCOME_MESSAGES[locale] || WELCOME_MESSAGES.en;
+      const { error: welcomeError } = await db.from('support_messages').insert({
+        id: crypto.randomUUID(),
+        conversationId: id,
+        senderId: 'system',
+        senderName: 'Support',
+        senderType: 'system',
+        message: welcomeMessage,
+        timestamp: now,
+        isRead: true,
+      });
+      if (welcomeError) throw welcomeError;
 
-      return NextResponse.json({ success: true, id });
+      return NextResponse.json({ success: true, id, created: true });
     }
 
     if (action === 'send_message') {
