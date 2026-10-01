@@ -155,11 +155,8 @@ async function handleStatusUpdate(statusData: StatusUpdate) {
     updatedAt: new Date().toISOString(),
   };
 
-  if (statusData.status === 'read') {
-    updates.isDelivered = true;
-    updates.isSeen = true;
-  } else if (statusData.status === 'delivered') {
-    updates.isDelivered = true;
+  if (statusData.status === 'read' || statusData.status === 'delivered') {
+    updates.deliveryStatus = statusData.status;
   }
 
   const { error: updateError } = await db.from('messages').update(updates).eq('id', message.id);
