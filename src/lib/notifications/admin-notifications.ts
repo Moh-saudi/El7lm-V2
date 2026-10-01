@@ -90,7 +90,7 @@ export async function getAllNotifications(limitCount = 50): Promise<AdminNotific
   }
 }
 
-export async function markAsRead(notificationId: string, adminId: string): Promise<boolean> {
+export async function markAsRead(notificationId: string, _adminId: string): Promise<boolean> {
   try {
     const response = await authenticatedFetch('/api/admin/notifications', {
       method: 'PATCH',
@@ -105,7 +105,7 @@ export async function markAsRead(notificationId: string, adminId: string): Promi
   }
 }
 
-export async function markAllAsRead(adminId: string): Promise<boolean> {
+export async function markAllAsRead(_adminId: string): Promise<boolean> {
   try {
     const response = await authenticatedFetch('/api/admin/notifications', {
       method: 'PATCH',
