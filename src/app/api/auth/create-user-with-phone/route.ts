@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     const uid = authData.user.id;
     const now = new Date().toISOString();
 
-    const userDoc = {
+    const commonProfile = {
       id: uid,
       uid,
       full_name: name,
@@ -126,16 +126,43 @@ export async function POST(request: NextRequest) {
       email: constructedEmail,
       accountType,
       createdAt: now,
-      isVerifiedLocal: true,
       isActive: true,
+    };
+
+    const roleDoc = {
+      ...commonProfile,
+      ...(accountType !== 'academy' ? { isVerifiedLocal: true } : {}),
+      ...(accountType !== 'marketer' ? { isDeleted: false } : {}),
+    };
+
+    const usersDoc = {
+      ...commonProfile,
+      isVerifiedLocal: true,
       isDeleted: false,
     };
 
-    // كتابة في الجدول المخصص للنوع
-    await db.from(tableName).insert(userDoc);
+    // Write the role profile first and compensate on failure so Auth and public
+    // profile state cannot silently diverge.
+    const { error: roleInsertError } = await db.from(tableName).insert(roleDoc);
+    if (roleInsertError) {
+      console.error('❌ [create-user] role profile insert failed:', roleInsertError);
+      await db.auth.admin.deleteUser(uid).catch(() => undefined);
+      return NextResponse.json(
+        { success: false, error: 'تعذر إنشاء ملف الحساب. يرجى المحاولة مرة أخرى.' },
+        { status: 500 },
+      );
+    }
 
-    // كتابة في جدول users أيضاً (للتوافق)
-    try { await db.from('users').insert(userDoc); } catch { }
+    const { error: usersInsertError } = await db.from('users').insert(usersDoc);
+    if (usersInsertError) {
+      console.error('❌ [create-user] users profile insert failed:', usersInsertError);
+      await db.from(tableName).delete().eq('id', uid);
+      await db.auth.admin.deleteUser(uid).catch(() => undefined);
+      return NextResponse.json(
+        { success: false, error: 'تعذر إكمال إنشاء الحساب. يرجى المحاولة مرة أخرى.' },
+        { status: 500 },
+      );
+    }
 
     const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
       type: 'magiclink',
