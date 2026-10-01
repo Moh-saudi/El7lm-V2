@@ -14,10 +14,6 @@ import {
   getOpportunityApplications,
   updateApplicationStatus,
 } from '@/lib/firebase/opportunities';
-import {
-  notifyApplicationAccepted,
-  notifyApplicationRejected,
-} from '@/lib/opportunities/notifications';
 import { OPPORTUNITY_TYPES } from '@/lib/opportunities/config';
 import { Opportunity, OpportunityApplication, ApplicationStatus, OpportunityType } from '@/types/opportunities';
 import { useTranslation } from '@/lib/i18n';
@@ -297,7 +293,6 @@ export default function ApplicationsPage() {
     try {
       setProcessingId(app.id);
       await updateApplicationStatus(app.id, 'accepted', user.id);
-      await notifyApplicationAccepted(app.playerId, opportunity.title, opportunity.organizerName);
       toast.success(copy.accepted);
       setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'accepted' } : a));
     } catch { toast.error(copy.updateFailed); }
@@ -309,7 +304,6 @@ export default function ApplicationsPage() {
     try {
       setProcessingId(app.id);
       await updateApplicationStatus(app.id, 'rejected', user.id, note || undefined);
-      await notifyApplicationRejected(app.playerId, opportunity.title, opportunity.organizerName);
       toast.success(copy.rejected);
       setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: 'rejected', reviewNote: note } : a));
     } catch { toast.error(copy.updateFailed); }
@@ -324,7 +318,6 @@ export default function ApplicationsPage() {
       const targets = applications.filter(a => selectedIds.has(a.id) && a.status === 'pending');
       await Promise.all(targets.map(async app => {
         await updateApplicationStatus(app.id, 'accepted', user.id);
-        await notifyApplicationAccepted(app.playerId, opportunity.title, opportunity.organizerName);
       }));
       setApplications(prev => prev.map(a =>
         selectedIds.has(a.id) && a.status === 'pending' ? { ...a, status: 'accepted' } : a
@@ -342,7 +335,6 @@ export default function ApplicationsPage() {
       const targets = applications.filter(a => selectedIds.has(a.id) && a.status === 'pending');
       await Promise.all(targets.map(async app => {
         await updateApplicationStatus(app.id, 'rejected', user.id);
-        await notifyApplicationRejected(app.playerId, opportunity.title, opportunity.organizerName);
       }));
       setApplications(prev => prev.map(a =>
         selectedIds.has(a.id) && a.status === 'pending' ? { ...a, status: 'rejected' } : a
