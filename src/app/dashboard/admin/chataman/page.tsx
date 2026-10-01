@@ -114,9 +114,9 @@ export default function ChatAmanSettingsPage() {
   };
 
   const fetchTemplates = async () => {
-    if (!config.apiKey) { toast.error('يرجى إدخال مفتاح API أولاً'); return; }
+    if (!config.apiKey && !config.hasApiKey) { toast.error('يرجى إدخال مفتاح API أولاً'); return; }
     setLoadingTemplates(true);
-    const fetched = await ChatAmanService.getTemplates(config.apiKey);
+    const fetched = await ChatAmanService.getTemplates();
     setTemplates(fetched);
     setLoadingTemplates(false);
   };
@@ -130,10 +130,10 @@ export default function ChatAmanSettingsPage() {
   };
 
   const handleVerify = async () => {
-    if (!config.apiKey) { toast.error('أدخل مفتاح API أولاً'); return; }
+    if (!config.apiKey && !config.hasApiKey) { toast.error('أدخل مفتاح API أولاً'); return; }
     setIsVerifying(true);
     setConnectionStatus('idle');
-    const ok = await ChatAmanService.verifyConnection(config.apiKey);
+    const ok = await ChatAmanService.verifyConnection(config.apiKey || undefined, config.baseUrl);
     setConnectionStatus(ok ? 'ok' : 'fail');
     if (ok) toast.success('الاتصال ناجح — المفتاح صالح');
     else toast.error('فشل الاتصال — تحقق من المفتاح');
@@ -152,8 +152,6 @@ export default function ChatAmanSettingsPage() {
           phone: vtPhone,
           playerName: vtPlayerName || 'اللاعب',
           viewerName: vtViewerName || 'زائر',
-          apiKey: config.apiKey,
-          baseUrl: config.baseUrl || 'https://chataman.com',
         }),
       });
       const data = await res.json();
