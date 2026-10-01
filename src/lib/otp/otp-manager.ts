@@ -80,45 +80,47 @@ export async function verifyOTPInFirestore(
   try {
     const db = getSupabaseAdmin();
     const id = getDocId(phoneNumber);
+    const { data, error } = await db.rpc('verify_otp_atomic', {
+      p_id: id,
+      p_otp_hash: hashOTP(otp),
+      p_max_attempts: MAX_ATTEMPTS,
+    });
 
-    const { data, error: fetchError } = await db
-      .from(OTP_TABLE)
-      .select('*')
-      .eq('id', id)
-      .single();
+    if (error) throw error;
 
-    if (fetchError || !data) {
-      return { success: false, error: 'رمز التحقق غير موجود أو منتهي الصلاحية' };
+    const result =
+      data && typeof data === 'object'
+        ? data as { success?: boolean; code?: string; attemptsRemaining?: number }
+        : {};
+
+    if (result.success) {
+      console.log(`✅ [OTP] Verified for ${phoneNumber}`);
+      return { success: true };
     }
 
-    const now = Date.now();
-    const expiresAt = new Date(data.expiresAt).getTime();
-
-    if (expiresAt < now) {
-      await db.from(OTP_TABLE).delete().eq('id', id);
-      return { success: false, error: 'رمز التحقق منتهي الصلاحية. يرجى طلب رمز جديد' };
+    switch (result.code) {
+      case 'expired':
+        return { success: false, error: 'رمز التحقق منتهي الصلاحية. يرجى طلب رمز جديد' };
+      case 'already_used':
+        return { success: false, error: 'تم استخدام رمز التحقق مسبقاً' };
+      case 'max_attempts':
+        return {
+          success: false,
+          error: 'تم تجاوز الحد الأقصى للمحاولات. يرجى طلب رمز جديد',
+          attemptsRemaining: 0,
+        };
+      case 'incorrect': {
+        const remaining = Number(result.attemptsRemaining ?? 0);
+        return {
+          success: false,
+          error: `رمز التحقق غير صحيح. المحاولات المتبقية: ${remaining}`,
+          attemptsRemaining: remaining,
+        };
+      }
+      case 'not_found':
+      default:
+        return { success: false, error: 'رمز التحقق غير موجود أو منتهي الصلاحية' };
     }
-
-    if (data.attempts >= MAX_ATTEMPTS) {
-      await db.from(OTP_TABLE).delete().eq('id', id);
-      return { success: false, error: 'تم تجاوز الحد الأقصى للمحاولات. يرجى طلب رمز جديد', attemptsRemaining: 0 };
-    }
-
-    if (data.verified) {
-      return { success: false, error: 'تم استخدام رمز التحقق مسبقاً' };
-    }
-
-    if (data.otpHash !== hashOTP(otp)) {
-      const newAttempts = data.attempts + 1;
-      await db.from(OTP_TABLE).update({ attempts: newAttempts }).eq('id', id);
-      const remaining = MAX_ATTEMPTS - newAttempts;
-      return { success: false, error: `رمز التحقق غير صحيح. المحاولات المتبقية: ${remaining}`, attemptsRemaining: remaining };
-    }
-
-    await db.from(OTP_TABLE).update({ verified: true, verifiedAt: new Date().toISOString() }).eq('id', id);
-
-    console.log(`✅ [OTP] Verified for ${phoneNumber}`);
-    return { success: true };
   } catch (error: any) {
     console.error('❌ [OTP] Verify error:', error);
     return { success: false, error: error.message || 'حدث خطأ أثناء التحقق' };
