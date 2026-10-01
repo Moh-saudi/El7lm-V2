@@ -188,49 +188,25 @@ export async function POST(request: NextRequest) {
     const { error } = await db.from('messages').insert(row);
     if (error) throw error;
 
-    const { data: conversationState, error: conversationStateError } = await db
-      .from('conversations')
-      .select('unreadCount, participantNames, participantTypes')
-      .eq('id', resolvedConversationId)
-      .maybeSingle();
-
-    if (conversationStateError) throw conversationStateError;
-
-    const unreadCount =
-      conversationState?.unreadCount && typeof conversationState.unreadCount === 'object'
-        ? { ...(conversationState.unreadCount as Record<string, number>) }
-        : {};
-
-    const participantNames =
-      conversationState?.participantNames && typeof conversationState.participantNames === 'object'
-        ? { ...(conversationState.participantNames as Record<string, string>) }
-        : {};
-
-    const participantTypes =
-      conversationState?.participantTypes && typeof conversationState.participantTypes === 'object'
-        ? { ...(conversationState.participantTypes as Record<string, string>) }
-        : {};
-
-    unreadCount[receiver.authUid] = Number(unreadCount[receiver.authUid] || 0) + 1;
-    participantNames[sender.authUid] = sender.name;
-    participantNames[receiver.authUid] = receiver.name;
-    participantTypes[sender.authUid] = sender.accountType;
-    participantTypes[receiver.authUid] = receiver.accountType;
-
-    const { error: conversationUpdateError } = await db
-      .from('conversations')
-      .update({
-        lastMessage: content,
-        lastMessageTime: now,
-        lastSenderId: sender.authUid,
-        unreadCount,
-        participantNames,
-        participantTypes,
-        updatedAt: now,
-      })
-      .eq('id', resolvedConversationId);
+    const { data: conversationUpdated, error: conversationUpdateError } = await db.rpc(
+      'update_conversation_after_message',
+      {
+        p_conversation_id: resolvedConversationId,
+        p_sender_uid: sender.authUid,
+        p_receiver_uid: receiver.authUid,
+        p_sender_name: sender.name,
+        p_receiver_name: receiver.name,
+        p_sender_type: sender.accountType,
+        p_receiver_type: receiver.accountType,
+        p_content: content,
+        p_sent_at: now,
+      }
+    );
 
     if (conversationUpdateError) throw conversationUpdateError;
+    if (!conversationUpdated) {
+      throw new Error('Conversation state update rejected');
+    }
 
     return NextResponse.json({ success: true, id, conversationId: resolvedConversationId });
   } catch (error) {
