@@ -185,12 +185,10 @@ export async function POST(request: NextRequest) {
       timestamp: now,
     };
 
-    const { error } = await db.from('messages').insert(row);
-    if (error) throw error;
-
-    const { data: conversationUpdated, error: conversationUpdateError } = await db.rpc(
-      'update_conversation_after_message',
+    const { data: messageInserted, error: messageInsertError } = await db.rpc(
+      'insert_message_and_update_conversation',
       {
+        p_message: row,
         p_conversation_id: resolvedConversationId,
         p_sender_uid: sender.authUid,
         p_receiver_uid: receiver.authUid,
@@ -203,9 +201,9 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    if (conversationUpdateError) throw conversationUpdateError;
-    if (!conversationUpdated) {
-      throw new Error('Conversation state update rejected');
+    if (messageInsertError) throw messageInsertError;
+    if (!messageInserted) {
+      throw new Error('Transactional message insert rejected');
     }
 
     return NextResponse.json({ success: true, id, conversationId: resolvedConversationId });
