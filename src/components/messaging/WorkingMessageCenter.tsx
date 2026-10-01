@@ -287,32 +287,21 @@ const WorkingMessageCenter: React.FC = () => {
     try {
       console.log('🔄 إنشاء محادثة جديدة مع:', contact.name);
 
-      // استخراج معرف المستند الفعلي من معرف الاتصال
+      // استخراج معرف الحساب الفعلي وترك canonical Auth UID للسيرفر
       const actualContactId = contact.id.replace(/^(club_|academy_|agent_|trainer_|player_|admin_)/, '');
-      const contactAuthUserId = await UnifiedNotificationService.resolveAuthUserId(actualContactId);
 
-      // التحقق من وجود محادثة سابقة
-      const { data: existingConversations } = await supabase
-        .from('conversations')
-        .select('*')
-        .filter('participants', 'cs', `["${user.id}"]`);
+      const startedConversation = await startConversation(
+        actualContactId,
+        `محادثة مع ${contact.name}`,
+      );
+      const conversationId = startedConversation.id;
 
-      const existingConversation = existingConversations?.find((conv: any) => {
-        return conv.participants?.includes(contactAuthUserId);
-      });
-
-      if (existingConversation) {
-        console.log('✅ وجدت محادثة موجودة:', existingConversation.id);
+      if (!startedConversation.created) {
+        console.log('✅ وجدت محادثة موجودة:', conversationId);
         toast.info(t('sharedComponents.messageCenter.alreadyExists'));
         setNewChatModalOpen(false);
         return;
       }
-
-      const startedConversation = await startConversation(
-        contactAuthUserId,
-        `محادثة مع ${contact.name}`,
-      );
-      const conversationId = startedConversation.id;
 
       console.log('✅ تم إنشاء/فتح محادثة:', conversationId);
       toast.success(`تم إنشاء محادثة مع ${contact.name}`);
