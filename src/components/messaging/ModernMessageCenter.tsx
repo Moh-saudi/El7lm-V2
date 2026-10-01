@@ -348,8 +348,9 @@ const ModernMessageCenter: React.FC = () => {
         if (!user) return;
 
         try {
+            const selectedAuthUserId = await UnifiedNotificationService.resolveAuthUserId(String(selectedUser.id));
             const existingConv = conversations.find(conv =>
-                conv.participants.includes(selectedUser.id)
+                conv.participants.includes(selectedAuthUserId)
             );
 
             if (existingConv) {
@@ -361,19 +362,19 @@ const ModernMessageCenter: React.FC = () => {
 
             await supabase.from('conversations').insert({
                 id: crypto.randomUUID(),
-                participants: [user.id, selectedUser.id],
+                participants: [user.id, selectedAuthUserId],
                 participantNames: {
                     [user.id]: userData?.full_name || user.email || 'مستخدم',
-                    [selectedUser.id]: selectedUser.name
+                    [selectedAuthUserId]: selectedUser.name
                 },
                 participantTypes: {
                     [user.id]: userData?.accountType || 'user',
-                    [selectedUser.id]: selectedUser.type
+                    [selectedAuthUserId]: selectedUser.type
                 },
                 lastMessage: '',
                 lastMessageTime: new Date().toISOString(),
                 lastSenderId: '',
-                unreadCount: { [user.id]: 0, [selectedUser.id]: 0 },
+                unreadCount: { [user.id]: 0, [selectedAuthUserId]: 0 },
                 isActive: true,
                 createdAt: new Date().toISOString()
             }).select().single();
