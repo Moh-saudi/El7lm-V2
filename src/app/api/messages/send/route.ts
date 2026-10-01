@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       senderType: sender.accountType,
       receiverName: cleanString(body.receiverName, 160) || receiver.name,
       receiverType: cleanString(body.receiverType ?? body.receiverAccountType, 64) || receiver.accountType,
-      receiverAvatar: cleanString(body.receiverAvatar, 1000) || null,
+      receiverAccountType: cleanString(body.receiverAccountType ?? body.receiverType, 64) || receiver.accountType,
       content,
       message: content,
       type,
