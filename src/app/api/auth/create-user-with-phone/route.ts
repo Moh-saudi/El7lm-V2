@@ -38,7 +38,8 @@ export async function POST(request: NextRequest) {
     }
 
     const reviewResult = await verifyPlayReviewOTP(phoneNumber, otp);
-    const otpResult = reviewResult.isReviewAccount
+    const isReviewAccount = reviewResult.isReviewAccount;
+    const otpResult = isReviewAccount
       ? reviewResult
       : await verifyOTPInFirestore(phoneNumber, otp);
     if (!otpResult.success) {
@@ -78,21 +79,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'رقم الهاتف مسجل بالفعل، يرجى تسجيل الدخول' }, { status: 409 });
     }
 
-    // Consume the verified OTP atomically. A verified phone can create only one account,
-    // even when concurrent requests arrive within the verification window.
-    const { data: consumedOtp, error: consumeError } = await db
-      .from('otp_verifications')
-      .delete()
-      .eq('id', otpDocId)
-      .eq('verified', true)
-      .select('id')
-      .maybeSingle();
+    // Consume ordinary verified OTPs once. Play Review credentials use their own
+    // failed-attempt lock and are not stored in otp_verifications.
+    if (!isReviewAccount) {
+      const { data: consumedOtp, error: consumeError } = await db
+        .from('otp_verifications')
+        .delete()
+        .eq('id', otpDocId)
+        .eq('verified', true)
+        .select('id')
+        .maybeSingle();
 
-    if (consumeError || !consumedOtp) {
-      return NextResponse.json(
-        { success: false, error: 'تم استخدام التحقق أو انتهت صلاحيته، يرجى التحقق مرة أخرى' },
-        { status: 409 },
-      );
+      if (consumeError || !consumedOtp) {
+        return NextResponse.json(
+          { success: false, error: 'تم استخدام التحقق أو انتهت صلاحيته، يرجى التحقق مرة أخرى' },
+          { status: 409 },
+        );
+      }
     }
 
     // إنشاء مستخدم في Supabase Auth
