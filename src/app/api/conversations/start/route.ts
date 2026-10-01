@@ -39,40 +39,26 @@ export async function POST(request: NextRequest) {
     }
 
     const db = getSupabaseAdmin();
-    const senderRefs = [...new Set([sender.authUid, sender.accountId].filter(Boolean))];
 
-    const searches = await Promise.all(
-      senderRefs.map(ref =>
-        db
-          .from('conversations')
-          .select('id, participants')
-          .contains('participants', [ref])
-          .order('updatedAt', { ascending: false })
-          .limit(100)
-      )
-    );
+    // Automatic conversation reuse is canonical-only. Historical conversations
+    // that still contain legacy account IDs are preserved, but they are not
+    // selected for new chat starts because participant RLS is keyed by Auth UID.
+    const { data: existingConversations, error: searchError } = await db
+      .from('conversations')
+      .select('id, participants')
+      .contains('participants', [sender.authUid, receiver.authUid])
+      .order('updatedAt', { ascending: false })
+      .limit(1);
 
-    for (const result of searches) {
-      if (result.error) throw result.error;
-    }
+    if (searchError) throw searchError;
 
-    const seen = new Set<string>();
-    const receiverRefs = new Set([receiver.authUid, receiver.accountId, targetInput]);
-
-    for (const result of searches) {
-      for (const conversation of result.data ?? []) {
-        const id = String(conversation.id || '');
-        if (!id || seen.has(id)) continue;
-        seen.add(id);
-
-        const participants = Array.isArray(conversation.participants)
-          ? conversation.participants.map(String)
-          : [];
-
-        if (participants.some(ref => receiverRefs.has(ref))) {
-          return NextResponse.json({ success: true, id, created: false });
-        }
-      }
+    const existingConversation = existingConversations?.[0];
+    if (existingConversation?.id) {
+      return NextResponse.json({
+        success: true,
+        id: String(existingConversation.id),
+        created: false,
+      });
     }
 
     const now = new Date().toISOString();
