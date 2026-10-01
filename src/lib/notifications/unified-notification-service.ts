@@ -28,6 +28,7 @@ export interface MessageData {
   messageType?: string;
   priority?: 'low' | 'medium' | 'high';
   senderName: string;
+  senderType?: string;
   senderAvatar?: string;
   receiverName?: string;
   receiverAvatar?: string;
@@ -63,6 +64,53 @@ export class UnifiedNotificationService {
     return [...matches][0];
   }
 
+  private static async resolveSenderProfile(authUserId: string): Promise<{ name: string; accountType: string }> {
+    const matches: Array<{ table: string; name: string; accountType: string }> = [];
+    const candidates = [
+      { table: 'players', accountType: 'player' },
+      { table: 'clubs', accountType: 'club' },
+      { table: 'academies', accountType: 'academy' },
+      { table: 'agents', accountType: 'agent' },
+      { table: 'trainers', accountType: 'trainer' },
+      { table: 'marketers', accountType: 'marketer' },
+      { table: 'admins', accountType: 'admin' },
+      { table: 'users', accountType: 'user' },
+    ] as const;
+
+    for (const candidate of candidates) {
+      const query = supabase.from(candidate.table);
+      let result;
+      switch (candidate.table) {
+        case 'players': result = await query.select('uid, full_name, name').eq('uid', authUserId).limit(2); break;
+        case 'clubs': result = await query.select('uid, full_name, name').eq('uid', authUserId).limit(2); break;
+        case 'academies': result = await query.select('uid, full_name, name').eq('uid', authUserId).limit(2); break;
+        case 'agents': result = await query.select('uid, full_name').eq('uid', authUserId).limit(2); break;
+        case 'trainers': result = await query.select('uid, full_name').eq('uid', authUserId).limit(2); break;
+        case 'marketers': result = await query.select('uid, full_name').eq('uid', authUserId).limit(2); break;
+        case 'admins': result = await query.select('uid, name').eq('uid', authUserId).limit(2); break;
+        case 'users': result = await query.select('uid, full_name, name, displayName').eq('uid', authUserId).limit(2); break;
+      }
+
+      if (result.error) throw result.error;
+      if ((result.data?.length ?? 0) > 1) throw new Error('Authenticated sender identity is ambiguous');
+      if (!result.data?.length) continue;
+
+      const row = result.data[0] as unknown as Record<string, unknown>;
+      if (String(row.uid ?? '').trim() !== authUserId) continue;
+      const name = String(row.full_name ?? row.displayName ?? row.name ?? '').trim() || 'مستخدم';
+      matches.push({ table: candidate.table, name, accountType: candidate.accountType });
+    }
+
+    const roleMatches = matches.filter(match => match.table !== 'users');
+    if (roleMatches.length > 1) throw new Error('Authenticated sender identity is ambiguous');
+    if (roleMatches.length === 1) {
+      return { name: roleMatches[0].name, accountType: roleMatches[0].accountType };
+    }
+
+    if (matches.length !== 1) throw new Error('Authenticated sender identity not found');
+    return { name: matches[0].name, accountType: matches[0].accountType };
+  }
+
   static async createNotification(data: NotificationData): Promise<string> {
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) throw authError || new Error('Authentication required');
@@ -89,13 +137,19 @@ export class UnifiedNotificationService {
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) throw authError || new Error('Authentication required');
 
-    const receiverId = await this.resolveAuthUserId(data.receiverId);
+    const [receiverId, senderProfile] = await Promise.all([
+      this.resolveAuthUserId(data.receiverId),
+      this.resolveSenderProfile(authData.user.id),
+    ]);
 
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
     const messageData = { ...data };
     delete messageData.senderId;
     delete messageData.receiverId;
+    delete messageData.senderName;
+    delete messageData.senderType;
+    delete messageData.senderAccountType;
     const content = String(data.content ?? data.message ?? '').trim();
     if (!content) throw new Error('Message content is required');
     const { error } = await supabase.from('messages').insert({
@@ -106,6 +160,8 @@ export class UnifiedNotificationService {
       type: data.type ?? 'text',
       priority: data.priority ?? 'medium',
       senderId: authData.user.id,
+      senderName: senderProfile.name,
+      senderType: senderProfile.accountType,
       receiverId,
       read: false,
       isRead: false,
