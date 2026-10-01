@@ -217,6 +217,8 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
     setSending(true);
     try {
       const finalMessage = `${message.trim()}${includeContactInfo ? buildContactInfoBlock() : ''}`.trim();
+      const targetAuthUserId = await UnifiedNotificationService.resolveAuthUserId(targetUserId);
+      if (targetAuthUserId === user.id) throw new Error(msg('cannotMessageSelf'));
 
       // جلب بيانات المستلم المحدثة
       const { data: receiverData } = await supabase
@@ -233,7 +235,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         .filter('participants', 'cs', `["${user.id}"]`);
 
       const existingConversation = existingConversations?.find((conv: any) => {
-        return conv.participants?.includes(targetUserId);
+        return conv.participants?.includes(targetAuthUserId);
       });
 
       const now = new Date().toISOString();
@@ -253,7 +255,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
           participantNames: {
             ...(existingConversation.participantNames || {}),
             [user.id]: getUserDisplayName(),
-            [targetUserId]: receiverName
+            [targetAuthUserId]: receiverName
           },
           updatedAt: now
         }).eq('id', conversationId);
@@ -263,26 +265,26 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         isNewConversation = true;
         console.log('إنشاء محادثة جديدة:', {
           conversationId,
-          participants: [user.id, targetUserId]
+          participants: [user.id, targetAuthUserId]
         });
 
         const conversationData = {
           id: conversationId,
-          participants: [user.id, targetUserId],
+          participants: [user.id, targetAuthUserId],
           participantNames: {
             [user.id]: getUserDisplayName(),
-            [targetUserId]: receiverName
+            [targetAuthUserId]: receiverName
           },
           participantTypes: {
             [user.id]: userData.accountType,
-            [targetUserId]: targetUserType
+            [targetAuthUserId]: targetUserType
           },
           lastMessage: finalMessage,
           lastMessageTime: now,
           lastSenderId: user.id,
           unreadCount: {
             [user.id]: 0,
-            [targetUserId]: 1
+            [targetAuthUserId]: 1
           },
           createdAt: now,
           updatedAt: now,
@@ -301,7 +303,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
       const messageData = {
         conversationId,
         senderId: user.id,
-        receiverId: targetUserId,
+        receiverId: targetAuthUserId,
         senderName: getUserDisplayName(),
         receiverName: receiverName,
         senderType: userData.accountType,
@@ -325,7 +327,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
           .select('unreadCount')
           .eq('id', conversationId)
           .single();
-        const currentUnread = convData?.unreadCount?.[targetUserId] || 0;
+        const currentUnread = convData?.unreadCount?.[targetAuthUserId] || 0;
 
         await supabase.from('conversations').update({
           lastMessage: finalMessage,
@@ -333,7 +335,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
           lastSenderId: user.id,
           unreadCount: {
             ...(convData?.unreadCount || {}),
-            [targetUserId]: currentUnread + 1
+            [targetAuthUserId]: currentUnread + 1
           },
           updatedAt: now
         }).eq('id', conversationId);
@@ -372,7 +374,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
       if (targetUserId && user) {
         dispatchNotification({
           eventType: 'message_received',
-          targetUserId,
+          targetUserId: targetAuthUserId,
           actorId: user.id,
           metadata: { messagePreview: finalMessage.substring(0, 40) },
         });
@@ -412,10 +414,12 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
   };
 
   const startNewConversation = async () => {
-    if (!targetUserId || !user || !userData) return;
+    if (!targetAuthUserId || !user || !userData) return;
 
     setSending(true);
     try {
+      const targetAuthUserId = await UnifiedNotificationService.resolveAuthUserId(targetUserId);
+      if (targetAuthUserId === user.id) throw new Error(msg('cannotMessageSelf'));
       // البحث عن محادثة موجودة
       const { data: existingConversations } = await supabase
         .from('conversations')
@@ -423,7 +427,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         .filter('participants', 'cs', `["${user.id}"]`);
 
       const existingConversation = existingConversations?.find((conv: any) => {
-        return conv.participants?.includes(targetUserId);
+        return conv.participants?.includes(targetAuthUserId);
       });
 
       if (existingConversation) {
@@ -440,21 +444,21 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
       const conversationId = crypto.randomUUID();
       const conversationData = {
         id: conversationId,
-        participants: [user.id, targetUserId],
+        participants: [user.id, targetAuthUserId],
         participantNames: {
           [user.id]: getUserDisplayName(),
-          [targetUserId]: targetUserName
+          [targetAuthUserId]: targetUserName
         },
         participantTypes: {
           [user.id]: userData.accountType,
-          [targetUserId]: targetUserType
+          [targetAuthUserId]: targetUserType
         },
         lastMessage: '',
         lastMessageTime: now,
         lastSenderId: '',
         unreadCount: {
           [user.id]: 0,
-          [targetUserId]: 0
+          [targetAuthUserId]: 0
         },
         createdAt: now,
         updatedAt: now,
