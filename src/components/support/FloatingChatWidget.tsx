@@ -215,7 +215,7 @@ const FloatingChatWidget: React.FC = () => {
           action: 'create_conversation',
           category,
           priority,
-          welcomeMessage: t('sharedComponents.supportWidget.welcomeMessage'),
+          locale,
         }),
       });
       const result = await response.json().catch(() => null);
