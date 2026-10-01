@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
 
     const db = getSupabaseAdmin();
     let resolvedConversationId = conversationId;
+    const manageConversationState = !conversationId;
 
     if (resolvedConversationId) {
       const { data: conversation, error: conversationError } = await db
@@ -188,33 +189,36 @@ export async function POST(request: NextRequest) {
     const { error } = await db.from('messages').insert(row);
     if (error) throw error;
 
-    const { data: conversationState, error: conversationStateError } = await db
-      .from('conversations')
-      .select('unreadCount')
-      .eq('id', resolvedConversationId)
-      .maybeSingle();
-
-    if (conversationStateError) throw conversationStateError;
-
-    const unreadCount =
-      conversationState?.unreadCount && typeof conversationState.unreadCount === 'object'
-        ? { ...(conversationState.unreadCount as Record<string, number>) }
-        : {};
-
-    unreadCount[receiver.authUid] = Number(unreadCount[receiver.authUid] || 0) + 1;
-
-    const { error: conversationUpdateError } = await db
-      .from('conversations')
-      .update({
-        lastMessage: content,
-        lastMessageTime: now,
-        lastSenderId: sender.authUid,
-        unreadCount,
-        updatedAt: now,
-      })
-      .eq('id', resolvedConversationId);
-
-    if (conversationUpdateError) throw conversationUpdateError;
+    if (manageConversationState) {
+      const { data: conversationState, error: conversationStateError } = await db
+        .from('conversations')
+        .select('unreadCount')
+        .eq('id', resolvedConversationId)
+        .maybeSingle();
+  
+      if (conversationStateError) throw conversationStateError;
+  
+      const unreadCount =
+        conversationState?.unreadCount && typeof conversationState.unreadCount === 'object'
+          ? { ...(conversationState.unreadCount as Record<string, number>) }
+          : {};
+  
+      unreadCount[receiver.authUid] = Number(unreadCount[receiver.authUid] || 0) + 1;
+  
+      const { error: conversationUpdateError } = await db
+        .from('conversations')
+        .update({
+          lastMessage: content,
+          lastMessageTime: now,
+          lastSenderId: sender.authUid,
+          unreadCount,
+          updatedAt: now,
+        })
+        .eq('id', resolvedConversationId);
+  
+      if (conversationUpdateError) throw conversationUpdateError;
+  
+      }
 
     return NextResponse.json({ success: true, id, conversationId: resolvedConversationId });
   } catch (error) {
