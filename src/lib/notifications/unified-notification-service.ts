@@ -36,23 +36,6 @@ export interface MessageData {
 
 export class UnifiedNotificationService {
 
-  static async resolveAuthUserId(identifier: string): Promise<string> {
-    const matches = new Set<string>();
-    for (const table of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'] as const) {
-      const byId = await supabase.from(table).select('uid').eq('id', identifier).limit(1);
-      if (byId.error) throw byId.error;
-      if (byId.data?.[0]?.uid) matches.add(String(byId.data[0].uid).trim());
-
-      const byUid = await supabase.from(table).select('uid').eq('uid', identifier).limit(1);
-      if (byUid.error) throw byUid.error;
-      if (byUid.data?.[0]?.uid) matches.add(String(byUid.data[0].uid).trim());
-    }
-    matches.delete('');
-    if (matches.size === 0) throw new Error('Target has no authenticated identity');
-    if (matches.size > 1) throw new Error('Target identity is ambiguous');
-    return [...matches][0];
-  }
-
   static async createMessage(data: MessageData): Promise<string> {
     const content = String(data.content ?? data.message ?? '').trim();
     if (!content) throw new Error('Message content is required');
