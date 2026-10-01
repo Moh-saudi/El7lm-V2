@@ -414,7 +414,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
   };
 
   const startNewConversation = async () => {
-    if (!targetAuthUserId || !user || !userData) return;
+    if (!targetUserId || !user || !userData) return;
 
     setSending(true);
     try {
