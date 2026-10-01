@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/lib/i18n';
+import { markConversationRead } from '@/lib/messages/conversation-state';
 
 interface ConversationItem {
     id: string;
@@ -83,11 +84,7 @@ export default function UnifiedMessagesButton() {
     const handleMarkRead = async (convId: string) => {
         if (!user?.id) return;
         try {
-            const { data: conv } = await supabase.from('conversations').select('unreadCount').eq('id', convId).single();
-            if (conv) {
-                const updatedUnreadCount = { ...(conv.unreadCount || {}), [user.id]: 0 };
-                await supabase.from('conversations').update({ unreadCount: updatedUnreadCount }).eq('id', convId);
-            }
+            await markConversationRead(convId);
         } catch (e) {
             console.error('Error marking message as read:', e);
         }
