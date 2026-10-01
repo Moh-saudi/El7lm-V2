@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyOTPInFirestore } from '@/lib/otp/firestore-otp-manager';
+import { consumePhoneActionRateLimit } from '@/lib/auth/phone-lookup-rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,6 +12,18 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'رقم الهاتف ورمز التحقق مطلوبان'
       }, { status: 400 });
+    }
+
+    const allowed = await consumePhoneActionRateLimit(request, String(phoneNumber), {
+      namespace: 'otp-verify',
+      maxPerIp: 30,
+      maxPerIpPhone: 5,
+    });
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: 'عدد كبير من محاولات التحقق. حاول لاحقاً.' },
+        { status: 429, headers: { 'Retry-After': '900' } },
+      );
     }
 
     const result = await verifyOTPInFirestore(phoneNumber, otp);
@@ -31,3 +44,5 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
+
+export const runtime = 'nodejs';
