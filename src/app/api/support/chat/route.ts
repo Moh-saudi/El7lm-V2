@@ -105,61 +105,28 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'conversationId and message are required' }, { status: 400 });
       }
 
-      const { data: conversation, error: conversationError } = await db
-        .from('support_conversations')
-        .select('id, userId, status, priority, category')
-        .eq('id', conversationId)
-        .maybeSingle();
-      if (conversationError) throw conversationError;
-      if (!conversation || String(conversation.userId) !== identity.authUid) {
-        return NextResponse.json({ success: false, error: 'Conversation not found' }, { status: 404 });
-      }
-
       const now = new Date().toISOString();
       const messageId = crypto.randomUUID();
-      const { error: messageError } = await db.from('support_messages').insert({
-        id: messageId,
-        conversationId,
-        senderId: identity.authUid,
-        senderName: identity.name,
-        senderType: identity.accountType,
-        message,
-        timestamp: now,
-        isRead: false,
-      });
-      if (messageError) throw messageError;
+      const notificationId = crypto.randomUUID();
 
-      const { error: updateError } = await db
-        .from('support_conversations')
-        .update({
-          lastMessage: message,
-          lastMessageTime: now,
-          updatedAt: now,
-          status: conversation.status === 'resolved' ? 'open' : conversation.status,
-        })
-        .eq('id', conversationId);
-      if (updateError) throw updateError;
+      const { data: inserted, error: insertError } = await db.rpc(
+        'insert_support_user_message',
+        {
+          p_message_id: messageId,
+          p_notification_id: notificationId,
+          p_conversation_id: conversationId,
+          p_sender_uid: identity.authUid,
+          p_sender_name: identity.name,
+          p_sender_type: identity.accountType,
+          p_message: message,
+          p_sent_at: now,
+        }
+      );
 
-      const preview = message.length > 50 ? `${message.slice(0, 50)}...` : message;
-      const { error: notificationError } = await db.from('notifications').insert({
-        id: crypto.randomUUID(),
-        userId: 'system',
-        title: 'New support message',
-        body: `${identity.name}: ${preview}`,
-        message: `${identity.name}: ${preview}`,
-        type: 'support',
-        senderName: identity.name,
-        senderId: identity.authUid,
-        senderType: identity.accountType,
-        conversationId,
-        link: `/dashboard/admin/support?conversation=${conversationId}`,
-        isRead: false,
-        createdAt: now,
-        updatedAt: now,
-        priority: conversation.priority || 'medium',
-        category: conversation.category || 'general',
-      });
-      if (notificationError) throw notificationError;
+      if (insertError) throw insertError;
+      if (!inserted) {
+        return NextResponse.json({ success: false, error: 'Conversation not found' }, { status: 404 });
+      }
 
       return NextResponse.json({ success: true, id: messageId });
     }
