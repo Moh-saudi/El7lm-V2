@@ -46,7 +46,7 @@ export interface MessageData {
 
 export class UnifiedNotificationService {
 
-  private static async resolveAuthUserId(identifier: string): Promise<string> {
+  static async resolveAuthUserId(identifier: string): Promise<string> {
     const matches = new Set<string>();
     for (const table of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'] as const) {
       const byId = await supabase.from(table).select('uid').eq('id', identifier).limit(1);
