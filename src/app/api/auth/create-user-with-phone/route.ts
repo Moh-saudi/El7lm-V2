@@ -9,6 +9,7 @@ import { cleanPhoneNumber } from '@/lib/validation/phone-validation';
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
 import { verifyOTPInFirestore } from '@/lib/otp/firestore-otp-manager';
 import { verifyPlayReviewOTP } from '@/lib/otp/play-review-otp';
+import { consumePhoneActionRateLimit } from '@/lib/auth/phone-lookup-rate-limit';
 
 const COLLECTION_MAP = {
   player: 'players',
@@ -35,6 +36,18 @@ export async function POST(request: NextRequest) {
 
     if (!isPublicAccountType(accountType)) {
       return NextResponse.json({ success: false, error: 'نوع الحساب غير مسموح' }, { status: 400 });
+    }
+
+    const allowed = await consumePhoneActionRateLimit(request, String(phoneNumber), {
+      namespace: 'otp-verify',
+      maxPerIp: 30,
+      maxPerIpPhone: 5,
+    });
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: 'عدد كبير من محاولات التحقق. حاول لاحقاً.' },
+        { status: 429, headers: { 'Retry-After': '900' } },
+      );
     }
 
     const reviewResult = await verifyPlayReviewOTP(phoneNumber, otp);
@@ -195,3 +208,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message || 'فشل إنشاء الحساب' }, { status: 500 });
   }
 }
+
+export const runtime = 'nodejs';
