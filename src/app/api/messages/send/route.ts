@@ -53,12 +53,13 @@ export async function POST(request: NextRequest) {
     }
 
     const db = getSupabaseAdmin();
+    let resolvedConversationId = conversationId;
 
-    if (conversationId) {
+    if (resolvedConversationId) {
       const { data: conversation, error: conversationError } = await db
         .from('conversations')
         .select('id, participants')
-        .eq('id', conversationId)
+        .eq('id', resolvedConversationId)
         .maybeSingle();
 
       if (conversationError) throw conversationError;
@@ -66,16 +67,64 @@ export async function POST(request: NextRequest) {
         ? conversation.participants.map(String)
         : [];
 
+      const senderIsParticipant =
+        participants.includes(sender.authUid) ||
+        participants.includes(sender.accountId);
+
       const receiverIsParticipant =
         participants.includes(receiver.authUid) ||
+        participants.includes(receiver.accountId) ||
         participants.includes(receiverInput);
 
-      if (
-        !conversation ||
-        !participants.includes(sender.authUid) ||
-        !receiverIsParticipant
-      ) {
+      if (!conversation || !senderIsParticipant || !receiverIsParticipant) {
         return NextResponse.json({ success: false, error: 'Conversation participants do not match' }, { status: 403 });
+      }
+    } else {
+      const { data: senderConversations, error: conversationSearchError } = await db
+        .from('conversations')
+        .select('id, participants')
+        .contains('participants', [sender.authUid])
+        .order('updatedAt', { ascending: false })
+        .limit(100);
+
+      if (conversationSearchError) throw conversationSearchError;
+
+      const existingConversation = (senderConversations ?? []).find((conversation) => {
+        const participants = Array.isArray(conversation.participants)
+          ? conversation.participants.map(String)
+          : [];
+        return participants.includes(receiver.authUid);
+      });
+
+      if (existingConversation?.id) {
+        resolvedConversationId = String(existingConversation.id);
+      } else {
+        const now = new Date().toISOString();
+        resolvedConversationId = crypto.randomUUID();
+        const { error: createConversationError } = await db.from('conversations').insert({
+          id: resolvedConversationId,
+          participants: [sender.authUid, receiver.authUid],
+          participantNames: {
+            [sender.authUid]: sender.name,
+            [receiver.authUid]: receiver.name,
+          },
+          participantTypes: {
+            [sender.authUid]: sender.accountType,
+            [receiver.authUid]: receiver.accountType,
+          },
+          unreadCount: {
+            [sender.authUid]: 0,
+            [receiver.authUid]: 0,
+          },
+          lastMessage: '',
+          lastMessageTime: now,
+          lastSenderId: '',
+          createdAt: now,
+          updatedAt: now,
+          isActive: true,
+        });
+
+        if (createConversationError) throw createConversationError;
       }
     }
 
@@ -109,7 +158,7 @@ export async function POST(request: NextRequest) {
 
     const row: Record<string, unknown> = {
       id,
-      conversationId: conversationId || null,
+      conversationId: resolvedConversationId,
       senderId: sender.authUid,
       receiverId: receiver.authUid,
       senderName: sender.name,
@@ -139,7 +188,35 @@ export async function POST(request: NextRequest) {
     const { error } = await db.from('messages').insert(row);
     if (error) throw error;
 
-    return NextResponse.json({ success: true, id });
+    const { data: conversationState, error: conversationStateError } = await db
+      .from('conversations')
+      .select('unreadCount')
+      .eq('id', resolvedConversationId)
+      .maybeSingle();
+
+    if (conversationStateError) throw conversationStateError;
+
+    const unreadCount =
+      conversationState?.unreadCount && typeof conversationState.unreadCount === 'object'
+        ? { ...(conversationState.unreadCount as Record<string, number>) }
+        : {};
+
+    unreadCount[receiver.authUid] = Number(unreadCount[receiver.authUid] || 0) + 1;
+
+    const { error: conversationUpdateError } = await db
+      .from('conversations')
+      .update({
+        lastMessage: content,
+        lastMessageTime: now,
+        lastSenderId: sender.authUid,
+        unreadCount,
+        updatedAt: now,
+      })
+      .eq('id', resolvedConversationId);
+
+    if (conversationUpdateError) throw conversationUpdateError;
+
+    return NextResponse.json({ success: true, id, conversationId: resolvedConversationId });
   } catch (error) {
     console.error('[messages/send] Failed:', error);
     return NextResponse.json(
