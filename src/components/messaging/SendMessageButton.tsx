@@ -218,10 +218,9 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
     setSending(true);
     try {
       const finalMessage = `${message.trim()}${includeContactInfo ? buildContactInfoBlock() : ''}`.trim();
-      const targetAuthUserId = await UnifiedNotificationService.resolveAuthUserId(targetUserId);
-      if (targetAuthUserId === user.id) throw new Error(msg('cannotMessageSelf'));
 
-      // جلب بيانات المستلم المحدثة
+      // جلب بيانات المستلم المحدثة باستخدام account ID فقط؛
+      // canonical Auth UID يُحسم server-side.
       const { data: receiverData } = await supabase
         .from(`${targetUserType}s`)
         .select('*')
@@ -229,37 +228,15 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         .single();
       const receiverName = receiverData?.full_name || receiverData?.name || targetUserName;
 
-      // البحث عن محادثة موجودة
-      const { data: existingConversations } = await supabase
-        .from('conversations')
-        .select('*')
-        .filter('participants', 'cs', `["${user.id}"]`);
-
-      const existingConversation = existingConversations?.find((conv: any) => {
-        return conv.participants?.includes(targetAuthUserId);
-      });
-
+      const startedConversation = await startConversation(targetUserId);
+      const conversationId = startedConversation.id;
+      const isNewConversation = startedConversation.created;
       const now = new Date().toISOString();
-      let conversationId: string;
-      let isNewConversation = false;
 
-      if (existingConversation) {
-        // استخدام المحادثة الموجودة
-        conversationId = existingConversation.id;
-        console.log('استخدام محادثة موجودة:', {
-          conversationId,
-          participants: existingConversation.participants
-        });
-
-      } else {
-        const startedConversation = await startConversation(targetAuthUserId);
-        conversationId = startedConversation.id;
-        isNewConversation = startedConversation.created;
-        console.log('إنشاء/فتح محادثة:', {
-          conversationId,
-          targetAuthUserId
-        });
-      }
+      console.log('إنشاء/فتح محادثة:', {
+        conversationId,
+        targetAccountId: targetUserId
+      });
 
       // إنشاء رسالة جديدة
       console.log('إنشاء رسالة جديدة:', {
@@ -271,7 +248,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
       const messageData = {
         conversationId,
         senderId: user.id,
-        receiverId: targetAuthUserId,
+        receiverId: targetUserId,
         senderName: getUserDisplayName(),
         receiverName: receiverName,
         senderType: userData.accountType,
@@ -321,7 +298,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
       if (targetUserId && user) {
         dispatchNotification({
           eventType: 'message_received',
-          targetUserId: targetAuthUserId,
+          targetUserId,
           actorId: user.id,
           metadata: { messagePreview: finalMessage.substring(0, 40) },
         });
@@ -365,10 +342,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
 
     setSending(true);
     try {
-      const targetAuthUserId = await UnifiedNotificationService.resolveAuthUserId(targetUserId);
-      if (targetAuthUserId === user.id) throw new Error(msg('cannotMessageSelf'));
-
-      const result = await startConversation(targetAuthUserId);
+      const result = await startConversation(targetUserId);
       toast.success(result.created ? msg('conversationCreated') : msg('sent'));
 
       if (redirectToMessages) {
