@@ -171,7 +171,13 @@ export async function POST(request: NextRequest) {
     const tokenHash = linkData?.properties?.hashed_token;
     if (linkError || !tokenHash) {
       console.error('❌ [create-user] generateLink error:', linkError);
-      return NextResponse.json({ success: false, error: 'تم إنشاء الحساب وتعذر إنشاء الجلسة، يرجى تسجيل الدخول' }, { status: 500 });
+      await db.from('users').delete().eq('id', uid);
+      await db.from(tableName).delete().eq('id', uid);
+      await db.auth.admin.deleteUser(uid).catch(() => undefined);
+      return NextResponse.json(
+        { success: false, error: 'تعذر إكمال إنشاء الحساب. يرجى طلب رمز تحقق جديد والمحاولة مرة أخرى.' },
+        { status: 500 },
+      );
     }
 
     console.log(`✅ [create-user] Created ${uid} as ${accountType}`);
