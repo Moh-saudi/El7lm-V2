@@ -251,15 +251,6 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
           participants: existingConversation.participants
         });
 
-        // تحديث أسماء المشاركين
-        await supabase.from('conversations').update({
-          participantNames: {
-            ...(existingConversation.participantNames || {}),
-            [user.id]: getUserDisplayName(),
-            [targetAuthUserId]: receiverName
-          },
-          updatedAt: now
-        }).eq('id', conversationId);
       } else {
         const startedConversation = await startConversation(targetAuthUserId);
         conversationId = startedConversation.id;
@@ -296,27 +287,6 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
 
       const messageId = await UnifiedNotificationService.createMessage(messageData);
 
-      // تحديث المحادثة بعد إرسال الرسالة
-      if (existingConversation) {
-        // جلب القيمة الحالية لعداد الرسائل غير المقروءة
-        const { data: convData } = await supabase
-          .from('conversations')
-          .select('unreadCount')
-          .eq('id', conversationId)
-          .single();
-        const currentUnread = convData?.unreadCount?.[targetAuthUserId] || 0;
-
-        await supabase.from('conversations').update({
-          lastMessage: finalMessage,
-          lastMessageTime: now,
-          lastSenderId: user.id,
-          unreadCount: {
-            ...(convData?.unreadCount || {}),
-            [targetAuthUserId]: currentUnread + 1
-          },
-          updatedAt: now
-        }).eq('id', conversationId);
-      }
 
       // التحقق من نجاح العملية
       const { data: verifyConversation } = await supabase
@@ -443,16 +413,6 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
 
         const now = new Date().toISOString();
 
-        // تحديث أسماء المشاركين في المحادثة
-        await supabase.from('conversations').update({
-          participantNames: {
-            ...(selectedConversation.participantNames || {}),
-            [receiverId]: receiverName,
-            [user.id]: getUserDisplayName()
-          },
-          updatedAt: now
-        }).eq('id', selectedConversation.id);
-
         // إنشاء رسالة جديدة
         const messageData = {
           conversationId: selectedConversation.id,
@@ -471,25 +431,6 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         };
 
         await UnifiedNotificationService.createMessage(messageData);
-
-        // تحديث المحادثة - جلب قيمة unreadCount الحالية ثم تحديثها
-        const { data: convData } = await supabase
-          .from('conversations')
-          .select('unreadCount')
-          .eq('id', selectedConversation.id)
-          .single();
-        const currentUnread = convData?.unreadCount?.[receiverId] || 0;
-
-        await supabase.from('conversations').update({
-          lastMessage: newMessage.trim(),
-          lastMessageTime: now,
-          lastSenderId: user.id,
-          unreadCount: {
-            ...(convData?.unreadCount || {}),
-            [receiverId]: currentUnread + 1
-          },
-          updatedAt: now
-        }).eq('id', selectedConversation.id);
 
         if (onMessageSent) {
           onMessageSent();
