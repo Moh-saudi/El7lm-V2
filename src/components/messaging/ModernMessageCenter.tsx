@@ -339,10 +339,8 @@ const ModernMessageCenter: React.FC = () => {
         if (!user) return;
 
         try {
-            const selectedAuthUserId = await UnifiedNotificationService.resolveAuthUserId(String(selectedUser.id));
-            const existingConv = conversations.find(conv =>
-                conv.participants.includes(selectedAuthUserId)
-            );
+            const startedConversation = await startConversation(String(selectedUser.id));
+            const existingConv = conversations.find(conv => conv.id === startedConversation.id);
 
             if (existingConv) {
                 setSelectedConversation(existingConv);
@@ -351,9 +349,7 @@ const ModernMessageCenter: React.FC = () => {
                 return;
             }
 
-            await startConversation(selectedAuthUserId);
-
-            toast.success('تم إنشاء محادثة جديدة');
+            toast.success(startedConversation.created ? 'تم إنشاء محادثة جديدة' : 'تم فتح المحادثة');
             setNewChatModalOpen(false);
         } catch (error) {
             console.error('Error creating conversation:', error);
