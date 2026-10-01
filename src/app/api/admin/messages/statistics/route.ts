@@ -14,6 +14,13 @@ export async function GET(request: NextRequest) {
   if (!authorization.ok) return authorization.response;
 
   try {
+    const rawOffset = Number(request.nextUrl.searchParams.get('timezoneOffsetMinutes') ?? '0');
+    const timezoneOffsetMinutes = Number.isFinite(rawOffset)
+      ? Math.max(-840, Math.min(840, Math.trunc(rawOffset)))
+      : 0;
+    const timezoneOffsetMs = timezoneOffsetMinutes * 60 * 1000;
+    const toLocalTime = (date: Date) => new Date(date.getTime() - timezoneOffsetMs);
+
     const db = getSupabaseAdmin();
 
     const [{ data: messagesData, error: messagesError }, { count: conversationsCount, error: conversationsError }] =
@@ -41,36 +48,41 @@ export async function GET(request: NextRequest) {
       else textMessages += 1;
     }
 
-    const now = new Date();
-    const todayStart = new Date(now);
-    todayStart.setHours(0, 0, 0, 0);
+    const nowLocal = toLocalTime(new Date());
+    const todayStartLocal = Date.UTC(
+      nowLocal.getUTCFullYear(),
+      nowLocal.getUTCMonth(),
+      nowLocal.getUTCDate()
+    );
 
     const todayMessages = messages.reduce((count, message) => {
       if (!message.timestamp) return count;
       const timestamp = new Date(message.timestamp);
-      return !Number.isNaN(timestamp.getTime()) && timestamp >= todayStart ? count + 1 : count;
+      if (Number.isNaN(timestamp.getTime())) return count;
+      return toLocalTime(timestamp).getTime() >= todayStartLocal ? count + 1 : count;
     }, 0);
 
-    const dayNames = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
+    const dayNames = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     const dailyMessages = [];
 
     for (let i = 6; i >= 0; i -= 1) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      date.setHours(0, 0, 0, 0);
-
-      const nextDate = new Date(date);
-      nextDate.setDate(nextDate.getDate() + 1);
+      const dayStartLocal = new Date(todayStartLocal);
+      dayStartLocal.setUTCDate(dayStartLocal.getUTCDate() - i);
+      const nextDayStartLocal = new Date(dayStartLocal);
+      nextDayStartLocal.setUTCDate(nextDayStartLocal.getUTCDate() + 1);
 
       const count = messages.reduce((total, message) => {
         if (!message.timestamp) return total;
         const timestamp = new Date(message.timestamp);
         if (Number.isNaN(timestamp.getTime())) return total;
-        return timestamp >= date && timestamp < nextDate ? total + 1 : total;
+        const localTimestamp = toLocalTime(timestamp).getTime();
+        return localTimestamp >= dayStartLocal.getTime() && localTimestamp < nextDayStartLocal.getTime()
+          ? total + 1
+          : total;
       }, 0);
 
       dailyMessages.push({
-        day: i === 0 ? 'اليوم' : i === 1 ? 'أمس' : dayNames[date.getDay()],
+        day: i === 0 ? 'اليوم' : i === 1 ? 'أمس' : dayNames[dayStartLocal.getUTCDay()],
         messages: count,
       });
     }
