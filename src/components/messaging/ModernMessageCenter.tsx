@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
 import { UnifiedNotificationService } from '@/lib/notifications/unified-notification-service';
+import { startConversation } from '@/lib/messages/conversations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -360,24 +361,7 @@ const ModernMessageCenter: React.FC = () => {
                 return;
             }
 
-            await supabase.from('conversations').insert({
-                id: crypto.randomUUID(),
-                participants: [user.id, selectedAuthUserId],
-                participantNames: {
-                    [user.id]: userData?.full_name || user.email || 'مستخدم',
-                    [selectedAuthUserId]: selectedUser.name
-                },
-                participantTypes: {
-                    [user.id]: userData?.accountType || 'user',
-                    [selectedAuthUserId]: selectedUser.type
-                },
-                lastMessage: '',
-                lastMessageTime: new Date().toISOString(),
-                lastSenderId: '',
-                unreadCount: { [user.id]: 0, [selectedAuthUserId]: 0 },
-                isActive: true,
-                createdAt: new Date().toISOString()
-            }).select().single();
+            await startConversation(selectedAuthUserId);
 
             toast.success('تم إنشاء محادثة جديدة');
             setNewChatModalOpen(false);
