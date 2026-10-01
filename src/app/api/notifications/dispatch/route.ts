@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeUser } from '@/lib/api/user-auth';
 import { sendChatAmanTemplate } from '@/lib/server/chataman-provider';
+import { resolveServerAccountIdentity } from '@/lib/server/account-identity';
 
 export type NotificationEventType =
   | 'profile_view' | 'video_view' | 'video_like' | 'video_comment'
@@ -46,98 +47,6 @@ function buildInAppContent(payload: DispatchPayload) {
     follow:           { title: 'متابع جديد! ⭐', message: `${actorLabel} "${actor}" بدأ متابعتك`, emoji: '⭐', priority: 'medium' },
   };
   return map[payload.eventType];
-}
-
-async function resolveActorIdentity(authUserId: string): Promise<{ id: string; name: string; accountType: string } | null> {
-  const db = getSupabaseAdmin();
-  const matches: Array<{ table: string; id: string; name: string; accountType: string }> = [];
-
-  const candidates = [
-    { table: 'players', accountType: 'player' },
-    { table: 'clubs', accountType: 'club' },
-    { table: 'academies', accountType: 'academy' },
-    { table: 'agents', accountType: 'agent' },
-    { table: 'trainers', accountType: 'trainer' },
-    { table: 'marketers', accountType: 'marketer' },
-    { table: 'admins', accountType: 'admin' },
-    { table: 'users', accountType: 'user' },
-  ] as const;
-
-  for (const candidate of candidates) {
-    const query = db.from(candidate.table);
-    let result;
-    switch (candidate.table) {
-      case 'players': result = await query.select('id, uid, full_name, name').eq('uid', authUserId).limit(2); break;
-      case 'clubs': result = await query.select('id, uid, full_name, name').eq('uid', authUserId).limit(2); break;
-      case 'academies': result = await query.select('id, uid, full_name, name').eq('uid', authUserId).limit(2); break;
-      case 'agents': result = await query.select('id, uid, full_name').eq('uid', authUserId).limit(2); break;
-      case 'trainers': result = await query.select('id, uid, full_name').eq('uid', authUserId).limit(2); break;
-      case 'marketers': result = await query.select('id, uid, full_name').eq('uid', authUserId).limit(2); break;
-      case 'admins': result = await query.select('id, uid, name').eq('uid', authUserId).limit(2); break;
-      case 'users': result = await query.select('id, uid, full_name, name, displayName').eq('uid', authUserId).limit(2); break;
-    }
-
-    if (result.error) throw result.error;
-    if ((result.data?.length ?? 0) > 1) return null;
-    if (!result.data?.length) continue;
-
-    const row = result.data[0] as unknown as Record<string, unknown>;
-    const id = String(row.id ?? '').trim();
-    const uid = String(row.uid ?? '').trim();
-    if (!id || uid !== authUserId) continue;
-
-    const name = String(row.full_name ?? row.displayName ?? row.name ?? '').trim() || 'مستخدم';
-    matches.push({ table: candidate.table, id, name, accountType: candidate.accountType });
-  }
-
-  const roleMatches = matches.filter(match => match.table !== 'users');
-  if (roleMatches.length > 1) return null;
-  if (roleMatches.length === 1) {
-    const match = roleMatches[0];
-    return { id: match.id, name: match.name, accountType: match.accountType };
-  }
-
-  if (matches.length !== 1) return null;
-  const match = matches[0];
-  return { id: match.id, name: match.name, accountType: match.accountType };
-}
-
-async function resolveTargetIdentity(userId: string): Promise<{ accountId: string; authUid: string } | null> {
-  const db = getSupabaseAdmin();
-  const matches = new Map<string, Map<string, { table: string; accountId: string }>>();
-
-  for (const table of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'] as const) {
-    const [byId, byUid] = await Promise.all([
-      db.from(table).select('id, uid').eq('id', userId).limit(2),
-      db.from(table).select('id, uid').eq('uid', userId).limit(2),
-    ]);
-
-    if (byId.error) throw byId.error;
-    if (byUid.error) throw byUid.error;
-
-    for (const row of [...(byId.data ?? []), ...(byUid.data ?? [])]) {
-      const accountId = String(row.id ?? '').trim();
-      const authUid = String(row.uid ?? '').trim();
-      if (!accountId || !authUid) continue;
-
-      const candidates = matches.get(authUid) ?? new Map<string, { table: string; accountId: string }>();
-      candidates.set(`${table}:${accountId}`, { table, accountId });
-      matches.set(authUid, candidates);
-    }
-  }
-
-  if (matches.size !== 1) return null;
-
-  const [authUid, candidates] = [...matches.entries()][0];
-  const roleMatches = [...candidates.values()].filter(match => match.table !== 'users');
-  if (roleMatches.length > 1) return null;
-  if (roleMatches.length === 1) {
-    return { accountId: roleMatches[0].accountId, authUid };
-  }
-
-  const userMatches = [...candidates.values()].filter(match => match.table === 'users');
-  if (userMatches.length !== 1) return null;
-  return { accountId: userMatches[0].accountId, authUid };
 }
 
 async function hasDuplicateRecent(
@@ -246,16 +155,16 @@ export async function POST(req: NextRequest) {
     if (!EVENT_TYPES.has(eventType)) {
       return NextResponse.json({ success: false, error: 'Unsupported event type' }, { status: 400 });
     }
-    const target = await resolveTargetIdentity(targetUserId);
+    const target = await resolveServerAccountIdentity(targetUserId);
     if (!target) {
       return NextResponse.json({ success: false, error: 'Target account has no authenticated identity' }, { status: 404 });
     }
 
-    const actor = await resolveActorIdentity(authorization.user.id);
+    const actor = await resolveServerAccountIdentity(authorization.user.id);
     if (!actor) {
       return NextResponse.json({ success: false, error: 'Authenticated account identity not found' }, { status: 403 });
     }
-    const actorId = actor.id;
+    const actorId = actor.accountId;
     const actorName = actor.name;
     const actorAccountType = actor.accountType;
     const trustedPayload: DispatchPayload = { ...body, actorId, actorName, actorAccountType };
