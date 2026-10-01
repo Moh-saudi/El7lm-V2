@@ -9,6 +9,7 @@ import { verifyPlayReviewOTP } from '@/lib/otp/play-review-otp';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber, generatePhoneVariants } from '@/lib/validation/phone-validation';
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
+import { consumePhoneActionRateLimit } from '@/lib/auth/phone-lookup-rate-limit';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isUUID = (v: unknown): v is string => typeof v === 'string' && UUID_REGEX.test(v);
@@ -21,6 +22,18 @@ export async function POST(request: NextRequest) {
 
     if (!phoneNumber || !otp) {
       return NextResponse.json({ success: false, error: 'رقم الهاتف ورمز التحقق مطلوبان' }, { status: 400 });
+    }
+
+    const allowed = await consumePhoneActionRateLimit(request, String(phoneNumber), {
+      namespace: 'otp-verify',
+      maxPerIp: 30,
+      maxPerIpPhone: 5,
+    });
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: 'عدد كبير من محاولات التحقق. حاول لاحقاً.' },
+        { status: 429, headers: { 'Retry-After': '900' } },
+      );
     }
 
     // 1. التحقق من OTP
@@ -196,3 +209,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message || 'حدث خطأ أثناء تسجيل الدخول' }, { status: 500 });
   }
 }
+
+export const runtime = 'nodejs';
