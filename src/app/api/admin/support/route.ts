@@ -14,7 +14,7 @@ function cleanString(value: unknown, max: number): string {
 }
 
 export async function POST(request: NextRequest) {
-  const authorization = await authorizeAdmin(request, 'manage:communications');
+  const authorization = await authorizeAdmin(request, 'manage:support');
   if (!authorization.ok) return authorization.response;
 
   try {
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const authorization = await authorizeAdmin(request, 'manage:communications');
+  const authorization = await authorizeAdmin(request, 'manage:support');
   if (!authorization.ok) return authorization.response;
 
   try {
