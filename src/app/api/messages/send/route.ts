@@ -11,16 +11,11 @@ type SendMessageBody = {
   type?: unknown;
   messageType?: unknown;
   priority?: unknown;
-  receiverName?: unknown;
-  receiverAvatar?: unknown;
-  receiverAccountType?: unknown;
-  receiverType?: unknown;
   subject?: unknown;
   imageUrl?: unknown;
   voiceUrl?: unknown;
   voiceDuration?: unknown;
   isPinned?: unknown;
-  deliveryStatus?: unknown;
   metadata?: unknown;
 };
 
@@ -81,7 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     const rawType = cleanString(body.type ?? body.messageType, 32) || 'text';
-    const allowedTypes = new Set(['text', 'image', 'file', 'voice', 'system']);
+    const allowedTypes = new Set(['text', 'image', 'file', 'voice']);
     const type = allowedTypes.has(rawType) ? rawType : 'text';
 
     const rawPriority = cleanString(body.priority, 16) || 'medium';
@@ -90,8 +85,20 @@ export async function POST(request: NextRequest) {
 
     const metadata =
       body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)
-        ? body.metadata as Record<string, unknown>
+        ? { ...(body.metadata as Record<string, unknown>) }
         : undefined;
+
+    if (metadata) {
+      delete metadata.senderId;
+      delete metadata.senderName;
+      delete metadata.senderType;
+      delete metadata.receiverId;
+      delete metadata.receiverName;
+      delete metadata.receiverType;
+      delete metadata.isWhatsApp;
+      delete metadata.whatsappMessageId;
+      delete metadata.deliveryStatus;
+    }
 
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
@@ -103,9 +110,9 @@ export async function POST(request: NextRequest) {
       receiverId: receiver.authUid,
       senderName: sender.name,
       senderType: sender.accountType,
-      receiverName: cleanString(body.receiverName, 160) || receiver.name,
-      receiverType: cleanString(body.receiverType ?? body.receiverAccountType, 64) || receiver.accountType,
-      receiverAccountType: cleanString(body.receiverAccountType ?? body.receiverType, 64) || receiver.accountType,
+      receiverName: receiver.name,
+      receiverType: receiver.accountType,
+      receiverAccountType: receiver.accountType,
       content,
       message: content,
       type,
@@ -116,7 +123,7 @@ export async function POST(request: NextRequest) {
       voiceUrl: cleanString(body.voiceUrl, 2000) || null,
       voiceDuration: Number.isFinite(Number(body.voiceDuration)) ? Number(body.voiceDuration) : null,
       isPinned: body.isPinned === true,
-      deliveryStatus: cleanString(body.deliveryStatus, 64) || null,
+      deliveryStatus: 'sent',
       metadata,
       read: false,
       isRead: false,
