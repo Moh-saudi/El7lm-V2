@@ -288,6 +288,7 @@ const WorkingMessageCenter: React.FC = () => {
 
       // استخراج معرف المستند الفعلي من معرف الاتصال
       const actualContactId = contact.id.replace(/^(club_|academy_|agent_|trainer_|player_|admin_)/, '');
+      const contactAuthUserId = await UnifiedNotificationService.resolveAuthUserId(actualContactId);
 
       // التحقق من وجود محادثة سابقة
       const { data: existingConversations } = await supabase
@@ -296,7 +297,7 @@ const WorkingMessageCenter: React.FC = () => {
         .filter('participants', 'cs', `["${user.id}"]`);
 
       const existingConversation = existingConversations?.find((conv: any) => {
-        return conv.participants?.includes(actualContactId);
+        return conv.participants?.includes(contactAuthUserId);
       });
 
       if (existingConversation) {
@@ -328,18 +329,18 @@ const WorkingMessageCenter: React.FC = () => {
       const conversationId = crypto.randomUUID();
       const newConversationData = {
         id: conversationId,
-        participants: [user.id, actualContactId],
+        participants: [user.id, contactAuthUserId],
         participantNames: {
           [user.id]: getCurrentUserName(),
-          [actualContactId]: contact.name
+          [contactAuthUserId]: contact.name
         },
         participantTypes: {
           [user.id]: userData.accountType || 'player',
-          [actualContactId]: contact.type
+          [contactAuthUserId]: contact.type
         },
         participantAvatars: {
           [user.id]: userData.avatar || null,
-          [actualContactId]: contact.avatar || null
+          [contactAuthUserId]: contact.avatar || null
         },
         subject: `محادثة مع ${contact.name}`,
         lastMessage: '',
@@ -347,7 +348,7 @@ const WorkingMessageCenter: React.FC = () => {
         lastSenderId: '',
         unreadCount: {
           [user.id]: 0,
-          [actualContactId]: 0
+          [contactAuthUserId]: 0
         },
         isActive: true,
         createdAt: now,
