@@ -152,8 +152,22 @@ export default function UnifiedNotificationsButton() {
       const interactionIds = notifications.filter(n => !n.isRead && !n.id.startsWith('bc_') && n.category === 'interaction').map(n => n.id);
       const bcItems = notifications.filter(n => !n.isRead && n.id.startsWith('bc_'));
 
-      if (systemIds.length) await supabase.from('notifications').update({ isRead: true }).in('id', systemIds);
-      if (interactionIds.length) await supabase.from('interaction_notifications').update({ isRead: true }).in('id', interactionIds);
+      await Promise.all([
+        ...systemIds.map(async (id) => {
+          const { data, error } = await supabase.rpc('mark_notification_read', {
+            p_notification_id: id,
+          });
+          if (error) throw error;
+          if (!data) throw new Error('Notification not found or not owned by current user');
+        }),
+        ...interactionIds.map(async (id) => {
+          const { data, error } = await supabase.rpc('mark_interaction_notification_read', {
+            p_notification_id: id,
+          });
+          if (error) throw error;
+          if (!data) throw new Error('Notification not found or not owned by current user');
+        }),
+      ]);
       bcItems.forEach(n => markBroadcastSeen(n.id.slice(3)));
 
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
@@ -168,8 +182,14 @@ export default function UnifiedNotificationsButton() {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
         setUnreadCount(prev => Math.max(0, prev - 1));
       } else {
-        const coll = category === 'system' ? 'notifications' : 'interaction_notifications';
-        await supabase.from(coll).update({ isRead: true }).eq('id', id);
+        const rpc = category === 'system'
+          ? 'mark_notification_read'
+          : 'mark_interaction_notification_read';
+        const { data, error } = await supabase.rpc(rpc, { p_notification_id: id });
+        if (error) throw error;
+        if (!data) throw new Error('Notification not found or not owned by current user');
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
       }
     } catch (e) { console.error(e); }
   };
