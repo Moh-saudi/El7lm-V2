@@ -65,10 +65,14 @@ export default function MessageManagementPage() {
         try {
             setLoading(true);
 
-            const response = await authenticatedFetch('/api/admin/messages/statistics', {
-                method: 'GET',
-                cache: 'no-store',
-            });
+            const timezoneOffsetMinutes = new Date().getTimezoneOffset();
+            const response = await authenticatedFetch(
+                `/api/admin/messages/statistics?timezoneOffsetMinutes=${timezoneOffsetMinutes}`,
+                {
+                    method: 'GET',
+                    cache: 'no-store',
+                }
+            );
 
             if (!response.ok) {
                 throw new Error(`Failed to load statistics (${response.status})`);
