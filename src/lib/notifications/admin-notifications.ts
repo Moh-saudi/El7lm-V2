@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/lib/supabase/config';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 export type AdminNotificationType =
   | 'user_update'
@@ -41,16 +42,17 @@ export async function sendAdminNotification(
   notification: Omit<AdminNotification, 'id' | 'isRead' | 'createdAt'>
 ): Promise<string | null> {
   try {
-    const id = crypto.randomUUID();
-    const { error } = await supabase.from('admin_notifications').insert({
-      id,
-      ...notification,
-      isRead: false,
-      createdAt: new Date().toISOString(),
+    const response = await authenticatedFetch('/api/admin/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notification }),
     });
-    if (error) throw error;
-    console.log('✅ Admin notification sent:', id);
-    return id;
+    const result = await response.json().catch(() => null);
+    if (!response.ok || !result?.success || !result?.id) {
+      throw new Error(result?.error || 'Failed to create admin notification');
+    }
+    console.log('✅ Admin notification sent:', result.id);
+    return String(result.id);
   } catch (error) {
     console.error('❌ Error sending admin notification:', error);
     return null;
@@ -90,11 +92,12 @@ export async function getAllNotifications(limitCount = 50): Promise<AdminNotific
 
 export async function markAsRead(notificationId: string, adminId: string): Promise<boolean> {
   try {
-    const { error } = await supabase
-      .from('admin_notifications')
-      .update({ isRead: true, readAt: new Date().toISOString(), readBy: adminId })
-      .eq('id', notificationId);
-    if (error) throw error;
+    const response = await authenticatedFetch('/api/admin/notifications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'mark_read', notificationId }),
+    });
+    if (!response.ok) throw new Error('Failed to mark notification as read');
     return true;
   } catch (error) {
     console.error('Error marking notification as read:', error);
@@ -104,11 +107,12 @@ export async function markAsRead(notificationId: string, adminId: string): Promi
 
 export async function markAllAsRead(adminId: string): Promise<boolean> {
   try {
-    const { error } = await supabase
-      .from('admin_notifications')
-      .update({ isRead: true, readAt: new Date().toISOString(), readBy: adminId })
-      .eq('isRead', false);
-    if (error) throw error;
+    const response = await authenticatedFetch('/api/admin/notifications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'mark_all_read', scope: 'all' }),
+    });
+    if (!response.ok) throw new Error('Failed to mark all notifications as read');
     return true;
   } catch (error) {
     console.error('Error marking all notifications as read:', error);
@@ -118,8 +122,12 @@ export async function markAllAsRead(adminId: string): Promise<boolean> {
 
 export async function deleteNotification(notificationId: string): Promise<boolean> {
   try {
-    const { error } = await supabase.from('admin_notifications').delete().eq('id', notificationId);
-    if (error) throw error;
+    const response = await authenticatedFetch('/api/admin/notifications', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notificationId }),
+    });
+    if (!response.ok) throw new Error('Failed to delete notification');
     return true;
   } catch (error) {
     console.error('Error deleting notification:', error);
