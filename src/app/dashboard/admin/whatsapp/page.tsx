@@ -26,6 +26,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { getWhatsAppLink } from '@/lib/support-contact';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 interface WhatsAppNumber {
   id?: string;
@@ -83,8 +84,22 @@ export default function WhatsAppManagementPage() {
 
   const fetchWhatsAppNumbers = async () => {
     try {
-      const { data } = await supabase.from('whatsappNumbers').select('*').order('createdAt', { ascending: false });
-      const numbers = (data || []) as WhatsAppNumber[];
+      const { data, error } = await supabase
+        .from('whatsappNumbers')
+        .select('id,label,number,isActive,createdAt,updatedAt')
+        .order('createdAt', { ascending: false });
+      if (error) throw error;
+
+      const numbers: WhatsAppNumber[] = (data || []).map((row: any) => ({
+        id: row.id,
+        name: row.label || '',
+        phone: row.number || '',
+        country: '',
+        countryCode: '',
+        isActive: row.isActive !== false,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      }));
       setWhatsappNumbers(numbers);
     } catch (error) {
       console.error('Error fetching WhatsApp numbers:', error);
@@ -96,8 +111,20 @@ export default function WhatsAppManagementPage() {
 
   const fetchWhatsAppMessages = async () => {
     try {
-      const { data } = await supabase.from('whatsappMessages').select('*').order('createdAt', { ascending: false });
-      const messages = (data || []) as WhatsAppMessage[];
+      const { data, error } = await supabase
+        .from('whatsappMessages')
+        .select('id,type,content,isActive,createdAt,updatedAt')
+        .order('createdAt', { ascending: false });
+      if (error) throw error;
+
+      const messages: WhatsAppMessage[] = (data || []).map((row: any) => ({
+        id: row.id,
+        templateName: row.type || '',
+        message: row.content || '',
+        isActive: row.isActive !== false,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      }));
       setWhatsappMessages(messages);
     } catch (error) {
       console.error('Error fetching WhatsApp messages:', error);
@@ -112,21 +139,24 @@ export default function WhatsAppManagementPage() {
     }
 
     try {
-      const numberData = {
-        ...numberFormData,
-        phone: numberFormData.phone.replace(/\D/g, ''), // Remove non-digits
-        updatedAt: new Date(),
-        ...(editingNumber ? {} : { createdAt: new Date() })
-      };
-
-      if (editingNumber?.id) {
-        await supabase.from('whatsappNumbers').update(numberData).eq('id', editingNumber.id);
-        toast.success('تم تحديث رقم الواتساب بنجاح');
-      } else {
-        await supabase.from('whatsappNumbers').insert({ id: crypto.randomUUID(), ...numberData });
-        toast.success('تم إضافة رقم الواتساب بنجاح');
+      const fullNumber = `${numberFormData.countryCode || ''}${numberFormData.phone || ''}`.replace(/\D/g, '');
+      const response = await authenticatedFetch('/api/admin/whatsapp-config', {
+        method: editingNumber?.id ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource: 'number',
+          id: editingNumber?.id,
+          label: numberFormData.name,
+          number: fullNumber,
+          isActive: numberFormData.isActive,
+        }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to save WhatsApp number');
       }
 
+      toast.success(editingNumber?.id ? 'تم تحديث رقم الواتساب بنجاح' : 'تم إضافة رقم الواتساب بنجاح');
       setShowNumberDialog(false);
       resetNumberForm();
       fetchWhatsAppNumbers();
@@ -143,20 +173,23 @@ export default function WhatsAppManagementPage() {
     }
 
     try {
-      const messageData = {
-        ...messageFormData,
-        updatedAt: new Date(),
-        ...(editingMessage ? {} : { createdAt: new Date() })
-      };
-
-      if (editingMessage?.id) {
-        await supabase.from('whatsappMessages').update(messageData).eq('id', editingMessage.id);
-        toast.success('تم تحديث قالب الرسالة بنجاح');
-      } else {
-        await supabase.from('whatsappMessages').insert({ id: crypto.randomUUID(), ...messageData });
-        toast.success('تم إضافة قالب الرسالة بنجاح');
+      const response = await authenticatedFetch('/api/admin/whatsapp-config', {
+        method: editingMessage?.id ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource: 'message',
+          id: editingMessage?.id,
+          type: messageFormData.templateName,
+          content: messageFormData.message,
+          isActive: messageFormData.isActive,
+        }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to save WhatsApp message');
       }
 
+      toast.success(editingMessage?.id ? 'تم تحديث قالب الرسالة بنجاح' : 'تم إضافة قالب الرسالة بنجاح');
       setShowMessageDialog(false);
       resetMessageForm();
       fetchWhatsAppMessages();
@@ -170,7 +203,12 @@ export default function WhatsAppManagementPage() {
     if (!confirm('هل أنت متأكد من حذف هذا الرقم؟')) return;
 
     try {
-      await supabase.from('whatsappNumbers').delete().eq('id', id);
+      const response = await authenticatedFetch('/api/admin/whatsapp-config', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resource: 'number', id }),
+      });
+      if (!response.ok) throw new Error('Failed to delete WhatsApp number');
       toast.success('تم حذف رقم الواتساب بنجاح');
       fetchWhatsAppNumbers();
     } catch (error) {
@@ -183,7 +221,12 @@ export default function WhatsAppManagementPage() {
     if (!confirm('هل أنت متأكد من حذف هذا القالب؟')) return;
 
     try {
-      await supabase.from('whatsappMessages').delete().eq('id', id);
+      const response = await authenticatedFetch('/api/admin/whatsapp-config', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resource: 'message', id }),
+      });
+      if (!response.ok) throw new Error('Failed to delete WhatsApp message');
       toast.success('تم حذف قالب الرسالة بنجاح');
       fetchWhatsAppMessages();
     } catch (error) {
