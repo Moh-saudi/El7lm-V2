@@ -505,7 +505,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         const { data: receiverData } = await supabase
           .from(`${selectedConversation.participantTypes[receiverId]}s`)
           .select('*')
-          .eq('id', receiverId)
+          .eq('uid', receiverId)
           .single();
         const receiverName = receiverData?.full_name || receiverData?.name || selectedConversation.participantNames[receiverId];
 
