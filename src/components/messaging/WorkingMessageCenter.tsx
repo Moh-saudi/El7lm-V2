@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
 import { UnifiedNotificationService } from '@/lib/notifications/unified-notification-service';
+import { startConversation } from '@/lib/messages/conversations';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -307,57 +308,13 @@ const WorkingMessageCenter: React.FC = () => {
         return;
       }
 
-      // Get proper sender name for conversation
-      const getCurrentUserName = () => {
-        if (userData.accountType === 'player') {
-          return userData.full_name || userData.name || userData.displayName || user.user_metadata?.full_name || 'أنا';
-        } else if (userData.accountType === 'club') {
-          return userData.name || userData.club_name || userData.displayName || user.user_metadata?.full_name || 'نادي';
-        } else if (userData.accountType === 'academy') {
-          return userData.name || userData.academy_name || userData.displayName || user.user_metadata?.full_name || 'أكاديمية';
-        } else if (userData.accountType === 'agent') {
-          return userData.name || userData.agent_name || userData.agency_name || userData.displayName || user.user_metadata?.full_name || 'وكيل';
-        } else if (userData.accountType === 'trainer') {
-          return userData.name || userData.trainer_name || userData.displayName || user.user_metadata?.full_name || 'مدرب';
-        } else {
-          return userData.displayName || userData.name || userData.full_name || user.user_metadata?.full_name || 'أنا';
-        }
-      };
+      const startedConversation = await startConversation(
+        contactAuthUserId,
+        `محادثة مع ${contact.name}`,
+      );
+      const conversationId = startedConversation.id;
 
-      // إنشاء محادثة جديدة
-      const now = new Date().toISOString();
-      const conversationId = crypto.randomUUID();
-      const newConversationData = {
-        id: conversationId,
-        participants: [user.id, contactAuthUserId],
-        participantNames: {
-          [user.id]: getCurrentUserName(),
-          [contactAuthUserId]: contact.name
-        },
-        participantTypes: {
-          [user.id]: userData.accountType || 'player',
-          [contactAuthUserId]: contact.type
-        },
-        participantAvatars: {
-          [user.id]: userData.avatar || null,
-          [contactAuthUserId]: contact.avatar || null
-        },
-        subject: `محادثة مع ${contact.name}`,
-        lastMessage: '',
-        lastMessageTime: null,
-        lastSenderId: '',
-        unreadCount: {
-          [user.id]: 0,
-          [contactAuthUserId]: 0
-        },
-        isActive: true,
-        createdAt: now,
-        updatedAt: now
-      };
-
-      await supabase.from('conversations').insert(newConversationData);
-
-      console.log('✅ تم إنشاء محادثة جديدة:', conversationId);
+      console.log('✅ تم إنشاء/فتح محادثة:', conversationId);
       toast.success(`تم إنشاء محادثة مع ${contact.name}`);
 
       // Track Clarity events
