@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { toast } from 'sonner';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 /**
  * التحقق من دعم المتصفح للإشعارات
@@ -64,17 +65,16 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 /**
  * حفظ Push Token في Supabase
  */
-export async function saveFCMToken(userId: string, token: string): Promise<void> {
-  try {
-    await supabase.from('users').update({
-      fcmToken: token,
-      fcmTokenUpdatedAt: new Date().toISOString(),
-      notificationsEnabled: true
-    }).eq('id', userId);
+export async function saveFCMToken(_userId: string, token: string): Promise<void> {
+  const response = await authenticatedFetch('/api/push/subscription', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subscription: token, enabled: true }),
+  });
 
-    console.log('✅ Push token saved to Supabase');
-  } catch (error) {
-    console.error('❌ Error saving push token:', error);
+  if (!response.ok) {
+    const result = await response.json().catch(() => null);
+    throw new Error(result?.error || 'Failed to save push subscription');
   }
 }
 
@@ -161,17 +161,16 @@ export function setupForegroundNotifications(
 /**
  * حذف Push Token (عند تسجيل الخروج)
  */
-export async function deleteFCMToken(userId: string): Promise<void> {
-  try {
-    await supabase.from('users').update({
-      fcmToken: null,
-      fcmTokenUpdatedAt: new Date().toISOString(),
-      notificationsEnabled: false
-    }).eq('id', userId);
+export async function deleteFCMToken(_userId: string): Promise<void> {
+  const response = await authenticatedFetch('/api/push/subscription', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled: false }),
+  });
 
-    console.log('✅ Push token deleted');
-  } catch (error) {
-    console.error('❌ Error deleting push token:', error);
+  if (!response.ok) {
+    const result = await response.json().catch(() => null);
+    throw new Error(result?.error || 'Failed to delete push subscription');
   }
 }
 
