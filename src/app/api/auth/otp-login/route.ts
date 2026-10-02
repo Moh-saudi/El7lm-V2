@@ -141,17 +141,22 @@ export async function POST(request: NextRequest) {
         user_metadata: { accountType, phone: phoneNumber, full_name: userName, firebase_uid: userId },
       });
       if (createError) {
-        // إذا كان الإيميل موجوداً بالفعل، نحاول الحصول على المستخدم عبر طريقة بديلة
+        // إذا كان الإيميل موجوداً بالفعل، نحسم الحساب داخل قاعدة البيانات
+        // بدل تحميل قائمة Auth كاملة إلى السيرفر.
         if (createError.message?.includes('already registered') || createError.message?.includes('already been registered')) {
-          console.warn('[OTP Login] Email already exists, attempting to find via listUsers again...');
-          try {
-            const { data: usersData2 } = await db.auth.admin.listUsers({ perPage: 2000 });
-            const match = (usersData2?.users ?? []).find(u => u.email === constructedEmail || (userEmail && u.email === userEmail));
-            if (match) {
-              supabaseUserId = match.id;
-              authEmail = match.email || constructedEmail;
+          const { data: retryRows, error: retryLookupError } = await db.rpc(
+            'resolve_legacy_auth_user',
+            {
+              p_profile_email: userEmail || '',
+              p_constructed_email: constructedEmail,
+              p_legacy_id: userId,
             }
-          } catch { /* ignore */ }
+          );
+
+          if (!retryLookupError && retryRows?.length === 1) {
+            supabaseUserId = String(retryRows[0].auth_user_id);
+            authEmail = retryRows[0].auth_email || constructedEmail;
+          }
         }
         if (!supabaseUserId) {
           console.error('❌ [OTP Login] createUser error:', createError.message);
