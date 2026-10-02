@@ -170,22 +170,42 @@ export const usePlayerProfile = () => {
                 }));
             }
 
-            // Update Player Doc
-            await supabase.from('players').upsert({
-                id: user.id,
-                ...dataToSave,
-                updatedAt: new Date().toISOString(),
-                full_name: values.name, // Maintain legacy field name if needed
-            });
+            // Update the existing canonical/legacy player row only.
+            // Never upsert by Auth UID here: legacy accounts can have id != uid,
+            // and inserting a second row would fork the player's identity.
+            const { data: updatedPlayers, error: playerUpdateError } = await supabase
+                .from('players')
+                .update({
+                    ...dataToSave,
+                    updatedAt: new Date().toISOString(),
+                    full_name: values.name,
+                })
+                .or(`id.eq.${user.id},uid.eq.${user.id}`)
+                .select('id')
+                .limit(2);
 
-            // Update User Doc (Basic Info)
-            await supabase.from('users').upsert({
-                id: user.id,
-                displayName: values.name,
-                phoneNumber: values.phone,
-                updatedAt: new Date().toISOString(),
-                isProfileComplete: true
-            });
+            if (playerUpdateError) throw playerUpdateError;
+            if ((updatedPlayers?.length ?? 0) !== 1) {
+                throw new Error('Unable to resolve a unique player profile for this account');
+            }
+
+            // Keep the existing users row in sync without using INSERT/UPSERT.
+            const { data: updatedUsers, error: usersUpdateError } = await supabase
+                .from('users')
+                .update({
+                    displayName: values.name,
+                    phoneNumber: values.phone,
+                    updatedAt: new Date().toISOString(),
+                    isProfileComplete: true,
+                })
+                .or(`id.eq.${user.id},uid.eq.${user.id}`)
+                .select('id')
+                .limit(2);
+
+            if (usersUpdateError) throw usersUpdateError;
+            if ((updatedUsers?.length ?? 0) !== 1) {
+                throw new Error('Unable to resolve a unique user profile for this account');
+            }
 
             toast.success(t('profile.notifications.saved'));
             setIsEditing(false);
