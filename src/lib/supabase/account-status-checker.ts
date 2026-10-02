@@ -8,60 +8,45 @@ export interface AccountStatus {
   redirectTo?: string;
 }
 
-export async function checkAccountStatus(userId: string): Promise<AccountStatus> {
+type AccountStatusRow = {
+  found?: boolean;
+  is_active?: boolean;
+  is_deleted?: boolean;
+  suspension_reason?: string | null;
+};
+
+export async function checkAccountStatus(_userId: string): Promise<AccountStatus> {
   try {
-    const accountTypes = ['users', 'admins', 'clubs', 'academies', 'trainers', 'agents', 'players', 'marketers'] as const;
-    const statusColumns: Record<(typeof accountTypes)[number], string> = {
-      users: 'isDeleted,isActive,suspensionReason',
-      admins: 'isActive',
-      clubs: 'isDeleted,isActive',
-      academies: 'isDeleted,isActive',
-      trainers: 'isDeleted,isActive',
-      agents: 'isDeleted,isActive',
-      players: 'isDeleted,isActive',
-      marketers: 'isActive',
-    };
-    let userData: Record<string, unknown> | null = null;
+    const { data, error } = await supabase.rpc('get_current_account_status');
+    if (error) throw error;
 
-    const results = await Promise.allSettled(
-      accountTypes.map(t =>
-        supabase.from(t).select(statusColumns[t]).or(`id.eq.${userId},uid.eq.${userId}`).limit(1)
-      )
-    );
+    const row = (data?.[0] || null) as AccountStatusRow | null;
 
-    for (let i = 0; i < results.length; i++) {
-      const r = results[i];
-      if (r.status === 'fulfilled' && r.value.data?.length) {
-        userData = r.value.data[0] as unknown as Record<string, unknown>;
-        break;
-      }
-    }
-
-    if (!userData) {
+    if (!row?.found) {
       return {
         isActive: false,
         canLogin: false,
         message: 'حسابك غير موجود في النظام. يرجى التواصل مع الإدارة.',
-        messageType: 'error'
+        messageType: 'error',
       };
     }
 
-    if (userData.isDeleted === true) {
+    if (row.is_deleted === true) {
       return {
         isActive: false,
         canLogin: false,
         message: 'تم حذف حسابك — يمكنك إنشاء حساب جديد.',
-        messageType: 'error'
+        messageType: 'error',
       };
     }
 
-    if (userData.isActive === false) {
-      const suspendReason = String(userData.suspensionReason || 'لم يتم تحديد السبب');
+    if (row.is_active === false) {
+      const suspendReason = String(row.suspension_reason || 'لم يتم تحديد السبب');
       return {
         isActive: false,
         canLogin: false,
         message: `تم إيقاف حسابك مؤقتاً.\n\nالسبب: ${suspendReason}\n\nيرجى التواصل مع الإدارة لإعادة تفعيل الحساب.`,
-        messageType: 'error'
+        messageType: 'error',
       };
     }
 
@@ -69,16 +54,15 @@ export async function checkAccountStatus(userId: string): Promise<AccountStatus>
       isActive: true,
       canLogin: true,
       message: 'مرحباً بك! تم تسجيل الدخول بنجاح.',
-      messageType: 'success'
+      messageType: 'success',
     };
-
   } catch (error) {
     console.error('Error checking account status:', error);
     return {
       isActive: false,
       canLogin: false,
       message: 'حدث خطأ أثناء التحقق من حالة الحساب. يرجى المحاولة لاحقاً.',
-      messageType: 'error'
+      messageType: 'error',
     };
   }
 }
