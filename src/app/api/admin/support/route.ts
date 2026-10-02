@@ -35,17 +35,6 @@ export async function POST(request: NextRequest) {
     }
 
     const db = getSupabaseAdmin();
-    const { data: conversation, error: conversationError } = await db
-      .from('support_conversations')
-      .select('id, status')
-      .eq('id', conversationId)
-      .maybeSingle();
-    if (conversationError) throw conversationError;
-    if (!conversation) {
-      return withPrivateResponseHeaders(
-        NextResponse.json({ success: false, error: 'Conversation not found' }, { status: 404 })
-      );
-    }
 
     const senderName =
       cleanString(authorization.user.user_metadata?.full_name, 120) ||
@@ -55,28 +44,24 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
-    const { error: messageError } = await db.from('support_messages').insert({
-      id,
-      conversationId,
-      senderId: authorization.user.id,
-      senderName,
-      senderType: 'admin',
-      message,
-      timestamp: now,
-      isRead: false,
-    });
-    if (messageError) throw messageError;
+    const { data: inserted, error: insertError } = await db.rpc(
+      'insert_support_admin_message',
+      {
+        p_message_id: id,
+        p_conversation_id: conversationId,
+        p_sender_uid: authorization.user.id,
+        p_sender_name: senderName,
+        p_message: message,
+        p_sent_at: now,
+      }
+    );
 
-    const { error: updateError } = await db
-      .from('support_conversations')
-      .update({
-        lastMessage: message,
-        lastMessageTime: now,
-        updatedAt: now,
-        status: conversation.status === 'open' ? 'in_progress' : conversation.status,
-      })
-      .eq('id', conversationId);
-    if (updateError) throw updateError;
+    if (insertError) throw insertError;
+    if (!inserted) {
+      return withPrivateResponseHeaders(
+        NextResponse.json({ success: false, error: 'Conversation not found' }, { status: 404 })
+      );
+    }
 
     return withPrivateResponseHeaders(NextResponse.json({ success: true, id }));
   } catch (error) {
