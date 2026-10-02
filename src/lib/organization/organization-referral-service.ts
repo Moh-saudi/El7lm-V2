@@ -307,10 +307,10 @@ class OrganizationReferralService {
   private async linkPlayerToOrganization(requestData: PlayerJoinRequest & { processedBy?: string }): Promise<void> {
     try {
       const organizationIdFields: Record<string, string[]> = {
-        club: ['club_id', 'clubId'],
-        academy: ['academy_id', 'academyId'],
-        trainer: ['trainer_id', 'trainerId'],
-        agent: ['agent_id', 'agentId'],
+        club: ['club_id'],
+        academy: ['academy_id'],
+        trainer: ['trainer_id'],
+        agent: ['agent_id'],
       };
       const orgIdFields = organizationIdFields[requestData.organizationType];
       if (!orgIdFields) throw new Error('نوع المنظمة غير مدعوم');

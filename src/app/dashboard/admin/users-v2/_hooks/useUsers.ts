@@ -51,81 +51,86 @@ export function useUsers(initialLimit = 100) {
 
             const usersMap = new Map<string, User>();
 
-            // جلب من جميع الجداول مع دمج البيانات
-            for (const tableName of TABLES) {
-                try {
-                    const { data: rows, error: fetchError } = await supabase
-                        .from(tableName)
-                        .select('*');
-
-                    if (fetchError) {
-                        console.warn(`Error fetching ${tableName}:`, fetchError);
-                        continue;
+            // Fetch account tables in parallel. initialLimit was previously ignored,
+            // which caused every row from every account table to be downloaded serially.
+            const tableResults = await Promise.all(
+                TABLES.map(async tableName => {
+                    try {
+                        const { data, error } = await supabase
+                            .from(tableName)
+                            .select('*')
+                            .limit(initialLimit);
+                        return { tableName, rows: data || [], error };
+                    } catch (error) {
+                        return { tableName, rows: [], error };
                     }
+                })
+            );
 
-                    (rows || []).forEach((data: any) => {
-                        const id = data.id;
-                        if (!id) return;
-                        const accountType = (data.accountType || data.role || tableName.replace(/s$/, '')) as AccountType;
-
-                        // تجهيز بيانات المستخدم من السجل الحالي
-                        const userData: User = {
-                            id: id,
-                            uid: id,
-                            name: data.full_name || data.name || data.club_name || data.academy_name || 'غير محدد',
-                            email: data.email || '',
-                            phone: data.phone || data.phoneNumber || '',
-                            accountType,
-                            status: data.isDeleted ? 'deleted' : data.isActive === false ? 'suspended' : 'active',
-                            isActive: data.isActive !== false,
-                            isDeleted: data.isDeleted || false,
-                            verificationStatus: data.verificationStatus || 'pending',
-                            profileCompletion: calculateProfileCompletion(data),
-                            country: data.country || '',
-                            countryCode: data.countryCode || '',
-                            city: data.city || '',
-                            createdAt: toDate(data.createdAt || data.created_at || data.registrationDate || data.date),
-                            lastLogin: toDate(data.lastLogin || data.last_login),
-                            parentAccountId: data.parentAccountId || data.clubId || data.academyId,
-                            parentAccountType: data.parentAccountType,
-                            parentOrganizationName: data.parentOrganizationName,
-                            suspendReason: data.suspendReason,
-                            suspendedAt: toDate(data.suspendedAt),
-                            profileImage: data.profile_image || data.profileImage || data.avatar ||
-                                data.photoURL || data.image || data.logo || data.club_logo ||
-                                data.academy_logo || data.photo || '',
-                            isSynced: data.isSynced || false,
-                            isGoogleUser: data.isGoogleUser || false,
-                            isPhoneAuth: data.isPhoneAuth || false,
-                        };
-
-                        if (usersMap.has(id)) {
-                            // دمج البيانات: المفضل هو البيانات غير الفارغة
-                            const existing = usersMap.get(id)!;
-                            usersMap.set(id, {
-                                ...existing,
-                                name: (userData.name !== 'غير محدد' && userData.name) || existing.name,
-                                email: userData.email || existing.email,
-                                phone: userData.phone || existing.phone,
-                                country: userData.country || existing.country,
-                                city: userData.city || existing.city,
-                                profileImage: userData.profileImage || existing.profileImage,
-                                lastLogin: (userData.lastLogin && existing.lastLogin)
-                                    ? (userData.lastLogin > existing.lastLogin ? userData.lastLogin : existing.lastLogin)
-                                    : (userData.lastLogin || existing.lastLogin),
-                                createdAt: existing.createdAt || userData.createdAt,
-                                profileCompletion: Math.max(existing.profileCompletion, userData.profileCompletion),
-                                isSynced: existing.isSynced || userData.isSynced,
-                                isGoogleUser: existing.isGoogleUser || userData.isGoogleUser,
-                                isPhoneAuth: existing.isPhoneAuth || userData.isPhoneAuth,
-                            });
-                        } else {
-                            usersMap.set(id, userData);
-                        }
-                    });
-                } catch (e) {
-                    console.warn(`Error fetching ${tableName}:`, e);
+            for (const { tableName, rows, error: fetchError } of tableResults) {
+                if (fetchError) {
+                    console.warn(`Error fetching ${tableName}:`, fetchError);
+                    continue;
                 }
+
+                rows.forEach((data: any) => {
+                    const id = data.id;
+                    if (!id) return;
+                    const accountType = (data.accountType || data.role || tableName.replace(/s$/, '')) as AccountType;
+
+                    const userData: User = {
+                        id,
+                        uid: id,
+                        name: data.full_name || data.name || data.club_name || data.academy_name || 'غير محدد',
+                        email: data.email || '',
+                        phone: data.phone || data.phoneNumber || '',
+                        accountType,
+                        status: data.isDeleted ? 'deleted' : data.isActive === false ? 'suspended' : 'active',
+                        isActive: data.isActive !== false,
+                        isDeleted: data.isDeleted || false,
+                        verificationStatus: data.verificationStatus || 'pending',
+                        profileCompletion: calculateProfileCompletion(data),
+                        country: data.country || '',
+                        countryCode: data.countryCode || '',
+                        city: data.city || '',
+                        createdAt: toDate(data.createdAt || data.created_at || data.registrationDate || data.date),
+                        lastLogin: toDate(data.lastLogin || data.last_login),
+                        parentAccountId: data.parentAccountId || data.clubId || data.academyId,
+                        parentAccountType: data.parentAccountType,
+                        parentOrganizationName: data.parentOrganizationName,
+                        suspendReason: data.suspendReason,
+                        suspendedAt: toDate(data.suspendedAt),
+                        profileImage: data.profile_image || data.profileImage || data.avatar ||
+                            data.photoURL || data.image || data.logo || data.club_logo ||
+                            data.academy_logo || data.photo || '',
+                        isSynced: data.isSynced || false,
+                        isGoogleUser: data.isGoogleUser || false,
+                        isPhoneAuth: data.isPhoneAuth || false,
+                    };
+
+                    if (usersMap.has(id)) {
+                        const existing = usersMap.get(id)!;
+                        usersMap.set(id, {
+                            ...existing,
+                            name: (userData.name !== 'غير محدد' && userData.name) || existing.name,
+                            email: userData.email || existing.email,
+                            phone: userData.phone || existing.phone,
+                            country: userData.country || existing.country,
+                            city: userData.city || existing.city,
+                            profileImage: userData.profileImage || existing.profileImage,
+                            lastLogin: (userData.lastLogin && existing.lastLogin)
+                                ? (userData.lastLogin > existing.lastLogin ? userData.lastLogin : existing.lastLogin)
+                                : (userData.lastLogin || existing.lastLogin),
+                            createdAt: existing.createdAt || userData.createdAt,
+                            profileCompletion: Math.max(existing.profileCompletion, userData.profileCompletion),
+                            isSynced: existing.isSynced || userData.isSynced,
+                            isGoogleUser: existing.isGoogleUser || userData.isGoogleUser,
+                            isPhoneAuth: existing.isPhoneAuth || userData.isPhoneAuth,
+                        });
+                    } else {
+                        usersMap.set(id, userData);
+                    }
+                });
             }
 
             const allUsers = Array.from(usersMap.values());

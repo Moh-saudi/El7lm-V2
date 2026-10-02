@@ -11,7 +11,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-    const authorization = await authorizeAdmin(req);
+    const authorization = await authorizeAdmin(req, 'manage:media');
     if (!authorization.ok) return authorization.response;
     try {
         const body = await req.json();

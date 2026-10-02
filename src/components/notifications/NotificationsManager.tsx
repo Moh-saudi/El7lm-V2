@@ -29,6 +29,7 @@ interface Notification {
   senderAvatar?: string;
   senderAccountType?: string;
   actionType?: 'profile_view' | 'message_sent' | 'connection_request' | 'follow' | 'like' | 'comment';
+  sourceTable?: 'notifications' | 'interaction_notifications';
 }
 
 type SenderInfo = {
@@ -128,155 +129,94 @@ export default function NotificationsManager({
   const [loading, setLoading] = useState(true);
   const previousNotificationsRef = useRef<Set<string>>(new Set());
 
-  // جلب معلومات المرسل
-  const fetchSenderInfo = async (senderId: string): Promise<SenderContext | null> => {
-    try {
-      // محاولة جلب من users أولاً
-      const { data: userData } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', senderId)
-        .single();
+  // Resolve sender information in bounded batches instead of issuing one query per notification.
+  const fetchSenderInfoBatch = async (senderIds: string[]): Promise<Map<string, SenderContext>> => {
+    const ids = [...new Set(senderIds.filter(Boolean))];
+    const result = new Map<string, SenderContext>();
+    if (ids.length === 0) return result;
 
-      if (userData) {
-        const avatar =
-          userData.photoURL ||
-          userData.avatar ||
-          userData.profileImage ||
-          userData.logo ||
-          null;
-        return {
-          senderId,
-          senderName: userData.displayName || userData.name || userData.fullName || null,
-          senderAvatar: resolveAvatarUrl(avatar, { senderAccountType: userData.accountType }),
-          senderAccountType: userData.accountType || undefined
-        };
-      }
+    const [users, players, clubs, academies, employees, admins] = await Promise.all([
+      supabase.from('users').select('id,displayName,name,full_name,accountType').in('id', ids),
+      supabase.from('players').select('id,full_name,name,profile_image_url,profile_image,image').in('id', ids),
+      supabase.from('clubs').select('id,name,full_name,logo,profile_image').in('id', ids),
+      supabase.from('academies').select('id,name,full_name,academy_name,logo,profile_image').in('id', ids),
+      supabase.from('employees').select('id,name,avatar,role').in('id', ids),
+      supabase.from('admins').select('id,name,role').in('id', ids),
+    ]);
 
-      // إذا لم نجد في users، نحاول البحث في players
-      const { data: playerData } = await supabase
-        .from('players')
-        .select('*')
-        .eq('id', senderId)
-        .single();
-
-      if (playerData) {
-        const avatar = playerData.avatar || playerData.photoURL || playerData.image || null;
-        return {
-          senderId,
-          senderName: playerData.full_name || playerData.name || null,
-          senderAvatar: resolveAvatarUrl(avatar, { senderAccountType: 'player' }),
-          senderAccountType: 'player'
-        };
-      }
-
-      // محاولة البحث في clubs
-      const { data: clubData } = await supabase
-        .from('clubs')
-        .select('*')
-        .eq('id', senderId)
-        .single();
-
-      if (clubData) {
-        const avatar = clubData.logo || clubData.avatar || clubData.image || null;
-        return {
-          senderId,
-          senderName: clubData.name || null,
-          senderAvatar: resolveAvatarUrl(avatar, { senderAccountType: 'club' }),
-          senderAccountType: 'club'
-        };
-      }
-
-      // محاولة البحث في academies
-      const { data: academyData } = await supabase
-        .from('academies')
-        .select('*')
-        .eq('id', senderId)
-        .single();
-
-      if (academyData) {
-        const avatar = academyData.logo || academyData.avatar || academyData.image || null;
-        return {
-          senderId,
-          senderName: academyData.name || null,
-          senderAvatar: resolveAvatarUrl(avatar, { senderAccountType: 'academy' }),
-          senderAccountType: 'academy'
-        };
-      }
-
-      // محاولة البحث في employees
-      const { data: empData } = await supabase
-        .from('employees')
-        .select('*')
-        .eq('id', senderId)
-        .single();
-
-      if (empData) {
-        const avatar = empData.avatar || empData.photoURL || empData.image || null;
-        return {
-          senderId,
-          senderName: empData.full_name || empData.name || null,
-          senderAvatar: resolveAvatarUrl(avatar, { senderAccountType: 'employee' }),
-          senderAccountType: 'employee'
-        };
-      }
-
-      // محاولة البحث في admins
-      const { data: adminData } = await supabase
-        .from('admins')
-        .select('*')
-        .eq('id', senderId)
-        .single();
-
-      if (adminData) {
-        const avatar = adminData.avatar || adminData.photoURL || adminData.image || null;
-        return {
-          senderId,
-          senderName: adminData.full_name || adminData.name || null,
-          senderAvatar: resolveAvatarUrl(avatar, { senderAccountType: 'admin' }),
-          senderAccountType: 'admin'
-        };
-      }
-    } catch (error) {
-      console.error('خطأ في جلب معلومات المرسل:', error);
+    for (const row of users.data || []) {
+      result.set(String(row.id), {
+        senderId: String(row.id),
+        senderName: row.displayName || row.name || row.full_name || null,
+        senderAvatar: null,
+        senderAccountType: row.accountType || undefined,
+      });
     }
-    return null;
+    for (const row of players.data || []) {
+      result.set(String(row.id), {
+        senderId: String(row.id),
+        senderName: row.full_name || row.name || null,
+        senderAvatar: resolveAvatarUrl(typeof row.profile_image_url === 'string' ? row.profile_image_url : (typeof row.image === 'string' ? row.image : null), { senderAccountType: 'player' }),
+        senderAccountType: 'player',
+      });
+    }
+    for (const row of clubs.data || []) {
+      result.set(String(row.id), {
+        senderId: String(row.id),
+        senderName: row.name || row.full_name || null,
+        senderAvatar: resolveAvatarUrl(row.logo || (typeof row.profile_image === 'string' ? row.profile_image : null), { senderAccountType: 'club' }),
+        senderAccountType: 'club',
+      });
+    }
+    for (const row of academies.data || []) {
+      result.set(String(row.id), {
+        senderId: String(row.id),
+        senderName: row.name || row.full_name || row.academy_name || null,
+        senderAvatar: resolveAvatarUrl(row.logo || (typeof row.profile_image === 'string' ? row.profile_image : null), { senderAccountType: 'academy' }),
+        senderAccountType: 'academy',
+      });
+    }
+    for (const row of employees.data || []) {
+      result.set(String(row.id), {
+        senderId: String(row.id),
+        senderName: row.name || null,
+        senderAvatar: resolveAvatarUrl(row.avatar, { senderAccountType: 'employee' }),
+        senderAccountType: 'employee',
+      });
+    }
+    for (const row of admins.data || []) {
+      result.set(String(row.id), {
+        senderId: String(row.id),
+        senderName: row.name || null,
+        senderAvatar: null,
+        senderAccountType: 'admin',
+      });
+    }
+
+    return result;
   };
 
-  // معالجة صفوف الإشعارات النظامية
-  const processSystemNotificationRows = async (rows: any[]): Promise<Notification[]> => {
-    return Promise.all(
-      rows.map(async (row) => {
-        const data = row as Notification;
-        const normalizedMetadata = normalizeNotificationMetadata(data.metadata);
-        const dataWithMetadata = { ...data, metadata: normalizedMetadata };
+  const getSenderCandidateId = (data: Notification): string | undefined => {
+    const metadata = normalizeNotificationMetadata(data.metadata) || {};
+    return data.senderId || metadata.senderId || metadata.viewerId || metadata.profileOwnerId || metadata.userId || undefined;
+  };
 
-        let senderInfo = getInitialSenderInfo(dataWithMetadata);
-        const metadata = normalizedMetadata || {};
-        const senderId = data.senderId
-          || metadata.senderId
-          || metadata.viewerId
-          || metadata.profileOwnerId
-          || metadata.userId;
+  const enrichSender = (data: Notification, senderMap: Map<string, SenderContext>): Notification => {
+    const normalizedMetadata = normalizeNotificationMetadata(data.metadata);
+    const dataWithMetadata = { ...data, metadata: normalizedMetadata };
+    const senderId = getSenderCandidateId(dataWithMetadata);
+    let senderInfo = getInitialSenderInfo(dataWithMetadata);
+    if (senderId) {
+      senderInfo = mergeSenderInfo(senderInfo, senderMap.get(senderId));
+    }
+    if (!senderInfo.senderAvatar && senderInfo.senderName) {
+      senderInfo.senderAvatar = generateAvatarFromName(senderInfo.senderName);
+    }
+    return { ...dataWithMetadata, senderId: senderId || data.senderId, ...senderInfo } as Notification;
+  };
 
-        if (senderId) {
-          const senderData = await fetchSenderInfo(senderId);
-          if (senderData) {
-            senderInfo = mergeSenderInfo(senderInfo, senderData);
-          }
-        }
-
-        if (!senderInfo.senderAvatar && senderInfo.senderName) {
-          senderInfo.senderAvatar = generateAvatarFromName(senderInfo.senderName);
-        }
-
-        return {
-          ...dataWithMetadata,
-          senderId: senderId || data.senderId,
-          ...senderInfo
-        } as Notification;
-      })
-    );
+  const processSystemNotificationRows = (rows: any[], senderMap: Map<string, SenderContext>): Notification[] => {
+    return rows.map((row) => enrichSender(row as Notification, senderMap));
   };
 
   // جلب الإشعارات
@@ -307,7 +247,10 @@ export default function NotificationsManager({
         return;
       }
 
-      const processed = await processSystemNotificationRows(data ?? []);
+      const rows = (data ?? []) as Notification[];
+      const senderIds = rows.map(getSenderCandidateId).filter((id): id is string => Boolean(id));
+      const senderMap = await fetchSenderInfoBatch(senderIds);
+      const processed = processSystemNotificationRows(rows, senderMap).map(row => ({ ...row, sourceTable: 'notifications' as const }));
 
       // ترتيب البيانات حسب التاريخ
       const sortedData = processed.sort((a, b) => {
@@ -334,50 +277,42 @@ export default function NotificationsManager({
 
       const rows = data ?? [];
 
-      const interactionNotificationsData = await Promise.all(
-        rows.map(async (row) => {
-          const normalizedMetadata = normalizeNotificationMetadata(row.metadata);
-          const enrichedData = { ...row, metadata: normalizedMetadata };
+      const interactionSenderIds = rows.map((row: any) => String(row.viewerId || row.senderId || row.profileOwnerId || '')).filter(Boolean);
+      const senderMap = await fetchSenderInfoBatch(interactionSenderIds);
+      const interactionNotificationsData = rows.map((row) => {
+        const normalizedMetadata = normalizeNotificationMetadata(row.metadata);
+        const enrichedData = { ...row, metadata: normalizedMetadata };
+        const senderCandidateId = row.viewerId || row.senderId || row.profileOwnerId;
+        const senderInfo = mergeSenderInfo(getInitialSenderInfo(enrichedData as Notification), senderMap.get(String(senderCandidateId)));
+        if (!senderInfo.senderAvatar && senderInfo.senderName) {
+          senderInfo.senderAvatar = generateAvatarFromName(senderInfo.senderName);
+        }
 
-          let senderInfo = getInitialSenderInfo(enrichedData as Notification);
-          const senderCandidateId = row.viewerId || row.senderId || row.profileOwnerId;
-
-          if (senderCandidateId) {
-            const senderData = await fetchSenderInfo(senderCandidateId);
-            if (senderData) {
-              senderInfo = mergeSenderInfo(senderInfo, senderData);
-            }
-          }
-
-          if (!senderInfo.senderAvatar && senderInfo.senderName) {
-            senderInfo.senderAvatar = generateAvatarFromName(senderInfo.senderName);
-          }
-
-          return {
-            id: row.id,
-            userId: row.userId,
-            title: row.title || nt('interactiveNotification'),
-            message: row.message || nt('noDetails'),
-            type: row.type === 'profile_view' ? 'info' :
-              row.type === 'message_sent' ? 'success' :
-                row.type === 'connection_request' ? 'warning' : 'info',
-            isRead: row.isRead || false,
-            link: row.actionUrl,
-            metadata: {
-              ...enrichedData,
-              profileOwnerId: row.profileOwnerId,
-              viewerId: row.viewerId,
-              profileType: row.profileType || 'player'
-            },
-            scope: 'system',
-            createdAt: row.createdAt,
-            updatedAt: row.createdAt,
-            actionType: row.type,
-            senderId: senderCandidateId || row.senderId,
-            ...senderInfo
-          } as Notification;
-        })
-      );
+        return {
+          id: row.id,
+          userId: row.userId,
+          title: row.title || nt('interactiveNotification'),
+          message: row.message || nt('noDetails'),
+          type: row.type === 'profile_view' ? 'info' :
+            row.type === 'message_sent' ? 'success' :
+              row.type === 'connection_request' ? 'warning' : 'info',
+          isRead: row.isRead || false,
+          link: row.actionUrl,
+          metadata: {
+            ...enrichedData,
+            profileOwnerId: row.profileOwnerId,
+            viewerId: row.viewerId,
+            profileType: row.profileType || 'player'
+          },
+          scope: 'system',
+          createdAt: row.createdAt,
+          updatedAt: row.createdAt,
+          actionType: row.type,
+          senderId: senderCandidateId || row.senderId,
+          ...senderInfo,
+          sourceTable: 'interaction_notifications'
+        } as Notification;
+      });
 
       // ترتيب البيانات يدوياً حسب التاريخ
       const sortedData = interactionNotificationsData.sort((a, b) => {
@@ -514,20 +449,14 @@ export default function NotificationsManager({
   // تحديد الإشعار كمقروء
   const markAsRead = async (notificationId: string) => {
     try {
-      // محاولة تحديث في notifications أولاً
-      const { error: notifError } = await supabase
-        .from('notifications')
-        .update({ isRead: true, updatedAt: new Date().toISOString() })
-        .eq('id', notificationId);
-
-      if (notifError) {
-        // إذا فشل، جرب interaction_notifications
-        await supabase
-          .from('interaction_notifications')
-          .update({ isRead: true })
-          .eq('id', notificationId);
-      }
-
+      const notification = notifications.find(n => n.id === notificationId);
+      if (!notification?.sourceTable) throw new Error('Notification source is unknown');
+      const rpc = notification.sourceTable === 'interaction_notifications'
+        ? 'mark_interaction_notification_read'
+        : 'mark_notification_read';
+      const { data, error } = await supabase.rpc(rpc, { p_notification_id: notificationId });
+      if (error) throw error;
+      if (!data) throw new Error('Notification not found or not owned by current user');
       toast.success(nt('markedAsRead'));
     } catch (error) {
       console.error('خطأ في تحديث حالة الإشعار:', error);
@@ -573,22 +502,15 @@ export default function NotificationsManager({
   const markAllAsRead = async () => {
     try {
       const unreadNotifications = notifications.filter(n => !n.isRead);
-      const updatePromises = unreadNotifications.map(async (notification) => {
-        const { error: notifError } = await supabase
-          .from('notifications')
-          .update({ isRead: true, updatedAt: new Date().toISOString() })
-          .eq('id', notification.id);
-
-        if (notifError) {
-          // إذا فشل، جرب interaction_notifications
-          await supabase
-            .from('interaction_notifications')
-            .update({ isRead: true })
-            .eq('id', notification.id);
-        }
-      });
-
-      await Promise.all(updatePromises);
+      await Promise.all(unreadNotifications.map(async (notification) => {
+        if (!notification.sourceTable) throw new Error('Notification source is unknown');
+        const rpc = notification.sourceTable === 'interaction_notifications'
+          ? 'mark_interaction_notification_read'
+          : 'mark_notification_read';
+        const { data, error } = await supabase.rpc(rpc, { p_notification_id: notification.id });
+        if (error) throw error;
+        if (!data) throw new Error('Notification not found or not owned by current user');
+      }));
       toast.success(nt('allMarkedRead'));
     } catch (error) {
       console.error('خطأ في تحديث جميع الإشعارات:', error);
@@ -629,7 +551,8 @@ export default function NotificationsManager({
     // إذا لم نجد نوع الحساب من الإشعار، نحاول جلبها من Supabase
     if (!senderAccountType) {
       try {
-        const senderInfo = await fetchSenderInfo(senderId);
+        const senderMap = await fetchSenderInfoBatch([senderId]);
+        const senderInfo = senderMap.get(senderId);
         if (senderInfo?.senderAccountType) {
           senderAccountType = senderInfo.senderAccountType;
         }
@@ -670,53 +593,6 @@ export default function NotificationsManager({
       } else {
         router.push(notification.metadata.actionUrl);
       }
-    }
-  };
-
-  // إنشاء إشعارات تجريبية
-  const createTestNotifications = async () => {
-    if (!user?.id) return;
-
-    try {
-      // استيراد ديناميكي لتجنب مشاكل في وقت البناء
-      const {
-        createTestNotification,
-        createTestInteractionNotification,
-        createTestPaymentNotification,
-        createTestWarningNotification
-      } = await import('@/lib/supabase/test-notifications');
-
-      await Promise.all([
-        createTestNotification(user.id),
-        createTestInteractionNotification(user.id),
-        createTestPaymentNotification(user.id),
-        createTestWarningNotification(user.id)
-      ]);
-
-      toast.success(nt('testCreated'));
-    } catch (error) {
-      console.error('خطأ في إنشاء الإشعارات التجريبية:', error);
-      toast.error(nt('testCreateFailed'));
-    }
-  };
-
-  // إنشاء إشعارات متعددة
-  const createMultipleNotifications = async () => {
-    if (!user?.id) return;
-
-    try {
-      const { createTestNotification } = await import('@/lib/supabase/test-notifications');
-
-      const promises = [];
-      for (let i = 0; i < 10; i++) {
-        promises.push(createTestNotification(user.id));
-      }
-
-      await Promise.all(promises);
-      toast.success(nt('tenCreated'));
-    } catch (error) {
-      console.error('خطأ في إنشاء الإشعارات المتعددة:', error);
-      toast.error(nt('multipleCreateFailed'));
     }
   };
 
@@ -766,8 +642,6 @@ export default function NotificationsManager({
       onDelete={deleteNotification}
       onReply={replyToNotification}
       onForward={forwardNotification}
-      onCreateTestNotifications={showTestButtons ? createTestNotifications : undefined}
-      onCreateMultipleNotifications={showTestButtons ? createMultipleNotifications : undefined}
       showSenderInfo={showSenderInfo}
       title={displayTitle}
       description={displayDescription}

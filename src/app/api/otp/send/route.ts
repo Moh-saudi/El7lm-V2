@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendOTP, SendOTPOptions } from '@/lib/otp/unified-otp-service';
 import { isPlayReviewPhone } from '@/lib/otp/play-review-otp';
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
+import { consumePhoneActionRateLimit } from '@/lib/auth/phone-lookup-rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,6 +28,18 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'رقم الهاتف مطلوب'
       }, { status: 400 });
+    }
+
+    const allowed = await consumePhoneActionRateLimit(request, String(phoneNumber), {
+      namespace: 'otp-send',
+      maxPerIp: 30,
+      maxPerIpPhone: 5,
+    });
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: 'عدد كبير من طلبات رمز التحقق. حاول لاحقاً.' },
+        { status: 429, headers: { 'Retry-After': '900' } },
+      );
     }
 
     const account = await findAccountByPhone(phoneNumber);
@@ -144,3 +157,5 @@ export async function GET() {
 
 
 
+
+export const runtime = 'nodejs';

@@ -14,19 +14,15 @@ export interface PlayerOrganizationInfo {
 // Type for player data that might have organization fields
 export interface PlayerWithOrganization extends Partial<Player> {
   club_id?: string;
-  clubId?: string;
   club_name?: string;
   clubName?: string;
   academy_id?: string;
-  academyId?: string;
   academy_name?: string;
   academyName?: string;
   trainer_id?: string;
-  trainerId?: string;
   trainer_name?: string;
   trainerName?: string;
   agent_id?: string;
-  agentId?: string;
   agent_name?: string;
   agentName?: string;
   organizationId?: string;
@@ -310,28 +306,23 @@ function getPlayerImage(playerData: any): any {
 }
 
 /**
- * تحديد الجهة التابع لها اللاعب مع دعم كلا التنسيقين (club_id و clubId)
+ * تحديد الجهة التابع لها اللاعب باستخدام حقول العلاقات القياسية snake_case
  */
 export function getPlayerOrganization(playerData: PlayerWithOrganization): PlayerOrganizationInfo {
   console.log('🔍 تحديد انتماء اللاعب:', {
     club_id: playerData?.club_id,
-    clubId: playerData?.clubId,
     academy_id: playerData?.academy_id,
-    academyId: playerData?.academyId,
     trainer_id: playerData?.trainer_id,
-    trainerId: playerData?.trainerId,
     agent_id: playerData?.agent_id,
-    agentId: playerData?.agentId,
   });
 
   // البحث عن النادي
-  const clubId = playerData?.club_id || playerData?.clubId;
+  const clubId = playerData?.club_id;
   if (clubId) {
     const clubName = playerData?.club_name || playerData?.clubName;
     console.log('✅ اللاعب تابع لنادي:', clubId, clubName);
     console.log('🔍 بيانات النادي الكاملة:', {
       club_id: playerData?.club_id,
-      clubId: playerData?.clubId,
       club_name: playerData?.club_name,
       clubName: playerData?.clubName
     });
@@ -345,7 +336,7 @@ export function getPlayerOrganization(playerData: PlayerWithOrganization): Playe
   }
 
   // البحث عن الأكاديمية
-  const academyId = playerData?.academy_id || playerData?.academyId;
+  const academyId = playerData?.academy_id;
   if (academyId) {
     const academyName = playerData?.academy_name || playerData?.academyName;
     console.log('✅ اللاعب تابع لأكاديمية:', academyId, academyName);
@@ -359,7 +350,7 @@ export function getPlayerOrganization(playerData: PlayerWithOrganization): Playe
   }
 
   // البحث عن المدرب
-  const trainerId = playerData?.trainer_id || playerData?.trainerId;
+  const trainerId = playerData?.trainer_id;
   if (trainerId) {
     const trainerName = playerData?.trainer_name || playerData?.trainerName;
     console.log('✅ اللاعب تابع لمدرب:', trainerId, trainerName);
@@ -373,7 +364,7 @@ export function getPlayerOrganization(playerData: PlayerWithOrganization): Playe
   }
 
   // البحث عن الوكيل
-  const agentId = playerData?.agent_id || playerData?.agentId;
+  const agentId = playerData?.agent_id;
   if (agentId) {
     const agentName = playerData?.agent_name || playerData?.agentName;
     console.log('✅ اللاعب تابع لوكيل:', agentId, agentName);
@@ -430,13 +421,9 @@ export function debugPlayerOrganization(playerData: PlayerWithOrganization): Pla
   console.log('📊 فحص مفصل للحقول:');
   const fields: Array<{ name: string; value?: string }> = [
     { name: 'club_id', value: playerData?.club_id },
-    { name: 'clubId', value: playerData?.clubId },
     { name: 'academy_id', value: playerData?.academy_id },
-    { name: 'academyId', value: playerData?.academyId },
     { name: 'trainer_id', value: playerData?.trainer_id },
-    { name: 'trainerId', value: playerData?.trainerId },
     { name: 'agent_id', value: playerData?.agent_id },
-    { name: 'agentId', value: playerData?.agentId },
   ];
 
   fields.forEach(field => {
@@ -458,24 +445,12 @@ export function normalizePlayerData(playerData: PlayerWithOrganization): PlayerW
   const normalized: PlayerWithOrganization = { ...playerData };
 
   // توحيد حقل النادي
-  if (normalized.clubId && !normalized.club_id) {
-    normalized.club_id = normalized.clubId;
-  }
 
   // توحيد حقل الأكاديمية
-  if (normalized.academyId && !normalized.academy_id) {
-    normalized.academy_id = normalized.academyId;
-  }
 
   // توحيد حقل المدرب
-  if (normalized.trainerId && !normalized.trainer_id) {
-    normalized.trainer_id = normalized.trainerId;
-  }
 
   // توحيد حقل الوكيل
-  if (normalized.agentId && !normalized.agent_id) {
-    normalized.agent_id = normalized.agentId;
-  }
 
   console.log('🔄 تم توحيد بيانات اللاعب:', {
     original: playerData,

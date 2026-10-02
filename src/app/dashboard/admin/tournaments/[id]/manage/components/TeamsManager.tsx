@@ -209,7 +209,7 @@ export const TeamsManager: React.FC<TeamsManagerProps> = ({ tournament }) => {
     const fetchPendingRegistrations = async () => {
         try {
             const { data, error } = await supabase
-                .from('tournamentRegistrations')
+                .from('tournament_registrations')
                 .select('*')
                 .eq('tournamentId', tournament.id);
 

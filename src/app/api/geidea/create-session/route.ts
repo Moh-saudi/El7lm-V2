@@ -7,6 +7,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createGeideaSession, GeideaSessionRequest } from '@/lib/geidea/client';
+import { createCanonicalPayment, PayerType } from '@/lib/payments/canonical-payment-service';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
+import { authorizeUser } from '@/lib/api/user-auth';
+import { resolveAuthenticatedPayer, assertPaymentTargetOwnership } from '@/lib/payments/payer-authorization';
+import { assertCountryCardProvider } from '@/lib/payments/provider-routing-service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,34 +26,105 @@ type CreateSessionBody = {
   returnUrl?: string;
   callbackUrl?: string;
   metadata?: Record<string, any>;
+  payerId?: string;
+  payerType?: PayerType;
+  planId?: string;
+  targetPlayerIds?: string[];
+  countryCode?: string;
 };
 
 /**
  * POST - إنشاء جلسة دفع جديدة
  */
 export async function POST(request: NextRequest) {
+  const authorization = await authorizeUser(request);
+  if (!authorization.ok) return authorization.response;
+
   try {
     const body = (await request.json()) as CreateSessionBody;
 
     // التحقق من البيانات المطلوبة
-    if (!body?.amount || !body?.currency || !body?.customerEmail) {
+    if (!body?.customerEmail) {
       return NextResponse.json(
         {
           success: false,
           error: 'Missing required fields',
-          details: 'amount, currency, and customerEmail are required',
+          details: 'customerEmail is required',
         },
         { status: 400 }
       );
     }
 
+    if (!body.payerId || !body.payerType || !body.planId || !body.targetPlayerIds?.length || !body.countryCode) {
+      return NextResponse.json(
+        { success: false, error: 'Canonical subscription checkout fields are required' },
+        { status: 400 },
+      );
+    }
+
+    let canonicalPaymentId: string | null = null;
+    let sessionAmount = body.amount;
+    let sessionCurrency = body.currency;
+    let merchantReferenceId = body.merchantReferenceId;
+
+    // Geidea subscription checkout is canonical-only.
+    {
+      const payer = await resolveAuthenticatedPayer(authorization.user.id, body.payerType);
+      if (!payer || (body.payerId && body.payerId !== payer.payerId)) {
+        return NextResponse.json({ success: false, error: 'Payer identity mismatch' }, { status: 403 });
+      }
+      const targetPlayerIds = await assertPaymentTargetOwnership(payer.payerId, payer.payerType, body.targetPlayerIds);
+      await assertCountryCardProvider(body.countryCode, 'geidea');
+      const db = getSupabaseServiceRole();
+      const { data: plans, error: planError } = await db
+        .from('subscription_plans')
+        .select('id, base_price, base_currency, overrides, isActive')
+        .eq('id', body.planId)
+        .limit(1);
+      if (planError) throw planError;
+      const plan = plans?.[0] as Record<string, any> | undefined;
+      if (!plan || plan.isActive === false) {
+        return NextResponse.json({ success: false, error: 'Invalid or inactive plan' }, { status: 400 });
+      }
+
+      const country = (body.countryCode || 'EG').toUpperCase();
+      const override = plan.overrides?.[country];
+      const unitPrice = Number(override?.price ?? plan.base_price);
+      const currency = String(override?.currency ?? plan.base_currency ?? body.currency).toUpperCase();
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) throw new Error('Invalid plan price');
+
+      sessionAmount = unitPrice * targetPlayerIds.length;
+      sessionCurrency = currency;
+      const canonical = await createCanonicalPayment({
+        payerId: payer.payerId,
+        payerType: payer.payerType,
+        planId: body.planId,
+        countryCode: country,
+        amount: sessionAmount,
+        currency: sessionCurrency,
+        method: 'card',
+        provider: 'geidea',
+        targetPlayerIds,
+        metadata: { checkout_source: 'geidea_create_session' },
+      });
+      canonicalPaymentId = canonical.id;
+      // Keep the internal UUID separate from Geidea's merchant reference contract.
+      merchantReferenceId = `EL7LM${canonical.id.replace(/-/g, '').slice(0, 25)}`;
+
+      const { error: referenceError } = await db.from('payments').update({
+        provider_reference_id: merchantReferenceId,
+        updated_at: new Date().toISOString(),
+      }).eq('id', canonical.id);
+      if (referenceError) throw referenceError;
+    }
+
     // استخدام المكتبة المركزية
     const sessionRequest: GeideaSessionRequest = {
-      amount: body.amount,
-      currency: body.currency,
+      amount: sessionAmount,
+      currency: sessionCurrency,
       customerEmail: body.customerEmail,
       customerName: body.customerName,
-      merchantReferenceId: body.merchantReferenceId,
+      merchantReferenceId,
       returnUrl: body.returnUrl,
       callbackUrl: body.callbackUrl,
       metadata: body.metadata,
@@ -57,6 +133,10 @@ export async function POST(request: NextRequest) {
     const result = await createGeideaSession(sessionRequest);
 
     if (!result.success) {
+      if (canonicalPaymentId) {
+        const db = getSupabaseServiceRole();
+        await db.from('payments').update({ status: 'failed', updated_at: new Date().toISOString() }).eq('id', canonicalPaymentId);
+      }
       return NextResponse.json(
         {
           success: false,
@@ -67,8 +147,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (canonicalPaymentId) {
+      const db = getSupabaseServiceRole();
+      await db.from('payments').update({
+        status: 'processing',
+        provider_transaction_id: result.orderId || result.sessionId || null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', canonicalPaymentId);
+    }
+
     return NextResponse.json({
       success: true,
+      canonicalPaymentId,
       sessionId: result.sessionId,
       orderId: result.orderId,
       redirectUrl: result.redirectUrl,

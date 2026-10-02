@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trophy, ArrowRight, ArrowLeft, Loader2, Check } from 'lucide-react';
-import { getCurrentClient, createPortalClient, TournamentClient } from '@/lib/tournament-portal/auth';
+import { getCurrentClient, portalAuthenticatedFetch, TournamentClient } from '@/lib/tournament-portal/auth';
 import { PortalShell } from '../_components/PortalShell';
 import { useTranslation } from '@/lib/i18n';
 
@@ -97,7 +97,6 @@ export default function NewTournamentPage() {
         setLoading(true);
         setError('');
         try {
-            const supabase = createPortalClient();
             const payload = {
                 client_id:             client.id,
                 slug:                  slugify(form.name),
@@ -130,24 +129,13 @@ export default function NewTournamentPage() {
             };
 
             // Create tournament via API endpoint (with server-side admin / dev store)
-            const res = await fetch('/api/tournament-portal/tournaments', {
+            const res = await portalAuthenticatedFetch('/api/tournament-portal/tournaments', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
             const json = await res.json();
-            if (!res.ok || !json.data?.id) {
-                // Supabase direct fallback if API fails
-                const { data, error: dbErr } = await supabase
-                    .from('tournament_new')
-                    .insert(payload)
-                    .select('id')
-                    .single();
-
-                if (dbErr) throw new Error(dbErr.message);
-                router.push(`/tournament-portal/${data.id}/setup`);
-                return;
-            }
+            if (!res.ok || !json.data?.id) throw new Error(json.error || t.errors.create);
 
             router.push(`/tournament-portal/${json.data.id}/setup`);
         } catch (e: any) {

@@ -3,6 +3,7 @@
 import { analyzeGeideaError, handleGeideaError } from '@/lib/geidea-error-handler';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 declare global {
   interface Window {
@@ -24,6 +25,11 @@ interface GeideaPaymentModalProps {
   customerEmail: string;
   merchantReferenceId?: string;
   skipRedirect?: boolean; // إذا كان true، لن يتم التوجيه التلقائي بعد نجاح الدفع
+  payerId?: string;
+  payerType?: 'club' | 'academy' | 'trainer' | 'agent' | 'player';
+  planId?: string;
+  targetPlayerIds?: string[];
+  countryCode?: string;
 }
 
 interface PaymentModalState {
@@ -46,7 +52,12 @@ export default function GeideaPaymentModal({
   returnUrl,
   customerEmail,
   merchantReferenceId,
-  skipRedirect = false
+  skipRedirect = false,
+  payerId,
+  payerType,
+  planId,
+  targetPlayerIds,
+  countryCode,
 }: GeideaPaymentModalProps) {
   const { t, isRTL } = useTranslation();
   const paymentText = (key: string) => t(`sharedComponents.geideaPayment.${key}`);
@@ -198,12 +209,9 @@ export default function GeideaPaymentModal({
 
     localStorage.setItem('geidea_payment_error', JSON.stringify(errorData));
 
-    // إغلاق المودال
-    onRequestClose();
-
     onPaymentFailure(error);
 
-    // إغلاق المودال
+    // إغلاق المودال مرة واحدة بعد تسجيل الفشل
     onRequestClose();
   };
 
@@ -405,9 +413,14 @@ export default function GeideaPaymentModal({
         merchantReferenceId: merchantReferenceId,
         returnUrl: currentReturnUrl,
         callbackUrl: callbackUrl,
+        payerId,
+        payerType,
+        planId,
+        targetPlayerIds,
+        countryCode,
       };
 
-      const response = await fetch('/api/geidea/create-session', {
+      const response = await authenticatedFetch('/api/payments/create-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

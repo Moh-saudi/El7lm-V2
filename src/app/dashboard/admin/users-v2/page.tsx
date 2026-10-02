@@ -56,7 +56,7 @@ import AccessDenied from '@/components/admin/AccessDenied';
 
 // حماية الصفحة
 import { AccountTypeProtection } from '@/hooks/useAccountTypeAuth';
-import { useAuth } from '@/lib/firebase/auth-provider';
+import { useAuth } from '@/lib/supabase/auth-provider';
 
 const { Title, Text } = Typography;
 

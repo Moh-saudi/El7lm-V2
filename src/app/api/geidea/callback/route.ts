@@ -7,6 +7,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { processGeideaCallback } from '@/lib/geidea/callback-handler';
+import { authorizeUser } from '@/lib/api/user-auth';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
+import { resolveAuthenticatedPayer } from '@/lib/payments/payer-authorization';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,35 +26,12 @@ const CORS_HEADERS = {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Log headers للتحقق من مصدر الطلب
-    const headers = Object.fromEntries(request.headers.entries());
-    console.log('🔄 [Geidea Callback] Received POST request:', {
-      url: request.url,
-      method: request.method,
-      contentType: request.headers.get('content-type'),
-      userAgent: request.headers.get('user-agent'),
-      origin: request.headers.get('origin'),
-      referer: request.headers.get('referer'),
-    });
-
-    // تحليل body
+    // Parse the notification without logging financial/customer payloads.
     const payload = await parseRequestBody(request);
     
-    console.log('🔄 [Geidea Callback] Parsed payload:', JSON.stringify(payload, null, 2));
-    console.log('🔄 [Geidea Callback] Payload keys:', Object.keys(payload));
 
     // معالجة callback باستخدام المكتبة المركزية
     const processed = await processGeideaCallback(payload);
-
-    console.log('✅ [Geidea Callback] Payment saved successfully:', {
-      orderId: processed.orderId,
-      merchantReferenceId: processed.merchantReferenceId,
-      status: processed.status,
-      amount: processed.amount,
-      currency: processed.currency,
-      collection: 'geidea_payments',
-      documentId: processed.orderId,
-    });
 
     return NextResponse.json(
       {
@@ -59,7 +39,7 @@ export async function POST(request: NextRequest) {
         orderId: processed.orderId,
         status: processed.status,
         merchantReferenceId: processed.merchantReferenceId,
-        message: `Payment ${processed.status === 'success' ? 'saved successfully' : processed.status === 'failed' ? 'marked as failed' : 'saved'} in geidea_payments collection`,
+        message: `Payment callback processed with status ${processed.status}`,
       },
       { headers: CORS_HEADERS }
     );
@@ -78,67 +58,43 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET - التحقق من حالة دفعة معينة من Supabase
+ * GET - canonical payment status lookup by payments.id.
  */
 export async function GET(request: NextRequest) {
+  const authorization = await authorizeUser(request);
+  if (!authorization.ok) return authorization.response;
+
   try {
-    const { getSupabaseAdmin } = await import('@/lib/supabase/admin');
-    const db = getSupabaseAdmin();
-
+    const db = getSupabaseServiceRole();
     const { searchParams } = new URL(request.url);
-    const orderId = searchParams.get('orderId');
-    const merchantReferenceId = searchParams.get('merchantReferenceId');
+    const paymentId = searchParams.get('merchantReferenceId') || searchParams.get('paymentId');
 
-    if (!orderId && !merchantReferenceId) {
-      return NextResponse.json(
-        { error: 'Order ID or Merchant Reference ID is required' },
-        { status: 400, headers: CORS_HEADERS }
-      );
+    if (!paymentId) {
+      return NextResponse.json({ error: 'Canonical payment ID is required' }, { status: 400, headers: CORS_HEADERS });
     }
 
-    // البحث باستخدام orderId أولاً
-    if (orderId) {
-      const { data } = await db.from('geidea_payments').select('*').eq('id', orderId).limit(1);
-      if (data?.length) {
-        const row = data[0] as Record<string, unknown>;
-        return NextResponse.json(
-          { success: true, orderId, status: row.status || 'pending', data: row },
-          { headers: CORS_HEADERS }
-        );
-      }
+    const { data, error } = await db
+      .from('payments')
+      .select('id,status,amount,currency,provider,provider_transaction_id,provider_reference_id,paid_at,updated_at,payer_id,payer_type')
+      .eq('id', paymentId)
+      .eq('provider', 'geidea')
+      .limit(1);
+    if (error) throw error;
+    if (!data?.length) {
+      return NextResponse.json({ success: false, status: 'not_found' }, { status: 404, headers: CORS_HEADERS });
     }
 
-    // البحث باستخدام merchantReferenceId
-    if (merchantReferenceId) {
-      const { data } = await db.from('geidea_payments').select('*').eq('merchantReferenceId', merchantReferenceId).limit(1);
-      if (data?.length) {
-        const row = data[0] as Record<string, unknown>;
-        return NextResponse.json(
-          { success: true, orderId: row.id, merchantReferenceId, status: row.status || 'pending', data: row },
-          { headers: CORS_HEADERS }
-        );
-      }
-
-      const { data: data2 } = await db.from('geidea_payments').select('*').eq('ourMerchantReferenceId', merchantReferenceId).limit(1);
-      if (data2?.length) {
-        const row = data2[0] as Record<string, unknown>;
-        return NextResponse.json(
-          { success: true, orderId: row.id, merchantReferenceId, status: row.status || 'pending', data: row },
-          { headers: CORS_HEADERS }
-        );
-      }
+    const payment = data[0];
+    const payer = await resolveAuthenticatedPayer(authorization.user.id, payment.payer_type);
+    if (!payer || payer.payerId !== String(payment.payer_id)) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403, headers: CORS_HEADERS });
     }
 
-    return NextResponse.json(
-      { success: false, orderId: orderId || null, merchantReferenceId: merchantReferenceId || null, status: 'not_found', message: 'Payment not found in database.' },
-      { status: 404, headers: CORS_HEADERS }
-    );
+    const { payer_id: _payerId, payer_type: _payerType, ...safePayment } = payment;
+    return NextResponse.json({ success: true, payment: safePayment }, { headers: CORS_HEADERS });
   } catch (error) {
-    console.error('❌ [Geidea Callback] Error checking payment status:', error);
-    return NextResponse.json(
-      { error: 'Failed to check payment status', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500, headers: CORS_HEADERS }
-    );
+    console.error('❌ [Geidea Callback] Canonical status lookup failed:', error);
+    return NextResponse.json({ error: 'Failed to check payment status' }, { status: 500, headers: CORS_HEADERS });
   }
 }
 

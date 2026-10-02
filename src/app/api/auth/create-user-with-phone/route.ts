@@ -7,46 +7,64 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber } from '@/lib/validation/phone-validation';
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
+import { verifyOTPInFirestore } from '@/lib/otp/firestore-otp-manager';
+import { verifyPlayReviewOTP } from '@/lib/otp/play-review-otp';
+import { consumePhoneActionRateLimit } from '@/lib/auth/phone-lookup-rate-limit';
 
-const COLLECTION_MAP: Record<string, string> = {
+const COLLECTION_MAP = {
   player: 'players',
   club: 'clubs',
   agent: 'agents',
   academy: 'academies',
   trainer: 'trainers',
   marketer: 'marketers',
-};
+} as const;
+
+type PublicAccountType = keyof typeof COLLECTION_MAP;
+
+function isPublicAccountType(value: unknown): value is PublicAccountType {
+  return typeof value === 'string' && Object.hasOwn(COLLECTION_MAP, value);
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { phoneNumber, accountType, name = '' } = await request.json();
+    const { phoneNumber, accountType, name = '', otp } = await request.json();
 
-    if (!phoneNumber || !accountType) {
+    if (!phoneNumber || !accountType || !otp) {
       return NextResponse.json({ success: false, error: 'البيانات مطلوبة' }, { status: 400 });
+    }
+
+    if (!isPublicAccountType(accountType)) {
+      return NextResponse.json({ success: false, error: 'نوع الحساب غير مسموح' }, { status: 400 });
+    }
+
+    const allowed = await consumePhoneActionRateLimit(request, String(phoneNumber), {
+      namespace: 'otp-verify',
+      maxPerIp: 30,
+      maxPerIpPhone: 5,
+    });
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: 'عدد كبير من محاولات التحقق. حاول لاحقاً.' },
+        { status: 429, headers: { 'Retry-After': '900' } },
+      );
+    }
+
+    const reviewResult = await verifyPlayReviewOTP(phoneNumber, otp);
+    const isReviewAccount = reviewResult.isReviewAccount;
+    const otpResult = isReviewAccount
+      ? reviewResult
+      : await verifyOTPInFirestore(phoneNumber, otp);
+    if (!otpResult.success) {
+      return NextResponse.json(
+        { success: false, error: otpResult.error || 'رمز التحقق غير صحيح أو منتهي الصلاحية' },
+        { status: 400 },
+      );
     }
 
     const db = getSupabaseAdmin();
     const cleanDigits = cleanPhoneNumber(phoneNumber);
     const otpDocId = `otp_${cleanDigits}`;
-
-    // التحقق من أن OTP تم التحقق منه مسبقاً
-    const { data: otpData } = await db
-      .from('otp_verifications')
-      .select('*')
-      .eq('id', otpDocId)
-      .single();
-
-    if (!otpData || !otpData.verified) {
-      return NextResponse.json({ success: false, error: 'يجب التحقق من رقم الهاتف أولاً' }, { status: 403 });
-    }
-
-    // التحقق من حداثة التحقق (خلال 15 دقيقة)
-    if (otpData.verifiedAt) {
-      const verifiedMs = new Date(otpData.verifiedAt).getTime();
-      if (Date.now() - verifiedMs > 15 * 60 * 1000) {
-        return NextResponse.json({ success: false, error: 'انتهت صلاحية التحقق، يرجى إعادة إرسال الرمز' }, { status: 403 });
-      }
-    }
 
     const e164Phone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
     const constructedEmail = `${cleanDigits}@el7lm.com`;
@@ -63,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     // التحقق من عدم وجود الهاتف مسبقاً
-    const tableName = COLLECTION_MAP[accountType] || 'users';
+    const tableName = COLLECTION_MAP[accountType];
     const { data: existingUser } = await db
       .from(tableName)
       .select('id')
@@ -72,6 +90,25 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json({ success: false, error: 'رقم الهاتف مسجل بالفعل، يرجى تسجيل الدخول' }, { status: 409 });
+    }
+
+    // Consume ordinary verified OTPs once. Play Review credentials use their own
+    // failed-attempt lock and are not stored in otp_verifications.
+    if (!isReviewAccount) {
+      const { data: consumedOtp, error: consumeError } = await db
+        .from('otp_verifications')
+        .delete()
+        .eq('id', otpDocId)
+        .eq('verified', true)
+        .select('id')
+        .maybeSingle();
+
+      if (consumeError || !consumedOtp) {
+        return NextResponse.json(
+          { success: false, error: 'تم استخدام التحقق أو انتهت صلاحيته، يرجى التحقق مرة أخرى' },
+          { status: 409 },
+        );
+      }
     }
 
     // إنشاء مستخدم في Supabase Auth
@@ -94,7 +131,7 @@ export async function POST(request: NextRequest) {
     const uid = authData.user.id;
     const now = new Date().toISOString();
 
-    const userDoc = {
+    const commonProfile = {
       id: uid,
       uid,
       full_name: name,
@@ -102,21 +139,59 @@ export async function POST(request: NextRequest) {
       email: constructedEmail,
       accountType,
       createdAt: now,
-      isVerifiedLocal: true,
       isActive: true,
+    };
+
+    const roleDoc = {
+      ...commonProfile,
+      ...(accountType !== 'academy' ? { isVerifiedLocal: true } : {}),
+      ...(accountType !== 'marketer' ? { isDeleted: false } : {}),
+    };
+
+    const usersDoc = {
+      ...commonProfile,
+      isVerifiedLocal: true,
       isDeleted: false,
     };
 
-    // كتابة في الجدول المخصص للنوع
-    await db.from(tableName).insert(userDoc);
-
-    // كتابة في جدول users أيضاً (للتوافق)
-    if (tableName !== 'users') {
-      try { await db.from('users').insert(userDoc); } catch { }
+    // Write the role profile first and compensate on failure so Auth and public
+    // profile state cannot silently diverge.
+    const { error: roleInsertError } = await db.from(tableName).insert(roleDoc);
+    if (roleInsertError) {
+      console.error('❌ [create-user] role profile insert failed:', roleInsertError);
+      await db.auth.admin.deleteUser(uid).catch(() => undefined);
+      return NextResponse.json(
+        { success: false, error: 'تعذر إنشاء ملف الحساب. يرجى المحاولة مرة أخرى.' },
+        { status: 500 },
+      );
     }
 
-    // حذف OTP بعد الاستخدام
-    await db.from('otp_verifications').delete().eq('id', otpDocId);
+    const { error: usersInsertError } = await db.from('users').insert(usersDoc);
+    if (usersInsertError) {
+      console.error('❌ [create-user] users profile insert failed:', usersInsertError);
+      await db.from(tableName).delete().eq('id', uid);
+      await db.auth.admin.deleteUser(uid).catch(() => undefined);
+      return NextResponse.json(
+        { success: false, error: 'تعذر إكمال إنشاء الحساب. يرجى المحاولة مرة أخرى.' },
+        { status: 500 },
+      );
+    }
+
+    const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
+      type: 'magiclink',
+      email: constructedEmail,
+    });
+    const tokenHash = linkData?.properties?.hashed_token;
+    if (linkError || !tokenHash) {
+      console.error('❌ [create-user] generateLink error:', linkError);
+      await db.from('users').delete().eq('id', uid);
+      await db.from(tableName).delete().eq('id', uid);
+      await db.auth.admin.deleteUser(uid).catch(() => undefined);
+      return NextResponse.json(
+        { success: false, error: 'تعذر إكمال إنشاء الحساب. يرجى طلب رمز تحقق جديد والمحاولة مرة أخرى.' },
+        { status: 500 },
+      );
+    }
 
     console.log(`✅ [create-user] Created ${uid} as ${accountType}`);
 
@@ -125,8 +200,7 @@ export async function POST(request: NextRequest) {
       uid,
       accountType,
       userName: name,
-      authEmail: constructedEmail,
-      authPassword: password,
+      tokenHash,
     });
 
   } catch (error: any) {
@@ -134,3 +208,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message || 'فشل إنشاء الحساب' }, { status: 500 });
   }
 }
+
+export const runtime = 'nodejs';

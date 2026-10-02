@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
 
 export type GeideaMode = 'live' | 'test';
 
@@ -56,7 +56,7 @@ const resolveEnvConfig = (mode: GeideaMode): GeideaEnvConfig => {
 
 export const getGeideaMode = async (): Promise<GeideaMode> => {
   try {
-    const db = getSupabaseAdmin();
+    const db = getSupabaseServiceRole();
     const { data } = await db.from(SETTINGS_TABLE).select('mode').eq('id', SETTINGS_ROW_ID).limit(1);
     const mode = data?.[0]?.mode;
     if (mode === 'test' || mode === 'live') {
@@ -71,7 +71,7 @@ export const getGeideaMode = async (): Promise<GeideaMode> => {
 };
 
 export const setGeideaMode = async (mode: GeideaMode, retries = 3): Promise<void> => {
-  const db = getSupabaseAdmin();
+  const db = getSupabaseServiceRole();
 
   console.log('🔄 [Geidea Config] Setting mode to:', mode);
 

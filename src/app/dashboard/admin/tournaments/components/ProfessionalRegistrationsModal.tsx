@@ -49,7 +49,7 @@ export const ProfessionalRegistrationsModal: React.FC<ProfessionalRegistrationsM
 
             try {
                 const { data: newData, error: newError } = await supabase
-                    .from('tournamentRegistrations')
+                    .from('tournament_registrations')
                     .select('*')
                     .eq('tournamentId', tournament.id);
 
@@ -62,19 +62,19 @@ export const ProfessionalRegistrationsModal: React.FC<ProfessionalRegistrationsM
                             originalId: row.id,
                             playerId: player.id,
                             playerName: player.name || player.full_name || 'غير محدد',
-                            playerEmail: player.email || row.account_email || '',
-                            playerPhone: player.phone || row.account_phone || '',
-                            playerClub: player.club_id || row.club_name || '',
-                            playerAvatar: player.photoURL || player.avatar || row.account_avatar || null,
+                            playerEmail: player.email || row.accountEmail || '',
+                            playerPhone: player.phone || row.accountPhone || '',
+                            playerClub: player.club_id || row.clubName || '',
+                            playerAvatar: player.photoURL || player.avatar || null,
                             playerPosition: player.position || '',
                             registrationDate: row.registrationDate || row.registeredAt || new Date().toISOString(),
-                            paymentStatus: row.payment_status || 'pending',
-                            paymentAmount: row.payment_amount || 0,
-                            paymentMethod: row.payment_method,
+                            paymentStatus: row.paymentStatus || 'pending',
+                            paymentAmount: row.paymentAmount || 0,
+                            paymentMethod: row.paymentMethod,
                             notes: row.notes,
                             status: row.status || 'pending', // Registration status (approved/rejected)
-                            registrationType: row.registration_type,
-                            teamName: row.team_name || row.club_name || 'تسجيل فردي'
+                            registrationType: row.registrationType,
+                            teamName: row.clubName || row.organizationName || 'تسجيل فردي'
                         }));
                     }).flat();
                     allRegistrations = newRegistrations;
@@ -104,10 +104,12 @@ export const ProfessionalRegistrationsModal: React.FC<ProfessionalRegistrationsM
         if (!reg) return;
 
         try {
-            await supabase
-                .from('tournamentRegistrations')
+            const { error } = await supabase
+                .from('tournament_registrations')
                 .update({ status: newStatus, updatedAt: new Date().toISOString() })
                 .eq('id', reg.originalId);
+
+            if (error) throw error;
 
             toast.success(`تم تحديث الحالة إلى ${newStatus === 'approved' ? 'مقبول' : 'مرفوض'}`);
 

@@ -10,7 +10,7 @@ interface PlayerPaymentProps {
   loading: boolean;
 }
 
-const PlayerPayment = memo(({ userData, loading }: PlayerPaymentProps) => {
+const PlayerPayment = memo(({ loading }: PlayerPaymentProps) => {
   if (loading) {
     return (
       <div className="space-y-6">
@@ -61,7 +61,7 @@ const PlayerPayment = memo(({ userData, loading }: PlayerPaymentProps) => {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-8">
         <Card className="p-6 border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50">
           <div className="text-center">
             <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -118,59 +118,7 @@ const PlayerPayment = memo(({ userData, loading }: PlayerPaymentProps) => {
           </div>
         </Card>
 
-        <Card className="p-6 border border-gray-200 bg-gray-50">
-          <div className="text-center">
-            <div className="bg-gray-200 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CreditCard className="w-8 h-8 text-gray-500" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-700 mb-3">
-              Old Traditional System
-            </h3>
-            <p className="text-gray-500 mb-6">
-              (For comparison only - not recommended)
-            </p>
-            
-            <div className="space-y-3 mb-6 text-sm">
-              <div className="flex items-center gap-3 bg-white rounded-lg p-3 border border-gray-200">
-                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                <span className="text-gray-600">Fixed prices - no optimization</span>
-              </div>
-              <div className="flex items-center gap-3 bg-white rounded-lg p-3 border border-gray-200">
-                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                <span className="text-gray-600">Limited payment methods</span>
-              </div>
-              <div className="flex items-center gap-3 bg-white rounded-lg p-3 border border-gray-200">
-                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                <span className="text-gray-600">No group discounts</span>
-              </div>
-              <div className="flex items-center gap-3 bg-white rounded-lg p-3 border border-gray-200">
-                <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                <span className="text-gray-600">Slower processing</span>
-              </div>
-            </div>
 
-            <div className="bg-gray-200 text-gray-600 rounded-xl p-4 mb-6">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <span className="font-bold">Higher prices, fewer features</span>
-              </div>
-              <div className="text-sm">
-                Why pay more for less?
-              </div>
-            </div>
-
-            <Link href="/dashboard/payment">
-              <button className="w-full bg-gray-400 hover:bg-gray-500 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 cursor-not-allowed opacity-75">
-                <div className="flex items-center justify-center gap-3">
-                  <CreditCard className="w-5 h-5" />
-                  <span>Old System (not optimized)</span>
-                </div>
-                <div className="text-sm opacity-75 mt-1">
-                  Not recommended  Higher prices  Fewer features
-                </div>
-              </button>
-            </Link>
-          </div>
-        </Card>
       </div>
 
       <Card className="p-6 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200">

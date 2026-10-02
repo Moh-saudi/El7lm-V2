@@ -59,10 +59,11 @@ export default function JoinRequestNotifications() {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      await supabase
-        .from('join_request_notifications')
-        .update({ isRead: true })
-        .eq('id', notificationId);
+      const { data, error } = await supabase.rpc('mark_join_request_notification_read', {
+        p_notification_id: notificationId,
+      });
+      if (error) throw error;
+      if (!data) throw new Error('Notification not found or not owned by current user');
     } catch (err) {
       console.error('خطأ في تحديث الإشعار:', err);
     }
@@ -71,12 +72,13 @@ export default function JoinRequestNotifications() {
   const markAllAsRead = async () => {
     try {
       await Promise.all(
-        notifications.map(n =>
-          supabase
-            .from('join_request_notifications')
-            .update({ isRead: true })
-            .eq('id', n.id)
-        )
+        notifications.map(async n => {
+          const { data, error } = await supabase.rpc('mark_join_request_notification_read', {
+            p_notification_id: n.id,
+          });
+          if (error) throw error;
+          if (!data) throw new Error('Notification not found or not owned by current user');
+        })
       );
       toast.success('تم تحديد جميع الإشعارات كمقروءة');
     } catch (err) {

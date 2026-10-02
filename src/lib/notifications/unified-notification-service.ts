@@ -4,111 +4,83 @@
  */
 
 import { supabase } from '@/lib/supabase/config';
-import { normalizeNotificationPayload } from '@/lib/notifications/sender-utils';
-
-export interface NotificationData {
-  userId: string;
-  type: 'interactive' | 'smart' | 'message' | 'system';
-  title: string;
-  message: string;
-  priority: 'low' | 'medium' | 'high';
-  actionUrl?: string;
-  accountType: string;
-  read?: boolean;
-  metadata?: Record<string, unknown>;
-}
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 export interface MessageData {
-  senderId: string;
+  /** @deprecated Sender identity is derived from the authenticated session. */
+  senderId?: string;
   receiverId: string;
-  content: string;
-  type: 'text' | 'image' | 'file' | 'system';
-  priority: 'low' | 'medium' | 'high';
-  senderName: string;
+  content?: string;
+  message?: string;
+  type?: 'text' | 'image' | 'file' | 'voice' | 'system';
+  messageType?: string;
+  priority?: 'low' | 'medium' | 'high';
+  /** @deprecated Sender display identity is derived from the authenticated account. */
+  senderName?: string;
+  senderType?: string;
   senderAvatar?: string;
   receiverName?: string;
   receiverAvatar?: string;
   senderAccountType?: string;
   receiverAccountType?: string;
+  conversationId?: string;
+  subject?: string | null;
+  imageUrl?: string;
+  voiceUrl?: string;
+  voiceDuration?: number;
+  isPinned?: boolean;
+  deliveryStatus?: string;
   read?: boolean;
   metadata?: Record<string, unknown>;
 }
 
 export class UnifiedNotificationService {
 
-  static async createNotification(data: NotificationData): Promise<string> {
-    const now = new Date().toISOString();
-    const payload = normalizeNotificationPayload({
-      ...data,
-      read: false,
-      isRead: false,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    const id = crypto.randomUUID();
-    const { error } = await supabase.from('notifications').insert({ id, ...payload });
-    if (error) throw error;
-    return id;
-  }
-
   static async createMessage(data: MessageData): Promise<string> {
-    const now = new Date().toISOString();
-    const id = crypto.randomUUID();
-    const { error } = await supabase.from('messages').insert({
-      id,
-      ...data,
-      read: false,
-      createdAt: now,
-      updatedAt: now,
-      timestamp: now,
+    const content = String(data.content ?? data.message ?? '').trim();
+    if (!content) throw new Error('Message content is required');
+
+    const response = await authenticatedFetch('/api/messages/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        receiverId: data.receiverId,
+        conversationId: data.conversationId,
+        content,
+        type: data.type,
+        messageType: data.messageType,
+        priority: data.priority,
+        subject: data.subject,
+        imageUrl: data.imageUrl,
+        voiceUrl: data.voiceUrl,
+        voiceDuration: data.voiceDuration,
+        isPinned: data.isPinned,
+        metadata: data.metadata,
+      }),
     });
-    if (error) throw error;
-    return id;
+
+    const result = await response.json().catch(() => null);
+    if (!response.ok || !result?.success || !result?.id) {
+      throw new Error(result?.error || `Failed to send message (${response.status})`);
+    }
+
+    return String(result.id);
   }
 
   static async markNotificationAsRead(notificationId: string): Promise<void> {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read: true, isRead: true, updatedAt: new Date().toISOString() })
-      .eq('id', notificationId);
+    const { data, error } = await supabase.rpc('mark_notification_read', {
+      p_notification_id: notificationId,
+    });
     if (error) throw error;
+    if (!data) throw new Error('Notification not found or not owned by current user');
   }
 
   static async markMessageAsRead(messageId: string): Promise<void> {
-    const { error } = await supabase
-      .from('messages')
-      .update({ read: true, isRead: true, updatedAt: new Date().toISOString() })
-      .eq('id', messageId);
+    const { data, error } = await supabase.rpc('mark_message_read', {
+      p_message_id: messageId,
+    });
     if (error) throw error;
-  }
-
-  static async markAllNotificationsAsRead(userId: string): Promise<void> {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ read: true, isRead: true, updatedAt: new Date().toISOString() })
-      .eq('userId', userId)
-      .eq('read', false);
-    if (error) throw error;
-  }
-
-  static async markAllMessagesAsRead(userId: string): Promise<void> {
-    const { error } = await supabase
-      .from('messages')
-      .update({ read: true, isRead: true, updatedAt: new Date().toISOString() })
-      .eq('receiverId', userId)
-      .eq('read', false);
-    if (error) throw error;
-  }
-
-  static async deleteNotification(notificationId: string): Promise<void> {
-    const { error } = await supabase.from('notifications').delete().eq('id', notificationId);
-    if (error) throw error;
-  }
-
-  static async deleteMessage(messageId: string): Promise<void> {
-    const { error } = await supabase.from('messages').delete().eq('id', messageId);
-    if (error) throw error;
+    if (!data) throw new Error('Message not found or not owned by current receiver');
   }
 
   static async getNotificationStats(userId: string) {

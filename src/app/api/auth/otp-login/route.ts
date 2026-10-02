@@ -9,8 +9,7 @@ import { verifyPlayReviewOTP } from '@/lib/otp/play-review-otp';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber, generatePhoneVariants } from '@/lib/validation/phone-validation';
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
-import crypto from 'crypto';
-
+import { consumePhoneActionRateLimit } from '@/lib/auth/phone-lookup-rate-limit';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isUUID = (v: unknown): v is string => typeof v === 'string' && UUID_REGEX.test(v);
@@ -23,6 +22,18 @@ export async function POST(request: NextRequest) {
 
     if (!phoneNumber || !otp) {
       return NextResponse.json({ success: false, error: 'رقم الهاتف ورمز التحقق مطلوبان' }, { status: 400 });
+    }
+
+    const allowed = await consumePhoneActionRateLimit(request, String(phoneNumber), {
+      namespace: 'otp-verify',
+      maxPerIp: 30,
+      maxPerIpPhone: 5,
+    });
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: 'عدد كبير من محاولات التحقق. حاول لاحقاً.' },
+        { status: 429, headers: { 'Retry-After': '900' } },
+      );
     }
 
     // 1. التحقق من OTP
@@ -100,25 +111,25 @@ export async function POST(request: NextRequest) {
     }
 
     if (!supabaseUserId) {
-      // نبحث في Auth عن طريق listUsers (محاطة بـ try-catch للأمان)
-      try {
-        const { data: usersData, error: listError } = await db.auth.admin.listUsers({ perPage: 2000 });
-        if (listError) {
-          console.warn('[OTP Login] listUsers error (non-fatal):', listError.message);
-        } else {
-          const allUsers = usersData?.users ?? [];
-          const foundUser = allUsers.find(u =>
-            (userEmail && u.email === userEmail) ||
-            (u.user_metadata?.firebase_uid === userId) ||
-            (u.email === constructedEmail)
-          );
-          if (foundUser) {
-            supabaseUserId = foundUser.id;
-            authEmail = foundUser.email || constructedEmail;
-          }
+      const { data: legacyAuthRows, error: legacyAuthError } = await db.rpc(
+        'resolve_legacy_auth_user',
+        {
+          p_profile_email: userEmail || '',
+          p_constructed_email: constructedEmail,
+          p_legacy_id: userId,
         }
-      } catch (listErr: any) {
-        console.warn('[OTP Login] listUsers threw (non-fatal):', listErr?.message);
+      );
+
+      if (legacyAuthError) {
+        console.warn('[OTP Login] legacy Auth lookup failed (non-fatal):', legacyAuthError.message);
+      } else if ((legacyAuthRows?.length ?? 0) > 1) {
+        return NextResponse.json(
+          { success: false, error: 'تعذر تحديد حساب المصادقة بشكل موثوق' },
+          { status: 409 }
+        );
+      } else if (legacyAuthRows?.length === 1) {
+        supabaseUserId = String(legacyAuthRows[0].auth_user_id);
+        authEmail = legacyAuthRows[0].auth_email || constructedEmail;
       }
     }
 
@@ -130,17 +141,22 @@ export async function POST(request: NextRequest) {
         user_metadata: { accountType, phone: phoneNumber, full_name: userName, firebase_uid: userId },
       });
       if (createError) {
-        // إذا كان الإيميل موجوداً بالفعل، نحاول الحصول على المستخدم عبر طريقة بديلة
+        // إذا كان الإيميل موجوداً بالفعل، نحسم الحساب داخل قاعدة البيانات
+        // بدل تحميل قائمة Auth كاملة إلى السيرفر.
         if (createError.message?.includes('already registered') || createError.message?.includes('already been registered')) {
-          console.warn('[OTP Login] Email already exists, attempting to find via listUsers again...');
-          try {
-            const { data: usersData2 } = await db.auth.admin.listUsers({ perPage: 2000 });
-            const match = (usersData2?.users ?? []).find(u => u.email === constructedEmail || (userEmail && u.email === userEmail));
-            if (match) {
-              supabaseUserId = match.id;
-              authEmail = match.email || constructedEmail;
+          const { data: retryRows, error: retryLookupError } = await db.rpc(
+            'resolve_legacy_auth_user',
+            {
+              p_profile_email: userEmail || '',
+              p_constructed_email: constructedEmail,
+              p_legacy_id: userId,
             }
-          } catch { /* ignore */ }
+          );
+
+          if (!retryLookupError && retryRows?.length === 1) {
+            supabaseUserId = String(retryRows[0].auth_user_id);
+            authEmail = retryRows[0].auth_email || constructedEmail;
+          }
         }
         if (!supabaseUserId) {
           console.error('❌ [OTP Login] createUser error:', createError.message);
@@ -156,18 +172,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'تعذر تحديد حساب المصادقة' }, { status: 500 });
     }
 
-    // 4. إنشاء كلمة مرور مؤقتة وتحديث المستخدم بها لإنشاء جلسة
-    const tempPassword = crypto.randomBytes(32).toString('hex');
-    const { error: updateError } = await db.auth.admin.updateUserById(supabaseUserId, {
-      password: tempPassword,
-      email_confirm: true,
-      user_metadata: { db_id: userId, accountType, phone: phoneNumber, full_name: userName },
+    // 4. Create a one-time Supabase magic-link token for session exchange.
+    // Never rotate or expose the user's password as part of OTP login.
+    const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
+      type: 'magiclink',
+      email: authEmail,
     });
 
-    if (updateError) {
-      console.error('❌ [OTP Login] updateUserById error:', updateError);
-      return NextResponse.json({ success: false, error: 'فشل إنشاء جلسة المصادقة: ' + updateError.message }, { status: 500 });
+    const tokenHash = linkData?.properties?.hashed_token;
+    if (linkError || !tokenHash) {
+      console.error('❌ [OTP Login] generateLink error:', linkError);
+      return NextResponse.json({ success: false, error: 'فشل إنشاء جلسة المصادقة' }, { status: 500 });
     }
+
+    // Keep trusted metadata synchronized without changing credentials.
+    await db.auth.admin.updateUserById(supabaseUserId, {
+      user_metadata: { db_id: userId, accountType, phone: phoneNumber, full_name: userName },
+    });
 
     // ربط Supabase Auth UUID بعمود uid وتحديث آخر تسجيل دخول
     const collectionMap: Record<string, string> = {
@@ -184,8 +205,7 @@ export async function POST(request: NextRequest) {
       uid: userId,
       accountType,
       userName,
-      authEmail,
-      authPassword: tempPassword,
+      tokenHash,
       message: 'تم التحقق بنجاح',
     });
 
@@ -194,3 +214,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message || 'حدث خطأ أثناء تسجيل الدخول' }, { status: 500 });
   }
 }
+
+export const runtime = 'nodejs';

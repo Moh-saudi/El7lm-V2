@@ -14,7 +14,7 @@ export default function PlayerNotificationsPage() {
       showSenderInfo={true}
       showStats={true}
       showFilters={true}
-      showTestButtons={true}
+      showTestButtons={false}
       accountType="player"
     />
   );

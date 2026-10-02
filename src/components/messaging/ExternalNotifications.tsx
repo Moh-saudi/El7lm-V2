@@ -141,14 +141,16 @@ export default function ExternalNotifications() {
     if (!user) return;
 
     try {
-      // تحديث حالة القراءة
-      await supabase
-        .from('notifications')
-        .update({
-          isRead: true,
-          updatedAt: new Date().toISOString()
-        })
-        .eq('id', notification.id);
+      const { data, error } = await supabase.rpc('mark_notification_read', {
+        p_notification_id: notification.id,
+      });
+      if (error) throw error;
+      if (!data) throw new Error('Notification not found or not owned by current user');
+
+      setNotifications(prev =>
+        prev.map(item => item.id === notification.id ? { ...item, isRead: true } : item)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
 
       // التوجيه إلى الرابط إذا وجد
       if (notification.link) {
@@ -168,20 +170,18 @@ export default function ExternalNotifications() {
     try {
       const unreadNotifications = notifications.filter(n => !n.isRead);
 
-      // Update all unread notifications in batches
-      const batchSize = 50;
-      for (let i = 0; i < unreadNotifications.length; i += batchSize) {
-        const batch = unreadNotifications.slice(i, i + batchSize);
-        const ids = batch.map(n => n.id);
-        await supabase
-          .from('notifications')
-          .update({
-            isRead: true,
-            updatedAt: new Date().toISOString()
-          })
-          .in('id', ids);
-      }
+      await Promise.all(
+        unreadNotifications.map(async notification => {
+          const { data, error } = await supabase.rpc('mark_notification_read', {
+            p_notification_id: notification.id,
+          });
+          if (error) throw error;
+          if (!data) throw new Error('Notification not found or not owned by current user');
+        })
+      );
 
+      setNotifications(prev => prev.map(item => ({ ...item, isRead: true })));
+      setUnreadCount(0);
       toast.success('تم تحديد جميع الإشعارات كمقروءة');
     } catch (error) {
       console.error('خطأ في تحديث حالة الإشعارات:', error);

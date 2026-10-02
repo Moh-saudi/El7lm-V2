@@ -21,7 +21,7 @@ import {
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { ar, enUS, es, ptBR } from 'date-fns/locale';
-import { buildSenderInfo, normalizeNotificationPayload } from '@/lib/notifications/sender-utils';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 import { useTranslation } from '@/lib/i18n';
 
 interface SupportMessage {
@@ -208,50 +208,42 @@ const FloatingChatWidget: React.FC = () => {
 
     setLoading(true);
     try {
+      const response = await authenticatedFetch('/api/support/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_conversation',
+          category,
+          priority,
+          locale,
+        }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success || !result?.id) {
+        throw new Error(result?.error || 'Failed to create support conversation');
+      }
+
       const now = new Date().toISOString();
-      const newId = crypto.randomUUID();
-      const newConversation = {
-        id: newId,
+      setConversation({
+        id: String(result.id),
         userId: user.id,
         userName: userData.name || userData.displayName || userData.full_name || t('sharedComponents.messages.defaultUser'),
         userType: userData.accountType || 'player',
         status: 'open',
-        priority,
-        category,
+        priority: priority as SupportConversation['priority'],
+        category: category as SupportConversation['category'],
         lastMessage: '',
         lastMessageTime: now,
         unreadCount: 0,
         createdAt: now,
-        updatedAt: now
-      };
-
-      await supabase.from('support_conversations').insert(newConversation);
-
-      setConversation(newConversation as SupportConversation);
-      await sendWelcomeMessage(newId);
+        updatedAt: now,
+      });
       toast.success(t('sharedComponents.supportWidget.created'));
     } catch (error) {
       console.error('❌ خطأ في إنشاء المحادثة:', error);
       toast.error(t('sharedComponents.supportWidget.createFailed'));
     } finally {
       setLoading(false);
-    }
-  };
-
-  const sendWelcomeMessage = async (conversationId: string) => {
-    try {
-      await supabase.from('support_messages').insert({
-        id: crypto.randomUUID(),
-        conversationId,
-        senderId: 'system',
-        senderName: t('sharedComponents.supportWidget.supportSystem'),
-        senderType: 'system',
-        message: t('sharedComponents.supportWidget.welcomeMessage'),
-        timestamp: new Date().toISOString(),
-        isRead: true
-      });
-    } catch (error) {
-      console.error('❌ خطأ في إرسال رسالة الترحيب:', error);
     }
   };
 
@@ -266,28 +258,19 @@ const FloatingChatWidget: React.FC = () => {
 
     setLoading(true);
     try {
-      const now = new Date().toISOString();
-      const newMessage = {
-        id: crypto.randomUUID(),
-        conversationId: conversation.id,
-        senderId: user.id,
-        senderName: userData.name || userData.displayName || userData.full_name || t('sharedComponents.messages.defaultUser'),
-        senderType: userData.accountType || 'player',
-        message: message.trim(),
-        timestamp: now,
-        isRead: false
-      };
-
-      await supabase.from('support_messages').insert(newMessage);
-
-      await supabase.from('support_conversations').update({
-        lastMessage: message.trim(),
-        lastMessageTime: now,
-        updatedAt: now,
-        status: conversation.status === 'resolved' ? 'open' : conversation.status
-      }).eq('id', conversation.id);
-
-      await sendAdminNotification(newMessage);
+      const response = await authenticatedFetch('/api/support/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send_message',
+          conversationId: conversation.id,
+          message: message.trim(),
+        }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to send support message');
+      }
 
       setMessage('');
       toast.success(t('sharedComponents.supportWidget.sent'));
@@ -299,54 +282,22 @@ const FloatingChatWidget: React.FC = () => {
     }
   };
 
-  const sendAdminNotification = async (messageData: any) => {
-    try {
-      const senderInfo = buildSenderInfo({
-        user,
-        userData,
-        fallbackName: messageData.senderName,
-        fallbackAccountType: messageData.senderType
-      });
-
-      const notificationData = {
-        userId: 'system',
-        title: t('sharedComponents.supportWidget.newSupportMessage'),
-        body: `${messageData.senderName}: ${messageData.message.substring(0, 50)}${messageData.message.length > 50 ? '...' : ''}`,
-        type: 'support',
-        senderName: messageData.senderName,
-        senderId: messageData.senderId,
-        senderType: messageData.senderType,
-        conversationId: messageData.conversationId,
-        link: `/dashboard/admin/support?conversation=${messageData.conversationId}`,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        priority: conversation?.priority || 'medium',
-        category: conversation?.category || 'general',
-        metadata: {
-          senderId: senderInfo.senderId || messageData.senderId,
-          senderName: senderInfo.senderName || messageData.senderName,
-          senderAccountType: senderInfo.senderAccountType || messageData.senderType,
-          senderAvatar: senderInfo.senderAvatar,
-          senderBucket: senderInfo.senderBucket
-        }
-      };
-
-      const normalizedNotification = normalizeNotificationPayload(notificationData, senderInfo);
-      await supabase.from('notifications').insert({ id: crypto.randomUUID(), ...normalizedNotification });
-    } catch (error) {
-      console.error('❌ خطأ في إرسال إشعار الأدمن:', error);
-    }
-  };
-
   const markMessagesAsRead = async (msgs: SupportMessage[]) => {
-    const unreadMessages = msgs.filter(msg => !msg.isRead && msg.senderId !== user?.id);
-    for (const msg of unreadMessages) {
-      try {
-        await supabase.from('support_messages').update({ isRead: true }).eq('id', msg.id);
-      } catch (error) {
-        console.error('خطأ في تحديث حالة القراءة:', error);
-      }
+    if (!conversation || !user) return;
+    const messageIds = msgs
+      .filter(msg => !msg.isRead && msg.senderId !== user.id)
+      .map(msg => msg.id);
+    if (messageIds.length === 0) return;
+
+    try {
+      const response = await authenticatedFetch('/api/support/chat', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: conversation.id, messageIds }),
+      });
+      if (!response.ok) throw new Error('Failed to mark support messages read');
+    } catch (error) {
+      console.error('خطأ في تحديث حالة القراءة:', error);
     }
   };
 

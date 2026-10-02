@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
+import { consumePhoneLookupRateLimit } from '@/lib/auth/phone-lookup-rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,6 +11,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'Phone number is required.' },
         { status: 400 },
+      );
+    }
+
+    const allowed = await consumePhoneLookupRateLimit(request, phoneNumber);
+    if (!allowed) {
+      return NextResponse.json(
+        { success: false, error: 'Too many lookup attempts. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': '900' } },
       );
     }
 
@@ -42,3 +51,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const runtime = 'nodejs';

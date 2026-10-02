@@ -1,22 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
 import { authorizeUser } from '@/lib/api/user-auth';
-import { isRecordOwner } from '@/lib/api/record-ownership';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const TABLES = [
-  'invoices',
-  'geidea_payments',
-  'bulkPayments',
-  'bulk_payments',
-  'wallet',
-  'instapay',
-  'payments',
-  'payment_results',
-  'tournament_payments',
-];
 
 const toDate = (value: unknown): Date | null => {
   if (!value) return null;
@@ -44,9 +31,8 @@ const formatDate = (value?: Date | null) => {
 
 const SOURCE_LABELS: Record<string, string> = {
   invoices: 'نظام الفواتير', geidea_payments: 'بطاقة بنكية (Geidea)',
-  bulkPayments: 'دفع جماعي', bulk_payments: 'دفع جماعي',
-  wallet: 'محفظة', instapay: 'InstaPay', payments: 'دفع عام',
-  payment_results: 'نتائج الدفع', tournament_payments: 'مدفوعات البطولات',
+  bulkPayments: 'دفع جماعي', payments: 'دفع عام',
+  payment_results: 'نتائج الدفع',
 };
 const METHOD_LABELS: Record<string, string> = {
   geidea: 'بطاقة بنكية', bank_transfer: 'تحويل بنكي', instapay: 'InstaPay',
@@ -62,6 +48,14 @@ const STATUS_MAP: Record<string, { text: string; color: string; bg: string }> = 
   cancelled:      { text: 'ملغي',          color: '#6b7280', bg: '#f3f4f6' },
 };
 
+const escapeHtml = (value: unknown) =>
+  String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
 const generateInvoiceHTML = (record: Record<string, unknown>, invoiceUrl = 'https://el7lm.com') => {
   const st = STATUS_MAP[String(record.status)] || { text: String(record.status), color: '#6b7280', bg: '#f3f4f6' };
   const src = SOURCE_LABELS[String(record.source)] || String(record.source);
@@ -73,7 +67,7 @@ const generateInvoiceHTML = (record: Record<string, unknown>, invoiceUrl = 'http
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>فاتورة ${record.invoiceNumber} - منصة الحلم</title>
+  <title>فاتورة ${escapeHtml(record.invoiceNumber)} - منصة الحلم</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet"/>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -105,29 +99,29 @@ const generateInvoiceHTML = (record: Record<string, unknown>, invoiceUrl = 'http
     <div class="logo-area"><img src="https://assets.el7lm.com/logo.png" alt="El7lm" onerror="this.style.display='none'"/></div>
   </div>
   <div class="status-bar">
-    <div class="inv-num">رقم الفاتورة: <span>${record.invoiceNumber}</span></div>
-    <div class="status-badge">${st.text}</div>
+    <div class="inv-num">رقم الفاتورة: <span>${escapeHtml(record.invoiceNumber)}</span></div>
+    <div class="status-badge">${escapeHtml(st.text)}</div>
   </div>
   <div class="body">
     <h2>تفاصيل الفاتورة</h2>
     <table>
-      <tr><th>الخدمة / الباقة</th><td>${record.planName || '—'}</td></tr>
-      <tr><th>طريقة الدفع</th><td>${method}</td></tr>
-      <tr><th>مصدر المعاملة</th><td>${src}</td></tr>
-      ${refNum ? `<tr><th>الرقم المرجعي</th><td>${refNum}</td></tr>` : ''}
+      <tr><th>الخدمة / الباقة</th><td>${escapeHtml(record.planName || '—')}</td></tr>
+      <tr><th>طريقة الدفع</th><td>${escapeHtml(method)}</td></tr>
+      <tr><th>مصدر المعاملة</th><td>${escapeHtml(src)}</td></tr>
+      ${refNum ? `<tr><th>الرقم المرجعي</th><td>${escapeHtml(refNum)}</td></tr>` : ''}
       <tr><th>تاريخ الإنشاء</th><td>${formatDate(record.createdAt as Date | null)}</td></tr>
       ${record.paidAt ? `<tr><th>تاريخ السداد</th><td>${formatDate(record.paidAt as Date | null)}</td></tr>` : ''}
       <tr class="amount-row"><th>المبلغ الإجمالي</th><td>${formatCurrency(Number(record.amount), String(record.currency))}</td></tr>
     </table>
     <h2>بيانات العميل</h2>
     <table>
-      <tr><th>الاسم</th><td>${record.customerName || 'غير محدد'}</td></tr>
-      ${record.customerEmail ? `<tr><th>البريد الإلكتروني</th><td>${record.customerEmail}</td></tr>` : ''}
-      ${record.customerPhone ? `<tr><th>الهاتف</th><td>${record.customerPhone}</td></tr>` : ''}
+      <tr><th>الاسم</th><td>${escapeHtml(record.customerName || 'غير محدد')}</td></tr>
+      ${record.customerEmail ? `<tr><th>البريد الإلكتروني</th><td>${escapeHtml(record.customerEmail)}</td></tr>` : ''}
+      ${record.customerPhone ? `<tr><th>الهاتف</th><td>${escapeHtml(record.customerPhone)}</td></tr>` : ''}
     </table>
     <div class="verify-box">
       <p>يمكنك عرض هذه الفاتورة وطباعتها في أي وقت:</p>
-      <p style="margin-top:6px"><a href="${invoiceUrl}">${invoiceUrl}</a></p>
+      <p style="margin-top:6px"><a href="${escapeHtml(invoiceUrl)}">${escapeHtml(invoiceUrl)}</a></p>
     </div>
   </div>
   <div class="bottom">
@@ -145,76 +139,52 @@ export async function GET(
 ) {
   const authorization = await authorizeUser(request);
   if (!authorization.ok) return authorization.response;
+
   try {
-    const invoiceId = params.id;
-    const searchParams = request.nextUrl.searchParams;
-    const format = searchParams.get('format') || 'html';
+    const paymentId = params.id;
+    const format = request.nextUrl.searchParams.get('format') || 'html';
+    if (!paymentId) return NextResponse.json({ error: 'Payment ID is required' }, { status: 400 });
 
-    if (!invoiceId) {
-      return NextResponse.json({ error: 'Invoice ID is required' }, { status: 400 });
+    const db = getSupabaseServiceRole();
+    const { data: rows, error } = await db
+      .from('payments')
+      .select('id,payer_id,payer_type,plan_id,amount,currency,method,provider,status,provider_transaction_id,provider_reference_id,paid_at,created_at,payment_targets(target_player_id)')
+      .eq('id', paymentId)
+      .limit(1);
+    if (error) throw error;
+    const payment = rows?.[0] as any;
+    if (!payment) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+
+    const authId = authorization.user.id;
+    const targetIds = (payment.payment_targets || []).map((target: any) => String(target.target_player_id));
+    let ownsPayment = String(payment.payer_id) === authId || targetIds.includes(authId);
+
+    if (!ownsPayment && targetIds.length) {
+      const { data: playerRows } = await db.from('players').select('id').eq('uid', authId).in('id', targetIds).limit(1);
+      ownsPayment = Boolean(playerRows?.length);
     }
+    if (!ownsPayment) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-    const db = getSupabaseAdmin();
-    let invoiceData: Record<string, unknown> | null = null;
-    let source = '';
-
-    for (const tableName of TABLES) {
-      try {
-        // Search by ID first
-        const { data: byId } = await db.from(tableName).select('*').eq('id', invoiceId).limit(1);
-        if (byId?.length) {
-          invoiceData = byId[0] as Record<string, unknown>;
-          source = tableName;
-          break;
-        }
-
-        // Search by invoice number fields
-        const fields = ['invoice_number', 'invoiceNumber', 'orderId', 'merchantReferenceId'];
-        for (const field of fields) {
-          const { data: byField } = await db.from(tableName).select('*').eq(field, invoiceId).limit(1);
-          if (byField?.length) {
-            invoiceData = byField[0] as Record<string, unknown>;
-            source = tableName;
-            break;
-          }
-        }
-
-        if (invoiceData) break;
-      } catch {
-        // Table may not exist, continue
-      }
-    }
-
-    if (!invoiceData) {
-      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-    }
-    if (!isRecordOwner(invoiceData, authorization.user)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const createdAt = toDate(invoiceData.created_at || invoiceData.createdAt || invoiceData.timestamp) || new Date();
-    const paidAt = toDate(invoiceData.paid_at || invoiceData.paidAt || invoiceData.paymentDate) || null;
-
-    const amount = Number(invoiceData.amount ?? invoiceData.total ?? invoiceData.total_amount ?? 0) || 0;
-    const currency = String(invoiceData.currency || invoiceData.currencyCode || 'EGP');
+    const { data: planRows } = payment.plan_id
+      ? await db.from('subscription_plans').select('title').eq('id', payment.plan_id).limit(1)
+      : { data: [] as any[] };
 
     const normalizedRecord: Record<string, unknown> = {
-      id: invoiceData.id,
-      invoiceNumber: invoiceData.invoice_number || invoiceData.invoiceNumber || invoiceData.orderId || invoiceData.merchantReferenceId || `INV-${String(invoiceData.id).slice(0, 8)}`,
-      source,
-      paymentMethod: invoiceData.paymentMethod || invoiceData.method || invoiceData.gateway || source,
-      transactionId: invoiceData.transactionId || invoiceData.transaction_id || null,
-      orderId: invoiceData.orderId || invoiceData.order_id || null,
-      referenceNumber: invoiceData.referenceNumber || invoiceData.merchantReferenceId || null,
-      amount,
-      currency,
-      status: invoiceData.status || invoiceData.paymentStatus || 'pending',
-      createdAt,
-      paidAt,
-      customerName: invoiceData.full_name || invoiceData.name || invoiceData.playerName || invoiceData.customerName || 'غير محدد',
-      customerEmail: invoiceData.user_email || invoiceData.userEmail || invoiceData.customerEmail || invoiceData.email || '',
-      customerPhone: invoiceData.phone || invoiceData.phoneNumber || invoiceData.mobile || invoiceData.whatsapp || '',
-      planName: invoiceData.plan_name || invoiceData.planName || invoiceData.package || invoiceData.packageName || '',
+      id: payment.id,
+      invoiceNumber: `PAY-${String(payment.id).slice(0, 12)}`,
+      source: payment.provider || 'payments',
+      paymentMethod: payment.method,
+      transactionId: payment.provider_transaction_id,
+      referenceNumber: payment.provider_reference_id,
+      amount: Number(payment.amount || 0),
+      currency: payment.currency || 'EGP',
+      status: payment.status || 'pending',
+      createdAt: toDate(payment.created_at) || new Date(),
+      paidAt: toDate(payment.paid_at),
+      customerName: authorization.user.user_metadata?.full_name || authorization.user.email || 'مستخدم',
+      customerEmail: authorization.user.email || '',
+      customerPhone: authorization.user.phone || '',
+      planName: planRows?.[0]?.title || payment.plan_id || '',
     };
 
     if (format === 'pdf') {
@@ -222,9 +192,8 @@ export async function GET(
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://el7lm.com';
-    const invoiceUrl = `${baseUrl}/invoice/${invoiceId}`;
-    const html = generateInvoiceHTML(normalizedRecord, invoiceUrl);
-    return new NextResponse(html, {
+    const invoiceUrl = `${baseUrl}/invoice/${paymentId}`;
+    return new NextResponse(generateInvoiceHTML(normalizedRecord, invoiceUrl), {
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'private, no-store, max-age=0',
@@ -234,7 +203,7 @@ export async function GET(
     console.error('❌ [API /invoices/[id]] Error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

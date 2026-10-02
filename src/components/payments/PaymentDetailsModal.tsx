@@ -1,7 +1,6 @@
 import { X, Image as ImageIcon, CheckCircle, XCircle, RefreshCw, ZoomIn, Maximize2, Zap, Copy, CreditCard, User, FileText, Clock } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { deactivateSubscription } from '@/lib/utils/subscription-manager';
 
 interface PaymentDetailsModalProps {
     payment: any;
@@ -251,7 +250,7 @@ export default function PaymentDetailsModal({
                                             if (onDeactivate) {
                                                 await onDeactivate(userId);
                                             } else {
-                                                await deactivateSubscription(userId);
+                                                throw new Error('Subscription deactivation must be performed by the canonical admin payment flow');
                                             }
                                             onClose();
                                         } catch (err) {

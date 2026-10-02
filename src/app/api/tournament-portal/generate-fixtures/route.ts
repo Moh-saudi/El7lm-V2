@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeTournamentOwnership, categoryBelongsToTournament } from '@/lib/api/tournament-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,38 +17,45 @@ export async function POST(req: NextRequest) {
   const { tournament_id, category_id } = await req.json();
   if (!tournament_id || !category_id)
     return NextResponse.json({ error: 'tournament_id and category_id required' }, { status: 400 });
+  const authorization = await authorizeTournamentOwnership(req, tournament_id);
+  if (!authorization.user) return authorization.response!;
   const supa = getSupabaseAdmin();
+  if (!(await categoryBelongsToTournament(category_id, tournament_id))) return NextResponse.json({ error: 'Category does not belong to tournament' }, { status: 400 });
 
   // Fetch category
-  const { data: cat } = await supa
+  const { data: cat, error: catError } = await supa
     .from('tournament_categories')
     .select('id, type, group_count, teams_per_group')
     .eq('id', category_id)
-    .single();
+    .eq('tournament_id', tournament_id)
+    .maybeSingle();
 
+  if (catError) return NextResponse.json({ error: catError.message }, { status: 500 });
   if (!cat)
     return NextResponse.json({ error: 'الفئة غير موجودة' }, { status: 404 });
 
   // Delete existing scheduled matches (not completed ones)
-  await supa
+  const { error: deleteError } = await supa
     .from('tournament_matches')
     .delete()
     .eq('tournament_id', tournament_id)
     .eq('category_id', category_id)
     .neq('status', 'completed');
+  if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
 
   const toInsert: any[] = [];
   let matchNumber = 1;
 
   // ── LEAGUE: round-robin (each pair plays home + away) ───────────────────────
   if (cat.type === 'league') {
-    const { data: teams } = await supa
+    const { data: teams, error: teamsError } = await supa
       .from('tournament_teams')
       .select('id, name')
       .eq('tournament_id', tournament_id)
       .eq('category_id', category_id)
       .eq('status', 'approved');
 
+    if (teamsError) return NextResponse.json({ error: teamsError.message }, { status: 500 });
     if (!teams || teams.length < 2)
       return NextResponse.json({ error: 'يجب وجود فريقان مقبولان على الأقل' }, { status: 400 });
 
@@ -69,18 +77,19 @@ export async function POST(req: NextRequest) {
 
   // ── GROUPS: round-robin per group ───────────────────────────────────────────
   if (cat.type === 'groups' || cat.type === 'groups_knockout') {
-    const { data: groups } = await supa
+    const { data: groups, error: groupsError } = await supa
       .from('tournament_groups')
       .select('id, name')
       .eq('tournament_id', tournament_id)
       .eq('category_id', category_id)
       .order('sort_order');
 
+    if (groupsError) return NextResponse.json({ error: groupsError.message }, { status: 500 });
     if (!groups || groups.length === 0)
       return NextResponse.json({ error: 'لا توجد مجموعات — أجرِ القرعة أولاً' }, { status: 400 });
 
     for (const group of groups) {
-      const { data: teams } = await supa
+      const { data: teams, error: groupTeamsError } = await supa
         .from('tournament_teams')
         .select('id, name')
         .eq('tournament_id', tournament_id)
@@ -88,6 +97,7 @@ export async function POST(req: NextRequest) {
         .eq('group_id', group.id)
         .eq('status', 'approved');
 
+      if (groupTeamsError) return NextResponse.json({ error: groupTeamsError.message }, { status: 500 });
       if (!teams || teams.length < 2) continue;
 
       for (let i = 0; i < teams.length; i++) {
@@ -111,7 +121,7 @@ export async function POST(req: NextRequest) {
 
     // For pure knockout — fetch seeded teams and fill first round
     if (cat.type === 'knockout') {
-      const { data: teams } = await supa
+      const { data: teams, error: knockoutTeamsError } = await supa
         .from('tournament_teams')
         .select('id, name, seed')
         .eq('tournament_id', tournament_id)
@@ -119,6 +129,7 @@ export async function POST(req: NextRequest) {
         .eq('status', 'approved')
         .order('seed', { ascending: true, nullsFirst: false });
 
+      if (knockoutTeamsError) return NextResponse.json({ error: knockoutTeamsError.message }, { status: 500 });
       const seeded = (teams || []);
       const n = seeded.length;
 

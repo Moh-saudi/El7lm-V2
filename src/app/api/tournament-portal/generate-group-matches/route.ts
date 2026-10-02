@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeTournamentOwnership, categoryBelongsToTournament } from '@/lib/api/tournament-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,10 @@ export async function POST(req: NextRequest) {
     if (!tournament_id || !category_id) {
         return NextResponse.json({ error: 'tournament_id and category_id required' }, { status: 400 });
     }
+    const authorization = await authorizeTournamentOwnership(req, tournament_id);
+    if (!authorization.user) return authorization.response!;
     const supa = getSupabaseAdmin();
+    if (!(await categoryBelongsToTournament(category_id, tournament_id))) return NextResponse.json({ error: 'Category does not belong to tournament' }, { status: 400 });
 
     // Fetch groups for this category
     const { data: groups, error: grpErr } = await supa
@@ -32,19 +36,20 @@ export async function POST(req: NextRequest) {
     }
 
     // Delete existing group_stage matches for this category
-    await supa
+    const { error: deleteError } = await supa
         .from('tournament_matches')
         .delete()
         .eq('tournament_id', tournament_id)
         .eq('category_id', category_id)
         .eq('round', 'group_stage');
+    if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
 
     const toInsert: any[] = [];
     let matchNumber = 1;
 
     for (const group of groups) {
         // Fetch approved teams in this group
-        const { data: teams } = await supa
+        const { data: teams, error: teamsError } = await supa
             .from('tournament_teams')
             .select('id, name')
             .eq('tournament_id', tournament_id)
@@ -52,6 +57,7 @@ export async function POST(req: NextRequest) {
             .eq('group_id', group.id)
             .eq('status', 'approved');
 
+        if (teamsError) return NextResponse.json({ error: teamsError.message }, { status: 500 });
         if (!teams || teams.length < 2) continue;
 
         // Round-robin: every pair plays once

@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export async function POST(req: NextRequest) {
-  const authorization = await authorizeAdmin(req);
+  const authorization = await authorizeAdmin(req, 'manage:employees');
   if (!authorization.ok) return authorization.response;
   try {
     const body = await req.json();
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
     // Save to employees table
     await db.from('employees').upsert({
-      id: uid, uid, name, email,
+      id: uid, uid, authUserId: uid, name, email,
       roleId, department: body.department || '',
       phone: body.phone || '', jobTitle: body.jobTitle || '',
       allowedCountries: allowedCountries || [],

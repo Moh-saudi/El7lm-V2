@@ -49,7 +49,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
 import { getExploreOpportunities, applyToOpportunity, incrementViewCount, getPlayerApplications } from '@/lib/firebase/opportunities';
-import { notifyNewApplication } from '@/lib/opportunities/notifications';
 import { OPPORTUNITY_TYPES } from '@/lib/opportunities/config';
 import { Opportunity, OpportunityType } from '@/types/opportunities';
 import { getSupabaseImageUrl } from '@/lib/supabase/image-utils';
@@ -483,7 +482,6 @@ export default function SearchPage() {
         playerStats: pd.stats || {},
         message: applyMessage,
       });
-      await notifyNewApplication(applyModalOpp.organizerId, applyModalOpp.organizerType, playerName, applyModalOpp.title, applyModalOpp.id);
       await incrementViewCount(applyModalOpp.id);
       toast.success(t('oppsExplorer.applySuccessToast'));
       setAppliedIds(prev => new Set(prev).add(applyModalOpp.id));

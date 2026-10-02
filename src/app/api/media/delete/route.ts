@@ -25,7 +25,7 @@ const s3 = new S3Client({
 const BUCKET = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform';
 
 export async function DELETE(req: NextRequest) {
-    const authorization = await authorizeAdmin(req);
+    const authorization = await authorizeAdmin(req, 'manage:media');
     if (!authorization.ok) return authorization.response;
     try {
         const { r2Key, sourceType } = await req.json();

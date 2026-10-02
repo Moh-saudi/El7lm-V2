@@ -8,8 +8,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { createOpportunity, updateOpportunity, getOpportunityById } from '@/lib/firebase/opportunities';
-import { broadcastNewOpportunity } from '@/lib/opportunities/notifications';
-import { broadcastOpportunityWhatsApp } from '@/lib/notifications/broadcast-dispatcher';
 import { OPPORTUNITY_TYPES, FOOTBALL_POSITIONS } from '@/lib/opportunities/config';
 import { OpportunityType } from '@/types/opportunities';
 import { storageManager } from '@/lib/storage';
@@ -433,32 +431,6 @@ export default function CreateOpportunityPage() {
         toast.success(copy.messages.updated);
       } else {
         const newId = await createOpportunity(payload as any);
-        // Broadcast to all users only when publishing (not draft)
-        if (form.status === 'active') {
-          const broadcastParams = {
-            opportunityId: newId,
-            opportunityTitle: payload.title,
-            opportunityType: payload.opportunityType,
-            organizerName: payload.organizerName,
-            organizerType: payload.organizerType,
-            // Smart targeting — WhatsApp sent only to matching players
-            targetPositions: payload.targetPositions,
-            ageMin: payload.ageMin,
-            ageMax: payload.ageMax,
-            country: payload.country,
-            gender: payload.gender,
-          };
-          // In-app broadcast (broadcasts collection) → free for all users
-          broadcastNewOpportunity({
-            opportunityId: newId,
-            opportunityTitle: payload.title,
-            opportunityType: payload.opportunityType,
-            organizerName: payload.organizerName,
-            organizerType: payload.organizerType,
-          }).catch(() => {});
-          // WhatsApp → only matched players via opp_pick_up_3
-          broadcastOpportunityWhatsApp(broadcastParams).catch(() => {});
-        }
         toast.success(form.status === 'active' ? copy.messages.published : copy.messages.draftSaved);
       }
       router.push('/dashboard/opportunities');

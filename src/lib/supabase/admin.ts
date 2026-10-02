@@ -10,6 +10,22 @@ import type { Database } from '@/types/supabase';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let adminInstance: ReturnType<typeof createClient<any>> | null = null;
 
+export function getSupabaseServiceRole() {
+  if (typeof window !== 'undefined') {
+    throw new Error('getSupabaseServiceRole() must only be called server-side');
+  }
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey || serviceKey.includes('your_supabase_service_role_key') || serviceKey.length < 20) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for privileged server operations');
+  }
+
+  return createClient<any>(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
 export function getSupabaseAdmin() {
   if (typeof window !== 'undefined') {
     throw new Error('getSupabaseAdmin() must only be called server-side');
@@ -17,15 +33,10 @@ export function getSupabaseAdmin() {
 
   if (!adminInstance) {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    let serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    // Fallback to anon key if serviceKey is missing, placeholder, or invalid in dev environment
-    if (!serviceKey || serviceKey.includes('your_supabase_service_role_key') || serviceKey.length < 20) {
-      serviceKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    }
-
-    if (!url || !serviceKey) {
-      throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+    if (!url || !serviceKey || serviceKey.includes('your_supabase_service_role_key') || serviceKey.length < 20) {
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for privileged server operations');
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

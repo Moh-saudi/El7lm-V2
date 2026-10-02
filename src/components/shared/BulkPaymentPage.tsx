@@ -28,8 +28,7 @@ import { SubscriptionPlan } from '@/types/pricing';
 import { COMPANY_INFO, getPrimaryWhatsAppNumber } from '@/config/company-info';
 
 import { supabase } from '@/lib/supabase/config';
-import { InvoiceService } from '@/lib/payments/invoice-service';
-import { storageManager } from '@/lib/storage';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 import { isSkipCashAvailable, skipCashUnavailableMessage } from '@/lib/skipcash/config';
 
 // Extend Window interface
@@ -86,6 +85,7 @@ const DEFAULT_PAYMENT_METHODS = {
     { id: 'bank_transfer', nameKey: 'payment.methodBank', icon: '🏦', descKey: 'payment.methodBankDesc', discount: 0, popular: false }
   ],
   QA: [
+    { id: 'skipcash', nameKey: 'payment.methodCard', icon: '💳', descKey: 'payment.methodCardDesc', discount: 0, popular: true },
     { id: 'fawran', nameKey: 'payment.methodFawran', icon: '⚡', descKey: 'payment.methodFawranDesc', discount: 0, popular: true, details: '70900058' },
     { id: 'bank_transfer', nameKey: 'payment.methodBank', icon: '🏦', descKey: 'payment.methodBankDesc', discount: 0, popular: false }
   ],
@@ -135,6 +135,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
   const [ticketSubject, setTicketSubject] = useState('');
   const [ticketMessage, setTicketMessage] = useState('');
   const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+  const [canonicalPlayerId, setCanonicalPlayerId] = useState<string | null>(null);
   const [activeSubscriptionData, setActiveSubscriptionData] = useState<{
     isActive: boolean;
     planName: string;
@@ -219,45 +220,31 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
       let activeSubscriptionData_raw: any = null;
 
       try {
-        // 1. Check user's individual subscription directly in the source of truth
-        const { data: userSubData } = await supabase.from('subscriptions').select('*').eq('id', user.id).single();
-        if (userSubData) {
-          const data = userSubData;
-          if (data.status === 'active') {
-            isCurrentlyActive = true;
-            activeSubscriptionData_raw = data;
+        // Canonical subscription status is resolved server-side from the authenticated
+        // user to players.id and subscriptions.player_id. Do not infer ownership from
+        // subscriptions.id or legacy package fields in the client.
+        const statusResponse = await authenticatedFetch('/api/subscriptions/status', {
+          method: 'GET',
+          cache: 'no-store',
+        });
 
-            // Use PricingService to get the best matched plan details
-            const amount = Number(data.package_price || data.amount || 0);
-            const pkgType = data.packageType || data.package_type || '';
-            const bestMatch = PricingService.getBestMatchedPlan(amount, pkgType, availablePlans);
-
-            detectedPlanName = getPlanTitle(bestMatch.plan || ({ id: pkgType, title: bestMatch.title } as any));
-            detectedPkgId = bestMatch.plan?.id || pkgType;
-          }
+        if (!statusResponse.ok) {
+          throw new Error(`Subscription status request failed: ${statusResponse.status}`);
         }
 
-        // 2. Fallback: Check parent subscription (for players in clubs/academies)
-        if (!isCurrentlyActive && accountType === 'player' && userData) {
-          const parentId = userData.club_id || userData.clubId || userData.academy_id || userData.academyId || userData.trainer_id || userData.agent_id;
-          if (parentId) {
-            const { data: parentSubData } = await supabase.from('subscriptions').select('*').eq('id', parentId).single();
-            if (parentSubData) {
-              const data = parentSubData;
-              if (data.status === 'active') {
-                isCurrentlyActive = true;
-                activeSubscriptionData_raw = data;
+        const statusPayload = await statusResponse.json();
+        const resolvedPlayerId = statusPayload?.playerId ? String(statusPayload.playerId) : null;
+        if (accountType === 'player') setCanonicalPlayerId(resolvedPlayerId);
+        const subscription = statusPayload?.subscription || null;
 
-                // Use PricingService for parent subscription as well
-                const amount = Number(data.package_price || data.amount || 0);
-                const pkgType = data.packageType || data.package_type || '';
-                const bestMatch = PricingService.getBestMatchedPlan(amount, pkgType, availablePlans);
+        if (subscription?.status === 'active') {
+          isCurrentlyActive = true;
+          activeSubscriptionData_raw = subscription;
 
-                detectedPlanName = getPlanTitle(bestMatch.plan || ({ id: pkgType, title: bestMatch.title } as any));
-                detectedPkgId = bestMatch.plan?.id || pkgType;
-              }
-            }
-          }
+          const planId = String(subscription.plan_id || '');
+          const currentPlan = availablePlans.find((plan) => plan.id === planId);
+          detectedPlanName = getPlanTitle(currentPlan || ({ id: planId, title: planId || t('payment.activeSubscription') } as any));
+          detectedPkgId = currentPlan?.id || planId;
         }
 
         // SMART BLOCKER: Only auto-trigger the modal if:
@@ -270,18 +257,17 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
           const currentPrice = currentPlan?.base_price || 0;
           const hasHigherPlan = availablePlans.some(p => p.isActive && (p.base_price || 0) > currentPrice);
 
-          // Calculate remaining days
           const expiresAt = activeSubscriptionData_raw?.expires_at
             ? new Date(activeSubscriptionData_raw.expires_at)
-            : (activeSubscriptionData_raw?.end_date ? new Date(activeSubscriptionData_raw.end_date) : null);
+            : null;
           const daysLeft = expiresAt ? Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
 
           setActiveSubscriptionData({
             isActive: true,
             planName: detectedPlanName,
-            planDuration: getPlanPeriod(currentPlan) || activeSubscriptionData_raw?.package_duration || activeSubscriptionData_raw?.packageDuration || t('payment.undefinedDuration'),
+            planDuration: getPlanPeriod(currentPlan) || t('payment.undefinedDuration'),
             isMaxPlan: !hasHigherPlan,
-            daysLeft: daysLeft,
+            daysLeft,
             expiryDate: expiresAt || undefined
           });
 
@@ -289,7 +275,6 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
           setIsActionModalOpen(true);
         } else if (actionParam === 'renew' || actionParam === 'upgrade') {
           console.log('✨ [Detection] Manual action requested. Setting up modal behavior.');
-          // Don't auto-open if it's already active and they specifically came here to manage
           if (!isCurrentlyActive) {
             setIsActionModalOpen(true);
           }
@@ -304,7 +289,7 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
     if (!loading && availablePlans.length > 0) {
       detectSubscription();
     }
-  }, [loading, availablePlans, user, userData, accountType, actionParam, t]);
+  }, [loading, availablePlans, user, accountType, actionParam, t]);
 
   const handleSubmitTicket = async () => {
     if (!ticketSubject.trim() || !ticketMessage.trim() || !user) {
@@ -844,67 +829,62 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         return;
       }
 
-      // Step 1: Create Invoice in database (Order Pre-creation)
-      const invoiceData = {
-        userId: user.id,
-        amount: finalPrice,
-        currency: currentCurrencyCode,
-        paymentMethod: selectedPaymentMethod,
-        packageType: selectedPackage,
-        packageName: selectedPkg?.title || t('payment.genericSub'),
-        packageDuration: selectedPkg?.period || t('payment.undefinedDuration'),
-        package_duration: selectedPkg?.period || t('payment.undefinedDuration'),
-        playerCount: countForCalculation,
-        players: accountType === 'player' ? [user.id] : selectedPlayers.map(p => p.id),
-        customerEmail: user.email || '',
-        customerName: user.user_metadata?.full_name || '',
-      };
-
-      const invoiceId = await InvoiceService.createPendingInvoice(invoiceData);
-
-      // Step 2: Route based on method
-
-      // A. SkipCash
+      // SkipCash is fully canonical: do not create a legacy invoice.
       if (selectedPaymentMethod === 'skipcash') {
-        await handleSkipCashPayment(invoiceId);
+        await handleSkipCashPayment();
         return;
       }
 
-      // B. Geidea
+      // Geidea subscription checkout is canonical; the modal calls
+      // /api/payments/create-session and the server selects the provider.
       if (selectedPaymentMethod === 'geidea') {
-        let convertedAmountEGP = Math.round(finalPrice);
-        if (currentCurrencyCode !== 'EGP') {
-          const usd = convertCurrencyLib(finalPrice, currentCurrencyCode, 'USD', currencyRates);
-          convertedAmountEGP = Math.round(convertCurrencyLib(usd, 'USD', 'EGP', currencyRates));
-        }
-        if (typeof window !== 'undefined') window.convertedAmountForGeidea = convertedAmountEGP;
-
-        // We can store the invoiceId in localStorage for the success/callback handler
-        localStorage.setItem('pending_invoice_id', invoiceId);
-
         setShowGeideaModal(true);
         setLoading(false);
         return;
       }
 
-      // C. PayPal
       if (selectedPaymentMethod === 'paypal') {
         toast(t('payment.paypalSoon'));
         setLoading(false);
         return;
       }
 
-      // D. Manual Methods (Upload Receipt)
       if (isManualMethod && receiptFile) {
         toast.loading(t('payment.processingReceiptUpload'), { id: 'upload' });
 
-        const fileExt = receiptFile.name.split('.').pop();
-        const path = `receipts/${user.id}/${invoiceId}.${fileExt}`;
+        const receiptForm = new FormData();
+        receiptForm.append('file', receiptFile);
+        const uploadResponse = await authenticatedFetch('/api/payments/receipt-upload', {
+          method: 'POST',
+          body: receiptForm,
+        });
+        const uploadResult = await uploadResponse.json();
+        if (!uploadResponse.ok || !uploadResult.success || !uploadResult.receiptUrl) {
+          throw new Error(uploadResult.error || 'Receipt upload failed');
+        }
 
-        const uploadResult = await storageManager.upload('payments', path, receiptFile);
-        const receiptUrl = uploadResult.url;
+        const targetPlayerIds = accountType === 'player'
+          ? (canonicalPlayerId ? [canonicalPlayerId] : [])
+          : selectedPlayers.map((player) => player.id);
+        if (targetPlayerIds.length === 0) throw new Error('Canonical payment target is unavailable');
 
-        await InvoiceService.submitManualReceipt(invoiceId, receiptUrl);
+        const response = await authenticatedFetch('/api/payments/manual-submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            payerId: user.id,
+            payerType: accountType,
+            planId: selectedPackage,
+            targetPlayerIds,
+            countryCode: selectedCountry || detectedCountry || 'EG',
+            method: selectedPaymentMethod,
+            receiptUrl: uploadResult.receiptUrl,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Manual payment submission failed');
+        }
 
         toast.success(t('payment.receiptUploadSuccess'), { id: 'upload' });
         setReceiptFile(null);
@@ -919,30 +899,39 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
     }
   };
 
-  const handleSkipCashPayment = async (invoiceId: string) => {
+  const handleSkipCashPayment = async () => {
     try {
-      const response = await fetch('/api/skipcash/create-session', {
+      if (!user?.id) throw new Error('Authentication required');
+
+      const targetPlayerIds = accountType === 'player'
+        ? (canonicalPlayerId ? [canonicalPlayerId] : [])
+        : selectedPlayers.map((player) => player.id);
+      if (targetPlayerIds.length === 0) throw new Error('Canonical payment target is unavailable');
+
+      const response = await authenticatedFetch('/api/payments/create-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: finalPrice,
-          customerEmail: user?.email || 'customer@example.com',
-          // @ts-ignore
-          customerPhone: user?.phoneNumber || user?.phone || '33333333',
-          customerName: user?.user_metadata?.full_name || 'Customer',
-          transactionId: invoiceId, // CRITICAL: Use invoiceId as transactionId
-          returnUrl: `${window.location.origin}/payment/success?method=skipcash&amount=${finalPrice}`,
-          custom1: `${user?.id || 'guest'}:${selectedPackage}`
-        })
+          payerId: user.id,
+          payerType: accountType,
+          planId: selectedPackage,
+          targetPlayerIds,
+          customerEmail: user.email || '',
+          // @ts-ignore - auth providers expose phone under different compatible keys.
+          customerPhone: user.phoneNumber || user.phone || userData?.phone || '',
+          customerName: user.user_metadata?.full_name || userData?.name || 'Customer',
+          returnUrl: `${window.location.origin}/dashboard/admin/skipcash/return`,
+          countryCode: selectedCountry || detectedCountry || 'QA',
+        }),
       });
 
       const data = await response.json();
       if (data.success && data.payUrl) {
         window.location.href = data.payUrl;
-      } else {
-        const errorMsg = data.error || t('payment.paymentInitFailed');
-        toast.error(errorMsg);
+        return;
       }
+
+      toast.error(data.error || t('payment.paymentInitFailed'));
     } catch (error) {
       console.error(error);
       toast.error(t('payment.skipCashError'));
@@ -1446,12 +1435,17 @@ export default function BulkPaymentPage({ accountType }: BulkPaymentPageProps) {
         onRequestClose={() => setShowGeideaModal(false)}
         onPaymentSuccess={handlePaymentSuccess}
         onPaymentFailure={handlePaymentFailure}
-        amount={typeof window !== 'undefined' && window.convertedAmountForGeidea ? window.convertedAmountForGeidea : Math.round(finalPrice)}
-        currency="EGP"
+        amount={Math.round(finalPrice)}
+        currency={currentCurrencyCode}
         title={t('payment.geideaTitle')}
         description={t('payment.geideaDesc').replace('{{count}}', String(selectedCount))}
         customerEmail={user?.email || 'customer@example.com'}
-        merchantReferenceId={`PAY-${Date.now()}`}
+        merchantReferenceId={undefined}
+        payerId={user?.id}
+        payerType={accountType}
+        planId={selectedPackage}
+        targetPlayerIds={accountType === 'player' ? (canonicalPlayerId ? [canonicalPlayerId] : []) : selectedPlayers.map((player) => player.id)}
+        countryCode={selectedCountry || 'EG'}
       />
 
       {/* Support Ticket Modal */}

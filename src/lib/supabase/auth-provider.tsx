@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase/config';
 import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { checkAccountStatus, updateLastLogin } from './account-status-checker';
+import { checkAccountStatus } from './account-status-checker';
 
 // User data interface
 interface AuthContextType {
@@ -68,115 +68,87 @@ function getPhotoURL(user: User): string {
   return String(user.user_metadata?.avatar_url || user.user_metadata?.picture || '');
 }
 
-// Fetch user data from Supabase tables
-async function fetchUserData(userId: string, email: string, firebaseUid?: string): Promise<{ data: Record<string, unknown>; collection: string; accountType: UserRole } | null> {
-  const isSuperAdmin = email === 'admin@el7lm.com' || email === 'admin@elhilm.com';
+const ROLE_TABLES: Record<string, string> = {
+  player: 'players',
+  club: 'clubs',
+  academy: 'academies',
+  trainer: 'trainers',
+  agent: 'agents',
+  marketer: 'marketers',
+  admin: 'admins',
+};
 
-  if (isSuperAdmin) {
-    const { data } = await supabase.from('users').select('*').eq('id', userId).limit(1);
+// Fetch user data from Supabase tables
+async function fetchUserData(userId: string, _email: string): Promise<{ data: Record<string, unknown>; collection: string; accountType: UserRole } | null> {
+  // Fast path for the migrated Supabase model: resolve the account from users/employee
+  // first, then touch only the single role table that is actually needed.
+  // The broader legacy fallback below remains for accounts that have not been normalized yet.
+  const [userByIdResult, employeeByAuthResult] = await Promise.all([
+    supabase
+      .from('users')
+      .select('id,uid,email,accountType,full_name,name,phone,profile_image,isDeleted,isActive,employeeId,role,roleId')
+      .or(`id.eq.${userId},uid.eq.${userId}`)
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('employees')
+      .select('*')
+      .eq('authUserId', userId)
+      .maybeSingle(),
+  ]);
+
+  if (employeeByAuthResult.data) {
     return {
-      data: data?.[0] as Record<string, unknown> || { id: userId, email, full_name: 'Super Admin', accountType: 'admin', isAdmin: true },
-      collection: 'users',
+      data: employeeByAuthResult.data as Record<string, unknown>,
+      collection: 'employees',
       accountType: 'admin',
     };
   }
 
-  // Check employees first
-  try {
-    let { data: employees } = await supabase.from('employees').select('*').eq('authUserId', userId).limit(1);
-    if (!employees?.length && email) {
-      const res = await supabase.from('employees').select('*').eq('email', email).limit(1);
-      employees = res.data;
-      if (employees?.length) {
-        // Auto-link employee account
-        await supabase.from('employees').update({ authUserId: userId, updatedAt: new Date().toISOString() })
-          .eq('id', String((employees[0] as Record<string, unknown>).id));
-        console.log('🔗 Automatically linked employee account via email:', email);
+  const userById = userByIdResult.data as Record<string, unknown> | null;
+  if (userById) {
+    const accountType = String(userById.accountType || '').toLowerCase();
+    const accountTable = ROLE_TABLES[accountType];
+
+    if (accountTable) {
+      const roleProfile = await supabase
+        .from(accountTable)
+        .select('*')
+        .or(`id.eq.${userId},uid.eq.${userId}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (roleProfile.data) {
+        return {
+          data: roleProfile.data as Record<string, unknown>,
+          collection: accountTable,
+          accountType: accountType as UserRole,
+        };
       }
     }
-    if (employees?.length) {
-      return { data: employees[0] as Record<string, unknown>, collection: 'employees', accountType: 'admin' };
-    }
-  } catch (err) {
-    console.warn('Error searching employees:', err);
+
+    return {
+      data: userById,
+      collection: 'users',
+      accountType: (accountType as UserRole) || 'player',
+    };
   }
 
   // Check role-specific tables — try by uid (Supabase Auth UUID) first, then by id
   const accountTypes = ['admins', 'clubs', 'academies', 'trainers', 'agents', 'players', 'marketers'];
 
-  // البحث بالـ uid (Supabase UUID) - الأكثر موثوقية بعد الهجرة
-  const uidResults = await Promise.allSettled(
-    accountTypes.map(t => supabase.from(t).select('*').eq('uid', userId).limit(1))
-  );
-  for (let i = 0; i < uidResults.length; i++) {
-    const r = uidResults[i];
-    if (r.status === 'fulfilled' && r.value.data?.length) {
-      const accountType: UserRole = accountTypes[i] === 'admins' ? 'admin' : (accountTypes[i].slice(0, -1) as UserRole);
-      return { data: r.value.data[0] as Record<string, unknown>, collection: accountTypes[i], accountType };
-    }
-  }
-
-  // البحث بالـ id (Firebase UID القديم) كبديل
+  // Legacy fallback: resolve either the Supabase uid or historical id in one
+  // request per role table instead of scanning every table twice.
   const results = await Promise.allSettled(
-    accountTypes.map(t => supabase.from(t).select('*').eq('id', userId).limit(1))
+    accountTypes.map(t =>
+      supabase.from(t).select('*').or(`uid.eq.${userId},id.eq.${userId}`).limit(1)
+    )
   );
   for (let i = 0; i < results.length; i++) {
     const r = results[i];
     if (r.status === 'fulfilled' && r.value.data?.length) {
       const accountType: UserRole = accountTypes[i] === 'admins' ? 'admin' : (accountTypes[i].slice(0, -1) as UserRole);
       return { data: r.value.data[0] as Record<string, unknown>, collection: accountTypes[i], accountType };
-    }
-  }
-
-  // Fallback to users table
-  const { data: usersData } = await supabase.from('users').select('*').eq('id', userId).limit(1);
-  if (usersData?.length) {
-    const d = usersData[0] as Record<string, unknown>;
-    const accountType = (d.accountType as UserRole) || 'player';
-    return { data: d, collection: 'users', accountType };
-  }
-
-  // إذا لم نجد شيئاً بالـ Supabase UUID، نحاول بالـ Firebase UID (للمستخدمين المهاجرين)
-  if (firebaseUid && firebaseUid !== userId) {
-    const fbResults = await Promise.allSettled(
-      accountTypes.map(t => supabase.from(t).select('*').eq('id', firebaseUid).limit(1))
-    );
-    for (let i = 0; i < fbResults.length; i++) {
-      const r = fbResults[i];
-      if (r.status === 'fulfilled' && r.value.data?.length) {
-        const accountType: UserRole = accountTypes[i] === 'admins' ? 'admin' : (accountTypes[i].slice(0, -1) as UserRole);
-        return { data: { ...r.value.data[0] as Record<string, unknown>, _dbId: firebaseUid }, collection: accountTypes[i], accountType };
-      }
-    }
-    const { data: fbUsers } = await supabase.from('users').select('*').eq('id', firebaseUid).limit(1);
-    if (fbUsers?.length) {
-      const d = fbUsers[0] as Record<string, unknown>;
-      return { data: { ...d, _dbId: firebaseUid }, collection: 'users', accountType: (d.accountType as UserRole) || 'player' };
-    }
-  }
-
-  // البحث بالإيميل كـ fallback أخير (مهم لمستخدمي Google OAuth الذين لم يُحدَّث uid عندهم بعد)
-  if (email) {
-    const emailResults = await Promise.allSettled(
-      accountTypes.map(t => supabase.from(t).select('*').eq('email', email).limit(1))
-    );
-    for (let i = 0; i < emailResults.length; i++) {
-      const r = emailResults[i];
-      if (r.status === 'fulfilled' && r.value.data?.length) {
-        const accountType: UserRole = accountTypes[i] === 'admins' ? 'admin' : (accountTypes[i].slice(0, -1) as UserRole);
-        const rowData = r.value.data[0] as Record<string, unknown>;
-        // ربط تلقائي: تحديث uid بالـ Supabase UUID الحالي لتسريع عمليات البحث المستقبلية
-        void supabase.from(accountTypes[i]).update({ uid: userId }).eq('id', String(rowData.id)).then(() => {
-          console.log(`🔗 [fetchUserData] Auto-linked ${accountTypes[i]} via email: ${email}`);
-        });
-        return { data: rowData, collection: accountTypes[i], accountType };
-      }
-    }
-    // بحث في users table بالإيميل
-    const { data: emailUsers } = await supabase.from('users').select('*').eq('email', email).limit(1);
-    if (emailUsers?.length) {
-      const d = emailUsers[0] as Record<string, unknown>;
-      return { data: d, collection: 'users', accountType: (d.accountType as UserRole) || 'player' };
     }
   }
 
@@ -235,31 +207,6 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
     }
   }, [loading, hasInitialized, user, userData]);
 
-  // Helper: save basic user doc
-  const createBasicUserDocument = async (userId: string, email: string, role: UserRole = 'player', additionalData: Record<string, unknown> = {}): Promise<UserData> => {
-    const { data: existing } = await supabase.from('users').select('*').eq('id', userId).limit(1);
-    if (existing?.length) return existing[0] as UserData;
-
-    const now = new Date().toISOString();
-    const basicUserData: Record<string, unknown> = {
-      id: userId,
-      uid: userId,
-      email,
-      accountType: role,
-      full_name: additionalData.full_name || additionalData.name || '',
-      phone: additionalData.phone || '',
-      profile_image: additionalData.profile_image || additionalData.profileImage || '',
-      isNewUser: false,
-      isActive: true,
-      created_at: additionalData.created_at || now,
-      updated_at: now,
-      createdAt: additionalData.createdAt || now,
-      updatedAt: now,
-      ...additionalData,
-    };
-    await supabase.from('users').upsert(basicUserData);
-    return basicUserData as unknown as UserData;
-  };
 
   // Auth state listener
   useEffect(() => {
@@ -279,10 +226,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
         const setupUserListener = async () => {
           const runId = ++listenerRun;
           try {
-            // Firebase UID: check metadata first, then sessionStorage (set by OTP login page)
-            const storedFirebaseUid = typeof window !== 'undefined' ? sessionStorage.getItem('otp_firebase_uid') : null;
-            const firebaseUidForFetch = (authUser.user_metadata?.db_id || authUser.user_metadata?.firebase_uid || storedFirebaseUid) as string | undefined;
-            const result = await fetchUserData(authUser.id, authUser.email || '', firebaseUidForFetch);
+            const result = await fetchUserData(authUser.id, authUser.email || '');
             if (!isSubscribed || runId !== listenerRun) return;
             if (!result) {
               if (isSubscribed) { setLoading(false); setHasInitialized(true); }
@@ -294,7 +238,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
             // Merge users table data if from a different collection
             let legacyData: Record<string, unknown> = {};
             if (collectionName !== 'users') {
-              const { data: usersData } = await supabase.from('users').select('*').eq('id', authUser.id).limit(1);
+              const { data: usersData } = await supabase.from('users').select('*').or(`id.eq.${authUser.id},uid.eq.${authUser.id}`).limit(1);
               if (!isSubscribed || runId !== listenerRun) return;
               if (usersData?.length) legacyData = usersData[0] as Record<string, unknown>;
             }
@@ -325,7 +269,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
             let permissions: string[] = [];
             let roleName = '';
             if (collectionName === 'employees' && rowData.roleId) {
-              const { data: roleData } = await supabase.from('roles').select('*').eq('id', String(rowData.roleId)).limit(1);
+              const { data: roleData } = await supabase.from('roles').select('permissions,name').eq('id', String(rowData.roleId)).limit(1);
               if (roleData?.length) {
                 permissions = (roleData[0] as Record<string, unknown>).permissions as string[] || [];
                 roleName = String((roleData[0] as Record<string, unknown>).name || '');
@@ -375,7 +319,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
               }, async () => {
                 if (!isSubscribed || runId !== listenerRun) return;
                 // Refresh on change
-                const refreshResult = await fetchUserData(authUser.id, authUser.email || '', (authUser.user_metadata?.db_id || authUser.user_metadata?.firebase_uid) as string | undefined);
+                const refreshResult = await fetchUserData(authUser.id, authUser.email || '');
                 if (refreshResult && isSubscribed && runId === listenerRun) {
                   setUserData(prev => ({ ...(prev || {}), ...refreshResult.data } as UserData));
                 }
@@ -391,6 +335,11 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
 
         setupUserListener();
       } else {
+        listenerRun += 1;
+        if (realtimeChannel) {
+          void supabase.removeChannel(realtimeChannel);
+          realtimeChannel = null;
+        }
         if (isSubscribed) {
           setUser(null);
           setUserData(null);
@@ -419,31 +368,21 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
       const authUser = authData.user;
       if (!authUser) throw new Error('فشل تسجيل الدخول');
 
-      const result = await fetchUserData(authUser.id, email, (authUser.user_metadata?.db_id || authUser.user_metadata?.firebase_uid) as string | undefined);
+      const result = await fetchUserData(authUser.id, email);
       let foundData = result?.data || null;
       let userAccountType: UserRole = result?.accountType || 'player';
       const foundCollection = result?.collection || 'users';
 
       if (!foundData) {
-        foundData = await createBasicUserDocument(authUser.id, email, userAccountType);
+        await supabase.auth.signOut();
+        throw new Error('تعذر ربط الحساب بهوية موثوقة. يرجى إكمال ربط الحساب أو اختيار نوع الحساب.');
       }
 
       const isEmployee = foundCollection === 'employees';
       let permissions: string[] = [];
       if (isEmployee && foundData.roleId) {
-        const { data: roleRows } = await supabase.from('roles').select('*').eq('id', String(foundData.roleId)).limit(1);
+        const { data: roleRows } = await supabase.from('roles').select('permissions,name').eq('id', String(foundData.roleId)).limit(1);
         if (roleRows?.length) permissions = (roleRows[0] as Record<string, unknown>).permissions as string[] || [];
-        // Sync employee to users table
-        try {
-          await supabase.from('users').upsert({
-            id: authUser.id,
-            ...foundData,
-            employeeId: String(foundData.id || ''),
-            employeeRole: foundData.roleId || foundData.role,
-            role: foundData.roleId || foundData.role,
-            updated_at: new Date().toISOString(),
-          });
-        } catch (e) { console.warn('Error syncing employee data:', e); }
       }
 
       const userData: UserData = {
@@ -468,8 +407,6 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
         await supabase.auth.signOut();
         throw new Error(accountStatus.message);
       }
-
-      try { await updateLastLogin(authUser.id); } catch (e) { console.warn('Failed to update last login:', e); }
 
       setUser(authUser);
       setUserData(userData);
@@ -537,89 +474,11 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
     throw new Error('يرجى استخدام نظام التحقق الجديد');
   };
 
-  // Register
-  const register = async (
-    email: string,
-    password: string,
-    role: UserRole,
-    additionalData: Record<string, unknown> = {}
-  ): Promise<UserData> => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      if (!email || !password || !role) throw new Error('Email, password, and role are required');
-      if (password.length < 8) throw new Error('يجب أن تتكون كلمة المرور من 8 أحرف على الأقل');
-      if (password.length > 128) throw new Error('Password is too long. Maximum 128 characters allowed');
-
-      const isNumbersOnly = /^\d+$/.test(password);
-      const weakPatterns = [/^(\d)\1+$/, /^(0123456789|9876543210)/, /^12345678$/, /^87654321$/, /^123456/, /^654321/, /^111111/, /^000000/, /^666666/, /^888888/];
-      if (isNumbersOnly && weakPatterns.some(p => p.test(password))) {
-        throw new Error('كلمة المرور ضعيفة جداً. تجنب الأرقام المتسلسلة أو المتكررة');
-      }
-      if (email.length > 254) throw new Error('Email is too long');
-
-      const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
-      if (authError) {
-        if (authError.message?.includes('already registered') || authError.message?.includes('email_exists')) {
-          // Try to reactivate deleted account
-          const { data: existing } = await supabase.from('users').select('*').eq('email', email).limit(1);
-          if (existing?.length) {
-            const ex = existing[0] as Record<string, unknown>;
-            if (ex.isDeleted === true || ex.isActive === false) {
-              const now = new Date().toISOString();
-              const reactivatedData = { ...ex, ...additionalData, isDeleted: false, isActive: true, accountType: role, updated_at: now, updatedAt: now };
-              await supabase.from('users').update(reactivatedData).eq('id', String(ex.id));
-              if (role !== 'admin') await supabase.from(role + 's').upsert({ id: ex.id, ...(sanitizeForDB(reactivatedData) as any) });
-              const ud = reactivatedData as unknown as UserData;
-              setUserData(ud);
-              return ud;
-            }
-          }
-          throw new Error('هذا البريد الإلكتروني مسجل بالفعل. يرجى محاولة تسجيل الدخول بدلاً من ذلك.');
-        }
-        throw authError;
-      }
-
-      const authUser = authData.user!;
-      const now = new Date().toISOString();
-
-      const userData: UserData = {
-        ...additionalData,
-        uid: authUser.id,
-        email: authUser.email || email,
-        accountType: role,
-        full_name: String(additionalData.full_name || additionalData.name || ''),
-        phone: String(additionalData.phone || ''),
-        profile_image: String(additionalData.profile_image || additionalData.profileImage || ''),
-        isNewUser: true,
-        isActive: true,
-        created_at: now,
-        createdAt: now,
-        updated_at: now,
-        updatedAt: now,
-        firebaseEmail: email,
-        originalPhone: String(additionalData.originalPhone || additionalData.phone || ''),
-        lastLogin: now,
-        last_login: now,
-        lastLoginIP: 'registration',
-      } as UserData;
-
-      await supabase.from('users').upsert({ id: authUser.id, ...(sanitizeForDB(userData) as any) });
-      if (role !== 'admin') {
-        await supabase.from(role + 's').upsert({ id: authUser.id, ...(sanitizeForDB(userData) as any) });
-      }
-
-      setUser(authUser);
-      setUserData(userData);
-      return userData;
-    } catch (error: unknown) {
-      const err = error as Error;
-      console.error('Registration error:', err.message || err);
-      throw new Error(err.message || 'Registration failed');
-    } finally {
-      setLoading(false);
-    }
+  // Legacy password registration is intentionally disabled. Public registration
+  // must use the OTP-backed server flow so account identity and role assignment
+  // are created atomically on trusted server/database paths.
+  const register: AuthContextType['register'] = async () => {
+    throw new Error('استخدم مسار التسجيل الآمن المعتمد على رمز التحقق.');
   };
 
   // Logout
@@ -639,17 +498,34 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
   const updateUserData = async (updates: Partial<UserData>): Promise<void> => {
     if (!user) return;
     try {
+      // Client profile edits must never mutate identity, role, permissions, or account state.
+      const allowedProfileFields = new Set([
+        'full_name', 'name', 'phone', 'country', 'city', 'address',
+        'profile_image', 'profileImage', 'profile_image_url', 'avatar',
+        'bio', 'date_of_birth', 'birth_date', 'gender',
+      ]);
+      const safeUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([key]) => allowedProfileFields.has(key)),
+      );
+      const sanitized = sanitizeForDB({
+        ...safeUpdates,
+        updated_at: new Date().toISOString(),
+      }) as Record<string, unknown>;
+
+      if (Object.keys(safeUpdates).length === 0) return;
+
       const accountType = userData?.accountType || 'player';
-      const tableName = accountType === 'admin' ? 'users' : `${accountType}s`;
-      const sanitized = sanitizeForDB({ ...updates, updated_at: new Date().toISOString() }) as Record<string, unknown>;
-      if (sanitized && Object.keys(sanitized).length > 0) {
-        await supabase.from(tableName).update(sanitized).eq('id', user.id);
-        // Also update users table
-        if (tableName !== 'users') {
-          await supabase.from('users').update(sanitized).eq('id', user.id);
-        }
+      const tableName = accountType === 'admin' ? 'users' : ROLE_TABLES[accountType] || 'users';
+      const profileQuery = supabase.from(tableName).update(sanitized);
+      const { error: profileError } = tableName === 'users'
+        ? await profileQuery.or(`id.eq.${user.id},uid.eq.${user.id}`)
+        : await profileQuery.or(`id.eq.${user.id},uid.eq.${user.id}`);
+      if (profileError) throw profileError;
+      if (tableName !== 'users') {
+        const { error: usersError } = await supabase.from('users').update(sanitized).or(`id.eq.${user.id},uid.eq.${user.id}`);
+        if (usersError) throw usersError;
       }
-      if (userData) setUserData({ ...userData, ...updates });
+      if (userData) setUserData({ ...userData, ...safeUpdates });
     } catch (error) {
       console.error('Error updating user data:', error);
       setError('Failed to update user data');
@@ -674,24 +550,20 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
   const refreshUserData = async (): Promise<void> => {
     if (!user) return;
     try {
-      const result = await fetchUserData(user.id, user.email || '', (user.user_metadata?.db_id || user.user_metadata?.firebase_uid) as string | undefined);
+      const result = await fetchUserData(user.id, user.email || '');
       if (!result) { setUserData(null); return; }
 
       const { data: foundData, collection: foundCollection, accountType: userAccountType } = result;
 
       let legacyData: Record<string, unknown> = {};
       if (foundCollection !== 'users') {
-        const { data: usersRows } = await supabase.from('users').select('*').eq('id', user.id).limit(1);
+        const { data: usersRows } = await supabase.from('users').select('*').or(`id.eq.${user.id},uid.eq.${user.id}`).limit(1);
         if (usersRows?.length) legacyData = usersRows[0] as Record<string, unknown>;
       }
 
       let permissions: string[] = [];
       if (foundCollection === 'employees' && foundData.roleId) {
-        // Sync employee to users
-        try {
-          await supabase.from('users').upsert({ id: user.id, ...foundData, employeeId: foundData.id, employeeRole: foundData.roleId, updated_at: new Date().toISOString() });
-        } catch (e) { /* ignore */ }
-        const { data: roleRows } = await supabase.from('roles').select('*').eq('id', String(foundData.roleId)).limit(1);
+        const { data: roleRows } = await supabase.from('roles').select('permissions,name').eq('id', String(foundData.roleId)).limit(1);
         if (roleRows?.length) permissions = (roleRows[0] as Record<string, unknown>).permissions as string[] || [];
       }
 

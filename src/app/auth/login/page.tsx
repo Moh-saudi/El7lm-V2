@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/lib/firebase/auth-provider';
+import { useAuth } from '@/lib/supabase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
 import {
   Eye,
@@ -111,23 +111,25 @@ export default function LoginPage() {
         sessionStorage.setItem('otp_account_type', data.accountType || 'player');
       }
 
-      // تسجيل الدخول باستخدام كلمة المرور المؤقتة
-      if (data.authEmail && data.authPassword) {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: data.authEmail,
-          password: data.authPassword,
-        });
-        if (signInError) {
-          console.error('signInWithPassword error:', signInError);
-          throw new Error(`${t('auth.loginFailed')}: ${signInError.message}`);
-        }
+      // Exchange the server-issued one-time token for a Supabase session.
+      // OTP login must not change or expose the user's password.
+      if (!data.tokenHash) {
+        throw new Error(t('auth.loginFailed'));
+      }
+      const { error: signInError } = await supabase.auth.verifyOtp({
+        token_hash: data.tokenHash,
+        type: 'magiclink',
+      });
+      if (signInError) {
+        console.error('verifyOtp error:', signInError);
+        throw new Error(`${t('auth.loginFailed')}: ${signInError.message}`);
       }
 
       toast.dismiss('otp-login');
       showWelcomeToast(data.userName || '', false);
 
       const dashboardRoute = getDashboardRoute(data.accountType);
-      setTimeout(() => { window.location.href = dashboardRoute; }, 2200);
+      window.location.assign(dashboardRoute);
 
     } catch (error: any) {
       console.error('OTP login error:', error);
@@ -289,7 +291,7 @@ export default function LoginPage() {
       showWelcomeToast(result.userData.full_name || result.userData.name || '', result.isNewUser);
 
       const dashboardRoute = getDashboardRoute(result.userData.accountType);
-      setTimeout(() => { window.location.href = dashboardRoute; }, 2200);
+      window.location.assign(dashboardRoute);
 
     } catch (err: unknown) {
       console.error('Google Sign-In failed:', err);
@@ -483,7 +485,7 @@ export default function LoginPage() {
       showWelcomeToast(result.userData.full_name || result.userData.name || '', false);
 
       const dashboardRoute = getDashboardRoute(result.userData.accountType);
-      setTimeout(() => { window.location.href = dashboardRoute; }, 2200);
+      window.location.assign(dashboardRoute);
 
     } catch (err: unknown) {
       console.error('Login failed:', err);
@@ -563,7 +565,7 @@ export default function LoginPage() {
                 }
                 showWelcomeToast(retryResult.userData.full_name || retryResult.userData.name || '', false);
                 const dashboardRoute = getDashboardRoute(retryResult.userData.accountType);
-                setTimeout(() => { window.location.href = dashboardRoute; }, 2200);
+                window.location.assign(dashboardRoute);
                 setLoading(false);
                 return;
               } catch (_retryErr) {
@@ -665,7 +667,7 @@ export default function LoginPage() {
                     }
                     showWelcomeToast(retryResult.userData.full_name || retryResult.userData.name || '', false);
                     const dashboardRoute = getDashboardRoute(retryResult.userData.accountType);
-                    setTimeout(() => { window.location.href = dashboardRoute; }, 2200);
+                    window.location.assign(dashboardRoute);
                     setLoading(false);
                     return;
                   }

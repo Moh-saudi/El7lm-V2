@@ -6,8 +6,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeAdmin } from '@/lib/api/admin-auth';
+import { sendChatAmanTemplate } from '@/lib/server/chataman-provider';
 
 const BATCH_SIZE = 10;
+const MAX_RECIPIENTS_PER_REQUEST = 500;
+const MAX_BODY_BYTES = 64 * 1024;
+const EVENT_TYPE_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+function isOptionalString(value: unknown, maxLength: number): boolean {
+  return value === undefined || value === null || (typeof value === 'string' && value.length <= maxLength);
+}
 
 interface Targeting {
   positions?: string[];
@@ -42,7 +50,8 @@ function calcAge(birthDate: unknown): number | null {
 }
 
 async function getTargetedPhones(targeting: Targeting, db: ReturnType<typeof getSupabaseAdmin>): Promise<{ phones: string[]; total: number; matched: number }> {
-  const { data } = await db.from('players').select('phone, phoneNumber, position, primary_position, age, birth_date, birthDate, country, nationality, gender');
+  const { data, error } = await db.from('players').select('phone, phoneNumber, position, primary_position, age, birth_date, birthDate, country, nationality, gender');
+  if (error) throw error;
   const players = data ?? [];
   const total = players.length;
   const phoneSet = new Set<string>();
@@ -54,17 +63,17 @@ async function getTargetedPhones(targeting: Targeting, db: ReturnType<typeof get
     }
 
     const playerAge = typeof p.age === 'number' ? p.age : calcAge(p.birth_date ?? p.birthDate);
-    if (targeting.ageMin !== undefined && playerAge !== null && playerAge < targeting.ageMin) continue;
-    if (targeting.ageMax !== undefined && playerAge !== null && playerAge > targeting.ageMax) continue;
+    if (targeting.ageMin !== undefined && (playerAge === null || playerAge < targeting.ageMin)) continue;
+    if (targeting.ageMax !== undefined && (playerAge === null || playerAge > targeting.ageMax)) continue;
 
     if (targeting.country) {
       const playerCountry = String(p.country ?? p.nationality ?? '').toLowerCase();
-      if (playerCountry && !playerCountry.includes(targeting.country.toLowerCase())) continue;
+      if (!playerCountry || !playerCountry.includes(targeting.country.toLowerCase())) continue;
     }
 
     if (targeting.gender && targeting.gender !== 'both') {
       const playerGender = String(p.gender ?? '').toLowerCase();
-      if (playerGender && playerGender !== targeting.gender.toLowerCase()) continue;
+      if (!playerGender || playerGender !== targeting.gender.toLowerCase()) continue;
     }
 
     const raw = p.phone ?? p.phoneNumber;
@@ -77,61 +86,102 @@ async function getTargetedPhones(targeting: Targeting, db: ReturnType<typeof get
   return { phones: Array.from(phoneSet), total, matched: phoneSet.size };
 }
 
-async function sendOne(phone: string, templateName: string, params: string[], config: { apiKey: string; baseUrl: string }, origin: string): Promise<boolean> {
-  try {
-    const payload = {
-      phone,
-      template: {
-        name: templateName, language: { code: 'ar' },
-        components: params.length > 0 ? [{ type: 'body', parameters: params.map(p => ({ type: 'text', text: p })) }] : [],
-      },
-    };
-    const res = await fetch(`${origin}/api/chataman/send-template`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payload, apiKey: config.apiKey.trim(), baseUrl: config.baseUrl.trim() }),
-    });
-    const data = await res.json().catch(() => ({}));
-    return data.success === true;
-  } catch { return false; }
+async function sendOne(phone: string, templateName: string, params: string[], config: { apiKey: string; baseUrl: string }): Promise<boolean> {
+  const payload = {
+    phone,
+    template: {
+      name: templateName,
+      language: { code: 'ar' },
+      components: params.length > 0
+        ? [{ type: 'body', parameters: params.map(p => ({ type: 'text', text: p })) }]
+        : [],
+    },
+  };
+  return sendChatAmanTemplate(payload, config);
 }
 
-async function sendInBatches(phones: string[], templateName: string, params: string[], config: { apiKey: string; baseUrl: string }, origin: string): Promise<{ sent: number; failed: number }> {
+async function sendInBatches(phones: string[], templateName: string, params: string[], config: { apiKey: string; baseUrl: string }): Promise<{ sent: number; failed: number }> {
   let sent = 0; let failed = 0;
   for (let i = 0; i < phones.length; i += BATCH_SIZE) {
-    const results = await Promise.all(phones.slice(i, i + BATCH_SIZE).map(p => sendOne(p, templateName, params, config, origin)));
+    const results = await Promise.all(phones.slice(i, i + BATCH_SIZE).map(p => sendOne(p, templateName, params, config)));
     results.forEach(ok => ok ? sent++ : failed++);
   }
   return { sent, failed };
 }
 
 export async function POST(req: NextRequest) {
-  const authorization = await authorizeAdmin(req);
+  const authorization = await authorizeAdmin(req, 'manage:communications');
   if (!authorization.ok) return authorization.response;
   try {
-    const body = await req.json();
+    const contentLength = Number(req.headers.get('content-length') || '0');
+    if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+      return NextResponse.json({ success: false, error: 'Request body too large' }, { status: 413 });
+    }
+
+    const rawBody = await req.text();
+    if (new TextEncoder().encode(rawBody).length > MAX_BODY_BYTES) {
+      return NextResponse.json({ success: false, error: 'Request body too large' }, { status: 413 });
+    }
+
+    let body: Record<string, unknown>;
+    try {
+      const parsed: unknown = JSON.parse(rawBody);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid body');
+      body = parsed as Record<string, unknown>;
+    } catch {
+      return NextResponse.json({ success: false, error: 'Malformed JSON body' }, { status: 400 });
+    }
+
     const { eventType = 'new_opportunity', templateName = 'opp_pick_up_3', params = [], targeting, broadcastData } = body;
 
-    if (!Array.isArray(params)) return NextResponse.json({ success: false, error: 'params must be an array' }, { status: 400 });
+    if (typeof eventType !== 'string' || !EVENT_TYPE_RE.test(eventType)) {
+      return NextResponse.json({ success: false, error: 'Invalid eventType' }, { status: 400 });
+    }
+    if (typeof templateName !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(templateName)) {
+      return NextResponse.json({ success: false, error: 'Invalid templateName' }, { status: 400 });
+    }
+    if (!Array.isArray(params) || params.length > 20 || params.some(p => typeof p !== 'string' || p.length > 1024)) {
+      return NextResponse.json({ success: false, error: 'Invalid template params' }, { status: 400 });
+    }
+    if (targeting && (typeof targeting !== 'object' || Array.isArray(targeting))) {
+      return NextResponse.json({ success: false, error: 'Invalid targeting' }, { status: 400 });
+    }
+    if (targeting) {
+      const t = targeting as Targeting;
+      if (t.positions && (!Array.isArray(t.positions) || t.positions.length > 20 || t.positions.some(p => typeof p !== 'string' || p.length > 64))) {
+        return NextResponse.json({ success: false, error: 'Invalid targeting positions' }, { status: 400 });
+      }
+      if (t.ageMin !== undefined && (!Number.isInteger(t.ageMin) || t.ageMin < 0 || t.ageMin > 120)) {
+        return NextResponse.json({ success: false, error: 'Invalid ageMin' }, { status: 400 });
+      }
+      if (t.ageMax !== undefined && (!Number.isInteger(t.ageMax) || t.ageMax < 0 || t.ageMax > 120)) {
+        return NextResponse.json({ success: false, error: 'Invalid ageMax' }, { status: 400 });
+      }
+      if (t.ageMin !== undefined && t.ageMax !== undefined && t.ageMin > t.ageMax) {
+        return NextResponse.json({ success: false, error: 'ageMin cannot exceed ageMax' }, { status: 400 });
+      }
+      if (t.country !== undefined && (typeof t.country !== 'string' || t.country.length > 100)) {
+        return NextResponse.json({ success: false, error: 'Invalid targeting country' }, { status: 400 });
+      }
+      if (t.gender !== undefined && !['male', 'female', 'both'].includes(t.gender)) {
+        return NextResponse.json({ success: false, error: 'Invalid targeting gender' }, { status: 400 });
+      }
+    }
+
+    const idempotencyKey = req.headers.get('idempotency-key')?.trim() || null;
+    if (idempotencyKey && (idempotencyKey.length > 128 || !/^[A-Za-z0-9._:-]+$/.test(idempotencyKey))) {
+      return NextResponse.json({ success: false, error: 'Invalid Idempotency-Key' }, { status: 400 });
+    }
 
     const db = getSupabaseAdmin();
 
     // ChatAman config
-    const { data: cfgRows } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);
+    const { data: cfgRows, error: configError } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);
+    if (configError) throw configError;
     if (!cfgRows?.length) return NextResponse.json({ success: false, error: 'ChatAman config not found' }, { status: 400 });
     const cfg = cfgRows[0] as Record<string, unknown>;
-    if (!cfg.isActive || !cfg.apiKey) return NextResponse.json({ success: false, error: 'ChatAman inactive or missing apiKey' }, { status: 400 });
+    if (!cfg.isActive || !cfg.apiKey || !cfg.baseUrl) return NextResponse.json({ success: false, error: 'ChatAman inactive or incomplete config' }, { status: 400 });
 
-    // Write broadcast doc
-    if (broadcastData) {
-      await db.from('broadcasts').insert({
-        id: crypto.randomUUID(), ...broadcastData, eventType,
-        createdAt: new Date().toISOString(),
-        actionUrl: broadcastData.actionUrl || '/dashboard/opportunities',
-      });
-    }
-
-    const origin = new URL(req.url).origin;
     const hasTargeting = targeting && Object.keys(targeting).some(k => {
       const v = targeting[k];
       return v !== undefined && v !== null && v !== 'both' && (!Array.isArray(v) || v.length > 0);
@@ -145,7 +195,8 @@ export async function POST(req: NextRequest) {
       const result = await getTargetedPhones(targeting, db);
       phones = result.phones; total = result.total; matched = result.matched;
     } else {
-      const { data: players } = await db.from('players').select('phone, phoneNumber');
+      const { data: players, error: playersError } = await db.from('players').select('phone, phoneNumber');
+      if (playersError) throw playersError;
       total = (players ?? []).length;
       const phoneSet = new Set<string>();
       (players ?? []).forEach((p: Record<string, unknown>) => {
@@ -156,11 +207,67 @@ export async function POST(req: NextRequest) {
       matched = phones.length;
     }
 
+    if (phones.length > MAX_RECIPIENTS_PER_REQUEST) {
+      return NextResponse.json(
+        { success: false, error: 'Too many recipients for a synchronous broadcast', matched: phones.length, limit: MAX_RECIPIENTS_PER_REQUEST },
+        { status: 413 },
+      );
+    }
+
     if (phones.length === 0) {
       return NextResponse.json({ success: true, eventType, templateName, total, matched: 0, sent: 0, failed: 0, message: 'No matching players with phone numbers found' });
     }
 
-    const { sent, failed } = await sendInBatches(phones, templateName, params, cfg as { apiKey: string; baseUrl: string }, origin);
+    // Persist the broadcast before sending. When Idempotency-Key is present,
+    // the unique index makes this insert the atomic reservation step.
+    if (broadcastData !== undefined && (typeof broadcastData !== 'object' || broadcastData === null || Array.isArray(broadcastData))) {
+      return NextResponse.json({ success: false, error: 'Invalid broadcastData' }, { status: 400 });
+    }
+    const safeBroadcast = (broadcastData ?? {}) as Record<string, unknown>;
+    const stringFields: Array<[string, number]> = [
+      ['opportunityId', 200], ['opportunityTitle', 300], ['opportunityType', 100],
+      ['organizerName', 200], ['organizerType', 100], ['title', 300],
+      ['message', 4000], ['actionUrl', 2048], ['targetType', 100],
+    ];
+    if (stringFields.some(([field, max]) => !isOptionalString(safeBroadcast[field], max))) {
+      return NextResponse.json({ success: false, error: 'Invalid broadcastData fields' }, { status: 400 });
+    }
+    if (safeBroadcast.actionUrl !== undefined && safeBroadcast.actionUrl !== null) {
+      const actionUrl = String(safeBroadcast.actionUrl);
+      if (!(actionUrl.startsWith('/') && !actionUrl.startsWith('//'))) {
+        return NextResponse.json({ success: false, error: 'Invalid broadcast actionUrl' }, { status: 400 });
+      }
+    }
+    if (safeBroadcast.data !== undefined && (safeBroadcast.data === null || typeof safeBroadcast.data !== 'object' || Array.isArray(safeBroadcast.data))) {
+      return NextResponse.json({ success: false, error: 'Invalid broadcast data' }, { status: 400 });
+    }
+
+    if (broadcastData || idempotencyKey) {
+      const { error: broadcastError } = await db.from('broadcasts').insert({
+        id: crypto.randomUUID(),
+        opportunityId: safeBroadcast.opportunityId,
+        opportunityTitle: safeBroadcast.opportunityTitle,
+        opportunityType: safeBroadcast.opportunityType,
+        organizerName: safeBroadcast.organizerName,
+        organizerType: safeBroadcast.organizerType,
+        eventType,
+        title: safeBroadcast.title,
+        message: safeBroadcast.message,
+        actionUrl: typeof safeBroadcast.actionUrl === 'string' ? safeBroadcast.actionUrl : '/dashboard/opportunities',
+        targetType: safeBroadcast.targetType,
+        data: safeBroadcast.data,
+        idempotencyKey,
+        createdAt: new Date().toISOString(),
+      });
+      if (broadcastError) {
+        if (broadcastError.code === '23505' && idempotencyKey) {
+          return NextResponse.json({ success: false, error: 'Duplicate broadcast request' }, { status: 409 });
+        }
+        throw broadcastError;
+      }
+    }
+
+    const { sent, failed } = await sendInBatches(phones, templateName, params, cfg as { apiKey: string; baseUrl: string });
     return NextResponse.json({ success: true, eventType, templateName, totalPlayers: total, matched, sent, failed });
   } catch (err: unknown) {
     console.error('[broadcast-whatsapp] error:', err);

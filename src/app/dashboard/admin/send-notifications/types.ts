@@ -10,6 +10,7 @@ export interface MessageTemplate {
 
 export interface NotificationUser {
     id: string;
+    authUserId?: string | null;
     displayName: string | null;
     email: string | null;
     phone: string | null;

@@ -29,7 +29,7 @@ import {
     RefreshCw,
     ChevronDown,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase/config';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 import { toast } from 'sonner';
 import { Bar, BarChart, Line, LineChart, CartesianGrid, XAxis, Pie, PieChart } from 'recharts';
 
@@ -65,86 +65,27 @@ export default function MessageManagementPage() {
         try {
             setLoading(true);
 
-            // Get all messages
-            const { data: allMessagesData } = await supabase
-                .from('messages')
-                .select('*');
-            const allMessages = allMessagesData || [];
+            const timezoneOffsetMinutes = new Date().getTimezoneOffset();
+            const response = await authenticatedFetch(
+                `/api/admin/messages/statistics?timezoneOffsetMinutes=${timezoneOffsetMinutes}`,
+                {
+                    method: 'GET',
+                    cache: 'no-store',
+                }
+            );
 
-            // Calculate today's messages
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const todayMessages = allMessages.filter((msg: any) => {
-                const timestamp = msg.timestamp ? new Date(msg.timestamp) : null;
-                return timestamp && timestamp >= today;
-            });
-
-            // Count message types
-            let textCount = 0;
-            let voiceCount = 0;
-            let imageCount = 0;
-
-            allMessages.forEach((msg: any) => {
-                const type = msg.messageType || 'text';
-                if (type === 'voice') voiceCount++;
-                else if (type === 'image') imageCount++;
-                else textCount++;
-            });
-
-            // Get conversations
-            const { data: conversationsData } = await supabase
-                .from('conversations')
-                .select('id');
-            const conversationsCount = conversationsData?.length || 0;
-
-            // Get unique users
-            const uniqueUsers = new Set<string>();
-            allMessages.forEach((msg: any) => {
-                if (msg.senderId) uniqueUsers.add(msg.senderId);
-                if (msg.receiverId) uniqueUsers.add(msg.receiverId);
-            });
-
-            setStats({
-                totalMessages: allMessages.length,
-                todayMessages: todayMessages.length,
-                activeConversations: conversationsCount,
-                totalUsers: uniqueUsers.size,
-                textMessages: textCount,
-                voiceMessages: voiceCount,
-                imageMessages: imageCount,
-            });
-
-            // Calculate daily messages for last 7 days
-            const last7Days = [];
-            const dayNames = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
-
-            for (let i = 6; i >= 0; i--) {
-                const date = new Date();
-                date.setDate(date.getDate() - i);
-                date.setHours(0, 0, 0, 0);
-                const nextDate = new Date(date);
-                nextDate.setDate(nextDate.getDate() + 1);
-
-                const count = allMessages.filter((msg: any) => {
-                    const timestamp = msg.timestamp ? new Date(msg.timestamp) : null;
-                    return timestamp && timestamp >= date && timestamp < nextDate;
-                }).length;
-
-                const dayName = i === 0 ? 'اليوم' : i === 1 ? 'أمس' : dayNames[date.getDay()];
-                last7Days.push({
-                    day: dayName,
-                    messages: count,
-                });
+            if (!response.ok) {
+                throw new Error(`Failed to load statistics (${response.status})`);
             }
-            setDailyMessages(last7Days);
 
-            // Message types for pie chart
-            setMessageTypes([
-                { name: 'نصية', value: textCount, fill: 'var(--color-text)' },
-                { name: 'صوتية', value: voiceCount, fill: 'var(--color-voice)' },
-                { name: 'صور', value: imageCount, fill: 'var(--color-image)' },
-            ]);
+            const payload = await response.json();
+            if (!payload?.success || !payload?.data) {
+                throw new Error(payload?.error || 'Invalid statistics response');
+            }
 
+            setStats(payload.data.stats);
+            setDailyMessages(payload.data.dailyMessages || []);
+            setMessageTypes(payload.data.messageTypes || []);
             toast.success('تم تحميل الإحصائيات');
         } catch (error) {
             console.error('Error loading statistics:', error);

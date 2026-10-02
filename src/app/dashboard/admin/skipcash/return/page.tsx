@@ -1,5 +1,6 @@
 'use client';
 
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,7 +11,7 @@ export default function SkipCashReturnPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-    const [invoiceId, setInvoiceId] = useState<string | null>(null);
+    const [canonicalPaymentId, setCanonicalPaymentId] = useState<string | null>(null);
     const [message, setMessage] = useState<string>('جاري التحقق من الدفع...');
     const [details, setDetails] = useState<any>(null);
 
@@ -28,7 +29,7 @@ export default function SkipCashReturnPage() {
             }
 
             try {
-                const res = await fetch('/api/skipcash/verify-payment', {
+                const res = await authenticatedFetch('/api/skipcash/verify-payment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -41,9 +42,9 @@ export default function SkipCashReturnPage() {
 
                 if (data.success) {
                     setStatus('success');
-                    setMessage('تم الدفع والتحقق بنجاح! تم إصدار الفاتورة.');
-                    setInvoiceId(data.invoiceId);
-                    setDetails(data.data);
+                    setMessage('تم الدفع والتحقق وتفعيل الاشتراك بنجاح.');
+                    setCanonicalPaymentId(data.canonicalPaymentId || null);
+                    setDetails(data.activation || null);
                 } else {
                     setStatus('error');
                     setMessage('فشل التحقق: ' + (data.message || 'Unknown error'));
@@ -80,16 +81,12 @@ export default function SkipCashReturnPage() {
                     {status === 'success' && details && (
                         <div className="bg-green-50 p-4 rounded-lg border border-green-100 text-sm space-y-2">
                             <div className="flex justify-between">
-                                <span className="text-gray-600">رقم الفاتورة:</span>
-                                <span className="font-bold font-mono">{invoiceId}</span>
+                                <span className="text-gray-600">معرف الدفع:</span>
+                                <span className="font-bold font-mono text-xs">{canonicalPaymentId}</span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-gray-600">المبلغ:</span>
-                                <span className="font-bold">{details.amount} {details.currency}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">المرجع:</span>
-                                <span className="font-mono text-xs">{details.paymentId}</span>
+                                <span className="text-gray-600">اللاعبون المفعّلون:</span>
+                                <span className="font-bold">{details.activatedPlayerIds?.length || 0}</span>
                             </div>
                         </div>
                     )}
@@ -98,10 +95,10 @@ export default function SkipCashReturnPage() {
                         {status === 'success' && (
                             <Button
                                 className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                                onClick={() => router.push('/dashboard/admin/invoices')}
+                                onClick={() => router.push('/dashboard/admin/payments-v2')}
                             >
                                 <FileText className="w-4 h-4 ml-2" />
-                                عرض الفواتير
+                                عرض المدفوعات
                             </Button>
                         )}
 

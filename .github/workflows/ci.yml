@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, perf/phase-6-foundation ]
   pull_request:
     branches: [ main, master ]
 
@@ -16,14 +16,15 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint --silent || true
+      - name: Lint (report existing debt)
+        continue-on-error: true
+        run: npm run lint --silent
 
       - name: Type check
         run: npm run type-check --silent

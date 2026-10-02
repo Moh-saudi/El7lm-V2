@@ -1,24 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { authorizeAdmin } from '@/lib/api/admin-auth';
-
-export const dynamic = 'force-dynamic';
+import { authorizeAdmin, withPrivateResponseHeaders } from '@/lib/api/admin-auth';
 
 export async function GET(request: NextRequest) {
-    const authorization = await authorizeAdmin(request);
-    if (!authorization.ok) return authorization.response;
-    const supa = getSupabaseAdmin();
-    const tables = ['players', 'clubs', 'academies', 'trainers', 'tournament_players'];
-    const info: Record<string, any> = {};
+  const authorization = await authorizeAdmin(request);
+  if (!authorization.ok) return authorization.response;
 
-    for (const t of tables) {
-        const { data, error } = await supa.from(t).select('*').limit(1);
-        info[t] = {
-            error: error?.message || null,
-            columns: data?.[0] ? Object.keys(data[0]) : [],
-            sample: data?.[0] || null,
-        };
-    }
+  return withPrivateResponseHeaders(
+    NextResponse.json({ success: false, error: 'Debug endpoint retired.' }, { status: 410 }),
+  );
+}
 
-    return NextResponse.json(info);
+export async function POST(request: NextRequest) {
+  return GET(request);
 }

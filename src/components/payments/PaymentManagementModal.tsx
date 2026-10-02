@@ -144,10 +144,10 @@ export default function PaymentManagementModal({
         console.error("Error fetching old payments", e);
       }
 
-      // 2. Fetch from 'tournamentRegistrations' (Group/New)
+      // 2. Fetch group registrations from the canonical table
       try {
         const { data: newData } = await supabase
-          .from('tournamentRegistrations')
+          .from('tournament_registrations')
           .select('*')
           .eq('tournamentId', tournament.id);
 

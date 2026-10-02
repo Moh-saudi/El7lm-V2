@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 import { getGeideaMode, getGeideaEnvConfig } from '@/lib/geidea/config';
-import { processGeideaOrderResponse } from '@/lib/geidea/callback-handler';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,11 +12,13 @@ export const revalidate = 0;
  * جلب المعاملات من Geidea باستخدام merchantReferenceId
  */
 export async function POST(request: NextRequest) {
+  const authorization = await authorizeAdmin(request, 'read:financials');
+  if (!authorization.ok) return authorization.response;
   try {
     const body = await request.json();
     const merchantReferenceIds = body.merchantReferenceIds || [];
     const limit = body.limit || 10;
-    let shouldSave = body.save === true;
+    const shouldSave = false;
 
     const mode = await getGeideaMode();
     const config = getGeideaEnvConfig(mode);
@@ -35,20 +36,11 @@ export async function POST(request: NextRequest) {
     let finalMerchantReferenceIds: string[] = [];
 
     if (merchantReferenceIds.length === 0) {
-      const db = getSupabaseAdmin();
-      const { data: payments } = await db
-        .from('geidea_payments')
-        .select('merchantReferenceId, ourMerchantReferenceId')
-        .order('createdAt', { ascending: false })
-        .limit(limit);
-
-      const seenIds = new Set<string>();
-      (payments ?? []).forEach((row: Record<string, unknown>) => {
-        const merchantRefId = String(row.merchantReferenceId || row.ourMerchantReferenceId || '');
-        if (merchantRefId && merchantRefId.startsWith('EL7LM') && !seenIds.has(merchantRefId)) {
-          finalMerchantReferenceIds.push(merchantRefId);
-          seenIds.add(merchantRefId);
-        }
+      return NextResponse.json({
+        success: true,
+        message: 'merchantReferenceIds is required for this read-only diagnostic endpoint',
+        results: { total: 0, success: 0, failed: 0, notFound: 0, errors: [], fetched: [] },
+        saved: false,
       });
     } else {
       finalMerchantReferenceIds = merchantReferenceIds.slice(0, limit);
@@ -104,29 +96,7 @@ export async function POST(request: NextRequest) {
               orderData: data.order,
             });
 
-            if (shouldSave) {
-              try {
-                await processGeideaOrderResponse(data);
-                results.success++;
-                console.log(`✅ [Fetch All Orders] Fetched and saved: ${merchantRefId}`);
-              } catch (saveError: unknown) {
-                const errorMessage = saveError instanceof Error ? saveError.message : String(saveError);
-                const isQuotaError = errorMessage.includes('RESOURCE_EXHAUSTED') || errorMessage.includes('Quota exceeded');
-
-                if (isQuotaError) {
-                  console.warn(`⚠️ [Fetch All Orders] Quota exceeded, stopping save operations`);
-                  results.errors.push('تم تجاوز الحصة المسموحة. تم إيقاف الحفظ.');
-                  shouldSave = false;
-                } else {
-                  console.error(`❌ [Fetch All Orders] Failed to save ${merchantRefId}:`, saveError);
-                  results.failed++;
-                  results.errors.push(`${merchantRefId}: Failed to save`);
-                }
-              }
-            } else {
-              results.success++;
-              console.log(`✅ [Fetch All Orders] Fetched (no save): ${merchantRefId}`);
-            }
+            results.success++;
           } else {
             results.notFound++;
           }

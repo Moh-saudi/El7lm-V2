@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { detectCountryFromPhone } from '@/lib/constants/countries';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
-import { buildSenderInfo, normalizeNotificationPayload } from '@/lib/notifications/sender-utils';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 import {
   AlertCircle,
   Bell,
@@ -173,7 +173,7 @@ export default function SendNotificationsPage() {
       try {
         const { data, error } = await supabase
           .from('users')
-          .select('id, display_name, full_name, name, email, phone, phone_number, whatsapp, account_type, is_active, avatar, photo_url, created_at')
+          .select('id, uid, display_name, full_name, name, email, phone, phone_number, whatsapp, account_type, is_active, avatar, photo_url, created_at')
           .eq('is_active', true);
 
         if (error) {
@@ -190,6 +190,7 @@ export default function SendNotificationsPage() {
           const createdAt: Date | null = row.created_at ? new Date(row.created_at) : null;
           return {
             id: row.id,
+            authUserId: row.uid || null,
             displayName,
             email,
             phone,
@@ -242,11 +243,12 @@ export default function SendNotificationsPage() {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('id, display_name, full_name, name, email, phone, phone_number, whatsapp, account_type, is_active, avatar, photo_url, created_at')
+        .select('id, uid, display_name, full_name, name, email, phone, phone_number, whatsapp, account_type, is_active, avatar, photo_url, created_at')
         .eq('is_active', true);
       if (error) throw error;
       const usersData = (data || []).map(row => ({
         id: row.id,
+        authUserId: row.uid || null,
         displayName: row.display_name || row.full_name || row.name || '',
         email: row.email || '',
         phone: row.phone || row.phone_number || row.whatsapp || '',
@@ -412,64 +414,46 @@ export default function SendNotificationsPage() {
     setLoading(true);
     try {
       console.log('✅ بدء عملية الإرسال...');
-      const senderInfo = buildSenderInfo({
-        user,
-        fallbackName: user?.user_metadata?.full_name || 'الإدارة',
-        fallbackAccountType: 'admin'
-      });
-
       const now = new Date().toISOString();
-      const notificationData = {
-        title: form.title,
-        message: form.message,
-        type: form.type,
-        priority: form.priority,
-        is_read: false,
-        scope: 'system',
-        created_at: now,
-        updated_at: now,
-        metadata: {
-          senderId: senderInfo.senderId || user?.id,
-          senderName: senderInfo.senderName || 'الإدارة',
-          senderAccountType: senderInfo.senderAccountType || 'admin',
-          senderAvatar: senderInfo.senderAvatar,
-          senderBucket: senderInfo.senderBucket,
-          targetType: form.targetType,
-          accountTypes: form.accountTypes,
-          sendMethods: form.sendMethods,
-          scheduledFor: form.scheduleType === 'scheduled'
-            ? new Date(`${form.scheduledDate}T${form.scheduledTime}`)
-            : null
-        }
-      };
+      const targetsWithoutAuth = targetUsers.filter((targetUser) => !targetUser.authUserId);
+      if (targetsWithoutAuth.length > 0) {
+        throw new Error(`تعذر إرسال الإشعار: ${targetsWithoutAuth.length} حساب بدون هوية دخول مرتبطة`);
+      }
 
-      // حفظ الإشعارات في Supabase مع استبدال المتغيرات لكل مستخدم
-      const notificationRows = targetUsers.map((targetUser) => {
-        const personalizedMessage = replaceMessageVariables(form.message, targetUser);
-        const personalizedTitle = replaceMessageVariables(form.title, targetUser);
+      const targets = targetUsers.map((targetUser) => ({
+        userId: targetUser.authUserId!,
+        userEmail: targetUser.email,
+        userPhone: targetUser.phone,
+        title: replaceMessageVariables(form.title, targetUser),
+        message: replaceMessageVariables(form.message, targetUser),
+      }));
 
-        const notification = normalizeNotificationPayload({
-          ...notificationData,
-          title: personalizedTitle,
-          message: personalizedMessage,
-          userId: targetUser.id,
-          userEmail: targetUser.email,
-          userPhone: targetUser.phone
-        }, senderInfo);
-        return {
-          ...notification,
-          user_id: targetUser.id,
-          user_email: targetUser.email,
-          user_phone: targetUser.phone,
-        };
+      const response = await authenticatedFetch('/api/admin/notifications/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: form.type,
+          priority: form.priority,
+          metadata: {
+            targetType: form.targetType,
+            accountTypes: form.accountTypes,
+            sendMethods: form.sendMethods,
+            scheduledFor: form.scheduleType === 'scheduled'
+              ? new Date(`${form.scheduledDate}T${form.scheduledTime}`).toISOString()
+              : null,
+            requestedAt: now,
+          },
+          targets,
+        }),
       });
 
-      const { error: insertError } = await supabase
-        .from('notifications')
-        .insert(notificationRows);
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || `فشل حفظ الإشعارات (${response.status})`);
+      }
 
-      if (insertError) throw insertError;
-      console.log(`✅ تم حفظ ${notificationRows.length} إشعار في Supabase`);
+      const notificationRows = targets;
+      console.log(`✅ تم حفظ ${result.inserted ?? notificationRows.length} إشعار عبر المسار الإداري الآمن`);
 
       // WhatsApp/SMS bulk send via BabaService removed — use AI Messenger with ChatAman templates
 

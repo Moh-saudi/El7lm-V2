@@ -33,7 +33,6 @@ import {
   applyToOpportunity,
   incrementViewCount,
 } from '@/lib/firebase/opportunities';
-import { notifyNewApplication } from '@/lib/opportunities/notifications';
 import { getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 import { OPPORTUNITY_TYPES } from '@/lib/opportunities/config';
 import { Opportunity, OpportunityType } from '@/types/opportunities';
@@ -501,13 +500,6 @@ function ExploreView({
         organizerType:    selectedOpp.organizerType,
         message:          applyMessage || undefined,
       });
-      await notifyNewApplication(
-        selectedOpp.organizerId,
-        selectedOpp.organizerType,
-        p.name || p.full_name || userData?.full_name || copy.defaultPlayer,
-        selectedOpp.title,
-        selectedOpp.id
-      );
       toast.success(copy.applySuccess);
       setShowApplyModal(false);
       // Optimistically increment local count

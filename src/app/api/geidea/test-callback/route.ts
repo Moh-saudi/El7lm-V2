@@ -26,6 +26,10 @@ const CORS_HEADERS = {
  * يمكن استخدام هذا الـ endpoint لاختبار Callback من المتصفح
  */
 export async function POST(request: NextRequest) {
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   try {
     const payload = await request.json();
     
@@ -81,6 +85,10 @@ export async function POST(request: NextRequest) {
  * GET - معلومات عن endpoint الاختبار
  */
 export async function GET() {
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   return NextResponse.json(
     {
       message: 'Geidea Test Callback Endpoint',
@@ -118,6 +126,10 @@ export async function GET() {
  * OPTIONS - للـ CORS preflight
  */
 export async function OPTIONS() {
+  if (process.env.NODE_ENV !== 'development') {
+    return new NextResponse(null, { status: 404 });
+  }
+
   return new NextResponse(null, {
     status: 200,
     headers: CORS_HEADERS,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { authorizeAdmin } from '@/lib/api/admin-auth';
 import { GeideaMode, getGeideaEnvConfig, getGeideaMode } from '@/lib/geidea/config';
-import { processGeideaOrderResponse } from '@/lib/geidea/callback-handler';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,9 +21,11 @@ export const revalidate = 0;
  * }
  */
 export async function POST(request: NextRequest) {
+  const authorization = await authorizeAdmin(request, 'read:financials');
+  if (!authorization.ok) return authorization.response;
     try {
         const body = await request.json();
-        const { fromDate, toDate, status, page = 1, limit = 10, save = false } = body;
+        const { fromDate, toDate, status, page = 1, limit = 10 } = body;
 
         // الحصول على إعدادات Geidea
         const mode = await getGeideaMode();
@@ -121,16 +123,6 @@ export async function POST(request: NextRequest) {
 
             results.orders.push(orderData);
 
-            // حفظ في Firestore إذا طلب ذلك
-            if (save) {
-                try {
-                    await processGeideaOrderResponse({ order }); // Wrap in object as expected by handler
-                    results.saved++;
-                } catch (error) {
-                    console.error(`⚠️ [Geidea Search] Failed to save order ${order.orderId}:`, error);
-                    results.failed++;
-                }
-            }
         }
 
         return NextResponse.json({

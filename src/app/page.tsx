@@ -8,7 +8,7 @@ import { getOppsSection, OppsSectionData } from '@/lib/content/opps-section-serv
 import { getStoreSection, StoreSectionData } from '@/lib/content/store-section-service';
 import { supabase } from '@/lib/supabase/config';
 import { createClient } from '@supabase/supabase-js';
-import { getExploreOpportunities } from '@/lib/firebase/opportunities';
+import { getExploreOpportunities } from '@/lib/supabase/opportunities';
 import { Opportunity } from '@/types/opportunities';
 
 import { useRouter } from 'next/navigation';
@@ -141,11 +141,21 @@ export default function Home() {
 
     const fetchData = async () => {
       try {
-        const { data: inventoryData } = await supabase
-          .from('inventory')
-          .select('*')
-          .order('createdAt', { ascending: false })
-          .limit(24);
+        const [
+          { data: inventoryData },
+          oppsConfig,
+          opps,
+          playersConfig,
+        ] = await Promise.all([
+          supabase
+            .from('inventory')
+            .select('*')
+            .order('createdAt', { ascending: false })
+            .limit(24),
+          getOppsSection(),
+          getExploreOpportunities(),
+          import('@/lib/content/players-section-service').then(({ getPlayersSection }) => getPlayersSection()),
+        ]);
 
         const normalizedProducts = (inventoryData || [])
           .map((item: any): LandingStoreProduct | null => {
@@ -185,10 +195,7 @@ export default function Home() {
 
         setStoreProducts(normalizedProducts);
 
-        const oppsConfig = await getOppsSection();
         setOppsSection(oppsConfig);
-
-        const opps = await getExploreOpportunities();
         if (opps && oppsConfig.selectedOpportunityIds && oppsConfig.selectedOpportunityIds.length > 0) {
           const selectedOpps = opps.filter(o => oppsConfig.selectedOpportunityIds!.includes(o.id));
           setOpportunities(selectedOpps);
@@ -196,14 +203,16 @@ export default function Home() {
           setOpportunities(opps.slice(0, 4));
         }
 
-        const { getPlayersSection } = await import('@/lib/content/players-section-service');
-        const playersConfig = await getPlayersSection();
         setPlayersSection(playersConfig);
 
         if (playersConfig.selectedPlayerIds && playersConfig.selectedPlayerIds.length > 0) {
-          const { supabase } = await import('@/lib/supabase/config');
-          const { data: playersData } = await supabase.from('players').select('*').in('id', playersConfig.selectedPlayerIds);
-          const { data: usersData } = await supabase.from('users').select('*').in('id', playersConfig.selectedPlayerIds);
+          const [
+            { data: playersData },
+            { data: usersData },
+          ] = await Promise.all([
+            supabase.from('players').select('*').in('id', playersConfig.selectedPlayerIds),
+            supabase.from('users').select('*').in('id', playersConfig.selectedPlayerIds),
+          ]);
 
           const playersMap = new Map<string, any>();
           (playersData || []).forEach(p => { if (!p.isDeleted) playersMap.set(p.id, p); });
@@ -653,6 +662,8 @@ export default function Home() {
                       src={p.logoUrl}
                       alt={p.name}
                       className="partner-logo"
+                      loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     <span className="partner-name-text">{p.name}</span>
@@ -791,7 +802,7 @@ export default function Home() {
                     <div style={{height:'6px', width:'100%', backgroundColor: '#4f46e5'}} />
                     {opp.coverImage ? (
                       <div style={{height:'220px',overflow:'hidden',background:'#eef2ff'}}>
-                        <img src={opp.coverImage} alt={opp.title} style={{width:'100%',height:'100%',objectFit:'cover'}} />
+                        <img src={opp.coverImage} alt={opp.title} loading="lazy" decoding="async" style={{width:'100%',height:'100%',objectFit:'cover'}} />
                       </div>
                     ) : opp.promoVideo ? (
                       <div style={{height:'220px',overflow:'hidden',background:'#020617'}}>
@@ -884,6 +895,8 @@ export default function Home() {
                         <img
                           src={ad.imageUrl}
                           alt={ad.title}
+                          loading="lazy"
+                          decoding="async"
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                         {/* Gradient Overlay */}
@@ -1744,7 +1757,7 @@ export default function Home() {
                             }}
                           >
                             {productImage ? (
-                              <img src={productImage} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <img src={productImage} alt={product.name} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
                               <ShoppingBag size={28} color={dark ? '#94a3b8' : '#64748b'} />
                             )}
@@ -1846,7 +1859,7 @@ export default function Home() {
                 <div style={{position:'relative',background:'#000',borderRadius:'1rem',border:'1px solid rgba(70,70,78,.3)',overflow:'hidden',aspectRatio:'16/9'}}>
                   {/* Video BG */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={vBg} alt="AI Video Analysis" style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity: dark ? .7 : .4}}/>
+                  <img src={vBg} alt="AI Video Analysis" loading="lazy" decoding="async" style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity: dark ? .7 : .4}}/>
                   <div style={{position:'absolute',inset:0,background: theme.overlay}}></div>
                   {/* Tracking Badge */}
                   <div className="ap gp" style={{position:'absolute',top:'2.5rem',left:'2.5rem',padding:'1rem',border:`1px solid ${theme.primary}`,borderRadius:'8px', background: theme.panelBg, backdropFilter: 'blur(10px)'}}>
@@ -1924,7 +1937,7 @@ export default function Home() {
                     border: `1px solid ${theme.border}`,
                     boxShadow: `0 15px 35px ${theme.glow}`
                   }}>
-                    <img src="/images/team/founder.jpg" alt="Founder" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src="/images/team/founder.jpg" alt="Founder" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.4), transparent)' }}></div>
                   </div>
                 </div>
@@ -2026,7 +2039,7 @@ export default function Home() {
                         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
                           <div style={{ width:44, height:44, borderRadius:12, overflow:'hidden', background: dark?'rgba(255,255,255,0.06)':'#e2e8f0', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22 }}>
                             {t.logo_url
-                              ? <img src={t.logo_url} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />
+                              ? <img src={t.logo_url} alt="" loading="lazy" decoding="async" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />
                               : '🏆'}
                           </div>
                           <div style={{ flex:1, minWidth:0 }}>
@@ -2092,7 +2105,7 @@ export default function Home() {
                 }}
                   onMouseEnter={e => { const img = e.currentTarget.querySelector('img') as HTMLImageElement; if (img) img.style.transform = 'scale(1.05)' }}
                   onMouseLeave={e => { const img = e.currentTarget.querySelector('img') as HTMLImageElement; if (img) img.style.transform = 'scale(1)' }}>
-                  <img src={tImgs[i] || TOUR_IMGS[i]} alt={tour.title} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.6s' }} />
+                  <img src={tImgs[i] || TOUR_IMGS[i]} alt={tour.title} loading="lazy" decoding="async" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.6s' }} />
                   <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)', opacity: 0.8 }}></div>
                   <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '2rem', textAlign: isRTL ? 'right' : 'left' }}>
                     <h4 className="hl" style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', marginBottom: '.75rem' }}>{tour.title}</h4>
@@ -2177,7 +2190,7 @@ export default function Home() {
                           onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = theme.primary; el.style.transform = 'translateY(-5px)'; el.style.boxShadow = `0 15px 35px ${theme.glow}`; const img = el.querySelector('.pi') as HTMLImageElement; if (img) img.style.transform = 'scale(1.08)'; }}
                           onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.borderColor = theme.border; el.style.transform = 'none'; el.style.boxShadow = '0 10px 25px rgba(0,0,0,0.05)'; const img = el.querySelector('.pi') as HTMLImageElement; if (img) img.style.transform = 'scale(1)'; }}>
                           <div style={{ height: '14rem', position: 'relative', overflow: 'hidden' }}>
-                            <img className="pi tc7" src={currentImage} alt={name || 'Player'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img className="pi tc7" src={currentImage} alt={name || 'Player'} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             {badge && <div className="hl" style={{ position: 'absolute', top: '1rem', right: isRTL ? '1rem' : 'auto', left: isRTL ? 'auto' : '1rem', background: theme.primary, color: theme.btnText, padding: '.3rem .8rem', fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', borderRadius: '6px', maxWidth: '100px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{badge}</div>}
                           </div>
                           <div style={{ padding: '1.25rem' }}>

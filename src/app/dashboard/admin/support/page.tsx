@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/config';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { toast } from 'sonner';
 import { openWhatsAppShare } from '@/lib/utils/whatsapp-share';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 // Components
 import { SupportStats } from './_components/SupportStats';
@@ -194,10 +195,12 @@ const AdminSupportPage: React.FC = () => {
 
   const markAsRead = async (conversationId: string) => {
     try {
-      await supabase
-        .from('support_conversations')
-        .update({ unreadCount: 0 })
-        .eq('id', conversationId);
+      const response = await authenticatedFetch('/api/admin/support', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'mark_read', conversationId }),
+      });
+      if (!response.ok) throw new Error('Failed to mark support conversation read');
     } catch (error) {
       console.error('Error marking as read:', error);
     }
@@ -206,10 +209,16 @@ const AdminSupportPage: React.FC = () => {
   const updateStatus = async (status: string) => {
     if (!selectedConversation) return;
     try {
-      await supabase
-        .from('support_conversations')
-        .update({ status, updatedAt: new Date().toISOString() })
-        .eq('id', selectedConversation.id);
+      const response = await authenticatedFetch('/api/admin/support', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_status',
+          conversationId: selectedConversation.id,
+          status,
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to update support status');
       toast.success(`تم تغيير الحالة إلى ${status}`);
     } catch (error) {
       toast.error('فشل تحديث الحالة');
@@ -221,29 +230,19 @@ const AdminSupportPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const message = {
-        id: crypto.randomUUID(),
-        conversationId: selectedConversation.id,
-        senderId: user.id,
-        senderName: 'الدعم الفني',
-        senderType: 'admin',
-        message: newMessage.trim(),
-        timestamp: new Date().toISOString(),
-        isRead: false
-      };
-
-      await supabase.from('support_messages').insert(message);
-
-      // Update conversation
-      await supabase
-        .from('support_conversations')
-        .update({
-          lastMessage: newMessage.trim(),
-          lastMessageTime: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          status: selectedConversation.status === 'open' ? 'in_progress' : selectedConversation.status
-        })
-        .eq('id', selectedConversation.id);
+      const response = await authenticatedFetch('/api/admin/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send_message',
+          conversationId: selectedConversation.id,
+          message: newMessage.trim(),
+        }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to send support message');
+      }
 
       setNewMessage('');
     } catch (error) {

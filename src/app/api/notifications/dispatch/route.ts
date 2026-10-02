@@ -6,6 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeUser } from '@/lib/api/user-auth';
+import { sendChatAmanTemplate } from '@/lib/server/chataman-provider';
+import { resolveServerAccountIdentity } from '@/lib/server/account-identity';
 
 export type NotificationEventType =
   | 'profile_view' | 'video_view' | 'video_like' | 'video_comment'
@@ -15,10 +17,15 @@ interface DispatchPayload {
   eventType: NotificationEventType;
   targetUserId: string;
   actorId: string;
-  actorName: string;
-  actorAccountType: string;
+  actorName?: string;
+  actorAccountType?: string;
   metadata?: { videoId?: string; commentText?: string; messagePreview?: string; source?: string };
 }
+
+const EVENT_TYPES = new Set<NotificationEventType>([
+  'profile_view', 'video_view', 'video_like', 'video_comment',
+  'video_share', 'message_received', 'follow',
+]);
 
 const ACCOUNT_LABELS: Record<string, string> = {
   player: 'لاعب', club: 'نادي', academy: 'أكاديمية',
@@ -26,8 +33,9 @@ const ACCOUNT_LABELS: Record<string, string> = {
 };
 
 function buildInAppContent(payload: DispatchPayload) {
-  const actorLabel = ACCOUNT_LABELS[payload.actorAccountType] || payload.actorAccountType;
-  const actor = payload.actorName;
+  const actorType = payload.actorAccountType || 'user';
+  const actorLabel = ACCOUNT_LABELS[actorType] || actorType;
+  const actor = payload.actorName || 'مستخدم';
 
   const map: Record<NotificationEventType, { title: string; message: string; emoji: string; priority: string }> = {
     profile_view:     { title: 'شخص مهتم بك! 👀', message: `${actorLabel} "${actor}" زار ملفك الشخصي`, emoji: '👀', priority: 'medium' },
@@ -44,50 +52,45 @@ function buildInAppContent(payload: DispatchPayload) {
 async function hasDuplicateRecent(
   targetUserId: string, actorId: string, eventType: string, windowMs: number
 ): Promise<boolean> {
-  try {
-    const db = getSupabaseAdmin();
-    const since = new Date(Date.now() - windowMs).toISOString();
-    const { data } = await db
-      .from('interaction_notifications')
-      .select('createdAt')
-      .eq('userId', targetUserId)
-      .eq('viewerId', actorId)
-      .eq('type', eventType)
-      .gt('createdAt', since)
-      .limit(1);
-    return (data?.length ?? 0) > 0;
-  } catch { return false; }
+  const db = getSupabaseAdmin();
+  const since = new Date(Date.now() - windowMs).toISOString();
+  const { data, error } = await db
+    .from('interaction_notifications')
+    .select('createdAt')
+    .eq('userId', targetUserId)
+    .eq('viewerId', actorId)
+    .eq('type', eventType)
+    .gt('createdAt', since)
+    .limit(1);
+  if (error) throw error;
+  return (data?.length ?? 0) > 0;
 }
 
 async function getPhoneForUser(userId: string): Promise<string | null> {
-  try {
-    const db = getSupabaseAdmin();
-    const { data } = await db.from('users').select('phone, phoneNumber').eq('id', userId).limit(1);
-    if (data?.length) {
-      const row = data[0] as Record<string, unknown>;
-      if (row.phone) return String(row.phone);
-      if (row.phoneNumber) return String(row.phoneNumber);
-    }
-    for (const col of ['players', 'clubs', 'academies', 'agents', 'trainers']) {
-      const { data: rows } = await db.from(col).select('phone, phoneNumber').eq('id', userId).limit(1);
-      if (rows?.length) {
-        const r = rows[0] as Record<string, unknown>;
-        if (r.phone) return String(r.phone);
-        if (r.phoneNumber) return String(r.phoneNumber);
-      }
-    }
-  } catch {}
+  const db = getSupabaseAdmin();
+
+  const users = await db.from('users').select('phone, phoneNumber').eq('id', userId).limit(1);
+  if (users.error) throw users.error;
+  if (users.data?.length) return String(users.data[0].phone ?? users.data[0].phoneNumber ?? '').trim() || null;
+
+  const players = await db.from('players').select('phone, phoneNumber').eq('id', userId).limit(1);
+  if (players.error) throw players.error;
+  if (players.data?.length) return String(players.data[0].phone ?? players.data[0].phoneNumber ?? '').trim() || null;
+
+  for (const table of ['clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'] as const) {
+    const { data, error } = await db.from(table).select('phone').eq('id', userId).limit(1);
+    if (error) throw error;
+    if (data?.length) return String(data[0].phone ?? '').trim() || null;
+  }
   return null;
 }
-
 async function getChatAmanConfig(db: ReturnType<typeof getSupabaseAdmin>): Promise<{ apiKey: string; baseUrl: string; isActive: boolean } | null> {
-  try {
-    const { data } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);
+    const { data, error } = await db.from('system_configs').select('*').eq('id', 'chataman_config').limit(1);
+    if (error) throw error;
     if (data?.length) {
       const d = data[0] as Record<string, unknown>;
       if (d.isActive && d.apiKey) return d as { apiKey: string; baseUrl: string; isActive: boolean };
     }
-  } catch {}
   return null;
 }
 
@@ -102,8 +105,8 @@ async function getTemplateConfig(db: ReturnType<typeof getSupabaseAdmin>): Promi
     follow: null,
   };
 
-  try {
-    const { data } = await db.from('system_configs').select('*').eq('id', 'notification_templates').limit(1);
+  const { data, error } = await db.from('system_configs').select('*').eq('id', 'notification_templates').limit(1);
+  if (error) throw error;
     if (data?.length) {
       const saved = data[0] as Record<string, unknown>;
       const merged = { ...defaults };
@@ -114,42 +117,29 @@ async function getTemplateConfig(db: ReturnType<typeof getSupabaseAdmin>): Promi
       }
       return merged;
     }
-  } catch {}
   return defaults;
 }
 
 async function sendWhatsAppTemplate(
   phone: string, templateName: string, bodyParams: string[],
-  config: { apiKey: string; baseUrl: string }, reqUrl: string,
+  config: { apiKey: string; baseUrl: string },
 ): Promise<boolean> {
-  try {
-    let cleaned = phone.replace(/\D/g, '');
-    if (cleaned.startsWith('01') && cleaned.length === 11) cleaned = `20${cleaned.substring(1)}`;
-    else if (cleaned.startsWith('05') && cleaned.length === 10) cleaned = `966${cleaned.substring(1)}`;
-    else if (cleaned.startsWith('0') && cleaned.length >= 9) cleaned = cleaned.substring(1);
-    const formattedPhone = `+${cleaned}`;
+  let cleaned = phone.replace(/\D/g, '');
+  if (cleaned.startsWith('01') && cleaned.length === 11) cleaned = `20${cleaned.substring(1)}`;
+  else if (cleaned.startsWith('05') && cleaned.length === 10) cleaned = `966${cleaned.substring(1)}`;
+  else if (cleaned.startsWith('0') && cleaned.length >= 9) cleaned = cleaned.substring(1);
+  if (cleaned.length < 8) return false;
 
-    const whatsappPayload = {
-      phone: formattedPhone,
-      template: {
-        name: templateName, language: { code: 'ar' },
-        components: bodyParams.length > 0 ? [{ type: 'body', parameters: bodyParams.map(p => ({ type: 'text', text: p })) }] : [],
-      },
-    };
-
-    const origin = new URL(reqUrl).origin;
-    const response = await fetch(`${origin}/api/chataman/send-template`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payload: whatsappPayload, apiKey: config.apiKey.trim(), baseUrl: config.baseUrl.trim() }),
-    });
-
-    const data = await response.json().catch(() => ({}));
-    return !!data.success;
-  } catch (e) {
-    console.error('[dispatch] sendWhatsAppTemplate error:', e);
-    return false;
-  }
+  return sendChatAmanTemplate({
+    phone: `+${cleaned}`,
+    template: {
+      name: templateName,
+      language: { code: 'ar' },
+      components: bodyParams.length > 0
+        ? [{ type: 'body', parameters: bodyParams.map(p => ({ type: 'text', text: p })) }]
+        : [],
+    },
+  }, config);
 }
 
 export async function POST(req: NextRequest) {
@@ -157,15 +147,29 @@ export async function POST(req: NextRequest) {
   if (!authorization.ok) return authorization.response;
   try {
     const body: DispatchPayload = await req.json();
-    const { eventType, targetUserId, actorId, actorName, actorAccountType, metadata } = body;
+    const { eventType, targetUserId, metadata } = body;
 
-    if (!eventType || !targetUserId || !actorId) {
+    if (!eventType || !targetUserId) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
-    if (actorId !== authorization.user.id) {
-      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    if (!EVENT_TYPES.has(eventType)) {
+      return NextResponse.json({ success: false, error: 'Unsupported event type' }, { status: 400 });
     }
-    if (targetUserId === actorId) {
+    const target = await resolveServerAccountIdentity(targetUserId);
+    if (!target) {
+      return NextResponse.json({ success: false, error: 'Target account has no authenticated identity' }, { status: 404 });
+    }
+
+    const actor = await resolveServerAccountIdentity(authorization.user.id);
+    if (!actor) {
+      return NextResponse.json({ success: false, error: 'Authenticated account identity not found' }, { status: 403 });
+    }
+    const actorId = actor.accountId;
+    const actorName = actor.name;
+    const actorAccountType = actor.accountType;
+    const trustedPayload: DispatchPayload = { ...body, actorId, actorName, actorAccountType };
+
+    if (target.authUid === authorization.user.id) {
       return NextResponse.json({ success: true, skipped: 'self' });
     }
 
@@ -173,47 +177,57 @@ export async function POST(req: NextRequest) {
       eventType === 'video_view'   ? 24 * 60 * 60 * 1000 :
       eventType === 'profile_view' ?  1 * 60 * 60 * 1000 : 0;
 
-    if (dedupWindow > 0 && await hasDuplicateRecent(targetUserId, actorId, eventType, dedupWindow)) {
+    if (dedupWindow > 0 && await hasDuplicateRecent(target.authUid, authorization.user.id, eventType, dedupWindow)) {
       return NextResponse.json({ success: true, skipped: 'duplicate' });
     }
 
-    const content = buildInAppContent(body);
+    const content = buildInAppContent(trustedPayload);
     const db = getSupabaseAdmin();
 
     // 1. Create in-app notification
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const now = new Date().toISOString();
-    await db.from('interaction_notifications').insert({
+    const { error: notificationError } = await db.from('interaction_notifications').insert({
       id: crypto.randomUUID(),
-      userId: targetUserId, viewerId: actorId, viewerName: actorName,
+      userId: target.authUid, profileOwnerId: target.authUid,
+      viewerId: authorization.user.id, viewerName: actorName,
       viewerType: ACCOUNT_LABELS[actorAccountType] || actorAccountType,
       viewerAccountType: actorAccountType,
       type: eventType, title: content.title, message: content.message,
       emoji: content.emoji, isRead: false, priority: content.priority,
-      metadata: metadata || {}, createdAt: now, expiresAt,
+      metadata: { ...(metadata || {}), targetAccountId: target.accountId, actorAccountId: actorId }, createdAt: now, expiresAt,
     });
+    if (notificationError) {
+      return NextResponse.json({ success: false, error: 'Failed to create notification' }, { status: 500 });
+    }
 
     // 2. WhatsApp template
     let whatsappResult: 'sent' | 'skipped' | 'failed' = 'skipped';
     const [chatAmanConfig, templateConfig, phone] = await Promise.all([
-      getChatAmanConfig(db), getTemplateConfig(db), getPhoneForUser(targetUserId),
+      getChatAmanConfig(db), getTemplateConfig(db), getPhoneForUser(target.accountId),
     ]);
 
     if (chatAmanConfig && phone) {
       const tmpl = templateConfig[eventType];
       if (tmpl) {
-        // Get recipient name
-        let recipientName = 'اللاعب';
-        try {
-          for (const col of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers']) {
-            const { data } = await db.from(col).select('full_name, name, displayName').eq('id', targetUserId).limit(1);
-            if (data?.length) {
-              const r = data[0] as Record<string, unknown>;
-              const name = String(r.full_name ?? r.displayName ?? r.name ?? '');
-              if (name) { recipientName = name; break; }
-            }
-          }
-        } catch {}
+        let recipientName = 'مستخدم';
+        const nameLookups = [
+          await db.from('users').select('full_name, name, displayName').eq('id', target.accountId).limit(1),
+          await db.from('players').select('full_name, name').eq('id', target.accountId).limit(1),
+          await db.from('clubs').select('full_name, name').eq('id', target.accountId).limit(1),
+          await db.from('academies').select('full_name, name').eq('id', target.accountId).limit(1),
+          await db.from('agents').select('full_name').eq('id', target.accountId).limit(1),
+          await db.from('trainers').select('full_name').eq('id', target.accountId).limit(1),
+          await db.from('marketers').select('full_name').eq('id', target.accountId).limit(1),
+          await db.from('admins').select('name').eq('id', target.accountId).limit(1),
+        ];
+        for (const result of nameLookups) {
+          if (result.error) throw result.error;
+          if (!result.data?.length) continue;
+          const row = result.data[0] as unknown as Record<string, unknown>;
+          const name = String(row.full_name ?? row.displayName ?? row.name ?? '').trim();
+          if (name) { recipientName = name; break; }
+        }
 
         const paramMap: Record<string, string> = {
           recipientName, actorName,
@@ -221,7 +235,7 @@ export async function POST(req: NextRequest) {
           commentText: metadata?.commentText?.substring(0, 40) || '',
         };
         const bodyParams = tmpl.params.map(p => paramMap[p] || p);
-        const ok = await sendWhatsAppTemplate(phone, tmpl.templateName, bodyParams, chatAmanConfig, req.url);
+        const ok = await sendWhatsAppTemplate(phone, tmpl.templateName, bodyParams, chatAmanConfig);
         whatsappResult = ok ? 'sent' : 'failed';
       }
     }

@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { consumePhoneLookupRateLimit } from '@/lib/auth/phone-lookup-rate-limit';
 
 const COLLECTIONS = ['employees', 'players', 'clubs', 'academies', 'agents', 'trainers', 'users'];
 
@@ -52,6 +53,13 @@ export async function GET(req: NextRequest) {
   try {
     const phone = new URL(req.url).searchParams.get('phone') || '';
     if (!phone) return NextResponse.json({ error: 'phone is required' }, { status: 400 });
+    const allowed = await consumePhoneLookupRateLimit(req, phone);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Too many lookup attempts. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': '900' } },
+      );
+    }
     const result = await findByPhone(phone);
     if (!result.found) return NextResponse.json({ found: false }, { status: 404 });
     return NextResponse.json({ found: true });
@@ -65,6 +73,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const phone = (body?.phone || '').toString();
     if (!phone) return NextResponse.json({ error: 'phone is required' }, { status: 400 });
+    const allowed = await consumePhoneLookupRateLimit(req, phone);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Too many lookup attempts. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': '900' } },
+      );
+    }
     const result = await findByPhone(phone);
     if (!result.found) return NextResponse.json({ found: false }, { status: 404 });
     return NextResponse.json({ found: true });
@@ -72,3 +87,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: e?.message || 'Internal error' }, { status: 500 });
   }
 }
+
+export const runtime = 'nodejs';

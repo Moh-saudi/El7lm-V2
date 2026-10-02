@@ -25,6 +25,7 @@ const DASHBOARD_ROUTES: Record<string, string> = {
   trainer:  '/dashboard/trainer',
   marketer: '/dashboard/marketer',
   admin:    '/dashboard/admin',
+  unknown:  '/auth/select-role',
 };
 
 async function resolveAccountTypeAndLinkUid(userId: string, email: string): Promise<string> {
@@ -51,7 +52,7 @@ async function resolveAccountTypeAndLinkUid(userId: string, email: string): Prom
     }
   }
 
-  return 'player';
+  return 'unknown';
 }
 
 export async function GET(request: NextRequest) {
@@ -106,7 +107,7 @@ export async function GET(request: NextRequest) {
   const email = data.session.user.email || '';
 
   const accountType = await resolveAccountTypeAndLinkUid(userId, email);
-  const dashboardUrl = DASHBOARD_ROUTES[accountType] || '/dashboard/player';
+  const dashboardUrl = DASHBOARD_ROUTES[accountType] || '/auth/select-role';
 
   console.log(`[Auth Callback] ${email} → ${accountType} → ${dashboardUrl}`);
 

@@ -177,6 +177,36 @@ export function NotificationFeed() {
         supabase.from('interaction_notifications').select('*').eq('userId', user.id).order('createdAt', { ascending: false }).limit(50)
       ]);
 
+      const rows = [...(sysDocs || []), ...(intDocs || [])];
+      const senderIds = [...new Set(rows.map(row => {
+        const metadata = normalizeNotificationMetadata(row.metadata);
+        return row.senderId || metadata?.senderId;
+      }).filter((id): id is string => Boolean(id) && !senderCache.current.has(id)))];
+
+      if (senderIds.length) {
+        const tables = ['users', 'players', 'clubs', 'academies'];
+        const senderResults = await Promise.all(
+          tables.map(tableName => supabase.from(tableName).select('*').in('id', senderIds))
+        );
+
+        senderResults.forEach(({ data }, index) => {
+          const tableName = tables[index];
+          for (const row of data || []) {
+            const senderId = String(row.id);
+            if (senderCache.current.has(senderId)) continue;
+            const name = row.displayName || row.name || row.full_name || row.fullName;
+            const avatar = row.photoURL || row.avatar || row.image || row.logo || row.profileImage;
+            const type = row.accountType || (tableName === 'users' ? undefined : tableName.slice(0, -1));
+            senderCache.current.set(senderId, {
+              senderId,
+              senderName: name || null,
+              senderAvatar: resolveAvatarUrl(avatar, { senderAccountType: type }),
+              senderAccountType: type
+            });
+          }
+        });
+      }
+
       const p1 = (sysDocs || []).map(d => enrichNotification(d, 'system'));
       const p2 = (intDocs || []).map(d => enrichNotification(d, 'interaction'));
       const results = await Promise.all([...p1, ...p2]);
@@ -242,11 +272,16 @@ export function NotificationFeed() {
   // --- Actions ---
   const handleMarkRead = async (id: string, category: string) => {
     try {
-      const table = category === 'interaction' ? 'interaction_notifications' : 'notifications';
-      await supabase.from(table).update({ isRead: true }).eq('id', id);
+      const rpc = category === 'interaction' ? 'mark_interaction_notification_read' : 'mark_notification_read';
+      const { data, error } = await supabase.rpc(rpc, { p_notification_id: id });
+      if (error) throw error;
+      if (!data) throw new Error('Notification not found or not owned by current user');
       // Optimistic update
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-    } catch (e) { }
+    } catch (e) {
+      console.error('Failed to mark notification as read:', e);
+      toast.error(copy.error || 'Failed to mark notification as read');
+    }
   };
 
   const handleDelete = async (id: string) => {

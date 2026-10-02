@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { authorizeUser } from '@/lib/api/user-auth';
 
 export const runtime    = 'nodejs';
 export const dynamic    = 'force-dynamic';
@@ -7,17 +8,38 @@ export const maxDuration = 60;
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-// تحويل base64 data URL إلى inlinePart لـ Gemini
+const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
 function dataUrlToPart(dataUrl: string) {
     const [header, data] = dataUrl.split(',');
-    const mimeType = header.match(/:(.*?);/)?.[1] || 'image/jpeg';
+    const mimeType = header.match(/:(.*?);/)?.[1] || '';
+    if (!ALLOWED_IMAGE_TYPES.has(mimeType) || !data) return null;
+    const estimatedBytes = Math.ceil(data.length * 0.75);
+    if (estimatedBytes > MAX_IMAGE_BYTES) return null;
     return { inlineData: { data, mimeType } };
 }
 
-// تحميل صورة من URL وتحويلها لـ base64
+function isTrustedMediaUrl(value: string): boolean {
+    try {
+        const url = new URL(value);
+        if (url.protocol !== 'https:') return false;
+        const configuredOrigins = [
+            process.env.CLOUDFLARE_R2_PUBLIC_URL,
+            process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL,
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+        ].filter(Boolean).flatMap((entry) => {
+            try { return [new URL(String(entry)).origin]; } catch { return []; }
+        });
+        const trustedOrigins = new Set(['https://assets.el7lm.com', ...configuredOrigins]);
+        return trustedOrigins.has(url.origin);
+    } catch {
+        return false;
+    }
+}
+
 async function urlToBase64Part(url: string) {
-    // تجاهل الروابط النسبية (proxy URLs) — لا تعمل server-side
-    if (url.startsWith('/')) return null;
+    if (!isTrustedMediaUrl(url)) return null;
 
     try {
         const res = await fetch(url, {
@@ -28,14 +50,14 @@ async function urlToBase64Part(url: string) {
             // @ts-ignore
             signal: AbortSignal.timeout(15000),
         });
-        if (!res.ok) {
-            console.warn('[analyze] fetch failed:', url, res.status);
-            return null;
-        }
+        if (!res.ok) return null;
+        const mimeType = (res.headers.get('content-type') || '').split(';')[0];
+        if (!ALLOWED_IMAGE_TYPES.has(mimeType)) return null;
+        const contentLength = Number(res.headers.get('content-length') || 0);
+        if (contentLength > MAX_IMAGE_BYTES) return null;
         const buffer = await res.arrayBuffer();
-        const base64 = Buffer.from(buffer).toString('base64');
-        const mimeType = (res.headers.get('content-type') || 'image/jpeg').split(';')[0];
-        return { inlineData: { data: base64, mimeType } };
+        if (buffer.byteLength > MAX_IMAGE_BYTES) return null;
+        return { inlineData: { data: Buffer.from(buffer).toString('base64'), mimeType } };
     } catch (e) {
         console.warn('[analyze] urlToBase64Part error:', url, e);
         return null;
@@ -43,6 +65,8 @@ async function urlToBase64Part(url: string) {
 }
 
 export async function POST(req: NextRequest) {
+    const authorization = await authorizeUser(req);
+    if (!authorization.ok) return authorization.response;
     try {
         const { videoUrl, frameUrls, mediaType, playerName, playerPosition, playerAge } = await req.json();
 
@@ -95,7 +119,8 @@ ${playerInfo ? `معلومات اللاعب: ${playerInfo}` : ''}
             for (const url of frameUrls.slice(0, 6)) {
                 if (!url) continue;
                 if (url.startsWith('data:')) {
-                    imageParts.push(dataUrlToPart(url));
+                    const part = dataUrlToPart(url);
+                    if (part) imageParts.push(part);
                 } else if (!url.startsWith('/')) {
                     // رابط مطلق فقط — لا روابط نسبية
                     const part = await urlToBase64Part(url);

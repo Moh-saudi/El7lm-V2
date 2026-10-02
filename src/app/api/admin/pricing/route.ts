@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { getSupabaseServiceRole } from '@/lib/supabase/admin';
 import { authorizeAdmin } from '@/lib/api/admin-auth';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +24,7 @@ const ALLOWED_COLUMNS = [
 
 export async function GET() {
   try {
-    const admin = getSupabaseAdmin();
+    const admin = getSupabaseServiceRole();
     const { data, error } = await admin
       .from('subscription_plans')
       .select('*')
@@ -50,7 +50,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, 'read:pricing');
   if (!authorization.ok) return authorization.response;
 
   try {
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     cleanPlan.overrides = overrides;
 
-    const admin = getSupabaseAdmin();
+    const admin = getSupabaseServiceRole();
     const { data, error } = await admin
       .from('subscription_plans')
       .upsert(cleanPlan)
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, 'manage:pricing');
   if (!authorization.ok) return authorization.response;
 
   try {
@@ -153,7 +153,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const admin = getSupabaseAdmin();
+    const admin = getSupabaseServiceRole();
     const { error } = await admin
       .from('subscription_plans')
       .delete()

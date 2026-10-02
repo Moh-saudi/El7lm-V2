@@ -1,0 +1,189 @@
+-- EL7LM Payments Phase 2 — Canonical Foundation
+-- REVIEW ONLY. DO NOT EXECUTE UNTIL APPROVED.
+-- Non-destructive foundation: no legacy live ledger is dropped or migrated here.
+BEGIN;
+
+-- Environment guards
+DO $$
+BEGIN
+  IF to_regclass('public.players') IS NULL
+     OR to_regclass('public.users') IS NULL
+     OR to_regclass('public.payments') IS NULL
+     OR to_regclass('public.subscriptions') IS NULL
+     OR to_regclass('public.subscription_plans') IS NULL
+     OR to_regclass('public.payment_settings') IS NULL
+     OR to_regclass('public.invoices') IS NULL
+     OR to_regclass('public.geidea_payments') IS NULL
+     OR to_regclass('public."bulkPayments"') IS NULL THEN
+    RAISE EXCEPTION 'Payments Phase 2 guard failed: expected production tables are missing';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM public.payments LIMIT 1) THEN
+    RAISE EXCEPTION 'Payments Phase 2 guard failed: public.payments is no longer empty';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='payments' AND column_name='playerId'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='payments' AND column_name='transactionId'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='payments' AND column_name='createdAt'
+  ) THEN
+    RAISE EXCEPTION 'Payments Phase 2 guard failed: public.payments schema drifted from audited contract';
+  END IF;
+
+  IF EXISTS (
+    SELECT id FROM public.players
+    GROUP BY id HAVING count(*) > 1
+  ) THEN
+    RAISE EXCEPTION 'Payments Phase 2 guard failed: players.id is not unique';
+  END IF;
+END $$;
+
+-- Remove the two audited legacy owner policies before removing their legacy identity columns.
+-- Do NOT replace them with a simplistic payer_id = auth.uid() policy:
+-- organization payers require an explicit membership/ownership authorization contract.
+DROP POLICY IF EXISTS payment_owner_select ON public.payments;
+DROP POLICY IF EXISTS payment_owner_insert ON public.payments;
+
+-- 1) Reshape the EMPTY payments table in place as the canonical ledger.
+-- Because it is audited empty, remove obsolete columns instead of carrying duplicate contracts forward.
+ALTER TABLE public.payments
+  DROP COLUMN "userId",
+  DROP COLUMN "playerId",
+  DROP COLUMN "paymentMethod",
+  DROP COLUMN "packageType",
+  DROP COLUMN "packageName",
+  DROP COLUMN "receiptImage",
+  DROP COLUMN "receiptUrl",
+  DROP COLUMN "transactionId",
+  DROP COLUMN notes,
+  DROP COLUMN "createdAt",
+  DROP COLUMN "updatedAt";
+
+ALTER TABLE public.payments
+  ADD COLUMN payer_id text NOT NULL,
+  ADD COLUMN payer_type text NOT NULL,
+  ADD COLUMN plan_id text,
+  ADD COLUMN country_code text,
+  ADD COLUMN method text NOT NULL,
+  ADD COLUMN provider text,
+  ADD COLUMN provider_transaction_id text,
+  ADD COLUMN provider_reference_id text,
+  ADD COLUMN receipt_url text,
+  ADD COLUMN review_status text,
+  ADD COLUMN reviewed_by text,
+  ADD COLUMN reviewed_at timestamptz,
+  ADD COLUMN rejection_reason text,
+  ADD COLUMN paid_at timestamptz,
+  ADD COLUMN source_table text,
+  ADD COLUMN source_id text,
+  ADD COLUMN metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  ADD COLUMN created_at timestamptz NOT NULL DEFAULT now(),
+  ADD COLUMN updated_at timestamptz NOT NULL DEFAULT now();
+
+ALTER TABLE public.payments
+  ALTER COLUMN amount TYPE numeric(18,2) USING amount::numeric,
+  ALTER COLUMN amount SET NOT NULL,
+  ALTER COLUMN currency SET DEFAULT 'EGP',
+  ALTER COLUMN currency SET NOT NULL,
+  ALTER COLUMN status SET DEFAULT 'pending',
+  ALTER COLUMN status SET NOT NULL;
+
+ALTER TABLE public.payments
+  ADD CONSTRAINT payments_payer_type_check
+    CHECK (payer_type IN ('player','club','academy','trainer','agent')),
+  ADD CONSTRAINT payments_amount_check CHECK (amount >= 0),
+  ADD CONSTRAINT payments_status_check
+    CHECK (status IN ('pending','pending_review','processing','paid','failed','rejected','cancelled','refunded')),
+  ADD CONSTRAINT payments_review_status_check
+    CHECK (review_status IS NULL OR review_status IN ('pending','approved','rejected')),
+  ADD CONSTRAINT payments_source_identity_unique UNIQUE (source_table, source_id);
+
+CREATE INDEX idx_payments_payer ON public.payments(payer_type, payer_id);
+CREATE INDEX idx_payments_status ON public.payments(status);
+CREATE INDEX idx_payments_plan_id ON public.payments(plan_id);
+CREATE INDEX idx_payments_provider_reference ON public.payments(provider, provider_reference_id)
+  WHERE provider_reference_id IS NOT NULL;
+CREATE INDEX idx_payments_created_at ON public.payments(created_at DESC);
+
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+
+-- 2) One payment can benefit one or many players.
+CREATE TABLE public.payment_targets (
+  id text PRIMARY KEY,
+  payment_id text NOT NULL REFERENCES public.payments(id) ON UPDATE CASCADE ON DELETE CASCADE,
+  target_player_id text NOT NULL REFERENCES public.players(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  amount_allocated numeric(18,2) NULL CHECK (amount_allocated IS NULL OR amount_allocated >= 0),
+  status text NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending','active','failed','cancelled','refunded')),
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT payment_targets_payment_player_unique UNIQUE (payment_id, target_player_id)
+);
+
+CREATE INDEX idx_payment_targets_player ON public.payment_targets(target_player_id);
+CREATE INDEX idx_payment_targets_payment ON public.payment_targets(payment_id);
+ALTER TABLE public.payment_targets ENABLE ROW LEVEL SECURITY;
+
+-- 3) Build normalized subscription history alongside the legacy table.
+-- We intentionally do NOT rename/drop public.subscriptions yet.
+CREATE TABLE public.subscriptions_v2 (
+  id text PRIMARY KEY,
+  player_id text NULL REFERENCES public.players(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  plan_id text NULL,
+  payment_id text NULL REFERENCES public.payments(id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  status text NOT NULL DEFAULT 'active'
+    CHECK (status IN ('pending','active','expired','cancelled','refunded')),
+  starts_at timestamptz NOT NULL,
+  expires_at timestamptz NOT NULL,
+  activated_at timestamptz NULL,
+  cancelled_at timestamptz NULL,
+  auto_renew boolean NOT NULL DEFAULT false,
+  amount numeric(18,2) NULL CHECK (amount IS NULL OR amount >= 0),
+  currency text NULL,
+  legacy_subscription_id text NULL UNIQUE,
+  legacy_subject_id text NULL,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT subscriptions_v2_dates_valid CHECK (expires_at > starts_at)
+);
+
+CREATE INDEX idx_subscriptions_v2_player_status ON public.subscriptions_v2(player_id, status);
+CREATE INDEX idx_subscriptions_v2_payment ON public.subscriptions_v2(payment_id);
+CREATE INDEX idx_subscriptions_v2_expires ON public.subscriptions_v2(expires_at);
+ALTER TABLE public.subscriptions_v2 ENABLE ROW LEVEL SECURITY;
+
+-- No subscription data is copied in Phase 2 foundation.
+-- Reason: 27/30 legacy IDs map directly to players.id; 3 must be preserved and classified
+-- before any canonical subscription backfill.
+
+-- Verification before commit
+DO $$
+BEGIN
+  IF to_regclass('public.payment_targets') IS NULL
+     OR to_regclass('public.subscriptions_v2') IS NULL THEN
+    RAISE EXCEPTION 'Payments Phase 2 verification failed: canonical foundation tables missing';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM public.payments LIMIT 1)
+     OR EXISTS (SELECT 1 FROM public.payment_targets LIMIT 1)
+     OR EXISTS (SELECT 1 FROM public.subscriptions_v2 LIMIT 1) THEN
+    RAISE EXCEPTION 'Payments Phase 2 verification failed: foundation tables must start empty';
+  END IF;
+
+  -- Protected live ledgers must remain present; their row counts may legitimately grow.
+  IF to_regclass('public.subscriptions') IS NULL
+     OR to_regclass('public."bulkPayments"') IS NULL
+     OR to_regclass('public.geidea_payments') IS NULL
+     OR to_regclass('public.invoices') IS NULL THEN
+    RAISE EXCEPTION 'Payments Phase 2 verification failed: protected live ledger missing';
+  END IF;
+END $$;
+
+COMMIT;

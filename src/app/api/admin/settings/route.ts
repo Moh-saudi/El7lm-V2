@@ -14,7 +14,7 @@ const DEFAULT_SETTINGS = {
 };
 
 export async function GET(request: NextRequest) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, 'read:settings');
   if (!authorization.ok) return authorization.response;
   try {
     if (process.env.NEXT_PHASE === 'phase-production-build') {
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const authorization = await authorizeAdmin(request);
+  const authorization = await authorizeAdmin(request, 'manage:settings');
   if (!authorization.ok) return authorization.response;
   try {
     const { settings } = await request.json();

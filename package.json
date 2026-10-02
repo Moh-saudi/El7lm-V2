@@ -6,7 +6,7 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint src",
     "type-check": "tsc --noEmit --pretty false",
     "postinstall": "prisma generate || echo 'Prisma generate failed, continuing...'",
     "vercel-build": "NODE_OPTIONS='--max-old-space-size=8192 --max-semi-space-size=128' next build"

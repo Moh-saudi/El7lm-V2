@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useAuth } from '@/lib/firebase/auth-provider';
+import { useAuth } from '@/lib/supabase/auth-provider';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '@/lib/i18n';
@@ -15,9 +15,6 @@ interface UseAccountTypeAuthOptions {
   /** الصفحة للتوجيه عند عدم وجود صلاحيات (افتراضي: '/') */
   redirectTo?: string;
 }
-
-/** أنواع الحسابات المدعومة في النظام */
-const allowedAccountTypes = ['player', 'club', 'agent', 'academy', 'trainer', 'admin', 'marketer', 'parent'];
 
 /**
  * Hook للتحقق من نوع الحساب والصلاحيات
@@ -63,40 +60,11 @@ export const useAccountTypeAuth = ({ allowedTypes, redirectTo = '/' }: UseAccoun
 
     if (!loading) {
       if (!user) {
-        // تحقق أولاً إذا كان تسجيل الدخول للأدمن حديثاً (خلال 30 ثانية)
-        try {
-          const adminLoginSuccess = sessionStorage.getItem('adminLoginSuccess');
-          const adminLoginTime = sessionStorage.getItem('adminLoginTime');
-          console.log('🔍 SessionStorage check:', { adminLoginSuccess, adminLoginTime });
-
-          if (adminLoginSuccess === 'true' && adminLoginTime) {
-            const loginTime = parseInt(adminLoginTime);
-            const now = Date.now();
-            const timeDiff = now - loginTime;
-            console.log('🕐 Time diff:', timeDiff, 'ms');
-            // إذا كان تسجيل الدخول خلال آخر 30 ثانية، انتظر ولا توجه
-            if (timeDiff < 30000) {
-              console.log('🔄 AccountTypeProtection - Waiting for admin auth to sync...');
-              // لا نوجه، انتظار تحميل البيانات
-              return;
-            } else {
-              console.log('⏰ Session expired, removing flags');
-              // انتهت الفترة، امسح العلامة
-              sessionStorage.removeItem('adminLoginSuccess');
-              sessionStorage.removeItem('adminLoginTime');
-            }
-          }
-        } catch (e) {
-          console.warn('SessionStorage error:', e);
-          // تجاهل أخطاء sessionStorage
-        }
-
-        // المستخدم غير مسجل الدخول - توجيه لصفحة تسجيل الدخول
-        // تحديد صفحة تسجيل الدخول المناسبة بناءً على الصفحة المطلوبة
         const isAdminRoute = typeof window !== 'undefined' && window.location.pathname.includes('/admin');
         const loginUrl = isAdminRoute ? '/admin/login' : '/auth/login';
-        console.log('❌ No user, redirecting to:', loginUrl);
-        router.push(loginUrl);
+        setIsAuthorized(false);
+        setIsCheckingAuth(false);
+        router.replace(loginUrl);
         return;
       }
 
@@ -117,17 +85,10 @@ export const useAccountTypeAuth = ({ allowedTypes, redirectTo = '/' }: UseAccoun
       if (userAccountType && allowedTypes.includes(userAccountType)) {
         console.log('✅ AccountTypeProtection - Access granted');
         setIsAuthorized(true);
-        // مسح علامة تسجيل الدخول للأدمن بعد النجاح
-        try {
-          sessionStorage.removeItem('adminLoginSuccess');
-          sessionStorage.removeItem('adminLoginTime');
-        } catch (e) {
-          // تجاهل الأخطاء
-        }
       } else {
         console.log('❌ AccountTypeProtection - Access denied, redirecting...');
         // نوع الحساب غير مسموح أو غير محدد - توجيه للوحة المناسبة
-        const correctRoute = getDashboardRoute(userAccountType || 'player');
+        const correctRoute = redirectTo !== '/' ? redirectTo : getDashboardRoute(userAccountType || 'player');
         console.log('🔄 Redirecting to:', correctRoute);
         router.push(correctRoute);
       }
@@ -157,6 +118,8 @@ export const useAccountTypeAuth = ({ allowedTypes, redirectTo = '/' }: UseAccoun
         return '/dashboard/trainer';
       case 'marketer':
         return '/dashboard/marketer';
+      case 'parent':
+        return '/dashboard/parent';
       default:
         return '/dashboard';
     }

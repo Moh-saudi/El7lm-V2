@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { isUuid } from '@/lib/tournament-portal/auth';
+import { authorizeTournamentOwnership, categoryBelongsToTournament } from '@/lib/api/tournament-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,25 +14,16 @@ export async function POST(req: NextRequest) {
     }
 
     if (!isUuid(tournament_id)) {
-        return NextResponse.json({
-            team: {
-                id: `team-${Date.now()}`,
-                tournament_id,
-                name: name.trim(),
-                city: city || null,
-                contact_phone: contact_phone || null,
-                logo_url: logo_url || null,
-                category_id: category_id || null,
-                status: 'approved',
-                registered_at: new Date().toISOString(),
-                approved_at: new Date().toISOString(),
-                notes: notes || 'مستورد من المنصة',
-            }
-        });
+        return NextResponse.json({ error: 'Invalid tournament_id' }, { status: 400 });
     }
 
-    // ── Duplicate check ───────────────────────────────────────
+    const authorization = await authorizeTournamentOwnership(req, tournament_id);
+    if (!authorization.user) return authorization.response!;
+
     const supa = getSupabaseAdmin();
+    if (category_id && !(await categoryBelongsToTournament(category_id, tournament_id))) {
+        return NextResponse.json({ error: 'Category does not belong to tournament' }, { status: 400 });
+    }
 
     const { data, error } = await supa
         .from('tournament_teams')

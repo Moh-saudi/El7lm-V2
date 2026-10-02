@@ -15,14 +15,14 @@ export type TableName =
   | 'interaction_notifications' | 'player_notifications' | 'join_request_notifications' | 'support_notifications'
   | 'payments' | 'bulkPayments' | 'geidea_payments' | 'invoices' | 'subscriptions'
   | 'subscription_plans' | 'payment_action_logs' | 'payment_results' | 'payment_settings'
-  | 'tournaments' | 'tournament_registrations' | 'tournamentRegistrations'
+  | 'tournaments' | 'tournament_registrations'
   | 'player_join_requests' | 'organization_referrals' | 'player_rewards' | 'player_stats' | 'player_action_logs'
   | 'dream_academy_categories' | 'dream_academy_sources' | 'dream_academy_stats' | 'private_sessions_requests'
   | 'ads' | 'content' | 'settings' | 'geidea_settings' | 'system_configs'
   | 'otp_codes' | 'otp_verifications' | 'backup_otps' | 'passwordResetTokens' | 'otps'
   | 'analytics' | 'analytics_visits' | 'adminLogs' | 'employee_activities' | 'security_logs' | 'email_logs'
   | 'countries' | 'cities' | 'customers' | 'partners' | 'roles' | 'referrals' | 'receipts'
-  | 'careerApplications' | 'careers_applications' | 'real-time-stats' | 'real-time-updates'
+  | 'career_applications' | 'real-time-stats' | 'real-time-updates'
 
 // نوع بيانات المستخدم متعدد الأدوار
 export type UserCollection = 'players' | 'clubs' | 'academies' | 'agents' | 'trainers' | 'marketers' | 'users';

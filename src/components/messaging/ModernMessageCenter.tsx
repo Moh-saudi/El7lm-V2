@@ -3,6 +3,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { supabase } from '@/lib/supabase/config';
+import { UnifiedNotificationService } from '@/lib/notifications/unified-notification-service';
+import { startConversation } from '@/lib/messages/conversations';
+import { markConversationRead, setConversationPreference } from '@/lib/messages/conversation-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -277,7 +280,8 @@ const ModernMessageCenter: React.FC = () => {
 
             for (const msg of unreadMessages) {
                 try {
-                    await supabase.from('messages').update({ isRead: true }).eq('id', msg.id);
+                    const { data: marked, error } = await supabase.rpc('mark_message_read', { p_message_id: msg.id });
+                    if (error || !marked) throw error ?? new Error('Message was not marked as read');
                 } catch (error) {
                     console.error('Error marking message as read:', error);
                 }
@@ -285,10 +289,7 @@ const ModernMessageCenter: React.FC = () => {
 
             if (unreadMessages.length > 0) {
                 try {
-                    const currentUnread = selectedConversation.unreadCount || {};
-                    await supabase.from('conversations').update({
-                        unreadCount: { ...currentUnread, [user?.id || '']: 0 }
-                    }).eq('id', selectedConversation.id);
+                    await markConversationRead(selectedConversation.id);
                 } catch (error) {
                     console.error('Error updating unread count:', error);
                 }
@@ -318,26 +319,14 @@ const ModernMessageCenter: React.FC = () => {
         if (!otherParticipantId) return;
 
         try {
-            await supabase.from('messages').insert({
-                id: crypto.randomUUID(),
+            await UnifiedNotificationService.createMessage({
                 conversationId: selectedConversation.id,
-                senderId: user.id,
                 receiverId: otherParticipantId,
                 senderName: userData?.full_name || user.email || 'مستخدم',
                 message: newMessage.trim(),
-                timestamp: new Date().toISOString(),
-                isRead: false,
                 messageType: 'text',
                 isPinned: false
-            }).select().single();
-
-            const currentUnread = selectedConversation.unreadCount || {};
-            await supabase.from('conversations').update({
-                lastMessage: newMessage.trim(),
-                lastMessageTime: new Date().toISOString(),
-                lastSenderId: user.id,
-                unreadCount: { ...currentUnread, [otherParticipantId]: (currentUnread[otherParticipantId] || 0) + 1 }
-            }).eq('id', selectedConversation.id);
+            });
 
             setNewMessage('');
         } catch (error) {
@@ -350,9 +339,8 @@ const ModernMessageCenter: React.FC = () => {
         if (!user) return;
 
         try {
-            const existingConv = conversations.find(conv =>
-                conv.participants.includes(selectedUser.id)
-            );
+            const startedConversation = await startConversation(String(selectedUser.id));
+            const existingConv = conversations.find(conv => conv.id === startedConversation.id);
 
             if (existingConv) {
                 setSelectedConversation(existingConv);
@@ -361,26 +349,7 @@ const ModernMessageCenter: React.FC = () => {
                 return;
             }
 
-            await supabase.from('conversations').insert({
-                id: crypto.randomUUID(),
-                participants: [user.id, selectedUser.id],
-                participantNames: {
-                    [user.id]: userData?.full_name || user.email || 'مستخدم',
-                    [selectedUser.id]: selectedUser.name
-                },
-                participantTypes: {
-                    [user.id]: userData?.accountType || 'user',
-                    [selectedUser.id]: selectedUser.type
-                },
-                lastMessage: '',
-                lastMessageTime: new Date().toISOString(),
-                lastSenderId: '',
-                unreadCount: { [user.id]: 0, [selectedUser.id]: 0 },
-                isActive: true,
-                createdAt: new Date().toISOString()
-            }).select().single();
-
-            toast.success('تم إنشاء محادثة جديدة');
+            toast.success(startedConversation.created ? 'تم إنشاء محادثة جديدة' : 'تم فتح المحادثة');
             setNewChatModalOpen(false);
         } catch (error) {
             console.error('Error creating conversation:', error);
@@ -392,10 +361,7 @@ const ModernMessageCenter: React.FC = () => {
         if (!selectedConversation || !user) return;
         try {
             const isMuted = selectedConversation.isMuted?.[user.id] || false;
-            const currentMuted = selectedConversation.isMuted || {};
-            await supabase.from('conversations').update({
-                isMuted: { ...currentMuted, [user.id]: !isMuted }
-            }).eq('id', selectedConversation.id);
+            await setConversationPreference(selectedConversation.id, 'isMuted', !isMuted);
             toast.success(isMuted ? 'تم إلغاء كتم الإشعارات' : 'تم كتم الإشعارات');
         } catch (error) {
             toast.error('فشل تحديث الإشعارات');
@@ -405,10 +371,7 @@ const ModernMessageCenter: React.FC = () => {
     const handleArchiveConversation = async () => {
         if (!selectedConversation || !user) return;
         try {
-            const currentArchived = selectedConversation.isArchived || {};
-            await supabase.from('conversations').update({
-                isArchived: { ...currentArchived, [user.id]: true }
-            }).eq('id', selectedConversation.id);
+            await setConversationPreference(selectedConversation.id, 'isArchived', true);
             setSelectedConversation(null);
             toast.success('تم أرشفة المحادثة');
         } catch (error) {
@@ -421,10 +384,7 @@ const ModernMessageCenter: React.FC = () => {
         try {
             const conv = conversations.find(c => c.id === convId);
             const isPinned = conv?.isPinned?.[user.id] || false;
-            const currentPinned = conv?.isPinned || {};
-            await supabase.from('conversations').update({
-                isPinned: { ...currentPinned, [user.id]: !isPinned }
-            }).eq('id', convId);
+            await setConversationPreference(convId, 'isPinned', !isPinned);
             toast.success(isPinned ? 'تم إلغاء التثبيت' : 'تم تثبيت المحادثة');
         } catch (error) {
             toast.error('فشل التثبيت');
@@ -434,12 +394,11 @@ const ModernMessageCenter: React.FC = () => {
     const handleDeleteConversation = async () => {
         if (!selectedConversation || !user) return;
         try {
-            await supabase.from('messages').delete().eq('conversationId', selectedConversation.id);
-            await supabase.from('conversations').delete().eq('id', selectedConversation.id);
+            await setConversationPreference(selectedConversation.id, 'isArchived', true);
             setSelectedConversation(null);
-            toast.success('تم حذف المحادثة');
+            toast.success('تمت إزالة المحادثة من قائمتك');
         } catch (error) {
-            toast.error('فشل الحذف');
+            toast.error('فشل إزالة المحادثة');
         }
     };
 
@@ -574,27 +533,15 @@ const ModernMessageCenter: React.FC = () => {
             setIsUploadingImage(true);
             const imageUrl = await uploadImageToCloudflare(selectedImage);
 
-            await supabase.from('messages').insert({
-                id: crypto.randomUUID(),
+            await UnifiedNotificationService.createMessage({
                 conversationId: selectedConversation.id,
-                senderId: user.id,
                 receiverId: otherParticipantId,
                 senderName: userData?.full_name || user.email || 'مستخدم',
                 message: '📷 صورة',
                 imageUrl: imageUrl,
-                timestamp: new Date().toISOString(),
-                isRead: false,
                 messageType: 'image',
                 isPinned: false
             });
-
-            const currentUnread = selectedConversation.unreadCount || {};
-            await supabase.from('conversations').update({
-                lastMessage: '📷 صورة',
-                lastMessageTime: new Date().toISOString(),
-                lastSenderId: user.id,
-                unreadCount: { ...currentUnread, [otherParticipantId]: (currentUnread[otherParticipantId] || 0) + 1 }
-            }).eq('id', selectedConversation.id);
 
             setSelectedImage(null);
             setImagePreview(null);
@@ -633,28 +580,16 @@ const ModernMessageCenter: React.FC = () => {
             const { url: voiceUrl } = await uploadResponse.json();
 
             // حفظ الرسالة في Supabase مع رابط الملف
-            await supabase.from('messages').insert({
-                id: crypto.randomUUID(),
+            await UnifiedNotificationService.createMessage({
                 conversationId: selectedConversation.id,
-                senderId: user.id,
                 receiverId: otherParticipantId,
                 senderName: userData?.full_name || user.email || 'مستخدم',
                 message: `🎤 رسالة صوتية (${recordingTime} ثانية)`,
                 voiceUrl: voiceUrl,
-                timestamp: new Date().toISOString(),
-                isRead: false,
                 messageType: 'voice',
                 voiceDuration: recordingTime,
                 isPinned: false
             });
-
-            const currentUnreadVoice = selectedConversation.unreadCount || {};
-            await supabase.from('conversations').update({
-                lastMessage: '🎤 رسالة صوتية',
-                lastMessageTime: new Date().toISOString(),
-                lastSenderId: user.id,
-                unreadCount: { ...currentUnreadVoice, [otherParticipantId]: (currentUnreadVoice[otherParticipantId] || 0) + 1 }
-            }).eq('id', selectedConversation.id);
 
             setAudioBlob(null);
             setRecordingTime(0);

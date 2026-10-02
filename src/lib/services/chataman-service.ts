@@ -3,6 +3,7 @@ import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 export interface ChatAmanConfig {
   apiKey: string;
+  hasApiKey?: boolean;
   baseUrl: string;
   isActive: boolean;
   senderName?: string;
@@ -27,8 +28,21 @@ const CONFIG_ROW_ID = 'chataman_config';
 export const ChatAmanService = {
   getConfig: async (): Promise<ChatAmanConfig | null> => {
     try {
-      const { data } = await supabase.from('system_configs').select('*').eq('id', CONFIG_ROW_ID).limit(1);
-      return data?.length ? data[0] as ChatAmanConfig : null;
+      const response = await authenticatedFetch('/api/chataman/config', {
+        method: 'GET',
+        cache: 'no-store',
+      });
+      if (!response.ok) return null;
+      const result = await response.json();
+      if (!result?.success || !result?.data) return null;
+      return {
+        apiKey: '',
+        hasApiKey: Boolean(result.data.hasApiKey),
+        baseUrl: result.data.baseUrl || 'https://chataman.com',
+        isActive: Boolean(result.data.isActive),
+        senderName: result.data.senderName || '',
+        defaultCountryCode: result.data.defaultCountryCode || '',
+      };
     } catch (error) {
       console.error('Error fetching ChatAman config:', error);
       return null;
@@ -37,18 +51,25 @@ export const ChatAmanService = {
 
   saveConfig: async (config: ChatAmanConfig): Promise<boolean> => {
     try {
-      await supabase.from('system_configs').upsert({ id: CONFIG_ROW_ID, ...config });
-      return true;
+      const response = await authenticatedFetch('/api/chataman/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: config.apiKey || undefined,
+          baseUrl: config.baseUrl,
+          isActive: config.isActive,
+          senderName: config.senderName,
+          defaultCountryCode: config.defaultCountryCode,
+        }),
+      });
+      return response.ok;
     } catch (error) {
       console.error('Error saving ChatAman config:', error);
       return false;
     }
   },
 
-  sendMessage: async (phone: string, message: string, configOverride?: ChatAmanConfig): Promise<{ success: boolean; error?: string; data?: unknown }> => {
-    const config = configOverride || await ChatAmanService.getConfig();
-    if (!config || !config.isActive || !config.apiKey) return { success: false, error: 'ChatAman service is not configured or active' };
-
+  sendMessage: async (phone: string, message: string, _configOverride?: ChatAmanConfig): Promise<{ success: boolean; error?: string; data?: unknown }> => {
     try {
       let cleaned = phone.replace(/\D/g, '');
       if (cleaned.startsWith('01') && cleaned.length === 11) cleaned = `20${cleaned.substring(1)}`;
@@ -58,7 +79,7 @@ export const ChatAmanService = {
       const response = await authenticatedFetch('/api/chataman/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: { phone: formattedPhone, message }, apiKey: config.apiKey, baseUrl: config.baseUrl || 'https://chataman.com' }),
+        body: JSON.stringify({ payload: { phone: formattedPhone, message } }),
       });
 
       const data = await response.json();
@@ -73,28 +94,31 @@ export const ChatAmanService = {
     }
   },
 
-  verifyConnection: async (apiKey: string): Promise<boolean> => {
+  verifyConnection: async (apiKey?: string, baseUrl?: string): Promise<boolean> => {
     try {
-      const response = await fetch('https://chataman.com/api/templates', {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${apiKey.trim()}`, 'Accept': 'application/json' },
+      const response = await authenticatedFetch('/api/chataman/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: apiKey?.trim() || undefined,
+          baseUrl: baseUrl || undefined,
+        }),
       });
-      return response.status === 200;
-    } catch (e) {
-      console.error("Verification failed", e);
+      if (!response.ok) return false;
+      const result = await response.json();
+      return Boolean(result?.success);
+    } catch (error) {
+      console.error('Verification failed', error);
       return false;
     }
   },
 
-  getTemplates: async (apiKey?: string): Promise<ChatAmanTemplate[]> => {
-    const config = apiKey ? { apiKey } as ChatAmanConfig : await ChatAmanService.getConfig();
-    if (!config?.apiKey) { console.error('ChatAman: API Key not found'); return []; }
-
+  getTemplates: async (_apiKey?: string): Promise<ChatAmanTemplate[]> => {
     try {
       const response = await authenticatedFetch('/api/chataman/get-templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: config.apiKey, baseUrl: config.baseUrl || 'https://chataman.com' }),
+        body: JSON.stringify({}),
       });
       if (!response.ok) return [];
       const result = await response.json();
@@ -124,11 +148,8 @@ export const ChatAmanService = {
     phone: string,
     templateName: string,
     params: { language: string; bodyParams?: string[]; headerUrl?: string; headerParams?: string[]; buttons?: Record<string, unknown>[] },
-    configOverride?: ChatAmanConfig
+    _configOverride?: ChatAmanConfig
   ): Promise<{ success: boolean; error?: string; data?: unknown }> => {
-    const config = configOverride || await ChatAmanService.getConfig();
-    if (!config || !config.isActive || !config.apiKey) return { success: false, error: 'Service not active' };
-
     try {
       let cleaned = phone.replace(/\D/g, '');
       if (cleaned.length >= 7) {
@@ -155,7 +176,7 @@ export const ChatAmanService = {
       const response = await authenticatedFetch('/api/chataman/send-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload, apiKey: config.apiKey, baseUrl: (config.baseUrl || 'https://chataman.com').trim() }),
+        body: JSON.stringify({ payload }),
       });
 
       const data = await response.json();
@@ -168,124 +189,6 @@ export const ChatAmanService = {
     } catch (error: unknown) {
       console.error(`ChatAman Send Error [${phone}]:`, error instanceof Error ? error.message : error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown' };
-    }
-  },
-
-  handleWebhook: async (payload: Record<string, unknown>): Promise<{ success: boolean; error?: string }> => {
-    try {
-      console.log('ChatAman Service: Processing Webhook:', JSON.stringify(payload));
-
-      if (payload.object === 'whatsapp_business_account' && payload.entry) {
-        for (const entry of payload.entry as Record<string, unknown>[]) {
-          for (const change of (entry.changes as Record<string, unknown>[])) {
-            const value = change.value as Record<string, unknown>;
-            if (value && value.messages) {
-              for (const message of value.messages as Record<string, unknown>[]) {
-                await ChatAmanService.processIncomingMessage({
-                  phone: String(message.from),
-                  text: String((message.text as Record<string, unknown>)?.body || ''),
-                  type: String(message.type),
-                  messageId: String(message.id),
-                  timestamp: message.timestamp,
-                });
-              }
-            }
-          }
-        }
-        return { success: true };
-      }
-
-      if (payload.event === 'message.received' || payload.event === 'message') {
-        const data = (payload.data || payload) as Record<string, unknown>;
-        await ChatAmanService.processIncomingMessage({
-          phone: String(data.phone || data.from),
-          text: String(data.message || data.body || data.text),
-          type: 'text',
-          messageId: String(data.id || Date.now()),
-          timestamp: Date.now() / 1000,
-        });
-        return { success: true };
-      }
-
-      if (payload.event === 'message.status.update' || payload.event === 'message.ack') {
-        const data = (payload.data || payload) as Record<string, unknown>;
-        await ChatAmanService.handleStatusUpdate({ messageId: String(data.id || data.messageId), status: String(data.status), timestamp: data.timestamp });
-        return { success: true };
-      }
-
-      console.warn('Unknown ChatAman payload format');
-      return { success: true };
-    } catch (error: unknown) {
-      console.error('Error handling webhook in service:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown' };
-    }
-  },
-
-  processIncomingMessage: async (msgData: { phone: string; text: string; type: string; messageId: string; timestamp: unknown }) => {
-    try {
-      let phone = msgData.phone.replace(/\D/g, '');
-      if (!phone) return;
-      console.log(`Processing message from ${phone}`);
-
-      let { data: users } = await supabase.from('users').select('id, full_name, name').eq('phone', phone).limit(1);
-      if (!users?.length) {
-        ({ data: users } = await supabase.from('users').select('id, full_name, name').eq('phone', `+${phone}`).limit(1));
-      }
-
-      if (!users?.length) { console.log('User not found for phone:', phone); return; }
-
-      const user = users[0] as Record<string, unknown>;
-      const userId = String(user.id);
-      const userName = String(user.full_name || user.name || 'مستخدم واتساب');
-
-      const { data: convs } = await supabase
-        .from('conversations')
-        .select('id')
-        .filter('participants', 'cs', `["${userId}"]`)
-        .order('lastMessageTime', { ascending: false })
-        .limit(1);
-
-      if (!convs?.length) { console.log('No active conversation found for user'); return; }
-
-      const conversationId = String((convs[0] as Record<string, unknown>).id);
-      const now = new Date().toISOString();
-
-      await supabase.from('messages').insert({
-        id: crypto.randomUUID(),
-        conversationId,
-        senderId: userId,
-        receiverId: 'admin',
-        senderName: userName,
-        message: msgData.text,
-        timestamp: now,
-        isRead: false,
-        messageType: 'text',
-        metadata: { isWhatsApp: true, whatsappMessageId: msgData.messageId },
-      });
-
-      await supabase.from('conversations').update({ lastMessage: msgData.text, lastMessageTime: now, lastSenderId: userId }).eq('id', conversationId);
-
-      console.log('WhatsApp message saved successfully');
-    } catch (error) {
-      console.error('Error processing incoming message:', error);
-    }
-  },
-
-  handleStatusUpdate: async (statusData: { messageId: string; status: string; timestamp: unknown }) => {
-    try {
-      console.log(`Processing status update for ${statusData.messageId}: ${statusData.status}`);
-
-      const { data: msgs } = await supabase.from('messages').select('id').eq('metadata->>whatsappMessageId', statusData.messageId).limit(1);
-      if (!msgs?.length) { console.log('Message not found for status update:', statusData.messageId); return; }
-
-      const updates: Record<string, unknown> = { 'metadata': { lastStatus: statusData.status, lastStatusTime: statusData.timestamp || new Date().toISOString() } };
-      if (statusData.status === 'read') { updates.isDelivered = true; updates.isSeen = true; }
-      else if (statusData.status === 'delivered') { updates.isDelivered = true; }
-
-      await supabase.from('messages').update(updates).eq('id', (msgs[0] as Record<string, unknown>).id);
-      console.log('Message status updated');
-    } catch (error) {
-      console.error('Error handling status update:', error);
     }
   },
 

@@ -29,6 +29,8 @@ import {
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { dispatchNotification } from '@/lib/notifications/notification-dispatcher';
+import { UnifiedNotificationService } from '@/lib/notifications/unified-notification-service';
+import { startConversation } from '@/lib/messages/conversations';
 import { useTranslation } from '@/lib/i18n';
 
 interface SendMessageButtonProps {
@@ -68,46 +70,6 @@ const USER_TYPES = {
 
 // قوالب رسائل جاهزة لتسهيل الإرسال على اللاعب
 const MESSAGE_TEMPLATES = ['trialRequest', 'joinInquiry', 'agentCollab', 'intro'];
-
-const createNotification = async ({
-  userId,
-  title,
-  body,
-  type,
-  senderName,
-  senderId,
-  senderType,
-  link
-}: {
-  userId: string;
-  title: string;
-  body: string;
-  type: string;
-  senderName: string;
-  senderId: string;
-  senderType: string;
-  link: string;
-}) => {
-  const id = crypto.randomUUID();
-  const now = new Date().toISOString();
-  const notificationData = {
-    id,
-    userId,
-    title,
-    body,
-    type,
-    senderName,
-    senderId,
-    senderType,
-    link,
-    isRead: false,
-    createdAt: now,
-    updatedAt: now
-  };
-
-  await supabase.from('notifications').insert(notificationData);
-  return id;
-};
 
 const SendMessageButton: React.FC<SendMessageButtonProps> = ({
   // الخصائص المشتركة
@@ -257,7 +219,8 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
     try {
       const finalMessage = `${message.trim()}${includeContactInfo ? buildContactInfoBlock() : ''}`.trim();
 
-      // جلب بيانات المستلم المحدثة
+      // جلب بيانات المستلم المحدثة باستخدام account ID فقط؛
+      // canonical Auth UID يُحسم server-side.
       const { data: receiverData } = await supabase
         .from(`${targetUserType}s`)
         .select('*')
@@ -265,82 +228,24 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         .single();
       const receiverName = receiverData?.full_name || receiverData?.name || targetUserName;
 
-      // البحث عن محادثة موجودة
-      const { data: existingConversations } = await supabase
-        .from('conversations')
-        .select('*')
-        .filter('participants', 'cs', `["${user.id}"]`);
+      const startedConversation = await startConversation(targetUserId);
+      const conversationId = startedConversation.id;
+      const isNewConversation = startedConversation.created;
+      const now = new Date().toISOString();
 
-      const existingConversation = existingConversations?.find((conv: any) => {
-        return conv.participants?.includes(targetUserId);
+      console.log('إنشاء/فتح محادثة:', {
+        conversationId,
+        targetAccountId: targetUserId
       });
 
-      const now = new Date().toISOString();
-      let conversationId: string;
-      let isNewConversation = false;
-
-      if (existingConversation) {
-        // استخدام المحادثة الموجودة
-        conversationId = existingConversation.id;
-        console.log('استخدام محادثة موجودة:', {
-          conversationId,
-          participants: existingConversation.participants
-        });
-
-        // تحديث أسماء المشاركين
-        await supabase.from('conversations').update({
-          participantNames: {
-            ...(existingConversation.participantNames || {}),
-            [user.id]: getUserDisplayName(),
-            [targetUserId]: receiverName
-          },
-          updatedAt: now
-        }).eq('id', conversationId);
-      } else {
-        // إنشاء محادثة جديدة
-        conversationId = crypto.randomUUID();
-        isNewConversation = true;
-        console.log('إنشاء محادثة جديدة:', {
-          conversationId,
-          participants: [user.id, targetUserId]
-        });
-
-        const conversationData = {
-          id: conversationId,
-          participants: [user.id, targetUserId],
-          participantNames: {
-            [user.id]: getUserDisplayName(),
-            [targetUserId]: receiverName
-          },
-          participantTypes: {
-            [user.id]: userData.accountType,
-            [targetUserId]: targetUserType
-          },
-          lastMessage: finalMessage,
-          lastMessageTime: now,
-          lastSenderId: user.id,
-          unreadCount: {
-            [user.id]: 0,
-            [targetUserId]: 1
-          },
-          createdAt: now,
-          updatedAt: now,
-          isActive: true
-        };
-        await supabase.from('conversations').insert(conversationData);
-      }
-
       // إنشاء رسالة جديدة
-      const messageId = crypto.randomUUID();
       console.log('إنشاء رسالة جديدة:', {
-        messageId,
         conversationId,
         sender: getUserDisplayName(),
         receiver: receiverName
       });
 
       const messageData = {
-        id: messageId,
         conversationId,
         senderId: user.id,
         receiverId: targetUserId,
@@ -357,44 +262,8 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         updatedAt: now
       };
 
-      await supabase.from('messages').insert(messageData);
+      const messageId = await UnifiedNotificationService.createMessage(messageData);
 
-      // تحديث المحادثة بعد إرسال الرسالة
-      if (existingConversation) {
-        // جلب القيمة الحالية لعداد الرسائل غير المقروءة
-        const { data: convData } = await supabase
-          .from('conversations')
-          .select('unreadCount')
-          .eq('id', conversationId)
-          .single();
-        const currentUnread = convData?.unreadCount?.[targetUserId] || 0;
-
-        await supabase.from('conversations').update({
-          lastMessage: finalMessage,
-          lastMessageTime: now,
-          lastSenderId: user.id,
-          unreadCount: {
-            ...(convData?.unreadCount || {}),
-            [targetUserId]: currentUnread + 1
-          },
-          updatedAt: now
-        }).eq('id', conversationId);
-      }
-
-      // إنشاء إشعار للمستلم
-      const notificationTitle = isNewConversation ? msg('newMessage') : msg('newConversationMessage');
-      const notificationBody = `${getUserDisplayName()}: ${finalMessage.substring(0, 50)}${finalMessage.length > 50 ? '...' : ''}`;
-
-      await createNotification({
-        userId: targetUserId,
-        title: notificationTitle,
-        body: notificationBody,
-        type: 'message',
-        senderName: getUserDisplayName(),
-        senderId: user.id,
-        senderType: userData.accountType,
-        link: `/dashboard/messages?conversation=${conversationId}`
-      });
 
       // التحقق من نجاح العملية
       const { data: verifyConversation } = await supabase
@@ -431,8 +300,6 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
           eventType: 'message_received',
           targetUserId,
           actorId: user.id,
-          actorName: getUserDisplayName(),
-          actorAccountType: userData?.accountType || 'user',
           metadata: { messagePreview: finalMessage.substring(0, 40) },
         });
       }
@@ -475,54 +342,8 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
 
     setSending(true);
     try {
-      // البحث عن محادثة موجودة
-      const { data: existingConversations } = await supabase
-        .from('conversations')
-        .select('*')
-        .filter('participants', 'cs', `["${user.id}"]`);
-
-      const existingConversation = existingConversations?.find((conv: any) => {
-        return conv.participants?.includes(targetUserId);
-      });
-
-      if (existingConversation) {
-        // إذا وجدت محادثة، انتقل إليها
-        if (redirectToMessages) {
-          const messagesPath = getMessagesPath();
-          router.push(messagesPath);
-        }
-        return;
-      }
-
-      // إنشاء محادثة جديدة
-      const now = new Date().toISOString();
-      const conversationId = crypto.randomUUID();
-      const conversationData = {
-        id: conversationId,
-        participants: [user.id, targetUserId],
-        participantNames: {
-          [user.id]: getUserDisplayName(),
-          [targetUserId]: targetUserName
-        },
-        participantTypes: {
-          [user.id]: userData.accountType,
-          [targetUserId]: targetUserType
-        },
-        lastMessage: '',
-        lastMessageTime: now,
-        lastSenderId: '',
-        unreadCount: {
-          [user.id]: 0,
-          [targetUserId]: 0
-        },
-        createdAt: now,
-        updatedAt: now,
-        isActive: true
-      };
-
-      await supabase.from('conversations').insert(conversationData);
-
-      toast.success(msg('conversationCreated'));
+      const result = await startConversation(targetUserId);
+      toast.success(result.created ? msg('conversationCreated') : msg('sent'));
 
       if (redirectToMessages) {
         const messagesPath = getMessagesPath();
@@ -560,26 +381,14 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
         const { data: receiverData } = await supabase
           .from(`${selectedConversation.participantTypes[receiverId]}s`)
           .select('*')
-          .eq('id', receiverId)
+          .eq('uid', receiverId)
           .single();
         const receiverName = receiverData?.full_name || receiverData?.name || selectedConversation.participantNames[receiverId];
 
         const now = new Date().toISOString();
 
-        // تحديث أسماء المشاركين في المحادثة
-        await supabase.from('conversations').update({
-          participantNames: {
-            ...(selectedConversation.participantNames || {}),
-            [receiverId]: receiverName,
-            [user.id]: getUserDisplayName()
-          },
-          updatedAt: now
-        }).eq('id', selectedConversation.id);
-
         // إنشاء رسالة جديدة
-        const messageId = crypto.randomUUID();
         const messageData = {
-          id: messageId,
           conversationId: selectedConversation.id,
           senderId: user.id,
           receiverId: receiverId,
@@ -595,38 +404,7 @@ const SendMessageButton: React.FC<SendMessageButtonProps> = ({
           updatedAt: now
         };
 
-        await supabase.from('messages').insert(messageData);
-
-        // تحديث المحادثة - جلب قيمة unreadCount الحالية ثم تحديثها
-        const { data: convData } = await supabase
-          .from('conversations')
-          .select('unreadCount')
-          .eq('id', selectedConversation.id)
-          .single();
-        const currentUnread = convData?.unreadCount?.[receiverId] || 0;
-
-        await supabase.from('conversations').update({
-          lastMessage: newMessage.trim(),
-          lastMessageTime: now,
-          lastSenderId: user.id,
-          unreadCount: {
-            ...(convData?.unreadCount || {}),
-            [receiverId]: currentUnread + 1
-          },
-          updatedAt: now
-        }).eq('id', selectedConversation.id);
-
-        // إنشاء إشعار للمستلم
-        await createNotification({
-          userId: receiverId,
-          title: msg('newMessage'),
-          body: `${getUserDisplayName()}: ${newMessage.trim().substring(0, 50)}${newMessage.length > 50 ? '...' : ''}`,
-          type: 'message',
-          senderName: getUserDisplayName(),
-          senderId: user.id,
-          senderType: userData.accountType,
-          link: `/dashboard/messages?conversation=${selectedConversation.id}`
-        });
+        await UnifiedNotificationService.createMessage(messageData);
 
         if (onMessageSent) {
           onMessageSent();

@@ -1,127 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import fs from 'fs';
-import path from 'path';
+import { authorizeTournamentClient, authorizeTournamentOwnership } from '@/lib/api/tournament-auth';
 
 export const dynamic = 'force-dynamic';
 
-const DEV_TOURNAMENTS_FILE = path.join(process.cwd(), '.next', 'dev_tournaments.json');
-
-function getDevTournaments(): any[] {
-    try {
-        if (fs.existsSync(DEV_TOURNAMENTS_FILE)) {
-            const raw = fs.readFileSync(DEV_TOURNAMENTS_FILE, 'utf-8');
-            const data = JSON.parse(raw);
-            if (Array.isArray(data)) return data;
-        }
-    } catch {}
-    return [];
-}
-
-function saveDevTournament(t: any) {
-    try {
-        const dir = path.dirname(DEV_TOURNAMENTS_FILE);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        const list = getDevTournaments();
-        const updated = [t, ...list.filter(item => item.id !== t.id)];
-        fs.writeFileSync(DEV_TOURNAMENTS_FILE, JSON.stringify(updated, null, 2), 'utf-8');
-    } catch {}
-}
-
 export async function GET(req: NextRequest) {
-    try {
-        const { searchParams } = new URL(req.url);
-        const clientId = searchParams.get('client_id');
-        const tournamentId = searchParams.get('id');
+  const authorization = await authorizeTournamentClient(req);
+  if (!authorization.user || !authorization.client) return authorization.response!;
 
-        let dbTournaments: any[] = [];
-        try {
-            const isUuid = !!tournamentId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tournamentId);
-            if (!tournamentId || isUuid) {
-                const supabase = getSupabaseAdmin();
-                let query = supabase.from('tournament_new').select('*');
-                if (tournamentId && isUuid) {
-                    query = query.eq('id', tournamentId);
-                } else if (clientId) {
-                    query = query.eq('client_id', clientId);
-                }
-                const { data } = await query.order('created_at', { ascending: false });
-                if (data) dbTournaments = data;
-            }
-        } catch (dbErr) {
-            console.warn('[tournament-portal/tournaments] Supabase fetch note:', dbErr);
-        }
+  const tournamentId = req.nextUrl.searchParams.get('id');
+  const admin = getSupabaseAdmin();
 
-        // Merge with locally created tournaments
-        const devTournaments = getDevTournaments();
-        let filteredDev = devTournaments;
-        if (tournamentId) {
-            filteredDev = devTournaments.filter(t => t.id === tournamentId);
-        } else if (clientId) {
-            filteredDev = devTournaments.filter(t => t.client_id === clientId);
-        }
+  if (tournamentId) {
+    const ownership = await authorizeTournamentOwnership(req, tournamentId);
+    if (!ownership.user) return ownership.response!;
+    const { data, error } = await admin
+      .from('tournament_new')
+      .select('*')
+      .eq('id', tournamentId)
+      .eq('client_id', authorization.client.id)
+      .maybeSingle();
+    if (error) return NextResponse.json({ error: 'Failed to load tournament' }, { status: 500 });
+    return NextResponse.json({ tournament: data || null });
+  }
 
-        const map = new Map<string, any>();
-        for (const t of dbTournaments) map.set(t.id, t);
-        for (const t of filteredDev) {
-            if (!map.has(t.id)) map.set(t.id, t);
-        }
-
-        const all = Array.from(map.values()).sort(
-            (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-        );
-
-        if (tournamentId) {
-            return NextResponse.json({ tournament: all[0] || null });
-        }
-
-        return NextResponse.json({ tournaments: all });
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message || 'Failed to fetch tournaments' }, { status: 500 });
-    }
+  const { data, error } = await admin
+    .from('tournament_new')
+    .select('*')
+    .eq('client_id', authorization.client.id)
+    .order('created_at', { ascending: false });
+  if (error) return NextResponse.json({ error: 'Failed to load tournaments' }, { status: 500 });
+  return NextResponse.json({ tournaments: data || [] });
 }
 
 export async function POST(req: NextRequest) {
-    try {
-        const body = await req.json();
-        const isBodyUuid = !!body.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.id);
-        const id = isBodyUuid ? body.id : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `00000000-0000-4000-8000-${Date.now().toString(16).padStart(12, '0')}`);
-        const slug = body.slug || `${body.name || 'tournament'}-${Date.now()}`.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const authorization = await authorizeTournamentClient(req);
+  if (!authorization.user || !authorization.client) return authorization.response!;
 
-        const tournamentRecord = {
-            ...body,
-            id,
-            slug,
-            created_at: body.created_at || new Date().toISOString(),
-            status: body.status || 'draft',
-        };
+  try {
+    const body = await req.json();
+    const name = String(body.name || '').trim();
+    if (!name) return NextResponse.json({ error: 'Tournament name is required' }, { status: 400 });
 
-        // 1. Attempt insertion into Supabase
-        let insertedInDb = false;
-        try {
-            const supabase = getSupabaseAdmin();
-            const { data, error } = await supabase
-                .from('tournament_new')
-                .insert(tournamentRecord)
-                .select('id')
-                .single();
+    const id = crypto.randomUUID();
+    const slug = String(body.slug || `${name}-${Date.now()}`)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
 
-            if (!error && data?.id) {
-                insertedInDb = true;
-            }
-        } catch (dbErr) {
-            console.warn('[tournament-portal/tournaments] DB insert note:', dbErr);
-        }
+    const { client_id: _ignoredClientId, id: _ignoredId, created_at: _ignoredCreatedAt, ...safeBody } = body;
+    const record = {
+      ...safeBody,
+      id,
+      client_id: authorization.client.id,
+      name,
+      slug,
+      created_at: new Date().toISOString(),
+      status: 'draft',
+    };
 
-        // 2. Always persist to local dev store as well for safety
-        saveDevTournament(tournamentRecord);
-
-        return NextResponse.json({
-            success: true,
-            data: { id: tournamentRecord.id, slug: tournamentRecord.slug },
-            dbSaved: insertedInDb,
-        });
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message || 'Failed to create tournament' }, { status: 500 });
+    const admin = getSupabaseAdmin();
+    const { data, error } = await admin.from('tournament_new').insert(record).select('id,slug').single();
+    if (error || !data) {
+      console.error('[tournament-portal/tournaments] create failed:', error);
+      return NextResponse.json({ error: 'Failed to create tournament' }, { status: 500 });
     }
+    return NextResponse.json({ success: true, data }, { status: 201 });
+  } catch (error) {
+    console.error('[tournament-portal/tournaments] invalid request:', error);
+    return NextResponse.json({ error: 'Invalid tournament request' }, { status: 400 });
+  }
 }

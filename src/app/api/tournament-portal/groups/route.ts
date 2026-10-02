@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { authorizeTournamentOwnership, categoryBelongsToTournament } from '@/lib/api/tournament-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,12 @@ export async function GET(req: NextRequest) {
     const category_id   = req.nextUrl.searchParams.get('category_id');
     if (!tournament_id) return NextResponse.json({ error: 'tournament_id required' }, { status: 400 });
 
+    const authorization = await authorizeTournamentOwnership(req, tournament_id);
+    if (!authorization.user) return authorization.response!;
     const supa = getSupabaseAdmin();
+    if (category_id && category_id !== 'all' && !(await categoryBelongsToTournament(category_id, tournament_id))) {
+        return NextResponse.json({ error: 'Category does not belong to tournament' }, { status: 400 });
+    }
 
     let q = supa.from('tournament_groups').select('id, name, sort_order')
         .eq('tournament_id', tournament_id).order('sort_order');
@@ -29,7 +35,12 @@ export async function POST(req: NextRequest) {
     if (!tournament_id) return NextResponse.json({ error: 'tournament_id required' }, { status: 400 });
 
     // إنشاء دفعة
+    const authorization = await authorizeTournamentOwnership(req, tournament_id);
+    if (!authorization.user) return authorization.response!;
     const supa = getSupabaseAdmin();
+    if (category_id && category_id !== 'all' && !(await categoryBelongsToTournament(category_id, tournament_id))) {
+        return NextResponse.json({ error: 'Category does not belong to tournament' }, { status: 400 });
+    }
 
     if (count) {
         const n = Number(count);
@@ -59,8 +70,9 @@ export async function POST(req: NextRequest) {
     if (!name?.trim()) return NextResponse.json({ error: 'name required' }, { status: 400 });
 
     // احسب sort_order
-    const { data: existing } = await supa.from('tournament_groups')
+    const { data: existing, error: existingError } = await supa.from('tournament_groups')
         .select('id').eq('tournament_id', tournament_id);
+    if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 });
     const sort_order = (existing || []).length;
 
     const { data, error } = await supa.from('tournament_groups').insert({
@@ -80,8 +92,13 @@ export async function PATCH(req: NextRequest) {
     if (!id || !name?.trim()) return NextResponse.json({ error: 'id and name required' }, { status: 400 });
 
     const supa = getSupabaseAdmin();
+    const { data: group, error: groupError } = await supa.from('tournament_groups').select('tournament_id').eq('id', id).maybeSingle();
+    if (groupError) return NextResponse.json({ error: groupError.message }, { status: 500 });
+    if (!group?.tournament_id) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+    const authorization = await authorizeTournamentOwnership(req, group.tournament_id);
+    if (!authorization.user) return authorization.response!;
 
-    const { error } = await supa.from('tournament_groups').update({ name: name.trim() }).eq('id', id);
+    const { error } = await supa.from('tournament_groups').update({ name: name.trim() }).eq('id', id).eq('tournament_id', group.tournament_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
 }
@@ -92,8 +109,13 @@ export async function DELETE(req: NextRequest) {
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
     const supa = getSupabaseAdmin();
+    const { data: group, error: groupError } = await supa.from('tournament_groups').select('tournament_id').eq('id', id).maybeSingle();
+    if (groupError) return NextResponse.json({ error: groupError.message }, { status: 500 });
+    if (!group?.tournament_id) return NextResponse.json({ error: 'Group not found' }, { status: 404 });
+    const authorization = await authorizeTournamentOwnership(req, group.tournament_id);
+    if (!authorization.user) return authorization.response!;
 
-    const { error } = await supa.from('tournament_groups').delete().eq('id', id);
+    const { error } = await supa.from('tournament_groups').delete().eq('id', id).eq('tournament_id', group.tournament_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
 }
