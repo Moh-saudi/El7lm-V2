@@ -65,35 +65,27 @@ export async function POST(request: NextRequest) {
 
       const now = new Date().toISOString();
       const id = crypto.randomUUID();
-      const { error } = await db.from('support_conversations').insert({
-        id,
-        userId: identity.authUid,
-        userName: identity.name,
-        userType: identity.accountType,
-        status: 'open',
-        priority,
-        category,
-        lastMessage: '',
-        lastMessageTime: now,
-        unreadCount: 0,
-        createdAt: now,
-        updatedAt: now,
-      });
-      if (error) throw error;
-
       const locale = cleanString(body.locale, 8).toLowerCase();
       const welcomeMessage = WELCOME_MESSAGES[locale] || WELCOME_MESSAGES.en;
-      const { error: welcomeError } = await db.from('support_messages').insert({
-        id: crypto.randomUUID(),
-        conversationId: id,
-        senderId: 'system',
-        senderName: 'Support',
-        senderType: 'system',
-        message: welcomeMessage,
-        timestamp: now,
-        isRead: true,
-      });
-      if (welcomeError) throw welcomeError;
+
+      const { data: created, error: createError } = await db.rpc(
+        'create_support_conversation_with_welcome',
+        {
+          p_conversation_id: id,
+          p_user_id: identity.authUid,
+          p_user_name: identity.name,
+          p_user_type: identity.accountType,
+          p_status: 'open',
+          p_priority: priority,
+          p_category: category,
+          p_welcome_message_id: crypto.randomUUID(),
+          p_welcome_message: welcomeMessage,
+          p_created_at: now,
+        }
+      );
+
+      if (createError) throw createError;
+      if (!created) throw new Error('Support conversation creation rejected');
 
       return NextResponse.json({ success: true, id, created: true });
     }
