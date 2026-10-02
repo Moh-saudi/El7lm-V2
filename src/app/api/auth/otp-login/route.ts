@@ -111,25 +111,25 @@ export async function POST(request: NextRequest) {
     }
 
     if (!supabaseUserId) {
-      // نبحث في Auth عن طريق listUsers (محاطة بـ try-catch للأمان)
-      try {
-        const { data: usersData, error: listError } = await db.auth.admin.listUsers({ perPage: 2000 });
-        if (listError) {
-          console.warn('[OTP Login] listUsers error (non-fatal):', listError.message);
-        } else {
-          const allUsers = usersData?.users ?? [];
-          const foundUser = allUsers.find(u =>
-            (userEmail && u.email === userEmail) ||
-            (u.user_metadata?.firebase_uid === userId) ||
-            (u.email === constructedEmail)
-          );
-          if (foundUser) {
-            supabaseUserId = foundUser.id;
-            authEmail = foundUser.email || constructedEmail;
-          }
+      const { data: legacyAuthRows, error: legacyAuthError } = await db.rpc(
+        'resolve_legacy_auth_user',
+        {
+          p_profile_email: userEmail || '',
+          p_constructed_email: constructedEmail,
+          p_legacy_id: userId,
         }
-      } catch (listErr: any) {
-        console.warn('[OTP Login] listUsers threw (non-fatal):', listErr?.message);
+      );
+
+      if (legacyAuthError) {
+        console.warn('[OTP Login] legacy Auth lookup failed (non-fatal):', legacyAuthError.message);
+      } else if ((legacyAuthRows?.length ?? 0) > 1) {
+        return NextResponse.json(
+          { success: false, error: 'تعذر تحديد حساب المصادقة بشكل موثوق' },
+          { status: 409 }
+        );
+      } else if (legacyAuthRows?.length === 1) {
+        supabaseUserId = String(legacyAuthRows[0].auth_user_id);
+        authEmail = legacyAuthRows[0].auth_email || constructedEmail;
       }
     }
 
