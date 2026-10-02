@@ -104,7 +104,7 @@ as $$
     select
       'admins', 'admin',
       p.id::text, nullif(btrim(p.uid::text), ''), coalesce(p.email, ''),
-      coalesce(nullif(btrim(p.full_name), ''), nullif(btrim(p.name), ''), ''),
+      coalesce(nullif(btrim(p.name), ''), ''),
       false, coalesce(p."isActive", true)
     from public.admins p
     where coalesce(p.phone, '') = any(p_variants)
