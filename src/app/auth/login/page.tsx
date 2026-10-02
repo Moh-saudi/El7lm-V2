@@ -129,7 +129,7 @@ export default function LoginPage() {
       showWelcomeToast(data.userName || '', false);
 
       const dashboardRoute = getDashboardRoute(data.accountType);
-      setTimeout(() => { window.location.href = dashboardRoute; }, 2200);
+      window.location.assign(dashboardRoute);
 
     } catch (error: any) {
       console.error('OTP login error:', error);
@@ -291,7 +291,7 @@ export default function LoginPage() {
       showWelcomeToast(result.userData.full_name || result.userData.name || '', result.isNewUser);
 
       const dashboardRoute = getDashboardRoute(result.userData.accountType);
-      setTimeout(() => { window.location.href = dashboardRoute; }, 2200);
+      window.location.assign(dashboardRoute);
 
     } catch (err: unknown) {
       console.error('Google Sign-In failed:', err);
@@ -485,7 +485,7 @@ export default function LoginPage() {
       showWelcomeToast(result.userData.full_name || result.userData.name || '', false);
 
       const dashboardRoute = getDashboardRoute(result.userData.accountType);
-      setTimeout(() => { window.location.href = dashboardRoute; }, 2200);
+      window.location.assign(dashboardRoute);
 
     } catch (err: unknown) {
       console.error('Login failed:', err);
@@ -565,7 +565,7 @@ export default function LoginPage() {
                 }
                 showWelcomeToast(retryResult.userData.full_name || retryResult.userData.name || '', false);
                 const dashboardRoute = getDashboardRoute(retryResult.userData.accountType);
-                setTimeout(() => { window.location.href = dashboardRoute; }, 2200);
+                window.location.assign(dashboardRoute);
                 setLoading(false);
                 return;
               } catch (_retryErr) {
@@ -667,7 +667,7 @@ export default function LoginPage() {
                     }
                     showWelcomeToast(retryResult.userData.full_name || retryResult.userData.name || '', false);
                     const dashboardRoute = getDashboardRoute(retryResult.userData.accountType);
-                    setTimeout(() => { window.location.href = dashboardRoute; }, 2200);
+                    window.location.assign(dashboardRoute);
                     setLoading(false);
                     return;
                   }
