@@ -34,13 +34,23 @@ export async function resolveServerAccountIdentity(identifier: string): Promise<
   if (!value) return null;
 
   const db = getSupabaseAdmin();
-  const { data, error } = await db.rpc('resolve_account_identity_candidates', {
-    p_identifier: value,
-  });
 
-  if (error) throw error;
+  const { data: fastData, error: fastError } = await db.rpc(
+    'resolve_account_identity_fast_candidates',
+    { p_identifier: value },
+  );
+  if (fastError) throw fastError;
 
-  const rows = (data ?? []) as IdentityCandidateRow[];
+  let rows = (fastData ?? []) as IdentityCandidateRow[];
+
+  // Legacy or inconsistent accounts keep the exhaustive ambiguity-safe path.
+  if (rows.length === 0) {
+    const { data, error } = await db.rpc('resolve_account_identity_candidates', {
+      p_identifier: value,
+    });
+    if (error) throw error;
+    rows = (data ?? []) as IdentityCandidateRow[];
+  }
   const identities = rows
     .map(toIdentity)
     .filter((identity): identity is ServerAccountIdentity => Boolean(identity));
