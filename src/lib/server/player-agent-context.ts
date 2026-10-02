@@ -90,7 +90,7 @@ export async function getPlayerAgentContext(authIdentifier: string): Promise<Pla
   if (error) throw error;
   if ((data?.length ?? 0) !== 1) return null;
 
-  const row = data![0] as Record<string, unknown>;
+  const row = data![0] as unknown as Record<string, unknown>;
 
   return {
     authUid: identity.authUid,
