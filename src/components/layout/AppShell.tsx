@@ -15,14 +15,13 @@
 
 import LogoutScreen from '@/components/auth/LogoutScreen';
 import { useAuth } from '@/lib/supabase/auth-provider';
-import { supabase } from '@/lib/supabase/config';
-import { getPlayerAvatarUrl, getSupabaseImageUrl } from '@/lib/supabase/image-utils';
+import { getPlayerAvatarUrl } from '@/lib/supabase/image-utils';
 import { EmployeeRole, RolePermissions } from '@/types/employees';
 import { DEFAULT_ROLES } from '@/lib/permissions/types';
 import { getAccountMenuGroups } from '@/config/account-menu-config';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, LogOut } from 'lucide-react';
-import React, { ReactNode, useEffect, useMemo, useState } from 'react';
+import React, { ReactNode, useMemo, useState } from 'react';
 import { AppShellProvider, useAppShell } from './AppShellContext';
 import AppFooter from './AppFooter';
 import AppHeader from './AppHeader';
@@ -220,87 +219,21 @@ function InnerShell({ accountType, children, noPadding, showHeader = true, showS
   const { user, userData, logout } = useAuth();
   const { t, isRTL } = useTranslation();
 
-  const [profileName, setProfileName] = useState<string | null>(null);
-  const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [clubLogo, setClubLogo] = useState<string | null>(null); // kept for backward-compat
   const [showLogoutScreen, setShowLogoutScreen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Unified profile listener — fetches name & image from the correct table
-  useEffect(() => {
-    console.log('[Sidebar] effect fired, user:', user?.id, 'accountType:', accountType);
-    if (!user?.id) return;
-
-    type TableConfig = { table: string; nameField: string; imageField: string };
-    const TABLE_MAP: Record<string, TableConfig> = {
-      academy: { table: 'academies', nameField: 'academy_name', imageField: 'logo' },
-      club:    { table: 'clubs',     nameField: 'name',         imageField: 'logo' },
-      agent:   { table: 'agents',    nameField: 'full_name',    imageField: 'profile_photo' },
-      trainer: { table: 'trainers',  nameField: 'full_name',    imageField: 'profile_photo' },
-      player:  { table: 'players',   nameField: 'full_name',    imageField: 'profile_image' },
-    };
-
-    const cfg = TABLE_MAP[accountType];
-    if (!cfg) return;
-
-    const applyRow = (row: Record<string, unknown> | null) => {
-      if (!row) return;
-      const name = (row[cfg.nameField] as string) || null;
-      let img = (row[cfg.imageField] as string) || null;
-      // Resolve Supabase Storage paths to full URLs
-      if (img && !img.startsWith('http') && !img.startsWith('/')) {
-        img = getSupabaseImageUrl(img, cfg.table) || img;
-      }
-      setProfileName(name);
-      setProfileImage(img);
-      if (accountType === 'club') setClubLogo(img);
-    };
-
-    const fetchProfile = async () => {
-      let { data, error } = await supabase
-        .from(cfg.table)
-        .select(`${cfg.nameField}, ${cfg.imageField}`)
-        .eq('id', user.id)
-        .maybeSingle();
-
-      console.log(`[Sidebar] ${cfg.table} by id=${user.id}:`, { data, error });
-
-      if (!data) {
-        const res = await supabase
-          .from(cfg.table)
-          .select(`${cfg.nameField}, ${cfg.imageField}`)
-          .eq('uid', user.id)
-          .maybeSingle();
-        data = res.data;
-        console.log(`[Sidebar] ${cfg.table} by uid=${user.id}:`, { data, error: res.error });
-      }
-      applyRow(data as unknown as Record<string, unknown> | null);
-    };
-    fetchProfile();
-
-    const channel = supabase
-      .channel(`profile-sidebar-${accountType}-${user.id}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: cfg.table, filter: `id=eq.${user.id}` },
-        (payload) => applyRow(payload.new as Record<string, unknown>))
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [accountType, user?.id]);
-
   // â”€â”€ Resolved values â”€â”€
   const displayName = useMemo(() => {
-    if (profileName) return profileName;
     const fallbackKey = `accountTypes.${accountType}`;
     const fallback = t(fallbackKey) !== fallbackKey ? t(fallbackKey) : t('accountTypes.user');
     return resolveDisplayName(userData, user, accountType, fallback);
-  }, [userData, user, accountType, profileName, t]);
+  }, [userData, user, accountType, t]);
 
-  const avatarUrl = useMemo(() => {
-    if (profileImage) return profileImage;
-    if (accountType === 'club' && clubLogo) return clubLogo;
-    return getPlayerAvatarUrl(userData, user);
-  }, [accountType, clubLogo, profileImage, userData, user]);
+  const avatarUrl = useMemo(
+    () => getPlayerAvatarUrl(userData, user),
+    [userData, user],
+  );
 
   const roleName = useMemo(() => {
     const employeeRole = (userData?.employeeRole || userData?.role) as EmployeeRole | undefined;
@@ -362,7 +295,7 @@ function InnerShell({ accountType, children, noPadding, showHeader = true, showS
           menuGroups={menuGroups}
           displayName={displayName}
           avatarUrl={avatarUrl}
-          logoUrl={accountType === 'club' || accountType === 'academy' ? profileImage : null}
+          logoUrl={accountType === 'club' || accountType === 'academy' ? avatarUrl : null}
           roleName={roleName}
           onLogout={handleLogout}
         />
