@@ -141,11 +141,21 @@ export default function Home() {
 
     const fetchData = async () => {
       try {
-        const { data: inventoryData } = await supabase
-          .from('inventory')
-          .select('*')
-          .order('createdAt', { ascending: false })
-          .limit(24);
+        const [
+          { data: inventoryData },
+          oppsConfig,
+          opps,
+          playersConfig,
+        ] = await Promise.all([
+          supabase
+            .from('inventory')
+            .select('*')
+            .order('createdAt', { ascending: false })
+            .limit(24),
+          getOppsSection(),
+          getExploreOpportunities(),
+          import('@/lib/content/players-section-service').then(({ getPlayersSection }) => getPlayersSection()),
+        ]);
 
         const normalizedProducts = (inventoryData || [])
           .map((item: any): LandingStoreProduct | null => {
@@ -185,10 +195,7 @@ export default function Home() {
 
         setStoreProducts(normalizedProducts);
 
-        const oppsConfig = await getOppsSection();
         setOppsSection(oppsConfig);
-
-        const opps = await getExploreOpportunities();
         if (opps && oppsConfig.selectedOpportunityIds && oppsConfig.selectedOpportunityIds.length > 0) {
           const selectedOpps = opps.filter(o => oppsConfig.selectedOpportunityIds!.includes(o.id));
           setOpportunities(selectedOpps);
@@ -196,14 +203,16 @@ export default function Home() {
           setOpportunities(opps.slice(0, 4));
         }
 
-        const { getPlayersSection } = await import('@/lib/content/players-section-service');
-        const playersConfig = await getPlayersSection();
         setPlayersSection(playersConfig);
 
         if (playersConfig.selectedPlayerIds && playersConfig.selectedPlayerIds.length > 0) {
-          const { supabase } = await import('@/lib/supabase/config');
-          const { data: playersData } = await supabase.from('players').select('*').in('id', playersConfig.selectedPlayerIds);
-          const { data: usersData } = await supabase.from('users').select('*').in('id', playersConfig.selectedPlayerIds);
+          const [
+            { data: playersData },
+            { data: usersData },
+          ] = await Promise.all([
+            supabase.from('players').select('*').in('id', playersConfig.selectedPlayerIds),
+            supabase.from('users').select('*').in('id', playersConfig.selectedPlayerIds),
+          ]);
 
           const playersMap = new Map<string, any>();
           (playersData || []).forEach(p => { if (!p.isDeleted) playersMap.set(p.id, p); });
