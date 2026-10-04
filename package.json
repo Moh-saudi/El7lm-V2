@@ -7,9 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "node --max-old-space-size=8192 node_modules/typescript/bin/tsc --noEmit --pretty false",
+    "type-check": "node --max-old-space-size=4096 node_modules/typescript/bin/tsc --noEmit --pretty false",
     "postinstall": "prisma generate || echo 'Prisma generate failed, continuing...'",
-    "vercel-build": "NODE_OPTIONS='--max-old-space-size=8192 --max-semi-space-size=128' next build"
+    "vercel-build": "NODE_OPTIONS='--max-old-space-size=4096 --max-semi-space-size=128' next build"
   },
   "dependencies": {
     "@ant-design/cssinjs": "^2.0.3",
