@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:country_picker/country_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_theme.dart';
 import '../../l10n/app_localizations.dart';
@@ -18,6 +18,7 @@ import '../../widgets/parental_consent_dialog.dart';
 import '../../widgets/player_share_modal.dart';
 import '../../widgets/smart_profile_chat_modal.dart';
 import 'player_profile_data.dart';
+import 'profile_edit_screen.dart';
 
 class PlayerProfileScreen extends StatefulWidget {
   const PlayerProfileScreen({super.key, required this.dataService});
@@ -91,8 +92,7 @@ class _ProfileForm extends StatefulWidget {
   State<_ProfileForm> createState() => _ProfileFormState();
 }
 
-class _ProfileFormState extends State<_ProfileForm>
-    with SingleTickerProviderStateMixin {
+class _ProfileFormState extends State<_ProfileForm> {
   final formKey = GlobalKey<FormState>();
   final controllers = <String, TextEditingController>{};
   final _initialControllerValues = <String, String>{};
@@ -113,20 +113,11 @@ class _ProfileFormState extends State<_ProfileForm>
   };
   bool saving = false;
   bool editing = false;
-  late final List<ProfileSection> _sections;
-  late final TabController _tabController;
-
-  List<String> _memoImages = [];
-  List<String> _memoDocs = [];
-  List<String> _memoVideos = [];
 
   @override
   void initState() {
     super.initState();
-    _sections = getProfileSections();
-    _tabController = TabController(length: _sections.length, vsync: this);
     _initControllers();
-    _updateMemos();
   }
 
   @override
@@ -134,135 +125,11 @@ class _ProfileFormState extends State<_ProfileForm>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.profile != widget.profile) {
       _initControllers();
-      _updateMemos();
     }
-  }
-
-  void _updateMemos() {
-    _memoImages = _urls('images', [
-      'additional_images',
-      'gallery',
-      'additional_photos',
-      'photos',
-      'profile_images',
-    ]);
-    _memoDocs = _urls('documents', ['documents_urls', 'files', 'pdf_files']);
-    _memoVideos = _urls('videos', [
-      'video_urls',
-      'youtube_links',
-      'player_videos',
-      'skill_videos',
-      'user_videos',
-    ]);
   }
 
   String _resolveMediaUrl(String value) => resolvePlayerMediaUrl(value);
 
-  List<String> _urls(String primaryKey, [List<String>? fallbackKeys]) {
-    final allKeys = [primaryKey, ...?fallbackKeys];
-    final list = <String>{};
-    for (final key in allKeys) {
-      var raw = widget.profile.values[key];
-      if (raw is String) {
-        final trimmed = raw.trim();
-        if ((trimmed.startsWith('[') && trimmed.endsWith(']')) ||
-            (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
-          try {
-            raw = jsonDecode(trimmed);
-          } catch (_) {}
-        } else if (trimmed.contains(',') && !trimmed.startsWith('http')) {
-          raw = trimmed.split(',').map((s) => s.trim()).toList();
-        }
-      }
-
-      void process(dynamic item) {
-        if (item == null) return;
-        String val = '';
-        if (item is Map) {
-          val =
-              '${item['url'] ?? item['video_url'] ?? item['videoUrl'] ?? item['path'] ?? item['src'] ?? item['uri'] ?? item['link'] ?? item['file'] ?? ''}';
-        } else {
-          val = '$item';
-        }
-        val = _resolveMediaUrl(val);
-        if (val.isNotEmpty && val != 'null') list.add(val);
-      }
-
-      if (raw is List) {
-        for (final e in raw) {
-          process(e);
-        }
-      } else if (raw != null) {
-        process(raw);
-      }
-    }
-    return list.toList();
-  }
-
-  Future<void> _handleDeleteMedia(String url, String category) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(context.tr('confirmDelete')),
-        content: Text(context.tr('deleteMediaPrompt')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.tr('cancel')),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              context.tr('delete'),
-              style: const TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    final key = category == 'images'
-        ? 'additional_images'
-        : (category == 'videos' ? 'video_urls' : 'documents');
-
-    final current = _rawUrls(key);
-    final updated = current.where((e) {
-      final val = e is Map
-          ? '${e['url'] ?? e['path'] ?? e['src'] ?? ''}'
-          : '$e';
-      return _resolveMediaUrl(val) != url;
-    }).toList();
-
-    try {
-      await widget.dataService.savePlayerProfile(widget.profile, {
-        key: updated,
-      });
-      if (!mounted) return;
-      await widget.onRefresh();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
-    }
-  }
-
-  List<dynamic> _rawUrls(String key) {
-    var raw = widget.profile.values[key];
-    if (raw is String) {
-      try {
-        raw = jsonDecode(raw);
-      } catch (_) {
-        if (raw.contains(',')) {
-          return raw.split(',').map((s) => s.trim()).toList();
-        }
-        return [raw];
-      }
-    }
-    if (raw is List) return raw;
-    return [];
-  }
 
   bool _isNonEmpty(dynamic val) {
     if (val == null) return false;
@@ -270,7 +137,48 @@ class _ProfileFormState extends State<_ProfileForm>
     return str.isNotEmpty && str != 'null';
   }
 
+  bool _isValidPhone(dynamic val) {
+    if (val == null) return false;
+    final str = '$val'.trim();
+    if (str.isEmpty || str == 'null' || str.toLowerCase().contains('test')) {
+      return false;
+    }
+    final digits = str.replaceAll(RegExp(r'\D'), '');
+    return digits.length >= 7;
+  }
+
   dynamic _getRawValue(String fieldKey) {
+    if (fieldKey == 'phone') {
+      var val = widget.profile.values['phone'];
+      if (_isValidPhone(val)) return val;
+
+      final phoneAliases = [
+        'phoneNumber',
+        'mobile',
+        'telephone',
+        'phone_number',
+        'user_phone',
+      ];
+      for (final alias in phoneAliases) {
+        val = widget.profile.values[alias];
+        if (_isValidPhone(val)) return val;
+      }
+
+      // Check current auth user
+      try {
+        final authUser = Supabase.instance.client.auth.currentUser;
+        final authPhone = authUser?.phone ?? authUser?.userMetadata?['phone'];
+        if (_isValidPhone(authPhone)) return '$authPhone'.trim();
+      } catch (_) {}
+
+      // Fallback from profile.userId if it contains a phone sequence
+      final digits = widget.profile.userId.replaceAll(RegExp(r'\D'), '');
+      if (digits.length >= 9) {
+        return digits;
+      }
+      return null;
+    }
+
     // 1. Direct key
     var val = widget.profile.values[fieldKey];
     if (_isNonEmpty(val)) return val;
@@ -319,7 +227,7 @@ class _ProfileFormState extends State<_ProfileForm>
   }
 
   void _initControllers() {
-    for (final section in _sections) {
+    for (final section in getProfileSections()) {
       for (final field in section.fields) {
         var value = _getRawValue(field.key);
         _initialRawValues[field.key] = value;
@@ -375,11 +283,24 @@ class _ProfileFormState extends State<_ProfileForm>
 
   @override
   void dispose() {
-    _tabController.dispose();
     for (final c in controllers.values) {
       c.dispose();
     }
     super.dispose();
+  }
+
+  void _openEditScreen(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProfileEditScreen(
+          profile: widget.profile,
+          dataService: widget.dataService,
+          onSaved: (updated) {
+            widget.onSaved(updated);
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -389,141 +310,59 @@ class _ProfileFormState extends State<_ProfileForm>
         ? org
         : null;
 
-    return Form(
-      key: formKey,
-      child: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Column(
-                  children: [
-                    _buildHeader(context),
-                    const SizedBox(height: 12),
-                    _CompactActionTilesRow(
-                      profile: widget.profile,
-                      dataService: widget.dataService,
-                      organization: organization,
-                      onRefresh: widget.onRefresh,
-                      onSaved: widget.onSaved,
-                    ),
-                    const SizedBox(height: 10),
-                    // ── AI Scout Assistant Banner ──
-                    _SmartScoutBanner(
-                      profile: widget.profile,
-                      dataService: widget.dataService,
-                      onSaved: widget.onSaved,
-                    ),
-                    const SizedBox(height: 6),
-                  ],
-                ),
-              ),
-            ),
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _SliverTabBarDelegate(
-                Container(
-                  height: 54,
-                  margin: const EdgeInsets.symmetric(vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: .04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: TabBar(
-                    controller: _tabController,
-                    isScrollable: true,
-                    tabAlignment: TabAlignment.start,
-                    dividerColor: Colors.transparent,
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    indicatorPadding: const EdgeInsets.symmetric(
-                      vertical: 6,
-                      horizontal: 4,
-                    ),
-                    indicator: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: const LinearGradient(
-                        colors: [AppColors.green, Color(0xFF059669)],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.green.withValues(alpha: .4),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    labelColor: Colors.white,
-                    unselectedLabelColor: const Color(0xFF64748B),
-                    labelStyle: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                    ),
-                    unselectedLabelStyle: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    tabs: _sections.map((s) {
-                      return Tab(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(s.icon, size: 16),
-                              const SizedBox(width: 6),
-                              Text(context.tr(s.title)),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-            ),
-          ];
-        },
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            ..._sections.map(
-              (s) => RefreshIndicator(
-                onRefresh: widget.onRefresh,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  children: [
-                    ..._buildSectionFields(context, s),
-                    // Media belongs to the professional tab. Notification and
-                    // account settings live on their own settings screen.
-                    if (s.key == 'professional') ...[
-                      _MediaSection(
-                        profile: widget.profile,
-                        dataService: widget.dataService,
-                        onUploaded: widget.onSaved,
-                        images: _memoImages,
-                        documents: _memoDocs,
-                        videos: _memoVideos,
-                        onDelete: _handleDeleteMedia,
-                      ),
-                    ],
-                    if (editing) _buildSaveBar(context),
-                  ],
-                ),
-              ),
-            ),
-          ],
+    return RefreshIndicator(
+      onRefresh: widget.onRefresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: ClampingScrollPhysics(),
         ),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+        children: [
+          _buildHeader(context),
+          const SizedBox(height: 12),
+          _CompactActionTilesRow(
+            profile: widget.profile,
+            dataService: widget.dataService,
+            organization: organization,
+            onRefresh: widget.onRefresh,
+            onSaved: widget.onSaved,
+          ),
+          const SizedBox(height: 10),
+          // ── AI Scout Assistant Banner ──
+          _SmartScoutBanner(
+            profile: widget.profile,
+            dataService: widget.dataService,
+            onSaved: widget.onSaved,
+          ),
+          const SizedBox(height: 16),
+          // ── Edit Profile Button ──
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                elevation: 6,
+                shadowColor: const Color(0xFF10B981).withValues(alpha: .45),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              onPressed: () => _openEditScreen(context),
+              icon: const Icon(Icons.edit_note_rounded, size: 22),
+              label: Text(
+                context.tr('editPlayerData'),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: .4,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
@@ -974,49 +813,9 @@ class _ProfileFormState extends State<_ProfileForm>
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 46,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: editing
-                                ? const Color(0xFFEF4444)
-                                : const Color(0xFF10B981),
-                            foregroundColor: Colors.white,
-                            elevation: 6,
-                            shadowColor:
-                                (editing
-                                        ? const Color(0xFFEF4444)
-                                        : const Color(0xFF10B981))
-                                    .withValues(alpha: .45),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          onPressed: saving
-                              ? null
-                              : () => setState(() => editing = !editing),
-                          icon: Icon(
-                            editing
-                                ? Icons.lock_outline_rounded
-                                : Icons.edit_note_rounded,
-                            size: 22,
-                          ),
-                          label: Text(
-                            editing
-                                ? context.tr('closeEditMode')
-                                : context.tr('editPlayerData'),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: .4,
-                            ),
-                          ),
-                        ),
-                      ),
                     ],
                   ),
+
                 ],
               ),
             ),
@@ -1055,68 +854,6 @@ class _ProfileFormState extends State<_ProfileForm>
     );
   }
 
-  /// Used by TabBarView — renders fields as a flat list with a section header card.
-  List<Widget> _buildSectionFields(
-    BuildContext context,
-    ProfileSection section,
-  ) {
-    return [
-      // ── Section Header Card ──────────────────────────────────────────────────
-      Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.green.withValues(alpha: .08),
-              AppColors.navy.withValues(alpha: .04),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.green.withValues(alpha: .2)),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: AppColors.green.withValues(alpha: .15),
-              child: Icon(section.icon, color: AppColors.green, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              context.tr(section.title),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                color: AppColors.navy,
-              ),
-            ),
-            const Spacer(),
-            if (editing)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: .12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  context.tr('profileEditMode'),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFF10B981),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-      // ── Fields ────────────────────────────────────────────────────────────────
-      ...section.fields
-          .where(_isFieldApplicable)
-          .map((f) => _buildField(context, f)),
-    ];
-  }
 
   bool _isFieldApplicable(ProfileField field) {
     final level = controllers['education_level']?.text.trim() ?? '';
@@ -1157,602 +894,11 @@ class _ProfileFormState extends State<_ProfileForm>
     return ((filledFields / totalFields) * 100).round().clamp(0, 100);
   }
 
-  /// Shows a date picker and keeps stored dates in the API's ISO format.
-  Future<void> _pickProfileDate(BuildContext context, String key) async {
-    if (!editing) return;
-    DateTime? initial;
-    try {
-      if (controllers[key]!.text.isNotEmpty) {
-        initial = DateTime.parse(controllers[key]!.text);
-      }
-    } catch (_) {}
-    final isContractDate = key == 'contract_end_date';
-    final today = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: initial ?? (isContractDate ? today : DateTime(2000)),
-      firstDate: isContractDate ? today : DateTime(1950),
-      lastDate: isContractDate ? DateTime(today.year + 50) : today,
-      locale: Localizations.localeOf(context),
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: Color(0xFF10B981),
-            onPrimary: Colors.white,
-            surface: Colors.white,
-          ),
-        ),
-        child: child!,
-      ),
-    );
-    if (picked != null) {
-      setState(() {
-        controllers[key]!.text =
-            '${picked.year.toString().padLeft(4, '0')}-'
-            '${picked.month.toString().padLeft(2, '0')}-'
-            '${picked.day.toString().padLeft(2, '0')}';
-      });
-    }
-  }
-
-  Widget _buildField(BuildContext context, ProfileField field) {
-    final label = context.tr(field.label);
-    final ctrl = controllers[field.key]!;
-
-    // ── VIEW MODE (editing == false): High-End Card View Display ──────────────
-    if (!editing) {
-      final rawVal = ctrl.text.trim();
-      final displayVal = field.key == 'city'
-          ? localizedCityLabel(context, rawVal)
-          : field.options != null
-          ? localizedProfileOptionLabel(context, field.key, rawVal)
-          : (_booleanFields.contains(field.key)
-                ? (rawVal.toLowerCase() == 'true' || rawVal == context.tr('yes')
-                      ? context.tr('yes')
-                      : context.tr('no'))
-                : rawVal);
-
-      final isFilled =
-          displayVal.isNotEmpty &&
-          displayVal != 'null' &&
-          displayVal != '0' &&
-          displayVal != 'false' &&
-          displayVal != '0.0';
-
-      return Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: .03),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-          border: Border.all(
-            color: isFilled
-                ? AppColors.green.withValues(alpha: .2)
-                : Colors.grey[200]!,
-            width: isFilled ? 1.5 : 1.0,
-          ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[600],
-                      letterSpacing: .3,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  if (field.isSlider && isFilled) ...[
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: LinearProgressIndicator(
-                              value: ((double.tryParse(displayVal) ?? 50) / 100)
-                                  .clamp(0.0, 1.0),
-                              minHeight: 8,
-                              backgroundColor: Colors.grey[150],
-                              valueColor: const AlwaysStoppedAnimation<Color>(
-                                AppColors.green,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          '$displayVal / 99',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.green,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ] else if (field.isStar && isFilled) ...[
-                    Row(
-                      children: List.generate(
-                        5,
-                        (i) => Icon(
-                          i < (int.tryParse(displayVal) ?? 3)
-                              ? Icons.star_rounded
-                              : Icons.star_border_rounded,
-                          color: const Color(0xFFFFD700),
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ] else if (isFilled) ...[
-                    Text(
-                      displayVal,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.navy,
-                      ),
-                    ),
-                  ] else ...[
-                    Text(
-                      context.tr('profileIncomplete'),
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            if (!isFilled)
-              TextButton.icon(
-                onPressed: () => setState(() => editing = true),
-                icon: const Icon(Icons.add_circle_outline_rounded, size: 16),
-                label: Text(
-                  context.tr('completeProfileField'),
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.green,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                ),
-              )
-            else
-              IconButton(
-                onPressed: () => setState(() => editing = true),
-                icon: Icon(
-                  Icons.edit_outlined,
-                  size: 18,
-                  color: Colors.grey[400],
-                ),
-                tooltip: context.tr('edit'),
-              ),
-          ],
-        ),
-      );
-    }
-
-    if (_booleanFields.contains(field.key)) {
-      final isTrue =
-          ctrl.text.toLowerCase() == 'true' || ctrl.text == context.tr('yes');
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: InputDecorator(
-          decoration: InputDecoration(
-            labelText: label,
-            filled: true,
-            fillColor: editing ? Colors.white : Colors.grey[50],
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
-            ),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<bool>(
-              value: isTrue,
-              isExpanded: true,
-              items: [
-                DropdownMenuItem(value: true, child: Text(context.tr('yes'))),
-                DropdownMenuItem(value: false, child: Text(context.tr('no'))),
-              ],
-              onChanged: editing
-                  ? (v) =>
-                        setState(() => ctrl.text = v == true ? 'true' : 'false')
-                  : null,
-            ),
-          ),
-        ),
-      );
-    }
-
-    if (field.key == 'country' || field.key == 'nationality') {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: !editing
-              ? null
-              : () {
-                  showCountryPicker(
-                    context: context,
-                    showPhoneCode: false,
-                    countryFilter: supportedCountryIsoCodes,
-                    countryListTheme: CountryListThemeData(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(24),
-                      ),
-                      bottomSheetHeight:
-                          MediaQuery.sizeOf(context).height * .72,
-                    ),
-                    onSelect: (country) {
-                      setState(() {
-                        ctrl.text = canonicalCountryStorageValue(
-                          country.countryCode,
-                        );
-                        controllers['city']?.clear();
-                      });
-                    },
-                  );
-                },
-          child: InputDecorator(
-            decoration: InputDecoration(
-              labelText: label,
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.public_rounded, color: AppColors.green),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    ctrl.text.isEmpty
-                        ? context.tr('selectCountry')
-                        : localizedProfileOptionLabel(
-                            context,
-                            field.key,
-                            ctrl.text,
-                          ),
-                  ),
-                ),
-                const Icon(Icons.arrow_drop_down_rounded),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    if (field.key == 'city') {
-      final cities = citiesForCountry(controllers['country']?.text ?? '');
-      if (cities.isNotEmpty) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: DropdownButtonFormField<String>(
-            initialValue: cities.contains(ctrl.text) ? ctrl.text : null,
-            isExpanded: true,
-            decoration: InputDecoration(
-              labelText: label,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            items: cities
-                .map(
-                  (city) => DropdownMenuItem(
-                    value: city,
-                    child: Text(localizedCityLabel(context, city)),
-                  ),
-                )
-                .toList(),
-            onChanged: editing
-                ? (value) => setState(() => ctrl.text = value ?? '')
-                : null,
-          ),
-        );
-      }
-    }
-
-    if (field.options != null) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: InputDecorator(
-          decoration: InputDecoration(
-            labelText: label,
-            filled: true,
-            fillColor: editing ? Colors.white : Colors.grey[50],
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
-            ),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: field.options!.contains(ctrl.text) ? ctrl.text : null,
-              isExpanded: true,
-              items: field.options!
-                  .map(
-                    (o) => DropdownMenuItem(
-                      value: o,
-                      child: Text(
-                        localizedProfileOptionLabel(context, field.key, o),
-                      ),
-                    ),
-                  )
-                  .toList(),
-              onChanged: editing
-                  ? (v) => setState(() => ctrl.text = v ?? '')
-                  : null,
-            ),
-          ),
-        ),
-      );
-    }
-
-    if (field.isSlider) {
-      final val = double.tryParse(ctrl.text) ?? 50.0;
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: InputDecorator(
-          decoration: InputDecoration(
-            labelText: label,
-            filled: true,
-            fillColor: editing ? Colors.white : Colors.grey[50],
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  const Spacer(),
-                  Text(
-                    val.toInt().toString(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.green,
-                    ),
-                  ),
-                ],
-              ),
-              Slider(
-                value: val.clamp(0, 99),
-                min: 0,
-                max: 99,
-                divisions: 99,
-                activeColor: AppColors.green,
-                onChanged: editing
-                    ? (v) => setState(() => ctrl.text = v.toInt().toString())
-                    : null,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (field.isStar) {
-      final val = int.tryParse(ctrl.text) ?? 1;
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: InputDecorator(
-          decoration: InputDecoration(
-            labelText: label,
-            filled: true,
-            fillColor: editing ? Colors.white : Colors.grey[50],
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
-            ),
-          ),
-          child: Row(
-            children: List.generate(
-              5,
-              (i) => IconButton(
-                icon: Icon(
-                  i < val ? Icons.star : Icons.star_border,
-                  color: AppColors.green,
-                ),
-                onPressed: editing
-                    ? () => setState(() => ctrl.text = (i + 1).toString())
-                    : null,
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    // ── Date Picker ───────────────────────────────────────────────────────
-    if (field.key == 'birth_date' || field.key == 'contract_end_date') {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: InkWell(
-          onTap: () => _pickProfileDate(context, field.key),
-          borderRadius: BorderRadius.circular(12),
-          child: InputDecorator(
-            decoration: InputDecoration(
-              labelText: label,
-              filled: true,
-              fillColor: editing ? Colors.white : Colors.grey[50],
-              suffixIcon: Icon(
-                Icons.calendar_today_rounded,
-                color: editing ? AppColors.green : Colors.grey[400],
-                size: 20,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: editing
-                      ? AppColors.green.withValues(alpha: .5)
-                      : Colors.grey[300]!,
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: editing
-                      ? AppColors.green.withValues(alpha: .4)
-                      : Colors.grey[300]!,
-                ),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-            ),
-            child: Text(
-              ctrl.text.isNotEmpty ? ctrl.text : '',
-              style: TextStyle(
-                color: ctrl.text.isNotEmpty ? null : Colors.grey[400],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    // ── Regular text / numeric field with validation ────────────────────────
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextFormField(
-        controller: ctrl,
-        enabled: editing,
-        maxLines: field.multiline ? 3 : 1,
-        keyboardType: _numericFields.contains(field.key)
-            ? TextInputType.number
-            : field.key == 'phone' ||
-                  field.key == 'whatsapp' ||
-                  field.key == 'guardian_phone'
-            ? TextInputType.phone
-            : field.key == 'email'
-            ? TextInputType.emailAddress
-            : TextInputType.text,
-        validator: (value) {
-          if (field.required && (value == null || value.trim().isEmpty)) {
-            return context.tr('requiredField');
-          }
-          if (value != null && value.trim().isNotEmpty) {
-            if (_numericFields.contains(field.key)) {
-              final number = num.tryParse(
-                ProfileAnswerValidator.normalizeDigits(value.trim()),
-              );
-              if (number == null ||
-                  number < 0 ||
-                  number > _numericMax(field.key)) {
-                return context.tr('profileChatInvalidNumber');
-              }
-            } else {
-              final validation = ProfileAnswerValidator.validate(
-                key: field.key,
-                rawValue: value,
-                fieldType: 'text',
-                languageCode: Localizations.localeOf(context).languageCode,
-                registeredPhone:
-                    '${widget.profile.values['phone'] ?? widget.profile.values['phoneNumber'] ?? ''}',
-                // Existing web data can legitimately use a different script
-                // (club names, schools, international names). The chat flow
-                // keeps its language rule; the edit form must not reject it.
-                enforceSelectedScript: false,
-              );
-              if (!validation.isValid) {
-                return context.tr(validation.errorKey!);
-              }
-            }
-            if (field.key == 'height') {
-              final h = num.tryParse(
-                ProfileAnswerValidator.normalizeDigits(value),
-              );
-              if (h == null || h < 100 || h > 230) {
-                return context.tr('profileHeightRange');
-              }
-            } else if (field.key == 'weight') {
-              final w = num.tryParse(
-                ProfileAnswerValidator.normalizeDigits(value),
-              );
-              if (w == null || w < 30 || w > 180) {
-                return context.tr('profileWeightRange');
-              }
-            } else if (field.key == 'market_value') {
-              final v = num.tryParse(
-                ProfileAnswerValidator.normalizeDigits(value),
-              );
-              if (v == null || v < 0) return context.tr('requiredField');
-            }
-          }
-          return null;
-        },
-        decoration: InputDecoration(
-          labelText: label,
-          filled: true,
-          fillColor: editing ? Colors.white : Colors.grey[50],
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[300]!),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[300]!),
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
-        ),
-      ),
-    );
-  }
-
   void _showFullScreenImage(BuildContext context, String url) {
     Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (_) => _FullScreenImageViewer(url: url),
-      ),
-    );
-  }
-
-  Widget _buildSaveBar(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: SizedBox(
-        width: double.infinity,
-        height: 50,
-        child: FilledButton(
-          onPressed: saving ? null : save,
-          style: FilledButton.styleFrom(backgroundColor: AppColors.green),
-          child: Text(context.tr(saving ? 'saving' : 'saveAll')),
-        ),
       ),
     );
   }
@@ -1870,17 +1016,6 @@ class _ProfileFormState extends State<_ProfileForm>
     _ => 'name',
   };
 
-  double _numericMax(String key) => switch (key) {
-    'height' => 230,
-    'weight' => 180,
-    'weak_foot' || 'skill_moves' => 5,
-    'shoe_size' => 60,
-    'jersey_number' => 99,
-    'hours_per_week' => 168,
-    'market_value' => 1000000000,
-    'caps' || 'goals' || 'assists' => 100000,
-    _ => 100,
-  };
 
   Future<void> _pickProfilePhoto() async {
     final file = await ImagePicker().pickImage(source: ImageSource.gallery);
@@ -3660,33 +2795,5 @@ class _SmartScoutBanner extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
-  _SliverTabBarDelegate(this.tabBar);
-
-  final Widget tabBar;
-
-  @override
-  double get minExtent => 60.0;
-  @override
-  double get maxExtent => 60.0;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: tabBar,
-    );
-  }
-
-  @override
-  bool shouldRebuild(_SliverTabBarDelegate oldDelegate) {
-    return tabBar != oldDelegate.tabBar;
   }
 }

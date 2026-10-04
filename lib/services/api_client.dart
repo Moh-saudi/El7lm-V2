@@ -1,3 +1,4 @@
+import '../l10n/locale_controller.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -12,15 +13,17 @@ class ApiException implements Exception {
     this.statusCode,
     this.translationKey,
     this.code,
+    this.serverMessage,
   });
 
   final String message;
   final int? statusCode;
   final String? translationKey;
   final String? code;
+  final String? serverMessage;
 
   @override
-  String toString() => message;
+  String toString() => serverMessage ?? message;
 }
 
 class ApiClient {
@@ -90,12 +93,16 @@ class ApiClient {
     }
   }
 
-  Map<String, String> _headers(String? token) => {
-    HttpHeaders.contentTypeHeader: 'application/json',
-    HttpHeaders.acceptHeader: 'application/json',
-    if (token != null && token.isNotEmpty)
-      HttpHeaders.authorizationHeader: 'Bearer $token',
-  };
+  Map<String, String> _headers(String? token) {
+    final languageCode = LocaleController.instance.locale.languageCode;
+    return {
+      HttpHeaders.contentTypeHeader: 'application/json',
+      HttpHeaders.acceptHeader: 'application/json',
+      'x-app-locale': languageCode,
+      if (token != null && token.isNotEmpty)
+        HttpHeaders.authorizationHeader: 'Bearer $token',
+    };
+  }
 
   Map<String, dynamic> _decode(http.Response response) {
     final Object? decoded;
@@ -113,10 +120,12 @@ class ApiClient {
         : <String, dynamic>{'data': decoded};
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final code = payload['code']?.toString();
+      final serverMsg = payload['message']?.toString() ?? payload['error']?.toString();
       throw ApiException(
-        '${payload['error'] ?? payload['message'] ?? 'A connection error occurred'}',
+        serverMsg ?? 'A connection error occurred',
         statusCode: response.statusCode,
         code: code,
+        serverMessage: serverMsg,
         translationKey: _errorTranslationKey(response.statusCode, code),
       );
     }
@@ -135,6 +144,14 @@ class ApiClient {
       'OTP_TEMPLATE_REJECTED' => 'otpTemplateRejected',
       'OTP_DELIVERY_FAILED' => 'otpDeliveryFailed',
       'OTP_CHANNEL_UNAVAILABLE' => 'otpDeliveryFailed',
+      'NISR_NOT_CONFIGURED' => 'nisrNotConfigured',
+      'NISR_PROFILE_UNAVAILABLE' => 'nisrProfileUnavailable',
+      'NISR_PARENTAL_CONSENT_REQUIRED' => 'nisrParentalConsentRequired',
+      'NISR_UPSTREAM_UNAVAILABLE' => 'nisrUpstreamUnavailable',
+      'NISR_RATE_LIMITED' => 'nisrRateLimited',
+      'NISR_EMPTY_REQUEST' ||
+      'NISR_AUDIO_TOO_LARGE' ||
+      'NISR_INVALID_AUDIO' => 'nisrInvalidRequest',
       _ when statusCode == 429 => 'tooManyRequests',
       _ when statusCode >= 500 => 'serviceUnavailable',
       _ => 'requestFailed',

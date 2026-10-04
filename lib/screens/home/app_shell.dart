@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -21,6 +22,7 @@ import '../profile/manager_settings_screen.dart';
 import '../profile/player_profile_screen.dart';
 import '../profile/player_profile_data.dart';
 import 'dashboard_screen.dart';
+import 'nisr_home_screen.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({
@@ -42,9 +44,12 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int selectedIndex = 0;
+  final Set<int> _loadedTabs = {0};
   int _unreadMessagesCount = 0;
   int _unreadNotificationsCount = 0;
+  bool _fetchingUnreadCounts = false;
   Timer? _unreadTimer;
+  Timer? _initialUnreadTimer;
 
   late final List<_Destination> _cachedDestinations;
 
@@ -52,12 +57,14 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     _initDestinations();
-    _fetchUnreadCounts();
+    _initialUnreadTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) _fetchUnreadCounts();
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureProfileCompletionReminder();
     });
     _unreadTimer = Timer.periodic(
-      const Duration(seconds: 15),
+      const Duration(seconds: 60),
       (_) => _fetchUnreadCounts(),
     );
   }
@@ -65,7 +72,16 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     _unreadTimer?.cancel();
+    _initialUnreadTimer?.cancel();
     super.dispose();
+  }
+
+  void _selectTab(int index) {
+    if (!mounted || index < 0 || index >= _cachedDestinations.length) return;
+    setState(() {
+      selectedIndex = index;
+      _loadedTabs.add(index);
+    });
   }
 
   void _initDestinations() {
@@ -73,22 +89,21 @@ class _AppShellState extends State<AppShell> {
         ? [
             _Destination(
               'home',
-              Icons.home_rounded,
-              DashboardScreen(
-                accountType: widget.accountType,
+              CupertinoIcons.house_fill,
+              NisrHomeScreen(
                 displayName: widget.displayName,
                 dataService: widget.dataService,
-                onNavigate: (index) => setState(() => selectedIndex = index),
+                onNavigate: _selectTab,
               ),
             ),
             _Destination(
               'players',
-              Icons.groups_rounded,
+              CupertinoIcons.person_2_fill,
               PlayerSearchScreen(dataService: widget.dataService),
             ),
             _Destination(
               'cinema',
-              Icons.smart_display_rounded,
+              CupertinoIcons.play_rectangle_fill,
               PlayerCinemaScreen(
                 dataService: widget.dataService,
                 isScreenActive: selectedIndex == 2,
@@ -96,34 +111,34 @@ class _AppShellState extends State<AppShell> {
             ),
             _Destination(
               'opportunities',
-              Icons.explore_rounded,
+              CupertinoIcons.compass_fill,
               OpportunitiesScreen(dataService: widget.dataService),
             ),
             _Destination(
               'myProfile',
-              Icons.person_rounded,
+              CupertinoIcons.person_crop_circle_fill,
               PlayerProfileScreen(dataService: widget.dataService),
             ),
           ]
         : [
             _Destination(
               'home',
-              Icons.home_rounded,
+              CupertinoIcons.house_fill,
               DashboardScreen(
                 accountType: widget.accountType,
                 displayName: widget.displayName,
                 dataService: widget.dataService,
-                onNavigate: (index) => setState(() => selectedIndex = index),
+                onNavigate: _selectTab,
               ),
             ),
             _Destination(
               'players',
-              Icons.groups_rounded,
+              CupertinoIcons.person_2_fill,
               PlayerSearchScreen(dataService: widget.dataService),
             ),
             _Destination(
               'managePlayers',
-              Icons.group_add_rounded,
+              CupertinoIcons.person_badge_plus,
               ManagePlayersScreen(
                 accountType: widget.accountType,
                 organizationName: widget.displayName,
@@ -132,7 +147,7 @@ class _AppShellState extends State<AppShell> {
             ),
             _Destination(
               'cinema',
-              Icons.smart_display_rounded,
+              CupertinoIcons.play_rectangle_fill,
               PlayerCinemaScreen(
                 dataService: widget.dataService,
                 isScreenActive: selectedIndex == 3,
@@ -140,7 +155,7 @@ class _AppShellState extends State<AppShell> {
             ),
             _Destination(
               'myProfile',
-              Icons.person_rounded,
+              CupertinoIcons.person_crop_circle_fill,
               ManagerProfileScreen(
                 accountType: widget.accountType,
                 displayName: widget.displayName,
@@ -157,6 +172,8 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _fetchUnreadCounts() async {
+    if (_fetchingUnreadCounts) return;
+    _fetchingUnreadCounts = true;
     try {
       final convs = await widget.dataService.fetchConversations();
       final currentUserId = widget.dataService.authService.authUserId ?? '';
@@ -174,7 +191,10 @@ class _AppShellState extends State<AppShell> {
           _unreadNotificationsCount = notifCount;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _fetchingUnreadCounts = false;
+    }
   }
 
   Future<void> _ensureProfileCompletionReminder() async {
@@ -209,7 +229,7 @@ class _AppShellState extends State<AppShell> {
         context: context,
         title: notification.title,
         body: notification.message,
-        onTap: () => setState(() => selectedIndex = 4),
+        onTap: () => _selectTab(4),
       );
       await _fetchUnreadCounts();
     } catch (_) {}
@@ -368,21 +388,28 @@ class _AppShellState extends State<AppShell> {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
-          if (!isCinema) const LanguageSwitcher(compact: true),
+          if (!isCinema) LanguageSwitcher(compact: true, isDark: isCinema),
           if (!isCinema)
-            IconButton(
+            _IOSActionButton(
               tooltip: context.tr('settings'),
-              onPressed: () => Navigator.of(context).push(
+              icon: CupertinoIcons.gear_alt,
+              isCinema: isCinema,
+              onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) =>
                       ManagerSettingsScreen(onSignOut: widget.onSignOut),
                 ),
               ),
-              icon: const Icon(Icons.settings_outlined),
             ),
-          IconButton(
+          _IOSActionButton(
             tooltip: context.trOr('messages', 'Messages'),
-            onPressed: () async {
+            icon: _unreadMessagesCount > 0
+                ? CupertinoIcons.chat_bubble_2_fill
+                : CupertinoIcons.chat_bubble_2,
+            badgeCount: _unreadMessagesCount,
+            badgeColor: const Color(0xFF10B981),
+            isCinema: isCinema,
+            onTap: () async {
               await Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) =>
@@ -391,104 +418,35 @@ class _AppShellState extends State<AppShell> {
               );
               _fetchUnreadCounts();
             },
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(
-                  _unreadMessagesCount > 0
-                      ? Icons.chat_rounded
-                      : Icons.chat_outlined,
-                  color: isCinema ? Colors.white : AppColors.navy,
-                  size: 23,
-                ),
-                if (_unreadMessagesCount > 0)
-                  Positioned(
-                    top: -4,
-                    right: -6,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      child: Text(
-                        '$_unreadMessagesCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
           ),
-          IconButton(
+          _IOSActionButton(
             tooltip: context.trOr('notifications', 'Notifications'),
-            onPressed: () async {
+            icon: _unreadNotificationsCount > 0
+                ? CupertinoIcons.bell_fill
+                : CupertinoIcons.bell,
+            badgeCount: _unreadNotificationsCount,
+            badgeColor: const Color(0xFFEF4444),
+            isCinema: isCinema,
+            onTap: () async {
               await Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => NotificationsScreen(
                     dataService: widget.dataService,
                     onProfileCompletionTap: () {
-                      setState(() => selectedIndex = 4);
+                      _selectTab(4);
                     },
                   ),
                 ),
               );
               _fetchUnreadCounts();
             },
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(
-                  _unreadNotificationsCount > 0
-                      ? Icons.notifications_active_rounded
-                      : Icons.notifications_none_rounded,
-                  color: isCinema ? Colors.white : AppColors.navy,
-                  size: 23,
-                ),
-                if (_unreadNotificationsCount > 0)
-                  Positioned(
-                    top: -4,
-                    right: -6,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      child: Text(
-                        '$_unreadNotificationsCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
           ),
           Builder(
-            builder: (ctx) => IconButton(
-              icon: Icon(
-                Icons.grid_view_rounded,
-                color: isCinema ? Colors.white : AppColors.navy,
-              ),
-              onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+            builder: (ctx) => _IOSActionButton(
+              tooltip: context.trOr('menu', 'القائمة'),
+              icon: CupertinoIcons.square_grid_2x2,
+              isCinema: isCinema,
+              onTap: () => Scaffold.of(ctx).openEndDrawer(),
             ),
           ),
           const SizedBox(width: 8),
@@ -501,7 +459,18 @@ class _AppShellState extends State<AppShell> {
       ),
       body: IndexedStack(
         index: selectedIndex,
-        children: items.map((item) => item.screen).toList(),
+        children: [
+          for (var index = 0; index < items.length; index++)
+            if (!_loadedTabs.contains(index))
+              const SizedBox.shrink()
+            else if (items[index].screen is PlayerCinemaScreen)
+              PlayerCinemaScreen(
+                dataService: widget.dataService,
+                isScreenActive: selectedIndex == index,
+              )
+            else
+              items[index].screen,
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
@@ -509,9 +478,7 @@ class _AppShellState extends State<AppShell> {
           debugPrint(
             '=== AppShell: Switching tab from $selectedIndex to $index ===',
           );
-          setState(() {
-            selectedIndex = index;
-          });
+          _selectTab(index);
         },
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppColors.green,
@@ -709,3 +676,102 @@ class _WebMenuDrawer extends StatelessWidget {
     );
   }
 }
+
+class _IOSActionButton extends StatelessWidget {
+  const _IOSActionButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.badgeCount = 0,
+    this.badgeColor = const Color(0xFFEF4444),
+    this.isCinema = false,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final int badgeCount;
+  final Color badgeColor;
+  final bool isCinema;
+
+  @override
+  Widget build(BuildContext context) {
+    final bgColor = isCinema
+        ? Colors.white.withValues(alpha: 0.12)
+        : const Color(0xFF0F172A).withValues(alpha: 0.05);
+    final borderColor = isCinema
+        ? Colors.white.withValues(alpha: 0.15)
+        : const Color(0xFF0F172A).withValues(alpha: 0.08);
+    final iconColor = isCinema ? Colors.white : const Color(0xFF0F172A);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2.5),
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: borderColor, width: 0.8),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(icon, color: iconColor, size: 20),
+                  if (badgeCount > 0)
+                    Positioned(
+                      top: -3,
+                      right: -3,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: badgeColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isCinema ? Colors.black : Colors.white,
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: badgeColor.withValues(alpha: 0.4),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          badgeCount > 99 ? '99+' : '$badgeCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+

@@ -52,7 +52,14 @@ class ContactValidator {
   static bool samePhone(String first, String second) {
     final a = digitsOnly(normalizeDigits(first)).replaceFirst(RegExp(r'^0+'), '');
     final b = digitsOnly(normalizeDigits(second)).replaceFirst(RegExp(r'^0+'), '');
-    return a.isNotEmpty && a == b;
+    if (a.isEmpty || b.isEmpty) return false;
+    if (a == b) return true;
+    // Match local formats with international country codes (e.g. 01... vs +201..., 05... vs +9665...)
+    if (a.length >= 7 && b.length >= 7) {
+      if (a.endsWith(b) && (a.length - b.length) <= 4) return true;
+      if (b.endsWith(a) && (b.length - a.length) <= 4) return true;
+    }
+    return false;
   }
 
   static String digitsOnly(String value) =>

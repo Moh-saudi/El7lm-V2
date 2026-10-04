@@ -22,11 +22,28 @@ class DataService {
 
   final ApiClient _api;
   final AuthService _auth;
+  Future<List<AppNotification>>? _notificationsInFlight;
+  Future<List<Player>>? _playersInFlight;
+  Future<List<Opportunity>>? _opportunitiesInFlight;
+  final Map<AccountType, Future<UserProfile>> _profilesInFlight = {};
 
   ApiClient get apiClient => _api;
   AuthService get authService => _auth;
 
-  Future<List<AppNotification>> fetchNotifications() async {
+  Future<List<AppNotification>> fetchNotifications() {
+    final existing = _notificationsInFlight;
+    if (existing != null) return existing;
+    late final Future<List<AppNotification>> pending;
+    pending = _fetchNotifications().whenComplete(() {
+      if (identical(_notificationsInFlight, pending)) {
+        _notificationsInFlight = null;
+      }
+    });
+    _notificationsInFlight = pending;
+    return pending;
+  }
+
+  Future<List<AppNotification>> _fetchNotifications() async {
     _requireSupabase();
     final ids = {
       _auth.authUserId,
@@ -85,22 +102,46 @@ class DataService {
 
   Future<void> markAllNotificationsRead() async {
     final notifications = await fetchNotifications();
-    for (final notification in notifications.where((item) => !item.isRead)) {
-      await markNotificationRead(notification);
-    }
+    final unread = notifications.where((item) => !item.isRead).toList();
+    if (unread.isEmpty) return;
+    await Future.wait(unread.map(markNotificationRead));
   }
 
-  Future<List<Player>> fetchPlayers() async {
+  Future<List<Player>> fetchPlayers() {
+    final existing = _playersInFlight;
+    if (existing != null) return existing;
+    late final Future<List<Player>> pending;
+    pending = _fetchPlayers().whenComplete(() {
+      if (identical(_playersInFlight, pending)) _playersInFlight = null;
+    });
+    _playersInFlight = pending;
+    return pending;
+  }
+
+  Future<List<Player>> _fetchPlayers() async {
+    // 1. Try canonical /api/players endpoint first
+    try {
+      final response = await _api.get('/api/players', query: {'limit': '50'});
+      final data = response['data'];
+      if (data is List && data.isNotEmpty) {
+        return data
+            .whereType<Map>()
+            .map((row) => Player.fromJson(Map<String, dynamic>.from(row)))
+            .toList();
+      }
+    } catch (_) {}
+
     if (AppConfig.hasSupabaseConfiguration && _auth.hasSession) {
       try {
         final client = Supabase.instance.client;
-        final playerRows = await client.from('players').select();
+        final playerRows = await client.from('players').select().limit(50);
         List<Map<String, dynamic>> userRows = const [];
         try {
           final rows = await client
               .from('users')
               .select()
-              .eq('accountType', 'player');
+              .eq('accountType', 'player')
+              .limit(50);
           userRows = rows.map(Map<String, dynamic>.from).toList();
         } catch (_) {
           // Player records alone still contain the complete sports profile.
@@ -146,30 +187,25 @@ class DataService {
     Map<String, dynamic>? player;
     Map<String, dynamic>? user;
 
-    player = await client
+    // Parallel lookup across players and users by id/uid
+    final playerFuture = client
         .from('players')
         .select()
-        .eq('id', playerId)
+        .or('id.eq.$playerId,uid.eq.$playerId')
+        .limit(1)
         .maybeSingle();
-    player ??= await client
-        .from('players')
+
+    final userFuture = client
+        .from('users')
         .select()
-        .eq('uid', playerId)
-        .maybeSingle();
-    try {
-      user = await client
-          .from('users')
-          .select()
-          .eq('id', playerId)
-          .maybeSingle();
-      user ??= await client
-          .from('users')
-          .select()
-          .eq('uid', playerId)
-          .maybeSingle();
-    } catch (_) {
-      // The sports profile remains authoritative if users access is limited.
-    }
+        .or('id.eq.$playerId,uid.eq.$playerId')
+        .limit(1)
+        .maybeSingle()
+        .catchError((_) => null);
+
+    final results = await Future.wait([playerFuture, userFuture]);
+    player = results[0];
+    user = results[1];
 
     final data = _mergeMissing(player ?? const {}, user);
     if (data.isEmpty) {
@@ -241,7 +277,20 @@ class DataService {
     }
   }
 
-  Future<List<Opportunity>> fetchOpportunities() async {
+  Future<List<Opportunity>> fetchOpportunities() {
+    final existing = _opportunitiesInFlight;
+    if (existing != null) return existing;
+    late final Future<List<Opportunity>> pending;
+    pending = _fetchOpportunities().whenComplete(() {
+      if (identical(_opportunitiesInFlight, pending)) {
+        _opportunitiesInFlight = null;
+      }
+    });
+    _opportunitiesInFlight = pending;
+    return pending;
+  }
+
+  Future<List<Opportunity>> _fetchOpportunities() async {
     final response = await _api.get(
       '/api/opportunities',
       query: const {'explore': 'true'},
@@ -307,7 +356,20 @@ class DataService {
     }
   }
 
-  Future<UserProfile> fetchProfile(AccountType accountType) async {
+  Future<UserProfile> fetchProfile(AccountType accountType) {
+    final existing = _profilesInFlight[accountType];
+    if (existing != null) return existing;
+    late final Future<UserProfile> pending;
+    pending = _fetchProfile(accountType).whenComplete(() {
+      if (identical(_profilesInFlight[accountType], pending)) {
+        _profilesInFlight.remove(accountType);
+      }
+    });
+    _profilesInFlight[accountType] = pending;
+    return pending;
+  }
+
+  Future<UserProfile> _fetchProfile(AccountType accountType) async {
     try {
       _requireSupabase();
       final client = Supabase.instance.client;
@@ -355,7 +417,34 @@ class DataService {
       merged['name'] ??=
           specific?['full_name'] ?? user?['displayName'] ?? user?['full_name'];
       merged['email'] ??= user?['email'];
-      merged['phone'] ??= specific?['phone'] ?? user?['phoneNumber'];
+      // Resolve phone robustly (avoid dummy values like 'test' or malformed numbers)
+      String? resolvedPhone;
+      for (final p in [
+        specific?['phone'],
+        specific?['phoneNumber'],
+        user?['phone'],
+        user?['phoneNumber'],
+        client.auth.currentUser?.phone,
+        client.auth.currentUser?.userMetadata?['phone'],
+      ]) {
+        if (p != null) {
+          final s = '$p'.trim();
+          final digits = s.replaceAll(RegExp(r'\D'), '');
+          if (digits.length >= 7 && !s.toLowerCase().contains('test')) {
+            resolvedPhone = s;
+            break;
+          }
+        }
+      }
+      if (resolvedPhone == null) {
+        final idCandidate =
+            '${specific?['id'] ?? user?['id'] ?? legacyId ?? authId ?? ''}';
+        final digits = idCandidate.replaceAll(RegExp(r'\D'), '');
+        if (digits.length >= 9) {
+          resolvedPhone = digits;
+        }
+      }
+      merged['phone'] = resolvedPhone ?? merged['phone'];
       if (accountType == AccountType.player) {
         try {
           await _enrichPlayerOrganization(client, merged);
@@ -402,8 +491,11 @@ class DataService {
     final registeredPhone =
         '${profile.values['phone'] ?? profile.values['phoneNumber'] ?? ''}'
             .trim();
+    final regPhoneDigits = registeredPhone.replaceAll(RegExp(r'\D'), '');
     if (submittedPhone.isNotEmpty &&
         registeredPhone.isNotEmpty &&
+        regPhoneDigits.length >= 7 &&
+        !registeredPhone.toLowerCase().contains('test') &&
         !ContactValidator.samePhone(submittedPhone, registeredPhone)) {
       throw const FormatException('profilePhoneMustMatchLogin');
     }
@@ -423,6 +515,7 @@ class DataService {
       'is_edit_pending',
       'edit_request_date',
       '_organization',
+      'email', // Email column is protected and updated securely via /api/auth/update-email
     };
     final payload = <String, dynamic>{'id': profile.userId};
     // Send only fields that the player actually changed.  Sending the merged
@@ -434,18 +527,36 @@ class DataService {
       }
     });
 
-    try {
-      final res = await client
-          .from(table)
-          .update(payload)
-          .eq('id', profile.userId)
-          .select();
-      if (res.isEmpty) {
-        await client.from(table).upsert(payload);
+    if (payload.length > 1) {
+      try {
+        final res = await client
+            .from(table)
+            .update(payload)
+            .eq('id', profile.userId)
+            .select();
+        if (res.isEmpty) {
+          await client.from(table).upsert(payload);
+        }
+      } catch (e) {
+        debugPrint('Error saving to $table: $e');
+        if (strict) rethrow;
       }
-    } catch (e) {
-      debugPrint('Error saving to $table: $e');
-      if (strict) rethrow;
+    }
+
+    if (submittedEmail.isNotEmpty && updates.containsKey('email')) {
+      try {
+        await _api.post(
+          '/api/auth/update-email',
+          body: {
+            'userId': profile.userId,
+            'userCollection': table,
+            'email': submittedEmail,
+          },
+        );
+      } catch (e) {
+        debugPrint('Error updating email via API: $e');
+        if (strict && payload.length <= 1) rethrow;
+      }
     }
 
     try {
@@ -1374,8 +1485,42 @@ class DataService {
         ? _auth.currentDisplayName
         : 'User';
     final senderType = (await _auth.savedAccountType())?.value ?? 'player';
+    final token = _auth.accessToken;
+    final now = DateTime.now().toUtc();
 
-    // 1. Check if conversation already exists between participants
+    // 1. Try secure server-side endpoint first (PLAN-01)
+    try {
+      final res = await _api.post(
+        '/api/conversations/start',
+        body: {
+          'recipientId': targetId,
+          'recipientName': targetName,
+          'recipientType': targetType,
+          'recipientAvatar': targetAvatar ?? '',
+        },
+        accessToken: token,
+      );
+      if (res['success'] == true && res['conversationId'] != null) {
+        final convId = res['conversationId'] as String;
+        return ConversationModel(
+          id: convId,
+          participants: [senderId, targetId],
+          participantNames: {senderId: senderName, targetId: targetName},
+          participantTypes: {senderId: senderType, targetId: targetType},
+          participantAvatars: {senderId: '', targetId: targetAvatar ?? ''},
+          subject: 'General Chat',
+          lastMessage: '',
+          lastMessageTime: now,
+          lastSenderId: senderId,
+          unreadCount: {senderId: 0, targetId: 0},
+          updatedAt: now,
+        );
+      }
+    } catch (e) {
+      debugPrint('⚠️ [DataService] Server /api/conversations/start failed: $e, falling back to direct DB');
+    }
+
+    // 2. Check if conversation already exists between participants in DB
     try {
       final jsonArray = jsonEncode([senderId]);
       final res = await client
@@ -1395,8 +1540,7 @@ class DataService {
       }
     } catch (_) {}
 
-    // 2. Create new conversation record
-    final now = DateTime.now().toUtc();
+    // 3. Create new conversation record directly in DB fallback
     final subId = senderId.length > 6 ? senderId.substring(0, 6) : senderId;
     final convId = 'conv_${DateTime.now().millisecondsSinceEpoch}_$subId';
 
@@ -1420,8 +1564,10 @@ class DataService {
           .select()
           .single();
       return ConversationModel.fromJson(Map<String, dynamic>.from(inserted));
-    } catch (_) {
-      // Local fallback conversation model so chat opens seamlessly 100% of the time!
+    } catch (e) {
+      debugPrint('⚠️ [DataService] Failed to insert conversation in DB: $e');
+      // If client insert failed due to permission or connection, rethrow if critical
+      // or provide fallback for offline draft state with clear logging
       return ConversationModel(
         id: convId,
         participants: [senderId, targetId],
@@ -1450,7 +1596,8 @@ class DataService {
           .from('conversations')
           .select()
           .filter('participants', 'cs', jsonArray)
-          .order('updatedAt', ascending: false);
+          .order('updatedAt', ascending: false)
+          .limit(30);
       return (res as List)
           .map((e) => ConversationModel.fromJson(Map<String, dynamic>.from(e)))
           .toList();
@@ -1518,45 +1665,75 @@ class DataService {
     String voiceUrl = '',
     int voiceDuration = 0,
   }) async {
-    _requireSupabase();
-    final client = Supabase.instance.client;
     final senderId = _auth.authUserId ?? await _auth.legacyUserId() ?? '';
-    final senderType = (await _auth.savedAccountType())?.value ?? 'player';
-    final now = DateTime.now().toUtc().toIso8601String();
+    final token = _auth.accessToken;
 
-    final payload = {
-      'conversationId': conversationId,
-      'senderId': senderId,
-      'receiverId': receiverId,
-      'senderName': _auth.currentDisplayName.isNotEmpty
-          ? _auth.currentDisplayName
-          : 'User',
-      'receiverName': receiverName,
-      'senderType': senderType,
-      'receiverType': receiverType,
-      'message': message,
-      'messageType': messageType,
-      'imageUrl': imageUrl.isEmpty ? null : imageUrl,
-      'voiceUrl': voiceUrl.isEmpty ? null : voiceUrl,
-      'voiceDuration': voiceDuration,
-      'deliveryStatus': 'sent',
-      'timestamp': now,
-      'isRead': false,
-    };
-
-    await client.from('messages').insert(payload);
-
+    // 1. Try server-side API endpoint for sanitization and security (PLAN-01)
+    bool sentViaServer = false;
     try {
-      await client
-          .from('conversations')
-          .update({
-            'lastMessage': message,
-            'lastMessageTime': now,
-            'lastSenderId': senderId,
-            'updatedAt': now,
-          })
-          .eq('id', conversationId);
-    } catch (_) {}
+      final res = await _api.post(
+        '/api/messages/send',
+        body: {
+          'conversationId': conversationId,
+          'receiverId': receiverId,
+          'receiverName': receiverName,
+          'receiverType': receiverType,
+          'content': message,
+          'message': message,
+          'messageType': messageType,
+          'imageUrl': imageUrl.isEmpty ? null : imageUrl,
+          'voiceUrl': voiceUrl.isEmpty ? null : voiceUrl,
+          'voiceDuration': voiceDuration,
+        },
+        accessToken: token,
+      );
+      if (res['success'] == true) {
+        sentViaServer = true;
+      }
+    } catch (e) {
+      debugPrint('⚠️ [DataService] /api/messages/send failed: $e, trying DB direct fallback');
+    }
+
+    if (!sentViaServer) {
+      _requireSupabase();
+      final client = Supabase.instance.client;
+      final senderType = (await _auth.savedAccountType())?.value ?? 'player';
+      final now = DateTime.now().toUtc().toIso8601String();
+
+      final payload = {
+        'conversationId': conversationId,
+        'senderId': senderId,
+        'receiverId': receiverId,
+        'senderName': _auth.currentDisplayName.isNotEmpty
+            ? _auth.currentDisplayName
+            : 'User',
+        'receiverName': receiverName,
+        'senderType': senderType,
+        'receiverType': receiverType,
+        'message': message,
+        'messageType': messageType,
+        'imageUrl': imageUrl.isEmpty ? null : imageUrl,
+        'voiceUrl': voiceUrl.isEmpty ? null : voiceUrl,
+        'voiceDuration': voiceDuration,
+        'deliveryStatus': 'sent',
+        'timestamp': now,
+        'isRead': false,
+      };
+
+      await client.from('messages').insert(payload);
+
+      try {
+        await client
+            .from('conversations')
+            .update({
+              'lastMessage': message,
+              'lastMessageTime': now,
+              'lastSenderId': senderId,
+              'updatedAt': now,
+            })
+            .eq('id', conversationId);
+      } catch (_) {}
+    }
 
     try {
       InAppNotificationService().playChatSound();

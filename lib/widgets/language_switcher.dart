@@ -4,9 +4,10 @@ import '../l10n/app_localizations.dart';
 import '../l10n/locale_controller.dart';
 
 class LanguageSwitcher extends StatelessWidget {
-  const LanguageSwitcher({super.key, this.compact = false});
+  const LanguageSwitcher({super.key, this.compact = false, this.isDark = false});
 
   final bool compact;
+  final bool isDark;
 
   static const _languages = [
     (code: 'ar', label: 'العربية', flag: '🇸🇦'),
@@ -47,24 +48,34 @@ class LanguageSwitcher extends StatelessWidget {
           .toList(),
       child: compact
           ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
+              height: 38,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : const Color(0xFF0F172A).withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.15)
+                      : const Color(0xFF0F172A).withValues(alpha: 0.08),
+                  width: 0.8,
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(currentLang.flag, style: const TextStyle(fontSize: 15)),
+                  Text(currentLang.flag, style: const TextStyle(fontSize: 14)),
                   const SizedBox(width: 5),
                   Text(
                     current.toUpperCase(),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 12,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11.5,
                       letterSpacing: 0.5,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
                     ),
                   ),
                 ],
@@ -74,3 +85,4 @@ class LanguageSwitcher extends StatelessWidget {
     );
   }
 }
+

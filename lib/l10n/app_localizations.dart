@@ -141,6 +141,14 @@ extension AppTranslationContext on BuildContext {
   ]) => l10n.textOr(key, fallback, values);
 
   String errorText(Object? error) {
+    if (error is ApiException) {
+      if (error.serverMessage != null && error.serverMessage!.trim().isNotEmpty) {
+        return error.serverMessage!;
+      }
+      if (error.translationKey != null) {
+        return tr(error.translationKey!);
+      }
+    }
     return tr(errorTranslationKey(error));
   }
 

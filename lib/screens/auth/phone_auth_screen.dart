@@ -43,6 +43,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   bool agreed = false;
   bool loading = false;
   String? errorKey;
+  String? errorMessage;
   final locationCatalog = LocationCatalogService();
 
   String get countryCode => '+${selectedCountry.phoneCode}';
@@ -214,6 +215,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
     setState(() {
       loading = true;
       errorKey = null;
+      errorMessage = null;
     });
     try {
       final accountStatus = await widget.authService.sendOtp(
@@ -238,7 +240,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
       );
       if (result != null) widget.onAuthenticated(result);
     } catch (exception) {
-      setState(() => errorKey = context.errorTranslationKey(exception));
+      setState(() => errorMessage = context.errorText(exception));
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -401,10 +403,10 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                 ),
               ),
             ],
-            if (errorKey != null) ...[
+            if (errorMessage != null || errorKey != null) ...[
               const SizedBox(height: 8),
               Text(
-                context.tr(errorKey!),
+                errorMessage ?? context.tr(errorKey!),
                 style: const TextStyle(color: Colors.red),
               ),
             ],

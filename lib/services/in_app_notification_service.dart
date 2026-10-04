@@ -169,21 +169,24 @@ class InAppNotificationService {
     return bytes.buffer.asUint8List();
   }
 
+  static Uint8List? _cachedChatWav;
+  static Uint8List? _cachedNotificationWav;
+
   Future<void> playChatSound() async {
     if (!chatSoundEnabled) return;
     try {
-      final wavData = _generateChimeWav([880.0, 1320.0], 0.22);
+      _cachedChatWav ??= _generateChimeWav([880.0, 1320.0], 0.22);
       await _audioPlayer.stop();
-      await _audioPlayer.play(BytesSource(wavData));
+      await _audioPlayer.play(BytesSource(_cachedChatWav!));
     } catch (_) {}
   }
 
   Future<void> playNotificationSound() async {
     if (!notificationSoundEnabled) return;
     try {
-      final wavData = _generateChimeWav([523.25, 659.25, 783.99], 0.35);
+      _cachedNotificationWav ??= _generateChimeWav([523.25, 659.25, 783.99], 0.35);
       await _audioPlayer.stop();
-      await _audioPlayer.play(BytesSource(wavData));
+      await _audioPlayer.play(BytesSource(_cachedNotificationWav!));
     } catch (_) {}
   }
 

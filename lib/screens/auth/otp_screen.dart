@@ -35,6 +35,7 @@ class _OtpScreenState extends State<OtpScreen> {
   int remaining = 30;
   bool loading = false;
   String? errorKey;
+  String? errorMessage;
 
   @override
   void initState() {
@@ -66,6 +67,7 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() {
       loading = true;
       errorKey = null;
+      errorMessage = null;
     });
     try {
       final result = await widget.authService.verifyOtp(
@@ -77,7 +79,7 @@ class _OtpScreenState extends State<OtpScreen> {
       );
       if (mounted) Navigator.of(context).pop(result);
     } catch (exception) {
-      setState(() => errorKey = context.errorTranslationKey(exception));
+      setState(() => errorMessage = context.errorText(exception));
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -98,7 +100,7 @@ class _OtpScreenState extends State<OtpScreen> {
       if (mounted) startTimer();
     } catch (exception) {
       if (mounted) {
-        setState(() => errorKey = context.errorTranslationKey(exception));
+        setState(() => errorMessage = context.errorText(exception));
       }
     } finally {
       if (mounted) setState(() => loading = false);
@@ -155,10 +157,10 @@ class _OtpScreenState extends State<OtpScreen> {
             ),
             onSubmitted: (_) => verify(),
           ),
-          if (errorKey != null) ...[
+          if (errorMessage != null || errorKey != null) ...[
             const SizedBox(height: 8),
             Text(
-              context.tr(errorKey!),
+              errorMessage ?? context.tr(errorKey!),
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.red),
             ),

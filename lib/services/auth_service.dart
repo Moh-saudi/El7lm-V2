@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -145,53 +144,6 @@ class AuthService {
     required AccountType expectedAccountType,
     String? name,
   }) async {
-    PhoneAccountStatus? status;
-    try {
-      status = await checkPhone(phone);
-    } on ApiException catch (error) {
-      // Re-throw validation or rate limit errors immediately
-      if (error.code == 'INVALID_PHONE' ||
-          error.code == 'TOO_MANY_REQUESTS' ||
-          error.statusCode == 429) {
-        rethrow;
-      }
-      // For general lookup unavailability, do NOT block OTP sending!
-      // The server (/api/otp/send) performs the authoritative check.
-      debugPrint('[auth_service] pre-check skipped: ${error.code}');
-    } catch (e) {
-      debugPrint('[auth_service] pre-check error: $e');
-    }
-
-    if (status != null) {
-      if (!registration && !status.found) {
-        throw const ApiException(
-          'This phone number is not registered. Create an account first.',
-          statusCode: 404,
-          code: 'ACCOUNT_NOT_FOUND',
-          translationKey: 'accountNotFoundRegisterFirst',
-        );
-      }
-      if (!registration &&
-          status.found &&
-          status.accountType != null &&
-          status.accountType != expectedAccountType) {
-        throw const ApiException(
-          'This phone number is registered under another account type.',
-          statusCode: 409,
-          code: 'ACCOUNT_TYPE_MISMATCH',
-          translationKey: 'accountTypeMismatch',
-        );
-      }
-      if (registration && status.found) {
-        throw const ApiException(
-          'This phone number is already registered. Sign in instead.',
-          statusCode: 409,
-          code: 'ACCOUNT_ALREADY_EXISTS',
-          translationKey: 'accountAlreadyExistsLogin',
-        );
-      }
-    }
-
     final response = await _api.post(
       '/api/otp/send',
       body: {
@@ -199,15 +151,16 @@ class AuthService {
         'name': name,
         'purpose': registration ? 'registration' : 'login',
         'channel': 'auto',
+        'expectedAccountType': expectedAccountType.value,
       },
     );
 
     final returnedType = AccountType.tryFromValue(
       response['accountType']?.toString(),
-    ) ?? status?.accountType;
+    );
 
     return PhoneAccountStatus(
-      found: status?.found ?? (response['found'] == true || !registration),
+      found: response['found'] == true || !registration,
       accountType: returnedType,
     );
   }
@@ -223,10 +176,18 @@ class AuthService {
     var isNew = false;
 
     if (registration) {
-      final check = await _api.post(
-        '/api/auth/verify-otp-and-check',
-        body: {'phoneNumber': phone, 'otp': otp},
-      );
+      Map<String, dynamic> check;
+      try {
+        check = await _api.post(
+          '/api/v1/auth/otp/verify-session',
+          body: {'phone': phone, 'otp': otp},
+        );
+      } catch (_) {
+        check = await _api.post(
+          '/api/auth/verify-otp-and-check',
+          body: {'phoneNumber': phone, 'otp': otp},
+        );
+      }
       isNew = check['isNew'] == true;
       result = isNew
           ? await _api.post(
@@ -239,14 +200,21 @@ class AuthService {
             )
           : check;
     } else {
-      result = await _api.post(
-        '/api/auth/otp-login',
-        body: {'phoneNumber': phone, 'otp': otp},
-      );
+      try {
+        result = await _api.post(
+          '/api/v1/auth/otp/verify-session',
+          body: {'phone': phone, 'otp': otp},
+        );
+      } catch (_) {
+        result = await _api.post(
+          '/api/auth/otp-login',
+          body: {'phoneNumber': phone, 'otp': otp},
+        );
+      }
     }
 
     final authEmail = '${result['authEmail'] ?? ''}';
-    final authPassword = '${result['authPassword'] ?? ''}';
+    final authPassword = '${result['authPassword'] ?? result['tempPassword'] ?? ''}';
     if (AppConfig.hasSupabaseConfiguration &&
         authEmail.isNotEmpty &&
         authPassword.isNotEmpty) {
