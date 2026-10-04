@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Error fetching players:', error);
       return NextResponse.json(
-        { success: false, error: 'Failed to fetch players' },
+        { success: false, error: 'Failed to fetch players', details: error.message },
         { status: 500 }
       );
     }
