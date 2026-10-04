@@ -7,7 +7,7 @@ import '../l10n/app_localizations.dart';
 class PersonalSponsorSupportButton extends StatelessWidget {
   const PersonalSponsorSupportButton({super.key});
 
-  static const whatsAppNumber = '97430611350';
+  static const whatsAppNumber = '97470542458';
   static const supportEmail = 'info@el7lm.com';
 
   static Future<void> showSupport(BuildContext context) async {
@@ -47,7 +47,7 @@ class PersonalSponsorSupportButton extends StatelessWidget {
                 icon: Icons.chat_rounded,
                 color: const Color(0xFF25D366),
                 title: sheetContext.tr('contactWhatsApp'),
-                subtitle: '+974 3061 1350',
+                subtitle: '+974 7054 2458',
                 onTap: () => _open(
                   sheetContext,
                   Uri.parse('https://wa.me/$whatsAppNumber'),

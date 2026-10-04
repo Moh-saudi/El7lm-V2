@@ -1708,7 +1708,7 @@ Future<void> _showTournamentActions(BuildContext context) async {
               icon: const FaIcon(FontAwesomeIcons.whatsapp, size: 21),
               color: const Color(0xFF25D366),
               title: sheetContext.tr('contactTournamentWhatsApp'),
-              subtitle: '+974 3061 1350',
+              subtitle: '+974 7054 2458',
               onTap: () {
                 final message = Uri.encodeComponent(sheetContext.tr('tournamentWhatsAppMessage'));
                 Navigator.of(sheetContext).pop();
