@@ -5,10 +5,11 @@ import ar from './locales/ar.json';
 import en from './locales/en.json';
 import es from './locales/es.json';
 import pt from './locales/pt.json';
+import fr from './locales/fr.json';
 
-const translations: Record<string, any> = { ar, en, es, pt };
+const translations: Record<string, any> = { ar, en, es, pt, fr };
 
-export type Locale = 'ar' | 'en' | 'es' | 'pt';
+export type Locale = 'ar' | 'en' | 'es' | 'pt' | 'fr';
 
 interface TranslationContextProps {
   locale: Locale;

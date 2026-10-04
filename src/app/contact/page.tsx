@@ -74,11 +74,11 @@ export default function ContactPage() {
                   <h4 className="text-2xl font-bold text-gray-800">{t('contact.qatar')}</h4>
                 </div>
                 <a
-                  href="tel:+97472053188"
+                  href="tel:+97470542458"
                   className="text-3xl font-bold text-green-600 hover:text-green-700 transition-colors block"
                   dir="ltr"
                 >
-                  +974 72 053 188
+                  +974 7054 2458
                 </a>
                 <p className="text-sm text-gray-600 mt-2">{t('contact.available247')}</p>
               </div>

@@ -15,6 +15,7 @@ interface LanguageOption {
 const languages: LanguageOption[] = [
   { code: 'ar', name: 'Arabic', flag: '🇸🇦', localName: 'العربية' },
   { code: 'en', name: 'English', flag: '🇬🇧', localName: 'English' },
+  { code: 'fr', name: 'French', flag: '🇫🇷', localName: 'Français' },
   { code: 'es', name: 'Spanish', flag: '🇪🇸', localName: 'Español' },
   { code: 'pt', name: 'Portuguese', flag: '🇵🇹', localName: 'Português' },
 ];
@@ -23,6 +24,7 @@ function FlagIcon({ code, className = 'h-4 w-6' }: { code: Locale; className?: s
   const common = { className, viewBox: '0 0 24 16', role: 'img' as const, 'aria-hidden': true };
   if (code === 'ar') return <svg {...common}><rect width="24" height="16" rx="2" fill="#165b33" /><text x="12" y="6.8" textAnchor="middle" fill="#fff" fontSize="2.15" fontFamily="Arial">لا إله إلا الله</text><path d="M6 10.5h12" stroke="#fff" strokeWidth=".65" strokeLinecap="round" /><path d="M7 9.5h10" stroke="#fff" strokeWidth=".35" strokeLinecap="round" /></svg>;
   if (code === 'en') return <svg {...common}><rect width="24" height="16" rx="2" fill="#23408e" /><path d="M0 0l24 16M24 0L0 16" stroke="#fff" strokeWidth="3.6" /><path d="M0 0l24 16M24 0L0 16" stroke="#c8102e" strokeWidth="1.4" /><path d="M12 0v16M0 8h24" stroke="#fff" strokeWidth="5.2" /><path d="M12 0v16M0 8h24" stroke="#c8102e" strokeWidth="2.6" /></svg>;
+  if (code === 'fr') return <svg {...common}><rect width="8" height="16" fill="#002395" /><rect x="8" width="8" height="16" fill="#fff" /><rect x="16" width="8" height="16" fill="#ed2939" /></svg>;
   if (code === 'es') return <svg {...common}><rect width="24" height="16" rx="2" fill="#aa151b" /><rect y="3.5" width="24" height="9" fill="#f1bf00" /><circle cx="6" cy="8" r="1.15" fill="#aa151b" opacity=".85" /></svg>;
   return <svg {...common}><rect width="24" height="16" rx="2" fill="#046a38" /><rect width="9.2" height="16" fill="#d7141a" /><circle cx="9.2" cy="8" r="3.25" fill="#ffdf00" /><path d="M9.2 4.75a3.25 3.25 0 0 1 0 6.5 2.6 2.6 0 0 0 0-6.5z" fill="#d7141a" /></svg>;
 }

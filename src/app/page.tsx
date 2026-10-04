@@ -36,7 +36,7 @@ import { useTranslation } from '@/lib/i18n';
 // ─── Direct Contacts ────────────────────────────────────────────────────────
 const CONTACT_NUMBERS = [
   { country: 'مصر', code: 'EG', flag: '🇪🇬', phone: '+20 10 1779 9580', tel: '+201017799580', whatsapp: '201017799580' },
-  { country: 'قطر', code: 'QA', flag: '🇶🇦', phone: '+974 72 053 188', tel: '+97472053188', whatsapp: '97472053188' },
+  { country: 'قطر', code: 'QA', flag: '🇶🇦', phone: '+974 7054 2458', tel: '+97470542458', whatsapp: '97470542458' },
 ];
 
 // ─── Social Channels ────────────────────────────────────────────────────────
@@ -240,6 +240,12 @@ export default function HomePage() {
             >
               {isRtl ? 'تواصل معنا' : 'Contact'}
             </Link>
+            <Link 
+              href="/careers" 
+              className={`transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-emerald-600'}`}
+            >
+              {isRtl ? 'الوظائف' : locale === 'fr' ? 'Carrières' : 'Careers'}
+            </Link>
           </nav>
 
           {/* Actions: Theme Toggle, Language, Auth */}
@@ -319,6 +325,9 @@ export default function HomePage() {
               </Link>
               <Link href="/contact" onClick={() => setMobileMenuOpen(false)} className="py-2">
                 {isRtl ? 'تواصل معنا' : 'Contact'}
+              </Link>
+              <Link href="/careers" onClick={() => setMobileMenuOpen(false)} className="py-2">
+                {isRtl ? 'الوظائف' : locale === 'fr' ? 'Carrières' : 'Careers'}
               </Link>
               <div className="pt-3 border-t border-slate-200 flex flex-col gap-2">
                 <Link
@@ -737,6 +746,11 @@ export default function HomePage() {
                 <li>
                   <Link href="/about" className="hover:text-emerald-600 transition-colors">
                     {isRtl ? 'عن منصة الحلم' : 'About El7lm'}
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/careers" className="hover:text-emerald-600 transition-colors">
+                    {isRtl ? 'الوظائف والفرص الوظيفية' : locale === 'fr' ? 'Carrières' : 'Careers'}
                   </Link>
                 </li>
                 <li>
