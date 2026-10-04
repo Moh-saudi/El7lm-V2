@@ -4,38 +4,40 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 const SAFE_PUBLIC_PLAYER_COLUMNS = [
   'id',
   'uid',
-  'name',
   'full_name',
-  'position',
+  'name',
   'primary_position',
   'secondary_position',
-  'age',
-  'date_of_birth',
+  'position',
   'birth_date',
-  'birthDate',
   'nationality',
   'country',
   'city',
   'height',
   'weight',
   'preferred_foot',
-  'preferredFoot',
   'profile_image',
   'profile_image_url',
-  'profileImageUrl',
-  'avatar_url',
-  'rating',
-  'market_value',
-  'marketValue',
   'current_club',
-  'currentClub',
-  'bio',
-  'is_verified',
-  'isVerified',
+  'brief',
+  'isDeleted',
   'isActive',
-  'createdAt',
   'created_at',
+  'updated_at',
 ].join(',');
+
+function calculateAge(birthDateStr: string | null | undefined): number | null {
+  if (!birthDateStr) return null;
+  const birth = new Date(birthDateStr);
+  if (isNaN(birth.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const m = now.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age >= 0 && age < 100 ? age : null;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,7 +46,6 @@ export async function GET(request: NextRequest) {
     // 1. Pagination parameters
     const rawLimit = parseInt(searchParams.get('limit') || '25', 10);
     const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 25 : rawLimit), 50);
-    const cursor = searchParams.get('cursor');
     const page = parseInt(searchParams.get('page') || '1', 10);
 
     // 2. Filter parameters
@@ -52,8 +53,6 @@ export async function GET(request: NextRequest) {
     const city = searchParams.get('city')?.trim();
     const country = searchParams.get('country')?.trim();
     const search = searchParams.get('search')?.trim();
-    const minAge = parseInt(searchParams.get('minAge') || '', 10);
-    const maxAge = parseInt(searchParams.get('maxAge') || '', 10);
 
     const admin = getSupabaseAdmin();
 
@@ -61,12 +60,12 @@ export async function GET(request: NextRequest) {
       .from('players')
       .select(SAFE_PUBLIC_PLAYER_COLUMNS, { count: 'exact' });
 
-    // Exclude deleted or soft-deleted records
-    query = query.neq('isDeleted', true);
+    // Exclude deleted records safely (where isDeleted is null or false)
+    query = query.or('isDeleted.is.null,isDeleted.eq.false');
 
-    // Apply filters
+    // Apply filters on physical columns
     if (position) {
-      query = query.or(`position.ilike.%${position}%,primary_position.ilike.%${position}%`);
+      query = query.or(`position.ilike.%${position}%,primary_position.ilike.%${position}%,secondary_position.ilike.%${position}%`);
     }
 
     if (city) {
@@ -78,29 +77,16 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      query = query.or(`full_name.ilike.%${search}%,name.ilike.%${search}%,bio.ilike.%${search}%`);
+      query = query.or(`full_name.ilike.%${search}%,name.ilike.%${search}%,brief.ilike.%${search}%`);
     }
 
-    if (!isNaN(minAge)) {
-      query = query.gte('age', minAge);
-    }
+    // Pagination
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    query = query.range(from, to);
 
-    if (!isNaN(maxAge)) {
-      query = query.lte('age', maxAge);
-    }
-
-    // Cursor pagination (by createdAt)
-    if (cursor) {
-      query = query.lt('createdAt', cursor);
-    } else if (page > 1) {
-      const from = (page - 1) * limit;
-      const to = from + limit - 1;
-      query = query.range(from, to);
-    } else {
-      query = query.limit(limit + 1);
-    }
-
-    query = query.order('createdAt', { ascending: false });
+    // Order by updated_at or id
+    query = query.order('updated_at', { ascending: false, nullsFirst: false });
 
     const { data: rows, count: totalCount, error } = await query;
 
@@ -112,31 +98,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let items: any[] = (rows as any[]) || [];
-    let hasMore = false;
-    let nextCursor: string | null = null;
-
-    if (!cursor && page <= 1) {
-      if (items.length > limit) {
-        hasMore = true;
-        items = items.slice(0, limit);
-        nextCursor = items[items.length - 1]?.createdAt || null;
-      }
-    } else if (cursor) {
-      hasMore = items.length === limit;
-      nextCursor = items.length > 0 ? items[items.length - 1]?.createdAt : null;
-    } else {
-      hasMore = (page * limit) < (totalCount || 0);
-    }
+    const items: any[] = (rows as any[]) || [];
+    const hasMore = (page * limit) < (totalCount || 0);
 
     // Normalize data shape for frontend & mobile consumers
     const formattedPlayers = items.map((p: any) => {
       const displayName = p.full_name || p.name || 'لاعب';
-      const displayAvatar = p.profile_image_url || p.profile_image || p.profileImageUrl || p.avatar_url || null;
+      const displayAvatar = p.profile_image_url || p.profile_image || null;
       const displayPosition = p.position || p.primary_position || 'لاعب';
-      const displayClub = p.current_club || p.currentClub || null;
-      const displayFoot = p.preferred_foot || p.preferredFoot || null;
-      const isVerified = p.is_verified ?? p.isVerified ?? false;
+      const displayClub = p.current_club || null;
+      const displayFoot = p.preferred_foot || null;
+      const calculatedAge = calculateAge(p.birth_date);
       const isActive = p.isActive !== false;
 
       return {
@@ -146,8 +118,9 @@ export async function GET(request: NextRequest) {
         fullName: displayName,
         position: displayPosition,
         secondaryPosition: p.secondary_position || null,
-        age: p.age || null,
-        dateOfBirth: p.date_of_birth || p.birth_date || p.birthDate || null,
+        age: calculatedAge,
+        dateOfBirth: p.birth_date || null,
+        birthDate: p.birth_date || null,
         nationality: p.nationality || p.country || '',
         country: p.country || '',
         city: p.city || '',
@@ -156,13 +129,11 @@ export async function GET(request: NextRequest) {
         preferredFoot: displayFoot,
         avatar: displayAvatar,
         profileImageUrl: displayAvatar,
-        rating: p.rating || null,
-        marketValue: p.market_value || p.marketValue || null,
         currentClub: displayClub,
-        bio: p.bio || '',
-        isVerified,
+        bio: p.brief || '',
         isActive,
-        createdAt: p.createdAt || p.created_at || null,
+        createdAt: p.created_at || p.updated_at || null,
+        updatedAt: p.updated_at || null,
       };
     });
 
@@ -174,7 +145,7 @@ export async function GET(request: NextRequest) {
           count: formattedPlayers.length,
           total: totalCount ?? formattedPlayers.length,
           hasMore,
-          nextCursor,
+          page,
           limit,
         },
       },
