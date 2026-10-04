@@ -10,8 +10,6 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber, generatePhoneVariants } from '@/lib/validation/phone-validation';
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
 
-const SEARCH_COLLECTIONS = ['clubs', 'academies', 'trainers', 'agents', 'marketers', 'admins', 'players', 'users'];
-
 export async function POST(request: NextRequest) {
   try {
     const { phoneNumber, otp } = await request.json();
@@ -36,33 +34,12 @@ export async function POST(request: NextRequest) {
     const db = getSupabaseAdmin();
     const phoneVariants = generatePhoneVariants(phoneNumber);
 
-    // 2. البحث عن المستخدم في قاعدة البيانات
+    // 2. البحث عن المستخدم في قاعدة البيانات عبر الفهرس الموحد
     let userId: string | null = null;
     let accountType = '';
     let userName = '';
     let userEmail = '';
     let cachedSupabaseUid: string | null = null;
-
-    for (const col of SEARCH_COLLECTIONS) {
-      for (const variant of phoneVariants) {
-        const { data } = await db
-          .from(col)
-          .select('id, uid, full_name, name, accountType, email')
-          .eq('phone', variant)
-          .limit(1)
-          .single();
-
-        if (data) {
-          userId = (data as any).id;
-          userName = (data as any).full_name || (data as any).name || '';
-          accountType = col === 'admins' ? 'admin' : ((data as any).accountType || (col !== 'users' ? col.replace(/s$/, '') : 'player'));
-          userEmail = (data as any).email || '';
-          cachedSupabaseUid = (data as any).uid || null;
-          break;
-        }
-      }
-      if (userId) break;
-    }
 
     const resolvedAccount = await findAccountByPhone(phoneNumber);
     if (resolvedAccount.found) {
@@ -71,6 +48,22 @@ export async function POST(request: NextRequest) {
       accountType = resolvedAccount.accountType;
       userEmail = resolvedAccount.email;
       cachedSupabaseUid = resolvedAccount.uid;
+    } else {
+      // التحقق من حسابات الإدارة التي لا يشملها البحث العام
+      const { data: admin } = await db
+        .from('admins')
+        .select('id, uid, full_name, name, email')
+        .in('phone', phoneVariants)
+        .limit(1)
+        .maybeSingle();
+
+      if (admin) {
+        userId = admin.id;
+        accountType = 'admin';
+        userName = admin.full_name || admin.name || '';
+        userEmail = admin.email || '';
+        cachedSupabaseUid = admin.uid || null;
+      }
     }
 
     if (!userId) {
@@ -81,28 +74,51 @@ export async function POST(request: NextRequest) {
     // 3. مستخدم موجود - إنشاء Supabase Auth session عبر temp password
     const cleaned = cleanPhoneNumber(phoneNumber);
     const constructedEmail = userEmail || `${cleaned}@el7lm.com`;
-    let supabaseUserId: string | null = cachedSupabaseUid; // uid محفوظ → لا حاجة لـ listUsers
+    let supabaseUserId: string | null = cachedSupabaseUid;
+    let authEmail = constructedEmail;
 
-    if (!supabaseUserId) {
-      // uid غير محفوظ — نبحث في Auth مرة واحدة فقط
-      const { data: usersData } = await db.auth.admin.listUsers({ perPage: 2000 });
-      const allUsers = usersData?.users ?? [];
-      const foundUser = allUsers.find(u =>
-        (userEmail && u.email === userEmail) ||
-        (u.user_metadata?.firebase_uid === userId) ||
-        (u.user_metadata?.db_id === userId) ||
-        u.email === constructedEmail
-      );
-      if (foundUser) supabaseUserId = foundUser.id;
+    // إذا كان لدينا معرف auth محفوظ، نتحقق منه مباشرة دون فحص قائمة المستخدمين
+    if (supabaseUserId) {
+      const { data: cachedAuthData, error: cachedAuthError } =
+        await db.auth.admin.getUserById(supabaseUserId);
+      if (cachedAuthError || !cachedAuthData.user) {
+        supabaseUserId = null;
+      } else if (cachedAuthData.user.email) {
+        authEmail = cachedAuthData.user.email;
+      }
     }
 
     if (!supabaseUserId) {
-      const { data: newUser } = await db.auth.admin.createUser({
+      // البحث في Auth إذا لم نجد المعرف المخزن
+      try {
+        const { data: usersData } = await db.auth.admin.listUsers({ perPage: 2000 });
+        const allUsers = usersData?.users ?? [];
+        const foundUser = allUsers.find(u =>
+          (userEmail && u.email === userEmail) ||
+          (u.user_metadata?.firebase_uid === userId) ||
+          (u.user_metadata?.db_id === userId) ||
+          u.email === constructedEmail
+        );
+        if (foundUser) {
+          supabaseUserId = foundUser.id;
+          authEmail = foundUser.email || constructedEmail;
+        }
+      } catch (err) {
+        console.warn('[verify-otp-and-check] listUsers error:', err);
+      }
+    }
+
+    if (!supabaseUserId) {
+      const { data: newUser, error: createError } = await db.auth.admin.createUser({
         email: constructedEmail,
         email_confirm: true,
         user_metadata: { accountType, phone: phoneNumber, firebase_uid: userId, db_id: userId },
-      }).catch(() => ({ data: null }));
-      supabaseUserId = newUser?.user?.id ?? null;
+      });
+      if (createError) {
+        console.error('❌ [verify-otp-and-check] createUser error:', createError.message);
+      } else {
+        supabaseUserId = newUser?.user?.id ?? null;
+      }
     }
 
     if (!supabaseUserId) {
@@ -132,7 +148,7 @@ export async function POST(request: NextRequest) {
       uid: userId,
       accountType,
       userName,
-      authEmail: constructedEmail,
+      authEmail,
       authPassword: tempPassword,
     });
 

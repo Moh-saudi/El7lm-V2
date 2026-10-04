@@ -1,0 +1,525 @@
+{
+  "metadata": {
+    "phase": "Phase 9.2 — Canonical Identity Additive Migration Plan",
+    "generatedAt": "2026-09-25T20:13:56.044Z",
+    "platform": "El7lm-V2 / Supabase Production",
+    "auditMode": "STRICTLY_PLANNING_READ_ONLY",
+    "modifications": {
+      "database_modifications": 0,
+      "rows_modified": 0,
+      "rows_deleted": 0,
+      "schema_modifications": 0
+    }
+  },
+  "baseline_metrics": {
+    "total_accounts_across_8_tables": 2623,
+    "users_records": 1357,
+    "profile_records": 1266,
+    "orphan_profiles": 54,
+    "accounts_without_phone": 287,
+    "duplicate_phone_groups": 962,
+    "accounts_in_duplicate_groups": 2205,
+    "real_conflict_groups": 24,
+    "real_conflict_accounts": 106,
+    "test_data_clusters": 21,
+    "test_data_accounts": 82,
+    "auth_users_active_matches": 173,
+    "legacy_auth_records_without_auth_user": 1184,
+    "foreign_keys_present_between_users_and_profiles": 0
+  },
+  "target_users_identity_layer": {
+    "tableName": "users",
+    "fields": [
+      {
+        "field": "id",
+        "type": "TEXT",
+        "status": "EXISTS",
+        "source_column": "users.id",
+        "migration_rule": "Retain existing PRIMARY KEY. Existing TEXT IDs (28-char Firebase UIDs or UUIDs) are preserved without modification."
+      },
+      {
+        "field": "supabase_uid",
+        "type": "UUID",
+        "status": "MISSING",
+        "source_column": "auth.users.id",
+        "migration_rule": "ADD COLUMN supabase_uid UUID NULL. Backfill for the 173 post-migration users where users.uid = auth.users.id::text. For legacy users, populate lazily on first OTP login."
+      },
+      {
+        "field": "phone_e164",
+        "type": "TEXT",
+        "status": "MISSING",
+        "source_column": "users.phoneNormalized / users.phone",
+        "migration_rule": "ADD COLUMN phone_e164 TEXT NULL. Backfill with deterministic E.164 strings (+2010..., +966...). Must remain NULLABLE until all 287 accounts without phone are verified."
+      },
+      {
+        "field": "country_code",
+        "type": "TEXT",
+        "status": "DUPLICATED",
+        "source_column": "users.countryCode / parsed from phone_e164",
+        "migration_rule": "ADD COLUMN country_code TEXT NULL. Backfill with standard calling codes (+20, +966, +974, etc.) derived from E.164 normalization."
+      },
+      {
+        "field": "account_type",
+        "type": "TEXT / ENUM",
+        "status": "EXISTS",
+        "source_column": "users.accountType / users.role",
+        "migration_rule": "Standardize to lowercase snake_case ENUM: (player, club, academy, trainer, agent, marketer, admin). Backfill from existing accountType."
+      },
+      {
+        "field": "email",
+        "type": "TEXT",
+        "status": "EXISTS",
+        "source_column": "users.email",
+        "migration_rule": "Retain existing email. Sanitize to LOWER(TRIM(email)). Email remains optional/nullable for phone-first accounts."
+      },
+      {
+        "field": "is_active",
+        "type": "BOOLEAN",
+        "status": "EXISTS",
+        "source_column": "users.isActive",
+        "migration_rule": "Standardize column to is_active BOOLEAN NOT NULL DEFAULT true. Map NULL values to true."
+      },
+      {
+        "field": "is_verified",
+        "type": "BOOLEAN",
+        "status": "EXISTS",
+        "source_column": "users.isVerified / users.phoneVerified",
+        "migration_rule": "Standardize column to is_verified BOOLEAN NOT NULL DEFAULT false. Backfill true for accounts with authenticated phone numbers or auth.users match."
+      },
+      {
+        "field": "created_at",
+        "type": "TIMESTAMPTZ",
+        "status": "DUPLICATED",
+        "source_column": "users.createdAt / users.created_at",
+        "migration_rule": "Consolidate camelCase createdAt into snake_case created_at TIMESTAMPTZ NOT NULL DEFAULT now()."
+      },
+      {
+        "field": "updated_at",
+        "type": "TIMESTAMPTZ",
+        "status": "DUPLICATED",
+        "source_column": "users.updatedAt / users.updated_at",
+        "migration_rule": "Consolidate camelCase updatedAt into snake_case updated_at TIMESTAMPTZ NOT NULL DEFAULT now(). Add automated trigger for on-update."
+      },
+      {
+        "field": "last_login_at",
+        "type": "TIMESTAMPTZ",
+        "status": "DUPLICATED",
+        "source_column": "users.lastLogin / users.last_login",
+        "migration_rule": "Consolidate lastLogin into last_login_at TIMESTAMPTZ NULL. Update on every successful authentication session."
+      }
+    ]
+  },
+  "phone_identity_rule": {
+    "systemRule": "ONE REAL PHONE NUMBER = ONE CANONICAL ACCOUNT",
+    "operationalPrinciple": "No two distinct accounts can own the same phone number regardless of account_type (e.g. player +2010... and club +2010... cannot exist as separate accounts).",
+    "currentEnforcementStatus": "DEFERRED_UNTIL_CONFLICT_RESOLUTION",
+    "pathwayToEnforcement": [
+      "1. Backfill phone_e164 additively without unique constraint.",
+      "2. Reconcile Class B legacy user/player pairs into 1 Canonical Account + 1 Profile Extension.",
+      "3. Reconcile 54 orphan profiles to parent accounts.",
+      "4. Resolve 24 Real Conflict groups via customer care outreach.",
+      "5. Clean up 21 isolated test data accounts.",
+      "6. Enforce partial unique index: CREATE UNIQUE INDEX idx_users_phone_e164_unique ON users(phone_e164) WHERE phone_e164 IS NOT NULL;"
+    ]
+  },
+  "conflict_resolution_plan": {
+    "totalGroups": 24,
+    "totalAccounts": 106,
+    "workflow": [
+      {
+        "step": 1,
+        "action": "FLAG_CONFLICT",
+        "description": "Mark accounts in users with phone_conflict = true in metadata JSONB."
+      },
+      {
+        "step": 2,
+        "action": "IDENTIFY_OWNERS",
+        "description": "Extract real identity profiles, registration dates, and activity scores (videos, messages, notifications)."
+      },
+      {
+        "step": 3,
+        "action": "CUSTOMER_CARE_OUTREACH",
+        "description": "Contact both account holders via in-app banner or WhatsApp support."
+      },
+      {
+        "step": 4,
+        "action": "ASSIGN_UNIQUE_PHONE",
+        "description": "Secondary holder updates mobile phone number to an owned, unshared SIM."
+      },
+      {
+        "step": 5,
+        "action": "VERIFY_OTP",
+        "description": "Verify new phone via Supabase Auth OTP before releasing the shared phone."
+      },
+      {
+        "step": 6,
+        "action": "RELEASE_DUPLICATE",
+        "description": "Update secondary account phone_e164 to verified new phone."
+      },
+      {
+        "step": 7,
+        "action": "ENFORCE_UNIQUENESS",
+        "description": "Once all 24 groups are unblocked, the unique constraint is guaranteed to succeed."
+      }
+    ],
+    "can_be_resolved_before_unique_constraint": true
+  },
+  "test_clusters_classification": {
+    "totalClusters": 21,
+    "totalAccounts": 82,
+    "breakdown": {
+      "SAFE_DELETE": {
+        "accountsCount": 21,
+        "description": "Isolated test/seed accounts with 0 foreign keys, 0 videos, 0 messages, 0 notifications.",
+        "action": "Eligible for cleanup in Phase 9.3 after customer confirmation."
+      },
+      "REQUIRES_REFERENCE_CLEANUP": {
+        "accountsCount": 31,
+        "description": "Test/seed accounts with test chat threads, sample notifications, or test videos.",
+        "action": "Requires explicit cascade deletion script for child test records before account purge."
+      },
+      "REQUIRES_MANUAL_REVIEW": {
+        "accountsCount": 30,
+        "description": "Ambiguous test numbers (e.g. repeated 0111111111) mixed with potentially real club/academy demo profiles.",
+        "action": "Requires human confirmation before removal or phone detachment."
+      }
+    }
+  },
+  "orphan_profiles_strategy": {
+    "totalOrphanProfiles": 54,
+    "distribution": {
+      "players": 49,
+      "clubs": 2,
+      "academies": 2,
+      "agents": 1,
+      "trainers": 0,
+      "marketers": 0,
+      "admins": 0
+    },
+    "parentIdentityGenerationRules": {
+      "step1_check_phone_match": "If orphan profile shares phone with an existing user in users, evaluate if they are the same human individual. If yes, link profile to that user id.",
+      "step2_generate_parent_user": "If no parent exists, generate a parent user record in users with id = profile.id, account_type = table_singular, phone_e164 = normalized_phone, is_active = true, is_verified = false.",
+      "step3_manual_review_threshold": "Profiles with missing or invalid phones (e.g. 70542458) require admin review to assign valid contact details."
+    }
+  },
+  "foreign_key_design": {
+    "relationships": [
+      {
+        "childTable": "players",
+        "parentTable": "users",
+        "fkColumn": "id",
+        "refColumn": "id"
+      },
+      {
+        "childTable": "clubs",
+        "parentTable": "users",
+        "fkColumn": "id",
+        "refColumn": "id"
+      },
+      {
+        "childTable": "academies",
+        "parentTable": "users",
+        "fkColumn": "id",
+        "refColumn": "id"
+      },
+      {
+        "childTable": "trainers",
+        "parentTable": "users",
+        "fkColumn": "id",
+        "refColumn": "id"
+      },
+      {
+        "childTable": "agents",
+        "parentTable": "users",
+        "fkColumn": "id",
+        "refColumn": "id"
+      },
+      {
+        "childTable": "marketers",
+        "parentTable": "users",
+        "fkColumn": "id",
+        "refColumn": "id"
+      },
+      {
+        "childTable": "admins",
+        "parentTable": "users",
+        "fkColumn": "id",
+        "refColumn": "id"
+      }
+    ],
+    "rules": {
+      "cardinality": "1:1 Extension Table Pattern",
+      "nullable": "NON-NULLABLE (Profile must have a valid parent identity)",
+      "on_delete": "ON DELETE RESTRICT (Prevents accidental account deletion while preserving historical and business records)",
+      "on_update": "ON UPDATE CASCADE (Ensures ID consistency across both identity and profile)",
+      "cascade_safety_rule": "DO NOT CASCADE DELETE ON BUSINESS ASSETS (videos, messages, notifications, opportunities, favorites). Zero automated cascade on assets."
+    }
+  },
+  "profile_phone_columns_classification": [
+    {
+      "table": "players",
+      "column": "phone",
+      "classification": "IDENTITY_PHONE",
+      "status": "CAN_BE_REMOVED",
+      "justification": "Duplicate of users.phone; canonical phone will live in users.phone_e164."
+    },
+    {
+      "table": "players",
+      "column": "phoneNormalized",
+      "classification": "DERIVED_PHONE",
+      "status": "CAN_BE_REMOVED",
+      "justification": "Derived calculation duplicate; canonical normalized phone will live in users.phone_e164."
+    },
+    {
+      "table": "players",
+      "column": "originalPhone",
+      "classification": "LEGACY_PHONE",
+      "status": "CAN_BE_REMOVED",
+      "justification": "Pre-normalization snapshot; no longer needed once users.phone_e164 is canonical."
+    },
+    {
+      "table": "players",
+      "column": "previousPhone",
+      "classification": "LEGACY_PHONE",
+      "status": "CAN_BE_REMOVED",
+      "justification": "Historical audit log field; can be archived."
+    },
+    {
+      "table": "players",
+      "column": "phoneNumber",
+      "classification": "LEGACY_PHONE",
+      "status": "CAN_BE_REMOVED",
+      "justification": "Unused legacy alternative field."
+    },
+    {
+      "table": "players",
+      "column": "guardian_phone",
+      "classification": "CONTACT_PHONE",
+      "status": "MUST_BE_PRESERVED",
+      "justification": "Critical athlete safety contact field (parents/guardian of minor players)."
+    },
+    {
+      "table": "players",
+      "column": "agent_phone",
+      "classification": "CONTACT_PHONE",
+      "status": "MUST_BE_PRESERVED",
+      "justification": "Critical scouting contact field (FIFA licensed agent contact)."
+    },
+    {
+      "table": "players",
+      "column": "countryCode",
+      "classification": "DERIVED_PHONE",
+      "status": "CAN_BE_REMOVED",
+      "justification": "Calling code stored canonically in users.country_code."
+    },
+    {
+      "table": "players",
+      "column": "country",
+      "classification": "PROFILE_METADATA",
+      "status": "MUST_BE_PRESERVED",
+      "justification": "Player athletic nationality / country of competition."
+    },
+    {
+      "table": "clubs",
+      "column": "phone",
+      "classification": "IDENTITY_PHONE",
+      "status": "CAN_BE_REMOVED",
+      "justification": "Duplicate of users.phone."
+    },
+    {
+      "table": "clubs",
+      "column": "country",
+      "classification": "PROFILE_METADATA",
+      "status": "MUST_BE_PRESERVED",
+      "justification": "Club domicile and headquarters country."
+    },
+    {
+      "table": "academies",
+      "column": "phone",
+      "classification": "IDENTITY_PHONE",
+      "status": "CAN_BE_REMOVED",
+      "justification": "Duplicate of users.phone."
+    },
+    {
+      "table": "academies",
+      "column": "country",
+      "classification": "PROFILE_METADATA",
+      "status": "MUST_BE_PRESERVED",
+      "justification": "Academy campus country."
+    },
+    {
+      "table": "trainers",
+      "column": "phone",
+      "classification": "IDENTITY_PHONE",
+      "status": "CAN_BE_REMOVED",
+      "justification": "Duplicate of users.phone."
+    },
+    {
+      "table": "trainers",
+      "column": "country",
+      "classification": "PROFILE_METADATA",
+      "status": "MUST_BE_PRESERVED",
+      "justification": "Trainer coaching jurisdiction."
+    },
+    {
+      "table": "agents",
+      "column": "phone",
+      "classification": "IDENTITY_PHONE",
+      "status": "CAN_BE_REMOVED",
+      "justification": "Duplicate of users.phone."
+    },
+    {
+      "table": "agents",
+      "column": "country",
+      "classification": "PROFILE_METADATA",
+      "status": "MUST_BE_PRESERVED",
+      "justification": "Agent licensed agency jurisdiction."
+    },
+    {
+      "table": "marketers",
+      "column": "phone",
+      "classification": "IDENTITY_PHONE",
+      "status": "CAN_BE_REMOVED",
+      "justification": "Duplicate of users.phone."
+    },
+    {
+      "table": "marketers",
+      "column": "country",
+      "classification": "PROFILE_METADATA",
+      "status": "MUST_BE_PRESERVED",
+      "justification": "Marketer business jurisdiction."
+    },
+    {
+      "table": "admins",
+      "column": "phone",
+      "classification": "IDENTITY_PHONE",
+      "status": "CAN_BE_REMOVED",
+      "justification": "Duplicate of users.phone."
+    }
+  ],
+  "migration_sequence": [
+    {
+      "migration": 1,
+      "title": "Additive Identity Columns",
+      "prerequisites": "Phase 9.1 Audit Sign-Off",
+      "sql_operations": "ALTER TABLE users ADD COLUMN IF NOT EXISTS supabase_uid UUID NULL, ADD COLUMN IF NOT EXISTS phone_e164 TEXT NULL, ADD COLUMN IF NOT EXISTS country_code TEXT NULL;",
+      "affected_tables": [
+        "users"
+      ],
+      "expected_rows": 1357,
+      "rollback": "ALTER TABLE users DROP COLUMN IF EXISTS supabase_uid, DROP COLUMN IF EXISTS phone_e164, DROP COLUMN IF EXISTS country_code;",
+      "validation": "SELECT column_name FROM information_schema.columns WHERE table_name = users AND column_name IN (supabase_uid, phone_e164, country_code);"
+    },
+    {
+      "migration": 2,
+      "title": "Populate Identity Fields",
+      "prerequisites": "Migration 1 completed",
+      "sql_operations": "UPDATE users SET phone_e164 = phoneNormalized, country_code = countryCode WHERE phoneNormalized IS NOT NULL; UPDATE users SET supabase_uid = auth.users.id FROM auth.users WHERE users.uid = auth.users.id::text;",
+      "affected_tables": [
+        "users"
+      ],
+      "expected_rows": 1209,
+      "rollback": "UPDATE users SET phone_e164 = NULL, country_code = NULL, supabase_uid = NULL;",
+      "validation": "SELECT count(*) FROM users WHERE phone_e164 IS NOT NULL;"
+    },
+    {
+      "migration": 3,
+      "title": "Resolve Orphan Profiles",
+      "prerequisites": "Migration 2 completed",
+      "sql_operations": "INSERT INTO users (id, accountType, name, phone, phone_e164, country_code, isActive, isVerified, createdAt) SELECT id, player, name, phone, phoneNormalized, countryCode, true, false, now() FROM players WHERE id NOT IN (SELECT id FROM users); (Repeat for clubs, academies, agents).",
+      "affected_tables": [
+        "users",
+        "players",
+        "clubs",
+        "academies",
+        "agents"
+      ],
+      "expected_rows": 54,
+      "rollback": "DELETE FROM users WHERE id IN (SELECT id FROM orphan_backup_temp);",
+      "validation": "SELECT count(*) FROM players WHERE id NOT IN (SELECT id FROM users); -- Must return 0"
+    },
+    {
+      "migration": 4,
+      "title": "Resolve Duplicate and Conflicting Phones",
+      "prerequisites": "Migration 3 completed",
+      "sql_operations": "Execute Phase 9.3 Conflict Resolution script: reassign phones for the 24 conflict groups and isolate test clusters.",
+      "affected_tables": [
+        "users"
+      ],
+      "expected_rows": 106,
+      "rollback": "Restore from Phase 9.3 pre-resolution snapshot.",
+      "validation": "SELECT phone_e164, count(*) FROM users WHERE phone_e164 IS NOT NULL GROUP BY phone_e164 HAVING count(*) > 1; -- Must return 0"
+    },
+    {
+      "migration": 5,
+      "title": "Create Indexes",
+      "prerequisites": "Migration 4 completed (Zero duplicate phone_e164 in users)",
+      "sql_operations": "CREATE UNIQUE INDEX idx_users_phone_e164_unique ON users(phone_e164) WHERE phone_e164 IS NOT NULL; CREATE INDEX idx_users_supabase_uid ON users(supabase_uid) WHERE supabase_uid IS NOT NULL;",
+      "affected_tables": [
+        "users"
+      ],
+      "expected_rows": 0,
+      "rollback": "DROP INDEX IF EXISTS idx_users_phone_e164_unique; DROP INDEX IF EXISTS idx_users_supabase_uid;",
+      "validation": "SELECT indexname FROM pg_indexes WHERE tablename = users AND indexname = idx_users_phone_e164_unique;"
+    },
+    {
+      "migration": 6,
+      "title": "Create Foreign Keys",
+      "prerequisites": "Migration 3 and Migration 5 completed (All profiles have parent user)",
+      "sql_operations": "ALTER TABLE players ADD CONSTRAINT fk_players_users FOREIGN KEY (id) REFERENCES users(id) ON DELETE RESTRICT ON UPDATE CASCADE; (Repeat for clubs, academies, trainers, agents, marketers, admins).",
+      "affected_tables": [
+        "players",
+        "clubs",
+        "academies",
+        "trainers",
+        "agents",
+        "marketers",
+        "admins"
+      ],
+      "expected_rows": 0,
+      "rollback": "ALTER TABLE players DROP CONSTRAINT IF EXISTS fk_players_users; (Repeat for 6 tables).",
+      "validation": "SELECT conname FROM pg_constraint WHERE conname LIKE fk_%_users;"
+    },
+    {
+      "migration": 7,
+      "title": "Switch Application Reads",
+      "prerequisites": "Migration 6 completed",
+      "sql_operations": "Update backend API and Flutter queries to read phone exclusively from users.phone_e164 and profile data from child table.",
+      "affected_tables": [
+        "Backend API Services",
+        "Flutter Client Services"
+      ],
+      "expected_rows": 0,
+      "rollback": "Revert API query endpoints to read legacy profile phone columns.",
+      "validation": "Integration tests & smoke tests on phone lookup and profile fetch."
+    },
+    {
+      "migration": 8,
+      "title": "Remove Legacy Duplicated Identity Columns",
+      "prerequisites": "Migration 7 completed and stable on production for minimum 14 days",
+      "sql_operations": "ALTER TABLE players DROP COLUMN IF EXISTS originalPhone, DROP COLUMN IF EXISTS previousPhone, DROP COLUMN IF EXISTS phoneNumber; (Repeat for profile tables). Do NOT drop guardian_phone or agent_phone.",
+      "affected_tables": [
+        "players",
+        "clubs",
+        "academies",
+        "trainers",
+        "agents",
+        "marketers",
+        "admins"
+      ],
+      "expected_rows": 0,
+      "rollback": "Restore columns from cold schema backup if needed.",
+      "validation": "Verify profile tables no longer contain redundant identity phone fields."
+    }
+  ],
+  "unique_phone_constraint_sql": {
+    "proposed_sql": "CREATE UNIQUE INDEX idx_users_phone_e164_unique ON users (phone_e164) WHERE phone_e164 IS NOT NULL;",
+    "justification": "Using a partial unique index (WHERE phone_e164 IS NOT NULL) guarantees uniqueness for all phone numbers while safely accommodating the 287 accounts without phone numbers until they complete mobile OTP onboarding."
+  },
+  "blockers_before_unique_constraint": [
+    "1. 24 Real Conflict Groups (106 accounts) sharing identical phones must be reassigned unique SIM numbers.",
+    "2. 21 Test data duplicate clusters (82 accounts) with repeated dummy numbers must be isolated or cleaned up.",
+    "3. 54 Orphan profiles must have parent rows created in users before foreign key creation.",
+    "4. 287 Accounts without phone require partial index handling (WHERE phone_e164 IS NOT NULL)."
+  ]
+}

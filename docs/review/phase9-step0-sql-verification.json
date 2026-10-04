@@ -1,0 +1,6390 @@
+{
+  "metadata": {
+    "phase": "Phase 9 Step 0 — SQL Read-Only Verification",
+    "platform": "El7lm-V2 / Supabase Production",
+    "timestamp": "2026-09-25T20:01:18.505Z",
+    "auditMode": "STRICTLY_READ_ONLY",
+    "modifications": {
+      "database_modifications": 0,
+      "rows_modified": 0,
+      "rows_deleted": 0,
+      "schema_modifications": 0
+    }
+  },
+  "verification_status": {
+    "schema_verified": "YES",
+    "indexes_verified": "YES",
+    "foreign_keys_verified": "YES",
+    "phone_columns_verified": "YES",
+    "duplicate_phones_verified": "YES",
+    "users_auth_relationship_verified": "YES",
+    "profile_relationships_verified": "YES"
+  },
+  "schema": {
+    "users": [
+      {
+        "table_name": "users",
+        "column_name": "id",
+        "data_type": "TEXT",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "uid",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "originalEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "currency",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "currencySymbol",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "full_name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "originalPhone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "countryCode",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "isNewUser",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "country",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "accountType",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "phone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "oldEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "emailMigratedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "emailMigrationStatus",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "sports_notes",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "achievements",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "documents",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "injuries",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "technical_skills",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "birth_date",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "experience_years",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "videos",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "isActive",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "medical_history",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "official_contact",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "medical_notes",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "profile_image",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "chronic_conditions",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "physical_skills",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "height",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "additional_images",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "training_courses",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "favorite_jersey_number",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "graduation_year",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "degree",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "weight",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "has_passport",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "ref_source",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "spanish_level",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "emailUpdatedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "nationality",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "current_club",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "education_level",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "allergies",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "whatsapp",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "city",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "club_history",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "contract_history",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "player_number",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "blood_type",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "preferred_foot",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "primary_position",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "email",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "brief",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "address",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "agent_history",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "emailUpdated",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "surgeries",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "profile_image_url",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "english_level",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "previous_clubs",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "social_skills",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "firebaseEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "objectives",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "secondary_position",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "arabic_level",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "chronic_details",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "currently_contracted",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "updated_at",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "createdAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "registrationDate",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "created_at",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "isDeleted",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "deletedBy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "deletedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "previousEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "lastLogin",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "lastLoginIP",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "organizationCode",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "isVerifiedLocal",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "phoneNumber",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "displayName",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "isProfileComplete",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "mentality_aggression",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "stats_dribbling",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "contract_status",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "allergies_list",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "mentality_composure",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "medications",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "stats_physical",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "jersey_number",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "mentality_vision",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "updatedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "courses",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "work_rate_attack",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "images",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "work_rate_defense",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "skill_moves",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "mentality_teamwork",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "academies",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "weak_foot",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "has_private_coach",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "position",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "stats_shooting",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "guardian_name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "gender",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "social_links",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "private_coaches",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "stats_defending",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "foot",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "mentality_leadership",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "stats_pace",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "languages",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "has_joined_academy",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "stats_passing",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "surgeries_list",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "guardian_phone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "agreeToTerms",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "statusChangedBy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "statusChangedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "confirmPassword",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "password",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "isGoogleUser",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "googleId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "last_login",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "whatsappCountryCode",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "whatsappCountry",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "phoneVerified",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "profileUpdateRequested",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "isVerified",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "description",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "training_programs",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "main_branch",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "sports_facilities",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "partnerships",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "success_stories",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "stats",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "coverImage",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "facility_photos",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "logo",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "number_of_coaches",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "website",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "director",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "academy_name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "branches",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "is_federation_approved",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "license_file",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "license_number",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "academy_goals",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "registration_date",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "academy_type",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "age_groups",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "technical_director",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "founding_year",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "isPremium",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "social_media",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "employeeId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "roleName",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "permissions",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "department",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "lastSyncedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "subscriptionStatus",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "selectedPackage",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "packageType",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "subscriptionExpiresAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "subscriptionEndDate",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "lastPaymentId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "references",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "is_certified",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "date_of_birth",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "license_expiry",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "years_of_experience",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "coaching_level",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "current_location",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "profile_photo",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "id_copy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "license_copy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "spoken_languages",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "cv",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "followers",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "specialization",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "lastPaymentDate",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "lastPaymentAmount",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "lastPaymentMethod",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "passwordLastUpdated",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "userEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "academy_id",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "verified",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "profileCompleted",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "tempPassword",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "needsPasswordChange",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "convertedFromDependent",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "originalSource",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "unifiedPassword",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "convertedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "organizationApprovedBy",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "organizationId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "organizationName",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "joinRequestStatus",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "organizationJoinedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "referralCodeUsed",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "joinedViaReferral",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "organizationType",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "joinRequestId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "allowedCountries",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "lastLoginLocation",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "role",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "roleId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "employeeRole",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "avatar",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "lastLoginDevice",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "loginCount",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "profileViews",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "lastViewedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "instagram",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "type",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "twitter",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "trophies",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "gallery",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "manager",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "facebook",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "founded",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "schools",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "board",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "photoURL",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "isSynced",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "suspensionReason",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "suspendedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "suspensionEndDate",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "likedVideos",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "agent_name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "market_value",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "school_name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "agent_phone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "club_id",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "verificationStatus",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "verifiedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "verifiedBy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "migratedFromUid",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "settings",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "trainer_id",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "subscription",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "agent_id",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "previousPhone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "phoneFixed",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "phoneFixedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "phoneFixDescription",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "phoneNormalized",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "emergencyAccess",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "lastEmergencyAccess",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "isAdmin",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "users",
+        "column_name": "followersCount",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "players": [
+      {
+        "table_name": "players",
+        "column_name": "id",
+        "data_type": "TEXT",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "uid",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "originalPhone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "countryCode",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "accountType",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "originalEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "currencySymbol",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "country",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "created_at",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "isNewUser",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "phone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "currency",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "full_name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "emailUpdated",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "firebaseEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "emailUpdatedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "whatsapp",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "sports_notes",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "achievements",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "injuries",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "city",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "birth_date",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "videos",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "club_history",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "medical_history",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "medical_notes",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "contract_history",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "chronic_conditions",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "email",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "brief",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "address",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "agent_history",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "training_courses",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "surgeries",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "previous_clubs",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "nationality",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "current_club",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "chronic_details",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "currently_contracted",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "spanish_level",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "english_level",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "graduation_year",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "degree",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "education_level",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "arabic_level",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "allergies",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "blood_type",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "weight",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "height",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "favorite_jersey_number",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "player_number",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "experience_years",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "preferred_foot",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "has_passport",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "ref_source",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "primary_position",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "secondary_position",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "technical_skills",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "social_skills",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "physical_skills",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "objectives",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "official_contact",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "additional_images",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "documents",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "profile_image_url",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "profile_image",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "updated_at",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "createdAt",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "deletedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "isDeleted",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "previousPhone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "phoneFixed",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "phoneFixedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "phoneFixDescription",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "phoneNormalized",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "isActive",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "organizationCode",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "isVerifiedLocal",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "mentality_aggression",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "stats_dribbling",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "contract_status",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "allergies_list",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "mentality_composure",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "medications",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "stats_physical",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "jersey_number",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "mentality_vision",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "updatedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "courses",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "work_rate_attack",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "images",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "work_rate_defense",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "skill_moves",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "mentality_teamwork",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "academies",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "weak_foot",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "has_private_coach",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "position",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "stats_shooting",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "guardian_name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "gender",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "social_links",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "private_coaches",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "stats_defending",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "foot",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "mentality_leadership",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "stats_pace",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "languages",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "has_joined_academy",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "stats_passing",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "surgeries_list",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "guardian_phone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "statusChangedBy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "statusChangedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "isGoogleUser",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "googleId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "whatsappCountryCode",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "phoneNumber",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "whatsappCountry",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "phoneVerified",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "profileUpdateRequested",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "trainerId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "subscription_status",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "subscription_type",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "subscription_end",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "organizationId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "organizationType",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "organizationJoinedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "joinRequestId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "joinedViaReferral",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "academy_id",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "organizationName",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "joinRequestStatus",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "organizationApprovedBy",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "referralCodeUsed",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "trainer_id",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "academyId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "firebaseUid",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "convertedToAccount",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "tempPassword",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "convertedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "updated_by",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "updated_by_type",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "created_by",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "created_by_type",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "club_id",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "clubId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "deletedBy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "likedVideos",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "video_urls",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "agent_id",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "agentId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "willing_to_relocate",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "available_for_transfer",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "agent_name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "market_value",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "school_name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "agent_phone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "lastLogin",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "last_login",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "lastLoginIP",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "verificationStatus",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "verifiedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "verifiedBy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "subscriptionExpiresAt",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "selectedPackage",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "subscriptionStatus",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "packageType",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "lastPaymentId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "subscriptionEndDate",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "migratedFromUid",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "uploaded_videos",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "addedBy",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "following",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "savedVideos",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "loginAccountCreated",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "hasLoginAccount",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "registrationDate",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "additional_image_urls",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "user_id",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "strength",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "stamina",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "defending",
+        "data_type": "DOUBLE",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "shooting",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "concentration",
+        "data_type": "DOUBLE",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "speed",
+        "data_type": "DOUBLE",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "decision_making",
+        "data_type": "DOUBLE",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "vision",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "flexibility",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "ball_control",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "leadership",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "passing",
+        "data_type": "DOUBLE",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "emailMigratedAt",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "emailMigrationStatus",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "oldEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "chronic_conditions_details",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "media",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "has_chronic_conditions",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "years_experience",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "reactivated_at",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "image",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "contract_end_date",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "accountTypeChangedBy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "previousAccountType",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "players",
+        "column_name": "accountTypeChangedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "clubs": [
+      {
+        "table_name": "clubs",
+        "column_name": "id",
+        "data_type": "TEXT",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "followers",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "createdAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "updatedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "uid",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "accountType",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "full_name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "phone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "profile_image",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "isNewUser",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "created_at",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "updated_at",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "country",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "countryCode",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "currency",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "currencySymbol",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "originalPhone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "originalEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "emailUpdated",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "firebaseEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "email",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "isDeleted",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "deletedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "emailUpdatedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "previousPhone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "phoneFixed",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "phoneFixedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "phoneFixDescription",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "phoneNormalized",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "website",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "address",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "manager",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "city",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "isVerified",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "facebook",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "founded",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "description",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "instagram",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "type",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "academies",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "twitter",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "stats",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "schools",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "isPremium",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "trophies",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "gallery",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "board",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "coverImage",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "logo",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "statusChangedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "isActive",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "statusChangedBy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "followersCount",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "organizationCode",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "isVerifiedLocal",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "lastLogin",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "last_login",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "lastLoginIP",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "likedVideos",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "following",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "savedVideos",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "registrationDate",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "cover",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "clubs",
+        "column_name": "favorites",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "academies": [
+      {
+        "table_name": "academies",
+        "column_name": "id",
+        "data_type": "TEXT",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "academy_name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "description",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "logo",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "coverImage",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "founding_year",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "academy_type",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "is_federation_approved",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "license_number",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "registration_date",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "country",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "city",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "address",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "phone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "email",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "website",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "social_media",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "age_groups",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "sports_facilities",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "number_of_coaches",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "training_programs",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "achievements",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "license_file",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "facility_photos",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "director",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "technical_director",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "main_branch",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "branches",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "academy_goals",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "success_stories",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "partnerships",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "stats",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "createdAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "updatedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "accountType",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "isVerified",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "isPremium",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "deletedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "isDeleted",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "isActive",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "deletedBy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "emailUpdatedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "emailUpdated",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "firebaseEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "gallery",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "established",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "license",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "programs",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "facebook",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "twitter",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "instagram",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "facilities",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "programs_offered",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "staff",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "following",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "savedVideos",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "followersCount",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "followers",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "uid",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "profile_image",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "full_name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "updated_at",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "created_at",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "likedVideos",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "statusChangedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "statusChangedBy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "lastLoginIP",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "lastLogin",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "academies",
+        "column_name": "last_login",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "trainers": [
+      {
+        "table_name": "trainers",
+        "column_name": "id",
+        "data_type": "TEXT",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "uid",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "accountType",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "full_name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "profile_image",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "isNewUser",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "created_at",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "updated_at",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "country",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "countryCode",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "currency",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "currencySymbol",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "originalPhone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "originalEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "emailUpdated",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "firebaseEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "email",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "emailUpdatedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "followers",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "previousPhone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "phone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "phoneFixed",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "phoneFixDescription",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "phoneNormalized",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "phoneFixedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "createdAt",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "isGoogleUser",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "googleId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "achievements",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "references",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "profile_photo",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "is_certified",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "id_copy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "license_copy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "date_of_birth",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "description",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "license_expiry",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "years_of_experience",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "license_number",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "previous_clubs",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "spoken_languages",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "coaching_level",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "cv",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "nationality",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "stats",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "coverImage",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "specialization",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "current_location",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "social_media",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "updatedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "isVerified",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "isPremium",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "followersCount",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "isActive",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "organizationCode",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "isVerifiedLocal",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "isDeleted",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "deletedBy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "accountTypeChangedBy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "previousAccountType",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "accountTypeChangedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "rejectedBy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "verificationStatus",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "rejectedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "deletedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "lastLogin",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "last_login",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "trainers",
+        "column_name": "lastLoginIP",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "agents": [
+      {
+        "table_name": "agents",
+        "column_name": "id",
+        "data_type": "TEXT",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "full_name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "country",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "countryCode",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "organizationCode",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "phone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "email",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "isVerifiedLocal",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "uid",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "accountType",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "profile_image",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "isNewUser",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "isActive",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "created_at",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "createdAt",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "updated_at",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "updatedAt",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "currency",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "currencySymbol",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "firebaseEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "originalPhone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "lastLogin",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "last_login",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "lastLoginIP",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "followers",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "originalEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "emailUpdated",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "emailUpdatedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "followersCount",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "isDeleted",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "deletedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "date_of_birth",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "nationality",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "current_location",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "is_fifa_licensed",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "license_number",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "license_expiry",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "years_of_experience",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "specialization",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "spoken_languages",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "office_address",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "website",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "social_media",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "current_players",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "past_players",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "notable_deals",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "id_copy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "license_copy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "player_contracts_sample",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "stats",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "isVerified",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "isPremium",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "profile_photo",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "coverImage",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "statusChangedBy",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "statusChangedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "previousPhone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "phoneFixed",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "phoneFixedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "phoneFixDescription",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "phoneNormalized",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "isGoogleUser",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "agents",
+        "column_name": "googleId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "marketers": [
+      {
+        "table_name": "marketers",
+        "column_name": "id",
+        "data_type": "TEXT",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "uid",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "email",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "accountType",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "full_name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "phone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "profile_image",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "isNewUser",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "created_at",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "updated_at",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "country",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "countryCode",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "currency",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "currencySymbol",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "firebaseEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "originalPhone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "originalEmail",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "createdAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "isActive",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "organizationCode",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "previousPhone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "phoneFixed",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "phoneFixDescription",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "phoneNormalized",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "phoneFixedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "isGoogleUser",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "googleId",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "updatedAt",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "lastLogin",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "last_login",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "lastLoginIP",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "marketers",
+        "column_name": "isVerifiedLocal",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ],
+    "admins": [
+      {
+        "table_name": "admins",
+        "column_name": "id",
+        "data_type": "TEXT",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "table_name": "admins",
+        "column_name": "role",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "admins",
+        "column_name": "phone",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "admins",
+        "column_name": "permissions",
+        "data_type": "JSONB",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "admins",
+        "column_name": "name",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "admins",
+        "column_name": "isActive",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "admins",
+        "column_name": "email",
+        "data_type": "TEXT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "admins",
+        "column_name": "loginCount",
+        "data_type": "BIGINT",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "admins",
+        "column_name": "createdAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "admins",
+        "column_name": "updatedAt",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "admins",
+        "column_name": "emergencyAccess",
+        "data_type": "BOOLEAN",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_name": "admins",
+        "column_name": "lastEmergencyLogin",
+        "data_type": "TIMESTAMP",
+        "is_nullable": "YES",
+        "column_default": null
+      }
+    ]
+  },
+  "constraints": {
+    "users": {
+      "primaryKeys": [
+        "id"
+      ],
+      "foreignKeys": [],
+      "uniqueConstraints": []
+    },
+    "players": {
+      "primaryKeys": [
+        "id"
+      ],
+      "foreignKeys": [],
+      "uniqueConstraints": []
+    },
+    "clubs": {
+      "primaryKeys": [
+        "id"
+      ],
+      "foreignKeys": [],
+      "uniqueConstraints": []
+    },
+    "academies": {
+      "primaryKeys": [
+        "id"
+      ],
+      "foreignKeys": [],
+      "uniqueConstraints": []
+    },
+    "trainers": {
+      "primaryKeys": [
+        "id"
+      ],
+      "foreignKeys": [],
+      "uniqueConstraints": []
+    },
+    "agents": {
+      "primaryKeys": [
+        "id"
+      ],
+      "foreignKeys": [],
+      "uniqueConstraints": []
+    },
+    "marketers": {
+      "primaryKeys": [
+        "id"
+      ],
+      "foreignKeys": [],
+      "uniqueConstraints": []
+    },
+    "admins": {
+      "primaryKeys": [
+        "id"
+      ],
+      "foreignKeys": [],
+      "uniqueConstraints": []
+    }
+  },
+  "existing_indexes": [
+    {
+      "index_name": "users_pkey",
+      "table_name": "users",
+      "index_definition": "CREATE UNIQUE INDEX users_pkey ON users (id)"
+    },
+    {
+      "index_name": "players_pkey",
+      "table_name": "players",
+      "index_definition": "CREATE UNIQUE INDEX players_pkey ON players (id)"
+    },
+    {
+      "index_name": "clubs_pkey",
+      "table_name": "clubs",
+      "index_definition": "CREATE UNIQUE INDEX clubs_pkey ON clubs (id)"
+    },
+    {
+      "index_name": "academies_pkey",
+      "table_name": "academies",
+      "index_definition": "CREATE UNIQUE INDEX academies_pkey ON academies (id)"
+    },
+    {
+      "index_name": "trainers_pkey",
+      "table_name": "trainers",
+      "index_definition": "CREATE UNIQUE INDEX trainers_pkey ON trainers (id)"
+    },
+    {
+      "index_name": "agents_pkey",
+      "table_name": "agents",
+      "index_definition": "CREATE UNIQUE INDEX agents_pkey ON agents (id)"
+    },
+    {
+      "index_name": "marketers_pkey",
+      "table_name": "marketers",
+      "index_definition": "CREATE UNIQUE INDEX marketers_pkey ON marketers (id)"
+    },
+    {
+      "index_name": "admins_pkey",
+      "table_name": "admins",
+      "index_definition": "CREATE UNIQUE INDEX admins_pkey ON admins (id)"
+    },
+    {
+      "index_name": "idx_users_uid",
+      "table_name": "users",
+      "index_definition": "CREATE INDEX idx_users_uid ON users (uid) WHERE uid IS NOT NULL"
+    },
+    {
+      "index_name": "idx_users_phone_normalized",
+      "table_name": "users",
+      "index_definition": "CREATE INDEX idx_users_phone_normalized ON users (\"phoneNormalized\") WHERE \"phoneNormalized\" IS NOT NULL"
+    },
+    {
+      "index_name": "idx_players_uid",
+      "table_name": "players",
+      "index_definition": "CREATE INDEX idx_players_uid ON players (uid) WHERE uid IS NOT NULL"
+    },
+    {
+      "index_name": "idx_players_phone_normalized",
+      "table_name": "players",
+      "index_definition": "CREATE INDEX idx_players_phone_normalized ON players (\"phoneNormalized\") WHERE \"phoneNormalized\" IS NOT NULL"
+    }
+  ],
+  "phone_columns": [
+    {
+      "table_name": "users",
+      "column_name": "originalPhone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "users",
+      "column_name": "phone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "users",
+      "column_name": "phoneNumber",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "users",
+      "column_name": "guardian_phone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "users",
+      "column_name": "phoneVerified",
+      "data_type": "BOOLEAN"
+    },
+    {
+      "table_name": "users",
+      "column_name": "agent_phone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "users",
+      "column_name": "previousPhone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "users",
+      "column_name": "phoneFixed",
+      "data_type": "BOOLEAN"
+    },
+    {
+      "table_name": "users",
+      "column_name": "phoneFixedAt",
+      "data_type": "TIMESTAMP"
+    },
+    {
+      "table_name": "users",
+      "column_name": "phoneFixDescription",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "users",
+      "column_name": "phoneNormalized",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "players",
+      "column_name": "originalPhone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "players",
+      "column_name": "phone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "players",
+      "column_name": "previousPhone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "players",
+      "column_name": "phoneFixed",
+      "data_type": "BOOLEAN"
+    },
+    {
+      "table_name": "players",
+      "column_name": "phoneFixedAt",
+      "data_type": "TIMESTAMP"
+    },
+    {
+      "table_name": "players",
+      "column_name": "phoneFixDescription",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "players",
+      "column_name": "phoneNormalized",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "players",
+      "column_name": "guardian_phone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "players",
+      "column_name": "phoneNumber",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "players",
+      "column_name": "phoneVerified",
+      "data_type": "BOOLEAN"
+    },
+    {
+      "table_name": "players",
+      "column_name": "agent_phone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "clubs",
+      "column_name": "phone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "clubs",
+      "column_name": "originalPhone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "clubs",
+      "column_name": "previousPhone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "clubs",
+      "column_name": "phoneFixed",
+      "data_type": "BOOLEAN"
+    },
+    {
+      "table_name": "clubs",
+      "column_name": "phoneFixedAt",
+      "data_type": "TIMESTAMP"
+    },
+    {
+      "table_name": "clubs",
+      "column_name": "phoneFixDescription",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "clubs",
+      "column_name": "phoneNormalized",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "academies",
+      "column_name": "phone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "trainers",
+      "column_name": "originalPhone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "trainers",
+      "column_name": "previousPhone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "trainers",
+      "column_name": "phone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "trainers",
+      "column_name": "phoneFixed",
+      "data_type": "BOOLEAN"
+    },
+    {
+      "table_name": "trainers",
+      "column_name": "phoneFixDescription",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "trainers",
+      "column_name": "phoneNormalized",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "trainers",
+      "column_name": "phoneFixedAt",
+      "data_type": "TIMESTAMP"
+    },
+    {
+      "table_name": "agents",
+      "column_name": "phone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "agents",
+      "column_name": "originalPhone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "agents",
+      "column_name": "previousPhone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "agents",
+      "column_name": "phoneFixed",
+      "data_type": "BOOLEAN"
+    },
+    {
+      "table_name": "agents",
+      "column_name": "phoneFixedAt",
+      "data_type": "TIMESTAMP"
+    },
+    {
+      "table_name": "agents",
+      "column_name": "phoneFixDescription",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "agents",
+      "column_name": "phoneNormalized",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "marketers",
+      "column_name": "phone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "marketers",
+      "column_name": "originalPhone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "marketers",
+      "column_name": "previousPhone",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "marketers",
+      "column_name": "phoneFixed",
+      "data_type": "BOOLEAN"
+    },
+    {
+      "table_name": "marketers",
+      "column_name": "phoneFixDescription",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "marketers",
+      "column_name": "phoneNormalized",
+      "data_type": "TEXT"
+    },
+    {
+      "table_name": "marketers",
+      "column_name": "phoneFixedAt",
+      "data_type": "TIMESTAMP"
+    },
+    {
+      "table_name": "admins",
+      "column_name": "phone",
+      "data_type": "TEXT"
+    }
+  ],
+  "phone_population": {
+    "users": {
+      "total_rows": 1357,
+      "rows_with_phone": 1181,
+      "rows_without_phone": 176,
+      "coverage_percentage": "87.0%"
+    },
+    "players": {
+      "total_rows": 1079,
+      "rows_with_phone": 996,
+      "rows_without_phone": 83,
+      "coverage_percentage": "92.3%"
+    },
+    "clubs": {
+      "total_rows": 39,
+      "rows_with_phone": 34,
+      "rows_without_phone": 5,
+      "coverage_percentage": "87.2%"
+    },
+    "academies": {
+      "total_rows": 39,
+      "rows_with_phone": 31,
+      "rows_without_phone": 8,
+      "coverage_percentage": "79.5%"
+    },
+    "trainers": {
+      "total_rows": 50,
+      "rows_with_phone": 47,
+      "rows_without_phone": 3,
+      "coverage_percentage": "94.0%"
+    },
+    "agents": {
+      "total_rows": 29,
+      "rows_with_phone": 25,
+      "rows_without_phone": 4,
+      "coverage_percentage": "86.2%"
+    },
+    "marketers": {
+      "total_rows": 27,
+      "rows_with_phone": 20,
+      "rows_without_phone": 7,
+      "coverage_percentage": "74.1%"
+    },
+    "admins": {
+      "total_rows": 3,
+      "rows_with_phone": 2,
+      "rows_without_phone": 1,
+      "coverage_percentage": "66.7%"
+    }
+  },
+  "duplicate_phones_system_wide": {
+    "total_accounts_checked": 2623,
+    "unique_normalized_phones": 1093,
+    "duplicate_phone_groups": 962,
+    "total_accounts_in_duplicate_groups": 2205,
+    "duplicate_groups_sample": [
+      {
+        "phone_normalized": "+201023361064",
+        "accounts_count": 4,
+        "tables_involved": [
+          "users",
+          "players"
+        ],
+        "accounts": [
+          {
+            "table_name": "users",
+            "account_id": "qWQfgalM1vgLtbyjHvew6aVv3tH2",
+            "account_type": "player",
+            "phone": "201023361064",
+            "uid": "qWQfgalM1vgLtbyjHvew6aVv3tH2"
+          },
+          {
+            "table_name": "users",
+            "account_id": "6l0OBQ5nTDRbJftPBPsn6KGWA0n1",
+            "account_type": "player",
+            "phone": "201023361064",
+            "uid": "6l0OBQ5nTDRbJftPBPsn6KGWA0n1"
+          },
+          {
+            "table_name": "players",
+            "account_id": "6l0OBQ5nTDRbJftPBPsn6KGWA0n1",
+            "account_type": "player",
+            "phone": "201023361064",
+            "uid": "74dbfd89-3db4-4fc0-b41e-a733a6f31232"
+          },
+          {
+            "table_name": "players",
+            "account_id": "qWQfgalM1vgLtbyjHvew6aVv3tH2",
+            "account_type": "player",
+            "phone": "201023361064",
+            "uid": "qWQfgalM1vgLtbyjHvew6aVv3tH2"
+          }
+        ]
+      },
+      {
+        "phone_normalized": "+201013714944",
+        "accounts_count": 2,
+        "tables_involved": [
+          "users",
+          "players"
+        ],
+        "accounts": [
+          {
+            "table_name": "users",
+            "account_id": "qZfIOur8FTcNb3oEEl6LH24uMS43",
+            "account_type": "player",
+            "phone": "201013714944",
+            "uid": "qZfIOur8FTcNb3oEEl6LH24uMS43"
+          },
+          {
+            "table_name": "players",
+            "account_id": "qZfIOur8FTcNb3oEEl6LH24uMS43",
+            "account_type": "player",
+            "phone": "201013714944",
+            "uid": "qZfIOur8FTcNb3oEEl6LH24uMS43"
+          }
+        ]
+      },
+      {
+        "phone_normalized": "+20102546196",
+        "accounts_count": 2,
+        "tables_involved": [
+          "users",
+          "players"
+        ],
+        "accounts": [
+          {
+            "table_name": "users",
+            "account_id": "qhAtfyjq4ufwcFLgQaEgoISsbT82",
+            "account_type": "player",
+            "phone": "20102546196",
+            "uid": "qhAtfyjq4ufwcFLgQaEgoISsbT82"
+          },
+          {
+            "table_name": "players",
+            "account_id": "qhAtfyjq4ufwcFLgQaEgoISsbT82",
+            "account_type": "player",
+            "phone": "20102546196",
+            "uid": "qhAtfyjq4ufwcFLgQaEgoISsbT82"
+          }
+        ]
+      },
+      {
+        "phone_normalized": "+212773220551",
+        "accounts_count": 2,
+        "tables_involved": [
+          "users",
+          "players"
+        ],
+        "accounts": [
+          {
+            "table_name": "users",
+            "account_id": "qjO2AGuhAwbXF8E6iliiUFw3A1u2",
+            "account_type": "player",
+            "phone": "+212773220551",
+            "uid": "qjO2AGuhAwbXF8E6iliiUFw3A1u2"
+          },
+          {
+            "table_name": "players",
+            "account_id": "qjO2AGuhAwbXF8E6iliiUFw3A1u2",
+            "account_type": "player",
+            "phone": "+212773220551",
+            "uid": "qjO2AGuhAwbXF8E6iliiUFw3A1u2"
+          }
+        ]
+      },
+      {
+        "phone_normalized": "+97433423370",
+        "accounts_count": 2,
+        "tables_involved": [
+          "users",
+          "players"
+        ],
+        "accounts": [
+          {
+            "table_name": "users",
+            "account_id": "qmtxAndV8CfiuTE4C9WBvxHybna2",
+            "account_type": "player",
+            "phone": "97433423370",
+            "uid": "qmtxAndV8CfiuTE4C9WBvxHybna2"
+          },
+          {
+            "table_name": "players",
+            "account_id": "qmtxAndV8CfiuTE4C9WBvxHybna2",
+            "account_type": "player",
+            "phone": "97433423370",
+            "uid": "qmtxAndV8CfiuTE4C9WBvxHybna2"
+          }
+        ]
+      },
+      {
+        "phone_normalized": "+20109831918",
+        "accounts_count": 2,
+        "tables_involved": [
+          "users",
+          "players"
+        ],
+        "accounts": [
+          {
+            "table_name": "users",
+            "account_id": "qpzGtUwptqfGMu97EXIDpw95bRj2",
+            "account_type": "player",
+            "phone": "20109831918",
+            "uid": "qpzGtUwptqfGMu97EXIDpw95bRj2"
+          },
+          {
+            "table_name": "players",
+            "account_id": "qpzGtUwptqfGMu97EXIDpw95bRj2",
+            "account_type": "player",
+            "phone": "20109831918",
+            "uid": "qpzGtUwptqfGMu97EXIDpw95bRj2"
+          }
+        ]
+      },
+      {
+        "phone_normalized": "+212673890155",
+        "accounts_count": 2,
+        "tables_involved": [
+          "users",
+          "players"
+        ],
+        "accounts": [
+          {
+            "table_name": "users",
+            "account_id": "qsjhkfyIHEdZelPnWFIG6Y0FLpo2",
+            "account_type": "player",
+            "phone": "+212673890155",
+            "uid": "qsjhkfyIHEdZelPnWFIG6Y0FLpo2"
+          },
+          {
+            "table_name": "players",
+            "account_id": "qsjhkfyIHEdZelPnWFIG6Y0FLpo2",
+            "account_type": "player",
+            "phone": "+212673890155",
+            "uid": "qsjhkfyIHEdZelPnWFIG6Y0FLpo2"
+          }
+        ]
+      },
+      {
+        "phone_normalized": "+9747205318",
+        "accounts_count": 2,
+        "tables_involved": [
+          "users"
+        ],
+        "accounts": [
+          {
+            "table_name": "users",
+            "account_id": "r3ngUV3ie6QOtKmmG7dtKytVyNb2",
+            "account_type": "club",
+            "phone": "9747205318",
+            "uid": null
+          },
+          {
+            "table_name": "users",
+            "account_id": "HxibD8KGk3X5FK0UCLE9DhcTFTF3",
+            "account_type": "club",
+            "phone": "9747205318",
+            "uid": null
+          }
+        ]
+      },
+      {
+        "phone_normalized": "+201154440480",
+        "accounts_count": 2,
+        "tables_involved": [
+          "users",
+          "players"
+        ],
+        "accounts": [
+          {
+            "table_name": "users",
+            "account_id": "r3wkefq30ifrujszxENxggJABdv2",
+            "account_type": "player",
+            "phone": "201154440480",
+            "uid": "r3wkefq30ifrujszxENxggJABdv2"
+          },
+          {
+            "table_name": "players",
+            "account_id": "r3wkefq30ifrujszxENxggJABdv2",
+            "account_type": "player",
+            "phone": "201154440480",
+            "uid": "r3wkefq30ifrujszxENxggJABdv2"
+          }
+        ]
+      },
+      {
+        "phone_normalized": "+96555482547688",
+        "accounts_count": 2,
+        "tables_involved": [
+          "users",
+          "clubs"
+        ],
+        "accounts": [
+          {
+            "table_name": "users",
+            "account_id": "r4DLmOreSPNI4Xkw4ez0JvErrwu2",
+            "account_type": "club",
+            "phone": "96555482547688",
+            "uid": "r4DLmOreSPNI4Xkw4ez0JvErrwu2"
+          },
+          {
+            "table_name": "clubs",
+            "account_id": "r4DLmOreSPNI4Xkw4ez0JvErrwu2",
+            "account_type": "club",
+            "phone": "96555482547688",
+            "uid": "r4DLmOreSPNI4Xkw4ez0JvErrwu2"
+          }
+        ]
+      },
+      {
+        "phone_normalized": "+201028853677",
+        "accounts_count": 2,
+        "tables_involved": [
+          "users",
+          "players"
+        ],
+        "accounts": [
+          {
+            "table_name": "users",
+            "account_id": "rRyje9JYZQP741CrTJGleeKN2w42",
+            "account_type": "player",
+            "phone": "201028853677",
+            "uid": "rRyje9JYZQP741CrTJGleeKN2w42"
+          },
+          {
+            "table_name": "players",
+            "account_id": "rRyje9JYZQP741CrTJGleeKN2w42",
+            "account_type": "player",
+            "phone": "201028853677",
+            "uid": "rRyje9JYZQP741CrTJGleeKN2w42"
+          }
+        ]
+      },
+      {
+        "phone_normalized": "+201093624088",
+        "accounts_count": 2,
+        "tables_involved": [
+          "users",
+          "players"
+        ],
+        "accounts": [
+          {
+            "table_name": "users",
+            "account_id": "rVVgbTKBPefv0QfGr0FDEiDj6l13",
+            "account_type": "player",
+            "phone": "201093624088",
+            "uid": "rVVgbTKBPefv0QfGr0FDEiDj6l13"
+          },
+          {
+            "table_name": "players",
+            "account_id": "rVVgbTKBPefv0QfGr0FDEiDj6l13",
+            "account_type": "player",
+            "phone": "201093624088",
+            "uid": "rVVgbTKBPefv0QfGr0FDEiDj6l13"
+          }
+        ]
+      },
+      {
+        "phone_normalized": "+201028596237",
+        "accounts_count": 2,
+        "tables_involved": [
+          "users",
+          "trainers"
+        ],
+        "accounts": [
+          {
+            "table_name": "users",
+            "account_id": "rXsYqxRkfrc1ASXBMrOubnx6E013",
+            "account_type": "trainer",
+            "phone": "201028596237",
+            "uid": "rXsYqxRkfrc1ASXBMrOubnx6E013"
+          },
+          {
+            "table_name": "trainers",
+            "account_id": "rXsYqxRkfrc1ASXBMrOubnx6E013",
+            "account_type": "trainer",
+            "phone": "201028596237",
+            "uid": "rXsYqxRkfrc1ASXBMrOubnx6E013"
+          }
+        ]
+      },
+      {
+        "phone_normalized": "+201200127156",
+        "accounts_count": 2,
+        "tables_involved": [
+          "users",
+          "players"
+        ],
+        "accounts": [
+          {
+            "table_name": "users",
+            "account_id": "323a0db7-b3c0-4023-a64b-2810066b43b3",
+            "account_type": "player",
+            "phone": "+201200127156",
+            "uid": "323a0db7-b3c0-4023-a64b-2810066b43b3"
+          },
+          {
+            "table_name": "players",
+            "account_id": "323a0db7-b3c0-4023-a64b-2810066b43b3",
+            "account_type": "player",
+            "phone": "+201200127156",
+            "uid": "323a0db7-b3c0-4023-a64b-2810066b43b3"
+          }
+        ]
+      },
+      {
+        "phone_normalized": "+20103338202",
+        "accounts_count": 6,
+        "tables_involved": [
+          "users",
+          "trainers",
+          "marketers"
+        ],
+        "accounts": [
+          {
+            "table_name": "users",
+            "account_id": "qyADQuQ3tgP0eyda5u3RHirHkv63",
+            "account_type": "marketer",
+            "phone": "+20103338202",
+            "uid": "qyADQuQ3tgP0eyda5u3RHirHkv63"
+          },
+          {
+            "table_name": "users",
+            "account_id": "FfX9wD3YhpXvoBTn7kBbNn0gIow1",
+            "account_type": "trainer",
+            "phone": "+20103338202",
+            "uid": "FfX9wD3YhpXvoBTn7kBbNn0gIow1"
+          },
+          {
+            "table_name": "users",
+            "account_id": "PY5Nr0L7qZQJoceL8D2SgeD9mcv2",
+            "account_type": "marketer",
+            "phone": "+20103338202",
+            "uid": "PY5Nr0L7qZQJoceL8D2SgeD9mcv2"
+          },
+          {
+            "table_name": "trainers",
+            "account_id": "FfX9wD3YhpXvoBTn7kBbNn0gIow1",
+            "account_type": "trainer",
+            "phone": "20103338202",
+            "uid": "FfX9wD3YhpXvoBTn7kBbNn0gIow1"
+          },
+          {
+            "table_name": "marketers",
+            "account_id": "PY5Nr0L7qZQJoceL8D2SgeD9mcv2",
+            "account_type": "marketer",
+            "phone": "20103338202",
+            "uid": "PY5Nr0L7qZQJoceL8D2SgeD9mcv2"
+          },
+          {
+            "table_name": "marketers",
+            "account_id": "qyADQuQ3tgP0eyda5u3RHirHkv63",
+            "account_type": "marketer",
+            "phone": "20103338202",
+            "uid": "qyADQuQ3tgP0eyda5u3RHirHkv63"
+          }
+        ]
+      }
+    ]
+  },
+  "profile_relationships": {
+    "players": {
+      "total_profiles": 1079,
+      "profiles_with_matching_users_id": 1030,
+      "profiles_without_users_id": 49,
+      "match_percentage": "95.5%",
+      "orphan_ids": [
+        "1adnTHZw4FencNWw65CL",
+        "4mhzybfAyOEHygMnh7W1",
+        "thAtTp8CzEwOPrL2oyxn",
+        "7P46Taqt3lT4u7rNrQKR",
+        "8iuGxfKbL1xPHFfg3e4b",
+        "AywExNnwTuK1HhShSIGh",
+        "CHhr85zBmKsKwWgRMo7a",
+        "ELDzth11cuBv8nocdFcw",
+        "HTMQqeUeTi8lsdlYfskV",
+        "IANSStKPbyF4vC0awmlK",
+        "M9DDihHQZQyCwj6s1SoA",
+        "PUB4cPrWNqXtxnK3m0jM",
+        "Pmh2ZQe7A0hcGeVfAFbN",
+        "64wYhyuYHaQGyI8bsLuz",
+        "Tu0aTPYUh8UR7ETsH9pX",
+        "UCRYaIbDNBHqtA0Y4eJs",
+        "Qalhg9PlrKbIydXUqhdkOtFyxEp1",
+        "7VwkM1UIFdcfiVSFBvm1",
+        "jG0lmo3x7wRODTZES9b9GddBYZa2",
+        "5f433c8c-e12c-445b-bb89-5f605814a390",
+        "wFOILtsWmDcJ96dW0YFNHu9oo6b2",
+        "Y5j7j4D6uP8Lj9vbakZg",
+        "YWGHzaxr08YE8vwmPK2i",
+        "aPoHOAKvScqDBFuJI6yW",
+        "e4BAGj0JUZYXPQHqcaF1BHzmHoy2",
+        "evzECEBBgaP74lQIMKUQ",
+        "hChYVnu04cXe3KK8JJQu",
+        "jaHdssB01rv2V3p40hA7",
+        "kAkowrdy2ROOW22plFLD",
+        "DvNaEk3LQ3ptbiZN1ucC",
+        "ls9eL2YFKkoFi7kMfqKr",
+        "oteJcqOvg5nQdtrblNdz",
+        "qQT5zSxleoe3viXIr9hIVGLHwLy1",
+        "rJG08UCl64haTKAbYQX410FdLB73",
+        "rRJx6CWw9LjxAzt1HXfc",
+        "slBxvl5YImGn6jw037Dk",
+        "fmrnT921oR9xy5mtC6AQ",
+        "uTx345hEyudcuifi4LYSKq2Mmu83",
+        "um5GMDcnhjCIaPuUDEAW",
+        "wN7Tv9OnjPMP84qTfmp6",
+        "xkSCyDOID3OV614rMHf7",
+        "y2Zl9HI2yIfPgJS6P6psImu7lRv1",
+        "ihZnllLriZE5v8ciWtuI",
+        "google-play-review-player",
+        "orpTdxCsJVEWHFhSDFez",
+        "zTFTwGU4v2GdYE9SCtmm",
+        "M7UP64xP6aLdUR8spJae",
+        "muzRU8v1DqT7dJkbPhwD",
+        "u4k7GW48smYUOWsRQho3"
+      ]
+    },
+    "clubs": {
+      "total_profiles": 39,
+      "profiles_with_matching_users_id": 37,
+      "profiles_without_users_id": 2,
+      "match_percentage": "94.9%",
+      "orphan_ids": [
+        "JtHRiAFa2Cbd46wzHhFZvK5aIPD3",
+        "1"
+      ]
+    },
+    "academies": {
+      "total_profiles": 39,
+      "profiles_with_matching_users_id": 37,
+      "profiles_without_users_id": 2,
+      "match_percentage": "94.9%",
+      "orphan_ids": [
+        "df822904-ec26-4788-b69e-cabb04eea1ed",
+        "83ded7fc-43e1-4451-96cb-8be4950004e6"
+      ]
+    },
+    "trainers": {
+      "total_profiles": 50,
+      "profiles_with_matching_users_id": 50,
+      "profiles_without_users_id": 0,
+      "match_percentage": "100.0%",
+      "orphan_ids": []
+    },
+    "agents": {
+      "total_profiles": 29,
+      "profiles_with_matching_users_id": 28,
+      "profiles_without_users_id": 1,
+      "match_percentage": "96.6%",
+      "orphan_ids": [
+        "2"
+      ]
+    },
+    "marketers": {
+      "total_profiles": 27,
+      "profiles_with_matching_users_id": 27,
+      "profiles_without_users_id": 0,
+      "match_percentage": "100.0%",
+      "orphan_ids": []
+    },
+    "admins": {
+      "total_profiles": 3,
+      "profiles_with_matching_users_id": 3,
+      "profiles_without_users_id": 0,
+      "match_percentage": "100.0%",
+      "orphan_ids": []
+    }
+  },
+  "auth_relationship": {
+    "total_public_users": 1357,
+    "total_auth_users": 1384,
+    "users_with_matching_auth_users": 149,
+    "users_without_matching_auth_users": 1208,
+    "duplicate_uid_instances_in_users": 0,
+    "duplicate_uids_details": []
+  }
+}

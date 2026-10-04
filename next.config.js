@@ -1,21 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     // إعداد متغيرات البيئة لـ Vercel
+    // إعداد متغيرات البيئة العامة فقط إن لزم الأمر
     env: {
         ENABLE_SMS_SIMULATION: process.env.ENABLE_SMS_SIMULATION,
-        // Babaservice WhatsApp API Configuration
-        BABASERVICE_BASE_URL: process.env.BABASERVICE_BASE_URL,
-        BABASERVICE_ACCESS_TOKEN: process.env.BABASERVICE_ACCESS_TOKEN,
-        BABASERVICE_INSTANCE_ID: process.env.BABASERVICE_INSTANCE_ID,
-        BABASERVICE_WEBHOOK_URL: process.env.BABASERVICE_WEBHOOK_URL,
     },
     // تحسين التعامل مع الأخطاء
-    output: 'standalone',
+    output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
     eslint: {
         ignoreDuringBuilds: true,
     },
     typescript: {
-        ignoreBuildErrors: true,
+        ignoreBuildErrors: false,
     },
     // تحسين التعامل مع الأخطاء - تعطيل التحديثات التلقائية
     // onDemandEntries: {
@@ -33,10 +29,10 @@ const nextConfig = {
     skipTrailingSlashRedirect: true,
     generateEtags: false,
     images: {
-        // تمكين الصور المحلية
-        unoptimized: true,
-        formats: ['image/webp', 'image/avif'],
-        minimumCacheTTL: 60,
+        // تمكين التحسين الذكي للصور
+        unoptimized: false,
+        formats: ['image/avif', 'image/webp'],
+        minimumCacheTTL: 86400,
         dangerouslyAllowSVG: true,
         contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
         // تحسين تحميل الصور
@@ -125,12 +121,8 @@ const nextConfig = {
             };
         }
 
-        // تحسين الأداء
-        config.performance = {
-            hints: false,
-            maxEntrypointSize: 512000,
-            maxAssetSize: 512000,
-        };
+        // Disable webpack pack disk cache to prevent ERR_MEMORY_ALLOCATION_FAILED
+        config.cache = false;
 
         return config;
     },

@@ -1,0 +1,1898 @@
+[
+  {
+    "phone": "+9747205318",
+    "expectedCountry": "Qatar",
+    "countryCode": "+974",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "r3ngUV3ie6QOtKmmG7dtKytVyNb2",
+        "name": "hagzz",
+        "email": "hagzz@el7lm.com",
+        "accountType": "club",
+        "table": "users",
+        "rawPhone": "9747205318",
+        "createdAt": "2025-04-25T18:26:40+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 1,
+          "lastLogin": "2025-08-29T21:25:07.872+00:00"
+        }
+      },
+      {
+        "id": "HxibD8KGk3X5FK0UCLE9DhcTFTF3",
+        "name": "hagzz",
+        "email": "hagzz@el7lm.com",
+        "accountType": "club",
+        "table": "users",
+        "rawPhone": "9747205318",
+        "createdAt": "2025-04-25T18:22:25.453+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 1,
+          "lastLogin": "2025-08-29T21:25:07.872+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+201022920076",
+    "expectedCountry": "Egypt",
+    "countryCode": "+20",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "sSOJ195XvAOk9DChjTVwZGgv9xZ2",
+        "name": "اختبار",
+        "email": "user_20_1022920076_1752286578709_v6gg1w@el7hm.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "201022920076",
+        "createdAt": "2025-07-12T02:16:19+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 6,
+          "lastLogin": "2025-08-13T12:06:34.114+00:00"
+        }
+      },
+      {
+        "id": "sSOJ195XvAOk9DChjTVwZGgv9xZ2",
+        "name": "اختبار",
+        "email": "user_20_1022920076_1752286578709_v6gg1w@el7hm.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "201022920076",
+        "createdAt": "2025-07-12T02:16:20.759Z",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 6,
+          "lastLogin": "2026-08-06T19:42:54.019+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+1234567811",
+    "expectedCountry": "USA/Canada",
+    "countryCode": "+1",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "XTx6sHL0Bta5B6iBMIko79A398k1",
+        "name": "احمد جمال محمد ",
+        "email": "",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "1234567811",
+        "createdAt": "2025-06-05T05:41:24+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 1,
+          "lastLogin": "2025-08-29T21:27:00.415+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+1234567895",
+    "expectedCountry": "USA/Canada",
+    "countryCode": "+1",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "vHD866cv0Vf08y1oEJpOVoCgELk1",
+        "name": "اكاديمية فرح",
+        "email": "",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "1234567895",
+        "createdAt": "2025-05-20T01:33:54+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 3,
+          "lastLogin": "2025-08-13T12:06:34.109+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+201000000003",
+    "expectedCountry": "Egypt",
+    "countryCode": "+20",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "test_trainer_01000000003",
+        "name": "الكابتن أحمد التجريبي",
+        "email": "",
+        "accountType": "trainer",
+        "table": "users",
+        "rawPhone": "+201000000003",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": null
+        }
+      },
+      {
+        "id": "test_trainer_01000000003",
+        "name": "الكابتن أحمد التجريبي",
+        "email": "",
+        "accountType": "trainer",
+        "table": "trainers",
+        "rawPhone": "+201000000003",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-08-23T01:18:47.388Z"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+201000000004",
+    "expectedCountry": "Egypt",
+    "countryCode": "+20",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "test_player_01000000004",
+        "name": "لاعب الحلم التجريبي",
+        "email": "",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "+201000000004",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": null
+        }
+      },
+      {
+        "id": "test_player_01000000004",
+        "name": "لاعب الحلم التجريبي",
+        "email": "ل@ل.ؤخة",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "+201000000004",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-09-23T15:20:34.007+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+201000000005",
+    "expectedCountry": "Egypt",
+    "countryCode": "+20",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "test_agent_01000000005",
+        "name": "وكيل لاعبين تجريبي",
+        "email": "",
+        "accountType": "agent",
+        "table": "users",
+        "rawPhone": "+201000000005",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": null
+        }
+      },
+      {
+        "id": "test_agent_01000000005",
+        "name": "وكيل لاعبين تجريبي",
+        "email": "",
+        "accountType": "agent",
+        "table": "agents",
+        "rawPhone": "+201000000005",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-08-23T01:19:18.165Z"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+201000000006",
+    "expectedCountry": "Egypt",
+    "countryCode": "+20",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "test_marketer_01000000006",
+        "name": "مسوّق الحلم التجريبي",
+        "email": "",
+        "accountType": "marketer",
+        "table": "users",
+        "rawPhone": "+201000000006",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": null
+        }
+      },
+      {
+        "id": "test_marketer_01000000006",
+        "name": "مسوّق الحلم التجريبي",
+        "email": "",
+        "accountType": "marketer",
+        "table": "marketers",
+        "rawPhone": "+201000000006",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-08-23T01:19:28.377Z"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+1234567897",
+    "expectedCountry": "USA/Canada",
+    "countryCode": "+1",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "xOqFL0agzofZMwLCEAqsSEymedv1",
+        "name": "احمد ياسين",
+        "email": "",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "1234567897",
+        "createdAt": "2025-05-20T15:20:55+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 3,
+          "lastLogin": "2025-08-13T12:06:34.109+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+97472053188",
+    "expectedCountry": "Qatar",
+    "countryCode": "+974",
+    "category": "A",
+    "accountCount": 10,
+    "accounts": [
+      {
+        "id": "t1ev0surGVWVj3b5XOSxB22sycL2",
+        "name": "رضا جميل",
+        "email": "p974_97472053188@el7lm.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "97472053188",
+        "createdAt": "2025-11-08T14:28:49+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 3,
+          "notifications": 1,
+          "lastLogin": "2025-11-08T18:42:17.452+00:00"
+        }
+      },
+      {
+        "id": "2qEmubLWjtU8yUyHJQtkJX9Fw582",
+        "name": "الدحيل اختبار",
+        "email": "user_2qEmubLWjtU8yUyHJQtkJX9Fw582@el7lm.com",
+        "accountType": "club",
+        "table": "users",
+        "rawPhone": "97472053188",
+        "createdAt": "2025-07-22T02:47:10+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 7,
+          "notifications": 5,
+          "lastLogin": "2025-07-28T12:20:22.461+00:00"
+        }
+      },
+      {
+        "id": "BgvcBwSls9WG97LSHAnMf53CSAx2",
+        "name": "الدحيل اختبار",
+        "email": "user_BgvcBwSls9WG97LSHAnMf53CSAx2@el7lm.com",
+        "accountType": "club",
+        "table": "users",
+        "rawPhone": "97472053188",
+        "createdAt": "2025-07-22T03:49:47+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 4,
+          "lastLogin": "2025-07-22T03:49:48.542+00:00"
+        }
+      },
+      {
+        "id": "Ei7gofYLCKc9oPFqmDcqLQhp0VS2",
+        "name": "الدحيل اختبار",
+        "email": "user_Ei7gofYLCKc9oPFqmDcqLQhp0VS2@el7lm.com",
+        "accountType": "club",
+        "table": "users",
+        "rawPhone": "97472053188",
+        "createdAt": "2025-07-22T03:32:51+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 3,
+          "lastLogin": "2025-07-22T03:32:52.396+00:00"
+        }
+      },
+      {
+        "id": "E4P1SrsL2ban2fd5vwnnRJwmiLo1",
+        "name": "uuuuuuuSaudi",
+        "email": "p974_72053188@el7lm.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "97472053188",
+        "createdAt": "2025-10-05T20:49:15+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 4,
+          "lastLogin": null
+        }
+      },
+      {
+        "id": "E4P1SrsL2ban2fd5vwnnRJwmiLo1",
+        "name": "uuuuuuuSaudi",
+        "email": "p974_72053188@el7lm.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "97472053188",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 3,
+          "messages": 0,
+          "notifications": 4,
+          "lastLogin": "2025-10-05T22:23:15.787Z"
+        }
+      },
+      {
+        "id": "t1ev0surGVWVj3b5XOSxB22sycL2",
+        "name": "رضا جميل",
+        "email": "p974_97472053188@el7lm.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "97472053188",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 3,
+          "notifications": 1,
+          "lastLogin": "2025-11-08T18:42:17+00:00"
+        }
+      },
+      {
+        "id": "Ei7gofYLCKc9oPFqmDcqLQhp0VS2",
+        "name": "الدحيل اختبار",
+        "email": "c974_97472053188@el7lm.com",
+        "accountType": "club",
+        "table": "clubs",
+        "rawPhone": "97472053188",
+        "createdAt": "2025-07-22T03:32:53.429+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 3,
+          "lastLogin": "2025-07-22T03:32:53.429+00:00"
+        }
+      },
+      {
+        "id": "2qEmubLWjtU8yUyHJQtkJX9Fw582",
+        "name": "الدحيل اختبار",
+        "email": "c974_97472053188@el7lm.com",
+        "accountType": "club",
+        "table": "clubs",
+        "rawPhone": "97472053188",
+        "createdAt": "2025-07-22T02:47:13.362+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 7,
+          "notifications": 5,
+          "lastLogin": "2025-07-22T02:47:13.362+00:00"
+        }
+      },
+      {
+        "id": "BgvcBwSls9WG97LSHAnMf53CSAx2",
+        "name": "الدحيل اختبار",
+        "email": "c974_97472053188@el7lm.com",
+        "accountType": "club",
+        "table": "clubs",
+        "rawPhone": "97472053188",
+        "createdAt": "2025-07-22T03:49:50.219+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 4,
+          "lastLogin": "2025-07-22T03:49:50.219+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+1234567896",
+    "expectedCountry": "USA/Canada",
+    "countryCode": "+1",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "0hHX4qaTDkhCQRyEhFLfFpq62Tu1",
+        "name": "محمد جمال الدين",
+        "email": "",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "1234567896",
+        "createdAt": "2025-05-18T22:37:28+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 3,
+          "lastLogin": "2025-08-13T12:06:34.109+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "3216547897",
+    "expectedCountry": "Invalid",
+    "countryCode": "None",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "0mrTr58kqnQ0bKGsGAVZevHSNH02",
+        "name": "نادي اختبار",
+        "email": "p974_3216547897@el7lm.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "3216547897",
+        "createdAt": "2025-06-15T10:37:20+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2025-07-05T17:49:52.078+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+201017799580",
+    "expectedCountry": "Egypt",
+    "countryCode": "+20",
+    "category": "A",
+    "accountCount": 15,
+    "accounts": [
+      {
+        "id": "2Uj9vwRn9jfVsQtrvX4B",
+        "name": "مصطفي محمد",
+        "email": "mo@el7lm.com",
+        "accountType": "admin",
+        "table": "users",
+        "rawPhone": "01017799580",
+        "createdAt": "2026-02-01T13:28:51.992+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 0,
+          "lastLogin": "2026-07-15T17:27:23.674+00:00"
+        }
+      },
+      {
+        "id": "AjZm7yasznYN5n7qgL9Z",
+        "name": "شريف حسن",
+        "email": "sh@el7lm.com",
+        "accountType": "admin",
+        "table": "users",
+        "rawPhone": "01017799580",
+        "createdAt": "2026-02-01T13:28:54.589+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-07-15T17:27:22.478+00:00"
+        }
+      },
+      {
+        "id": "IOLqqZ1Lvqep1RcPTAAz9px4CJU2",
+        "name": "مصطفي اسماعيل",
+        "email": "201017799580@el7lm.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "+201017799580",
+        "createdAt": "2026-01-15T19:38:03+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-04-04T09:50:51.907+00:00"
+        }
+      },
+      {
+        "id": "ml99m6hRCYe2F9By1G7uDTBk8cn1",
+        "name": "محمد جمال الدين",
+        "email": "",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "01017799580",
+        "createdAt": "2025-02-02T14:14:16+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 1,
+          "lastLogin": "2025-06-27T20:03:01.518+00:00"
+        }
+      },
+      {
+        "id": "GQSMfDZabaaMbQxI22ZqOsWmcA32",
+        "name": "mohamed saudi",
+        "email": "p20_201017799580@el7lm.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "201017799580",
+        "createdAt": "2025-08-12T19:35:26.912Z",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 31,
+          "notifications": 58,
+          "lastLogin": "2026-03-29T14:59:53.756+00:00"
+        }
+      },
+      {
+        "id": "HTMQqeUeTi8lsdlYfskV",
+        "name": "حمزة العليمي",
+        "email": "user_20_201017799580_1755026927645_o58h37@el7hm.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "201017799580",
+        "createdAt": "2025-11-08T13:26:50.000Z",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 2,
+          "lastLogin": "2025-11-14T20:57:27.745Z"
+        }
+      },
+      {
+        "id": "UCRYaIbDNBHqtA0Y4eJs",
+        "name": "Mohamed saudi",
+        "email": "mo.saudi19@gmail.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "01017799580",
+        "createdAt": "2025-06-25T16:44:28.843Z",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2025-08-29T21:25:07.875+00:00"
+        }
+      },
+      {
+        "id": "7VwkM1UIFdcfiVSFBvm1",
+        "name": "مختار",
+        "email": "eskllcqa@gmail.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "01017799580",
+        "createdAt": "2025-07-07T06:53:21.000Z",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2025-08-29T21:25:07.873+00:00"
+        }
+      },
+      {
+        "id": "XTx6sHL0Bta5B6iBMIko79A398k1",
+        "name": "احمد جمال محمد ",
+        "email": "m@go.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "01017799580",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 1,
+          "lastLogin": "2025-08-29T21:27:00.415+00:00"
+        }
+      },
+      {
+        "id": "XeiioYl6l3RXRiUqJyPi7jjrmz32",
+        "name": "احمد محمد ياسين",
+        "email": "m@go.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "01017799580",
+        "createdAt": "2025-05-17T13:34:00.352Z",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 4,
+          "lastLogin": "2025-08-13T12:06:36.431+00:00"
+        }
+      },
+      {
+        "id": "wN7Tv9OnjPMP84qTfmp6",
+        "name": "محمد حسام",
+        "email": "mo.saudi19@gmail.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "01017799580",
+        "createdAt": "2025-06-23T23:08:26.510Z",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 1,
+          "lastLogin": "2025-08-29T21:25:07.875+00:00"
+        }
+      },
+      {
+        "id": "orpTdxCsJVEWHFhSDFez",
+        "name": "سيسس",
+        "email": "q@q.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "01017799580",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 1,
+          "messages": 0,
+          "notifications": 3,
+          "lastLogin": "2025-06-25T00:06:48.384Z"
+        }
+      },
+      {
+        "id": "M7UP64xP6aLdUR8spJae",
+        "name": "مازن السيد",
+        "email": "mo.saudi19@gmail.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "01017799580",
+        "createdAt": "2025-06-23T23:16:29.791Z",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2025-08-29T21:25:07.875+00:00"
+        }
+      },
+      {
+        "id": "TnSvLJgehmftXNY024Y0cjib6NI3",
+        "name": "علي محمد",
+        "email": "p218_0555555555@el7lm.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "01017799580",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 1,
+          "messages": 15,
+          "notifications": 9,
+          "lastLogin": "2025-09-06T01:20:21.889+00:00"
+        }
+      },
+      {
+        "id": "IOLqqZ1Lvqep1RcPTAAz9px4CJU2",
+        "name": "مصطفي اسماعيل",
+        "email": "201017799580@el7lm.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "+201017799580",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 1,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-09-22T11:25:53.074+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+1234567893",
+    "expectedCountry": "USA/Canada",
+    "countryCode": "+1",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "2hLPCeQszng4TQrjQlpYZ3PtYmm2",
+        "name": "احمد محمد فتحي",
+        "email": "user@el7lm.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "1234567893",
+        "createdAt": "2025-04-29T21:55:28+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 3,
+          "notifications": 6,
+          "lastLogin": "2025-07-30T12:28:34.278+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+33333333333",
+    "expectedCountry": "France",
+    "countryCode": "+33",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "1f2dWITeCTflSTzsPRxatkGGWO73",
+        "name": "hagzz app",
+        "email": "hagzzapp@gmail.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "33333333333",
+        "createdAt": "2026-01-08T16:50:47+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-01-08T16:51:16.095+00:00"
+        }
+      },
+      {
+        "id": "1f2dWITeCTflSTzsPRxatkGGWO73",
+        "name": "hagzz app",
+        "email": "hagzzapp@gmail.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "33333333333",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-01-08T16:51:16.095+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "705424366",
+    "expectedCountry": "Invalid",
+    "countryCode": "None",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "4PhRmJVLdncNOcVBvAmUztAxkkm2",
+        "name": "Tttt",
+        "email": "saudi19@gmail.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "705424366",
+        "createdAt": "2026-01-09T14:38:48+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-01-09T14:38:49.47+00:00"
+        }
+      },
+      {
+        "id": "ls9eL2YFKkoFi7kMfqKr",
+        "name": "Tttt",
+        "email": "saudi19@gmail.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "705424366",
+        "createdAt": "2026-01-09T14:38:47.289Z",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-01-09T14:38:43.851Z"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "3216547898",
+    "expectedCountry": "Invalid",
+    "countryCode": "None",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "6ounHzVysQY3VDvlJ5OcF6qF3k02",
+        "name": "نادي اختبار",
+        "email": "p974_3216547898@el7lm.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "3216547898",
+        "createdAt": "2025-06-15T10:40:27+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2025-07-16T10:57:49.056+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+1234567880",
+    "expectedCountry": "USA/Canada",
+    "countryCode": "+1",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "7be37m8KKmS4MKwAluaBFnUxvUw1",
+        "name": "Mohamed saudi",
+        "email": "",
+        "accountType": "club",
+        "table": "users",
+        "rawPhone": "1234567880",
+        "createdAt": "2025-06-04T08:13:24+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 11,
+          "notifications": 2,
+          "lastLogin": "2025-07-02T20:25:41.054+00:00"
+        }
+      },
+      {
+        "id": "7be37m8KKmS4MKwAluaBFnUxvUw1",
+        "name": "نادي العين",
+        "email": "",
+        "accountType": "club",
+        "table": "clubs",
+        "rawPhone": "1234567880",
+        "createdAt": "2025-06-23T12:20:54.931+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 11,
+          "notifications": 2,
+          "lastLogin": "2025-08-29T21:27:00.415+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "MISSING_PHONE",
+    "expectedCountry": "Unknown",
+    "countryCode": "None",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "30b0d90f-faad-4ad1-8f34-1999a821902a",
+        "name": "test",
+        "email": "test@el7lm.com",
+        "accountType": "user",
+        "table": "users",
+        "rawPhone": "",
+        "createdAt": "2026-04-05T17:00:46.881+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": null
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+1234567892",
+    "expectedCountry": "USA/Canada",
+    "countryCode": "+1",
+    "category": "A",
+    "accountCount": 3,
+    "accounts": [
+      {
+        "id": "3dOQ70vLVVSdDiEmpcMtgCcGAiO2",
+        "name": "محمد جلال ",
+        "email": "user@el7lm.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "1234567892",
+        "createdAt": "2025-04-29T16:33:43+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 5,
+          "notifications": 10,
+          "lastLogin": "2025-07-27T06:17:14.859+00:00"
+        }
+      },
+      {
+        "id": "2hLPCeQszng4TQrjQlpYZ3PtYmm2",
+        "name": "احمد محمد فتحي",
+        "email": "user@el7lm.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "1234567892",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 2,
+          "messages": 3,
+          "notifications": 6,
+          "lastLogin": "2025-08-29T21:25:07.871+00:00"
+        }
+      },
+      {
+        "id": "3dOQ70vLVVSdDiEmpcMtgCcGAiO2",
+        "name": "محمد جلال ",
+        "email": "user@el7lm.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "1234567892",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 2,
+          "messages": 5,
+          "notifications": 10,
+          "lastLogin": "2025-08-29T21:25:07.871+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "218122121212",
+    "expectedCountry": "Invalid",
+    "countryCode": "None",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "A2CoJhIglggDynZQc999dbuA6Wv2",
+        "name": "fsffs",
+        "email": "p218_218122121212@el7lm.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "218122121212",
+        "createdAt": "2025-09-06T17:47:03+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 1,
+          "lastLogin": null
+        }
+      },
+      {
+        "id": "A2CoJhIglggDynZQc999dbuA6Wv2",
+        "name": "player test join ",
+        "email": "p218_218122121212@el7lm.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "218122121212",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 1,
+          "lastLogin": "2025-09-06T17:54:14+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+1234567881",
+    "expectedCountry": "USA/Canada",
+    "countryCode": "+1",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "BOBEWIhFyMgMXuRxGbvZh0J7ZKy1",
+        "name": "الاهلي",
+        "email": "",
+        "accountType": "club",
+        "table": "users",
+        "rawPhone": "1234567881",
+        "createdAt": "2025-06-01T00:29:12+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 1,
+          "lastLogin": "2025-06-27T18:51:47.791+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "72053188",
+    "expectedCountry": "Invalid",
+    "countryCode": "None",
+    "category": "A",
+    "accountCount": 10,
+    "accounts": [
+      {
+        "id": "F9UvdjTrtJbPvGf8F1ZzbFSKx6m1",
+        "name": "بلدية",
+        "email": "meskll@gmail.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "72053188",
+        "createdAt": "2025-07-29T09:09:41+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2025-07-29T11:33:45.102+00:00"
+        }
+      },
+      {
+        "id": "Jkzcp3U15UWgG8GD97oqPZFSvt92",
+        "name": "الدحيل اختبار",
+        "email": "user_974_72053188_1753138268551_eis16g@el7hm.com",
+        "accountType": "club",
+        "table": "users",
+        "rawPhone": "72053188",
+        "createdAt": "2025-07-21T22:51:12+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 3,
+          "lastLogin": "2025-07-21T22:51:13.581+00:00"
+        }
+      },
+      {
+        "id": "YXYvy1LYBwbgpabpfhcWojAEAMG2",
+        "name": "بلديةx",
+        "email": "melcqa@gmail.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "72053188",
+        "createdAt": "2025-07-29T09:09:31+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 1,
+          "lastLogin": "2025-08-29T21:27:00.415+00:00"
+        }
+      },
+      {
+        "id": "mCp3B5xQG9PQ12TxdBb0GXte79p1",
+        "name": "محمد",
+        "email": "",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "72053188",
+        "createdAt": "2025-02-02T04:34:45+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 1,
+          "lastLogin": "2025-08-29T21:27:00.415+00:00"
+        }
+      },
+      {
+        "id": "M9DDihHQZQyCwj6s1SoA",
+        "name": "mohamed saudi",
+        "email": "mo.saudi19@gmail.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "72053188",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 2,
+          "lastLogin": "2025-07-02T20:30:53.852Z"
+        }
+      },
+      {
+        "id": "jG0lmo3x7wRODTZES9b9GddBYZa2",
+        "name": "Mohamed Saudi",
+        "email": "mo.saudi19@gail.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "72053188",
+        "createdAt": "2025-03-24T01:57:58.000Z",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 5,
+          "lastLogin": null
+        }
+      },
+      {
+        "id": "bMu9qPx7m3VhhqxBpeCU2lyvKR13",
+        "name": "علي محمد علي",
+        "email": "mo.saudi19@gmail.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "72053188",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 6,
+          "lastLogin": "2025-09-01T08:46:40.702+00:00"
+        }
+      },
+      {
+        "id": "slBxvl5YImGn6jw037Dk",
+        "name": "mohamed saudi",
+        "email": "mo.saudi19@gmail.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "72053188",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 2,
+          "lastLogin": "2025-07-02T20:45:26.452Z"
+        }
+      },
+      {
+        "id": "zTFTwGU4v2GdYE9SCtmm",
+        "name": "mohamed saudi",
+        "email": "mo.saudi19@gmail.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "72053188",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 2,
+          "lastLogin": "2025-07-02T20:45:32.833Z"
+        }
+      },
+      {
+        "id": "Jkzcp3U15UWgG8GD97oqPZFSvt92",
+        "name": "الدحيل اختبار",
+        "email": "user_974_72053188_1753138268551_eis16g@el7hm.com",
+        "accountType": "club",
+        "table": "clubs",
+        "rawPhone": "72053188",
+        "createdAt": "2025-07-21T22:51:14.858+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 3,
+          "lastLogin": "2025-07-21T22:51:14.858+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "3216547894",
+    "expectedCountry": "Invalid",
+    "countryCode": "None",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "FhNmAqluG7P7WTwlyRqnTnf0qf23",
+        "name": "ابراهيم",
+        "email": "p974_3216547894@el7lm.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "3216547894",
+        "createdAt": "2025-06-15T10:25:22+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 0,
+          "lastLogin": "2025-07-05T17:49:52.078+00:00"
+        }
+      },
+      {
+        "id": "oWOfAwoRh3PzBWNDq8GTO5YSA1P2",
+        "name": "نادي اختبار",
+        "email": "p974_3216547894@el7lm.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "3216547894",
+        "createdAt": "2025-06-15T09:54:17+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2025-07-05T17:49:52.078+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+966500000000",
+    "expectedCountry": "Saudi Arabia",
+    "countryCode": "+966",
+    "category": "A",
+    "accountCount": 9,
+    "accounts": [
+      {
+        "id": "QU7WtY4IoKYcXQWIFafOBKOeBYm1",
+        "name": "مدير النظام الرئيسي",
+        "email": "ad20_966500000000@el7lm.com",
+        "accountType": "admin",
+        "table": "users",
+        "rawPhone": "+966500000000",
+        "createdAt": "2025-06-27T20:14:04.235+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 4,
+          "lastLogin": "2025-08-13T12:06:34.112+00:00"
+        }
+      },
+      {
+        "id": "hWAd3JRCJnXAowZKJ5W9qSJlA7i1",
+        "name": "مدير النظام",
+        "email": "admin@hagzzgo.com",
+        "accountType": "club",
+        "table": "users",
+        "rawPhone": "+966500000000",
+        "createdAt": "2025-06-26T12:52:16+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 37,
+          "lastLogin": "2025-09-30T11:12:39.672+00:00"
+        }
+      },
+      {
+        "id": "kiQktw04FaZwoQQ8JT1WEZ7QcIP2",
+        "name": "مدير النظام",
+        "email": "admin@el7lm.com",
+        "accountType": "admin",
+        "table": "users",
+        "rawPhone": "+966500000000",
+        "createdAt": "2025-09-20T17:21:50.661+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 1,
+          "lastLogin": "2025-09-20T17:24:14.798+00:00"
+        }
+      },
+      {
+        "id": "hWAd3JRCJnXAowZKJ5W9qSJlA7i1",
+        "name": "مدير النظام",
+        "email": "admin@hagzzgo.com",
+        "accountType": "club",
+        "table": "clubs",
+        "rawPhone": "+966500000000",
+        "createdAt": "2025-08-27T00:28:45.675+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 37,
+          "lastLogin": "2025-08-27T00:28:45.675+00:00"
+        }
+      },
+      {
+        "id": "hWAd3JRCJnXAowZKJ5W9qSJlA7i1",
+        "name": "مدير النظام",
+        "email": "admin@hagzzgo.com",
+        "accountType": "academy",
+        "table": "academies",
+        "rawPhone": "+966500000000",
+        "createdAt": "2025-07-05T18:15:41.081+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 37,
+          "lastLogin": "2025-07-05T18:15:41.081+00:00"
+        }
+      },
+      {
+        "id": "hWAd3JRCJnXAowZKJ5W9qSJlA7i1",
+        "name": "مدير النظام",
+        "email": "admin@hagzzgo.com",
+        "accountType": "trainer",
+        "table": "trainers",
+        "rawPhone": "+966500000000",
+        "createdAt": "2025-08-09T10:28:28.236Z",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 37,
+          "lastLogin": "2025-08-09T10:28:28.236+00:00"
+        }
+      },
+      {
+        "id": "hWAd3JRCJnXAowZKJ5W9qSJlA7i1",
+        "name": "مدير النظام",
+        "email": "admin@hagzzgo.com",
+        "accountType": "agent",
+        "table": "agents",
+        "rawPhone": "+966500000000",
+        "createdAt": "2025-07-17T01:14:41.634Z",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 37,
+          "lastLogin": "2025-07-17T01:14:41.634Z"
+        }
+      },
+      {
+        "id": "QU7WtY4IoKYcXQWIFafOBKOeBYm1",
+        "name": "مدير النظام الرئيسي",
+        "email": "admin@hagzzgo.com",
+        "accountType": "admin",
+        "table": "admins",
+        "rawPhone": "+966500000000",
+        "createdAt": "2025-06-27T20:14:04.504+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 4,
+          "lastLogin": "2025-06-27T20:14:04.504+00:00"
+        }
+      },
+      {
+        "id": "hWAd3JRCJnXAowZKJ5W9qSJlA7i1",
+        "name": "مدير النظام",
+        "email": "admin@hagzzgo.com",
+        "accountType": "admin",
+        "table": "admins",
+        "rawPhone": "+966500000000",
+        "createdAt": "2025-06-27T20:17:06.437+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 37,
+          "lastLogin": "2025-06-27T20:17:06.437+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+20123456789",
+    "expectedCountry": "Egypt",
+    "countryCode": "+20",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "01METNFmZIhS7OtQBt6OVh9Trdl2",
+        "name": "هههههههههه",
+        "email": "p20_20123456789@el7lm.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "20123456789",
+        "createdAt": "2025-09-03T12:00:25+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 5,
+          "notifications": 4,
+          "lastLogin": null
+        }
+      },
+      {
+        "id": "01METNFmZIhS7OtQBt6OVh9Trdl2",
+        "name": "هههههههههه",
+        "email": "p20_20123456789@el7lm.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "20123456789",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 5,
+          "notifications": 4,
+          "lastLogin": null
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+1234567809",
+    "expectedCountry": "USA/Canada",
+    "countryCode": "+1",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "IX7VihuM2SVdAQygFOvuUZJVwJA3",
+        "name": "Year",
+        "email": "c20_1234567809@el7lm.com",
+        "accountType": "club",
+        "table": "users",
+        "rawPhone": "1234567809",
+        "createdAt": "2025-06-14T21:57:45+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 3,
+          "lastLogin": "2025-09-01T08:46:22.257+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "70542458",
+    "expectedCountry": "Invalid",
+    "countryCode": "None",
+    "category": "A",
+    "accountCount": 6,
+    "accounts": [
+      {
+        "id": "JJ8MJBUvdRhTz7XZeQU3qBdjSbG2",
+        "name": "fady",
+        "email": "el7lm25@gmail.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "70542458",
+        "createdAt": "2026-01-10T19:00:01+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-03-22T07:18:15.378+00:00"
+        }
+      },
+      {
+        "id": "ZMMGQoZF8PREKSEh4LFYeVnJZq92",
+        "name": "أكاديمية جديدة",
+        "email": "mo.saudi19@gmail.com",
+        "accountType": "academy",
+        "table": "users",
+        "rawPhone": "70542458",
+        "createdAt": "2025-12-15T07:08:55+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-03-20T03:43:03.075+00:00"
+        }
+      },
+      {
+        "id": "ZMMGQoZF8PREKSEh4LFYeVnJZq92",
+        "name": "Mohamed saudi",
+        "email": "mo.saudi19@gmail.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "70542458",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-03-20T03:43:03.075+00:00"
+        }
+      },
+      {
+        "id": "JJ8MJBUvdRhTz7XZeQU3qBdjSbG2",
+        "name": "fady",
+        "email": "el7lm25@gmail.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "70542458",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-03-22T07:18:15.378+00:00"
+        }
+      },
+      {
+        "id": "ZMMGQoZF8PREKSEh4LFYeVnJZq92",
+        "name": "أكاديمية جديدة",
+        "email": "mo.saudi19@gmail.com",
+        "accountType": "academy",
+        "table": "academies",
+        "rawPhone": "70542458",
+        "createdAt": "2026-01-08T12:25:08.882+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-03-13T09:29:41.626+00:00"
+        }
+      },
+      {
+        "id": "83ded7fc-43e1-4451-96cb-8be4950004e6",
+        "name": "الابداع والتطوير ا",
+        "email": "mo.saudi19@gmail.com",
+        "accountType": "academy",
+        "table": "academies",
+        "rawPhone": "70542458",
+        "createdAt": "2026-04-23T20:22:14.766+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 11,
+          "lastLogin": "2026-04-24T11:35:25.909+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+963123456789",
+    "expectedCountry": "Syria",
+    "countryCode": "+963",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "KugxKRoTH6ZUQ3jOjhClBagrvVH2",
+        "name": "Mohamed saudi",
+        "email": "user_KugxKRoTH6ZUQ3jOjhClBagrvVH2@el7lm.com",
+        "accountType": "club",
+        "table": "users",
+        "rawPhone": "963123456789",
+        "createdAt": "2025-08-17T09:16:36+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 2,
+          "lastLogin": null
+        }
+      },
+      {
+        "id": "KugxKRoTH6ZUQ3jOjhClBagrvVH2",
+        "name": "Mohamed saudi",
+        "email": "c963_963123456789@el7lm.com",
+        "accountType": "club",
+        "table": "clubs",
+        "rawPhone": "963123456789",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 2,
+          "lastLogin": null
+        }
+      }
+    ]
+  },
+  {
+    "phone": "3216547891",
+    "expectedCountry": "Invalid",
+    "countryCode": "None",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "WiXjvlF7DZSqykzGNI9FojHjcQU2",
+        "name": "نادي اختبار",
+        "email": "p218_3216547891@el7lm.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "3216547891",
+        "createdAt": "2025-06-15T10:56:48+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2025-07-05T17:49:52.077+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+1234567894",
+    "expectedCountry": "USA/Canada",
+    "countryCode": "+1",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "XeiioYl6l3RXRiUqJyPi7jjrmz32",
+        "name": "احمد محمد ياسين",
+        "email": "",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "1234567894",
+        "createdAt": "2025-05-17T13:06:30+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 1,
+          "notifications": 4,
+          "lastLogin": "2025-08-13T12:06:34.109+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+1234567899",
+    "expectedCountry": "USA/Canada",
+    "countryCode": "+1",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "Y9Jpw2MGHpdu0fk3AGpo3lxCl9m1",
+        "name": "نادي الاهلي",
+        "email": "",
+        "accountType": "club",
+        "table": "users",
+        "rawPhone": "1234567899",
+        "createdAt": "2025-06-05T05:22:40+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 11,
+          "notifications": 7,
+          "lastLogin": "2025-08-29T21:27:00.415+00:00"
+        }
+      },
+      {
+        "id": "Y9Jpw2MGHpdu0fk3AGpo3lxCl9m1",
+        "name": "نادي الاهلي",
+        "email": "a@a.com",
+        "accountType": "رياضي",
+        "table": "clubs",
+        "rawPhone": "1234567899",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 11,
+          "notifications": 7,
+          "lastLogin": "2025-08-29T21:27:00.415+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "3216547892",
+    "expectedCountry": "Invalid",
+    "countryCode": "None",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "bQ6Uz4zNfWZhyEHqFPGZUNS5NmU2",
+        "name": "نادي اختبار",
+        "email": "p974_3216547892@el7lm.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "3216547892",
+        "createdAt": "2025-06-15T10:53:35+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2025-07-05T17:49:52.077+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+1234567890",
+    "expectedCountry": "USA/Canada",
+    "countryCode": "+1",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "cAcwfAjp4WdKFRIekjzJOtTNVn72",
+        "name": "ابراهيم",
+        "email": "user@el7lm.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "1234567890",
+        "createdAt": "2025-04-29T12:59:44+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 6,
+          "lastLogin": "2025-07-26T03:26:09.842+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+1234567891",
+    "expectedCountry": "USA/Canada",
+    "countryCode": "+1",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "m0fduSBldXV8qr4qdMyVv4eKoGz1",
+        "name": "سيسس",
+        "email": "kpi@kpi.com",
+        "accountType": "player",
+        "table": "users",
+        "rawPhone": "1234567891",
+        "createdAt": "2025-07-29T09:08:49+00:00",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 6,
+          "lastLogin": "2025-08-29T21:25:32.902+00:00"
+        }
+      },
+      {
+        "id": "YWGHzaxr08YE8vwmPK2i",
+        "name": "سيسس",
+        "email": "kpi@kpi.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "1234567891",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 2,
+          "lastLogin": "2025-08-15T17:28:40.690Z"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+201000000001",
+    "expectedCountry": "Egypt",
+    "countryCode": "+20",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "test_club_01000000001",
+        "name": "نادي الحلم التجريبي",
+        "email": "",
+        "accountType": "club",
+        "table": "users",
+        "rawPhone": "+201000000001",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": null
+        }
+      },
+      {
+        "id": "test_club_01000000001",
+        "name": "نادي الحلم التجريبي",
+        "email": "",
+        "accountType": "club",
+        "table": "clubs",
+        "rawPhone": "+201000000001",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-08-31T05:28:42.457Z"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+201000000002",
+    "expectedCountry": "Egypt",
+    "countryCode": "+20",
+    "category": "A",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "test_academy_01000000002",
+        "name": "أكاديمية الحلم الدولية",
+        "email": "",
+        "accountType": "academy",
+        "table": "users",
+        "rawPhone": "+201000000002",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": null
+        }
+      },
+      {
+        "id": "test_academy_01000000002",
+        "name": "أكاديمية الحلم الدولية",
+        "email": "",
+        "accountType": "academy",
+        "table": "academies",
+        "rawPhone": "+201000000002",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-09-23T15:32:50.988+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+12345678912",
+    "expectedCountry": "USA/Canada",
+    "countryCode": "+1",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "DvNaEk3LQ3ptbiZN1ucC",
+        "name": "سيسس",
+        "email": "hagzz@mesk.com.qa",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "12345678912",
+        "createdAt": "2025-06-21T17:15:10.438Z",
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2025-08-29T21:25:07.877+00:00"
+        }
+      }
+    ]
+  },
+  {
+    "phone": "+201000000000",
+    "expectedCountry": "Egypt",
+    "countryCode": "+20",
+    "category": "A",
+    "accountCount": 1,
+    "accounts": [
+      {
+        "id": "google-play-review-player",
+        "name": "Google Play Review Player",
+        "email": "googleplay.review@el7lm.com",
+        "accountType": "player",
+        "table": "players",
+        "rawPhone": "201000000000",
+        "createdAt": null,
+        "lastActivity": {
+          "videos": 0,
+          "messages": 0,
+          "notifications": 0,
+          "lastLogin": "2026-08-05T15:32:39.595+00:00"
+        }
+      }
+    ]
+  }
+]

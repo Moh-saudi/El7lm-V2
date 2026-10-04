@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUUID = (v: unknown): v is string => typeof v === 'string' && UUID_REGEX.test(v);
+
 export async function POST(request: NextRequest) {
   try {
     const { userId, userCollection, email } = await request.json();
@@ -26,10 +29,19 @@ export async function POST(request: NextRequest) {
 
     // تحديث في Supabase Auth
     try {
-      const { data: authUser } = await db.auth.admin.getUserById(userId);
-      if (authUser?.user) {
-        await db.auth.admin.updateUserById(userId, { email });
-        console.log(`✅ [update-email] Updated Supabase Auth for user ${userId} with email ${email}`);
+      let authUserId = userId;
+      if (!isUUID(authUserId)) {
+        const { data: row } = await db.from(userCollection).select('uid').eq('id', userId).maybeSingle();
+        if (row?.uid && isUUID(row.uid)) {
+          authUserId = row.uid;
+        }
+      }
+      if (isUUID(authUserId)) {
+        const { data: authUser } = await db.auth.admin.getUserById(authUserId);
+        if (authUser?.user) {
+          await db.auth.admin.updateUserById(authUserId, { email });
+          console.log(`✅ [update-email] Updated Supabase Auth for user ${authUserId} with email ${email}`);
+        }
       }
     } catch (authError: any) {
       console.warn(`⚠️ [update-email] Could not update Supabase Auth:`, authError.message);

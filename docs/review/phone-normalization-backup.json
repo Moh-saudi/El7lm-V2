@@ -1,0 +1,418 @@
+[
+  {
+    "account_id": "DUmbOIT7qsYNxL02QdYK4oPGobq1",
+    "table": "players",
+    "old_phone": "+101499936",
+    "new_phone": "+20101499936",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "DUmbOIT7qsYNxL02QdYK4oPGobq1",
+      "phone": "101499936",
+      "phoneNumber": null,
+      "originalPhone": "20101499936",
+      "phoneNormalized": "20101499936",
+      "name": null,
+      "email": "p20_20101499936@el7lm.com"
+    }
+  },
+  {
+    "account_id": "hk1WcoGFc2bKDofWl7kOCeKilI53",
+    "table": "players",
+    "old_phone": "+101499936",
+    "new_phone": "+20101499936",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "hk1WcoGFc2bKDofWl7kOCeKilI53",
+      "phone": "101499936",
+      "phoneNumber": null,
+      "originalPhone": "20101499936",
+      "phoneNormalized": "20101499936",
+      "name": null,
+      "email": "p20_20101499936@el7lm.com"
+    }
+  },
+  {
+    "account_id": "DAmzLbIdIDdgBFkpEPvQntVhQCC3",
+    "table": "users",
+    "old_phone": "+101824937",
+    "new_phone": "+20101824937",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "DAmzLbIdIDdgBFkpEPvQntVhQCC3",
+      "phone": "20101824937",
+      "phoneNumber": null,
+      "originalPhone": "20101824937",
+      "phoneNormalized": null,
+      "name": null,
+      "email": "user_20_20101824937_1758021368774_j2un9g@el7lm.com"
+    }
+  },
+  {
+    "account_id": "0FuH5wD6PfTtGe4uXhkxcYFfaai1",
+    "table": "users",
+    "old_phone": "+101824937",
+    "new_phone": "+20101824937",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "0FuH5wD6PfTtGe4uXhkxcYFfaai1",
+      "phone": "20101824937",
+      "phoneNumber": null,
+      "originalPhone": "20101824937",
+      "phoneNormalized": null,
+      "name": null,
+      "email": "user_20_20101824937_1758021206212_vin53j@el7lm.com"
+    }
+  },
+  {
+    "account_id": "LGBFQZrBUzLxEmh77aLQRtv7KRw2",
+    "table": "players",
+    "old_phone": "+101993278",
+    "new_phone": "+20101993278",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "LGBFQZrBUzLxEmh77aLQRtv7KRw2",
+      "phone": "101993278",
+      "phoneNumber": null,
+      "originalPhone": "20101993278",
+      "phoneNormalized": "20101993278",
+      "name": null,
+      "email": "p20_20101993278@el7lm.com"
+    }
+  },
+  {
+    "account_id": "T2YwllYRmiWOTHycjW6tdUzjGuD3",
+    "table": "players",
+    "old_phone": "+101993278",
+    "new_phone": "+20101993278",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "T2YwllYRmiWOTHycjW6tdUzjGuD3",
+      "phone": "101993278",
+      "phoneNumber": null,
+      "originalPhone": "20101993278",
+      "phoneNormalized": "20101993278",
+      "name": null,
+      "email": "p20_20101993278@el7lm.com"
+    }
+  },
+  {
+    "account_id": "ZINDYoIpWOX4LxwuCQP3CSd1F2l2",
+    "table": "players",
+    "old_phone": "+101993278",
+    "new_phone": "+20101993278",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "ZINDYoIpWOX4LxwuCQP3CSd1F2l2",
+      "phone": "101993278",
+      "phoneNumber": null,
+      "originalPhone": "20101993278",
+      "phoneNormalized": "20101993278",
+      "name": null,
+      "email": "p20_20101993278@el7lm.com"
+    }
+  },
+  {
+    "account_id": "neEfb9khgDNT0EmA9zfmuakaLTi2",
+    "table": "players",
+    "old_phone": "+102939499",
+    "new_phone": "+20102939499",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "neEfb9khgDNT0EmA9zfmuakaLTi2",
+      "phone": "102939499",
+      "phoneNumber": null,
+      "originalPhone": "20102939499",
+      "phoneNormalized": "20102939499",
+      "name": null,
+      "email": "p20_20102939499@el7lm.com"
+    }
+  },
+  {
+    "account_id": "IX34KOCXrccUHSaj7JGOgMO7nzA2",
+    "table": "players",
+    "old_phone": "+102939499",
+    "new_phone": "+20102939499",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "IX34KOCXrccUHSaj7JGOgMO7nzA2",
+      "phone": "102939499",
+      "phoneNumber": null,
+      "originalPhone": "20102939499",
+      "phoneNormalized": "20102939499",
+      "name": null,
+      "email": "p20_20102939499@el7lm.com"
+    }
+  },
+  {
+    "account_id": "YUezyttc4WPUTiq1wHgbwMsGnB82",
+    "table": "players",
+    "old_phone": "+102980282",
+    "new_phone": "+20102980282",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "YUezyttc4WPUTiq1wHgbwMsGnB82",
+      "phone": "102980282",
+      "phoneNumber": null,
+      "originalPhone": "20102980282",
+      "phoneNormalized": "20102980282",
+      "name": null,
+      "email": "p20_20102980282@el7lm.com"
+    }
+  },
+  {
+    "account_id": "ttSoUdgH5yPfPVroOHwk76rGCS42",
+    "table": "players",
+    "old_phone": "+102980282",
+    "new_phone": "+20102980282",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "ttSoUdgH5yPfPVroOHwk76rGCS42",
+      "phone": "102980282",
+      "phoneNumber": null,
+      "originalPhone": "20102980282",
+      "phoneNormalized": "20102980282",
+      "name": null,
+      "email": "p20_20102980282@el7lm.com"
+    }
+  },
+  {
+    "account_id": "FfX9wD3YhpXvoBTn7kBbNn0gIow1",
+    "table": "users",
+    "old_phone": "+103338202",
+    "new_phone": "+20103338202",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "FfX9wD3YhpXvoBTn7kBbNn0gIow1",
+      "phone": "20103338202",
+      "phoneNumber": null,
+      "originalPhone": "20103338202",
+      "phoneNormalized": null,
+      "name": null,
+      "email": "user_20_20103338202_1759134537407_7tptpr@el7lm.com"
+    }
+  },
+  {
+    "account_id": "PY5Nr0L7qZQJoceL8D2SgeD9mcv2",
+    "table": "users",
+    "old_phone": "+103338202",
+    "new_phone": "+20103338202",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "PY5Nr0L7qZQJoceL8D2SgeD9mcv2",
+      "phone": "20103338202",
+      "phoneNumber": null,
+      "originalPhone": "20103338202",
+      "phoneNormalized": null,
+      "name": null,
+      "email": "user_20_20103338202_1759169268994_rfidq9@el7lm.com"
+    }
+  },
+  {
+    "account_id": "qyADQuQ3tgP0eyda5u3RHirHkv63",
+    "table": "users",
+    "old_phone": "+103338202",
+    "new_phone": "+20103338202",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "qyADQuQ3tgP0eyda5u3RHirHkv63",
+      "phone": "20103338202",
+      "phoneNumber": null,
+      "originalPhone": "20103338202",
+      "phoneNormalized": null,
+      "name": null,
+      "email": "user_20_20103338202_1759134646636_j3wwsy@el7lm.com"
+    }
+  },
+  {
+    "account_id": "aygnJ71o5tTBXgtmLCCYKVw2zg82",
+    "table": "players",
+    "old_phone": "+106078056",
+    "new_phone": "+20106078056",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "aygnJ71o5tTBXgtmLCCYKVw2zg82",
+      "phone": "106078056",
+      "phoneNumber": null,
+      "originalPhone": "20106078056",
+      "phoneNormalized": "20106078056",
+      "name": null,
+      "email": "p20_20106078056@el7lm.com"
+    }
+  },
+  {
+    "account_id": "cboFvgjr8dU7RbcvHgfc3h7Eexo1",
+    "table": "players",
+    "old_phone": "+106078056",
+    "new_phone": "+20106078056",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "cboFvgjr8dU7RbcvHgfc3h7Eexo1",
+      "phone": "106078056",
+      "phoneNumber": null,
+      "originalPhone": "20106078056",
+      "phoneNormalized": "20106078056",
+      "name": null,
+      "email": "p20_20106078056@el7lm.com"
+    }
+  },
+  {
+    "account_id": "PGAdTYh8xpSF81fj8yxxG7cnDWD2",
+    "table": "players",
+    "old_phone": "+106078056",
+    "new_phone": "+20106078056",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "PGAdTYh8xpSF81fj8yxxG7cnDWD2",
+      "phone": "106078056",
+      "phoneNumber": null,
+      "originalPhone": "20106078056",
+      "phoneNormalized": "20106078056",
+      "name": null,
+      "email": "p20_20106078056@el7lm.com"
+    }
+  },
+  {
+    "account_id": "uTNhyvCp9QWcVLZax7wXwTQjSyu2",
+    "table": "players",
+    "old_phone": "+106078056",
+    "new_phone": "+20106078056",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "uTNhyvCp9QWcVLZax7wXwTQjSyu2",
+      "phone": "106078056",
+      "phoneNumber": null,
+      "originalPhone": "20106078056",
+      "phoneNormalized": "20106078056",
+      "name": null,
+      "email": "p20_20106078056@el7lm.com"
+    }
+  },
+  {
+    "account_id": "jQprN3XSQ0T22vOtriGPiKHWQ3O2",
+    "table": "players",
+    "old_phone": "+106078056",
+    "new_phone": "+20106078056",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "jQprN3XSQ0T22vOtriGPiKHWQ3O2",
+      "phone": "106078056",
+      "phoneNumber": null,
+      "originalPhone": "20106078056",
+      "phoneNormalized": "20106078056",
+      "name": null,
+      "email": "p20_20106078056@el7lm.com"
+    }
+  },
+  {
+    "account_id": "5GPkOLHk0KhgzDPr3NrSR9yNfVl1",
+    "table": "users",
+    "old_phone": "+106461108",
+    "new_phone": "+20106461108",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "5GPkOLHk0KhgzDPr3NrSR9yNfVl1",
+      "phone": "20106461108",
+      "phoneNumber": null,
+      "originalPhone": "20106461108",
+      "phoneNormalized": null,
+      "name": null,
+      "email": "c20_20106461108@el7lm.com"
+    }
+  },
+  {
+    "account_id": "v7lDpI2O42VXz3G1aUtqCiwMKcR2",
+    "table": "users",
+    "old_phone": "+106461108",
+    "new_phone": "+20106461108",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "v7lDpI2O42VXz3G1aUtqCiwMKcR2",
+      "phone": "20106461108",
+      "phoneNumber": null,
+      "originalPhone": "20106461108",
+      "phoneNormalized": null,
+      "name": null,
+      "email": "m20_20106461108@el7lm.com"
+    }
+  },
+  {
+    "account_id": "IT83aO1vtsPMb8ClCW6uNR6wLj73",
+    "table": "players",
+    "old_phone": "+109270428",
+    "new_phone": "+20109270428",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "IT83aO1vtsPMb8ClCW6uNR6wLj73",
+      "phone": "109270428",
+      "phoneNumber": null,
+      "originalPhone": "20109270428",
+      "phoneNormalized": "20109270428",
+      "name": null,
+      "email": "p20_20109270428@el7lm.com"
+    }
+  },
+  {
+    "account_id": "G0jJVt23N5WcuZwPiclLZFxE7Ny1",
+    "table": "players",
+    "old_phone": "+109270428",
+    "new_phone": "+20109270428",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "G0jJVt23N5WcuZwPiclLZFxE7Ny1",
+      "phone": "109270428",
+      "phoneNumber": null,
+      "originalPhone": "20109270428",
+      "phoneNormalized": "20109270428",
+      "name": null,
+      "email": "p20_20109270428@el7lm.com"
+    }
+  },
+  {
+    "account_id": "Kn3NlMQA0iT5TEIsr9DNvcCnJ1j2",
+    "table": "players",
+    "old_phone": "+128059923",
+    "new_phone": "+20128059923",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "Kn3NlMQA0iT5TEIsr9DNvcCnJ1j2",
+      "phone": "128059923",
+      "phoneNumber": null,
+      "originalPhone": "20128059923",
+      "phoneNormalized": "20128059923",
+      "name": null,
+      "email": "p20_0128059923@el7lm.com"
+    }
+  },
+  {
+    "account_id": "L0q5pWIWNoeQTNAHTofFVBZR4Is2",
+    "table": "players",
+    "old_phone": "+128059923",
+    "new_phone": "+20128059923",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "L0q5pWIWNoeQTNAHTofFVBZR4Is2",
+      "phone": "128059923",
+      "phoneNumber": null,
+      "originalPhone": "20128059923",
+      "phoneNormalized": "20128059923",
+      "name": null,
+      "email": "p20_20128059923@el7lm.com"
+    }
+  },
+  {
+    "account_id": "RWM6ipzXWCTlWKhVPuafwVLsEPf1",
+    "table": "players",
+    "old_phone": "+128059923",
+    "new_phone": "+20128059923",
+    "timestamp": "2026-09-25T14:21:16.305Z",
+    "db_snapshot_before": {
+      "id": "RWM6ipzXWCTlWKhVPuafwVLsEPf1",
+      "phone": "128059923",
+      "phoneNumber": null,
+      "originalPhone": "20128059923",
+      "phoneNormalized": "20128059923",
+      "name": null,
+      "email": "p20_20128059923@el7lm.com"
+    }
+  }
+]

@@ -200,12 +200,12 @@ export default function NotificationsManager({
     return data.senderId || metadata.senderId || metadata.viewerId || metadata.profileOwnerId || metadata.userId || undefined;
   };
 
-  const enrichSender = (data: Notification, senderMap: Map<string, SenderContext>): Notification => {
+  const enrichSender = (data: Notification, senderMap?: Map<string, SenderContext>): Notification => {
     const normalizedMetadata = normalizeNotificationMetadata(data.metadata);
     const dataWithMetadata = { ...data, metadata: normalizedMetadata };
     const senderId = getSenderCandidateId(dataWithMetadata);
     let senderInfo = getInitialSenderInfo(dataWithMetadata);
-    if (senderId) {
+    if (senderId && senderMap) {
       senderInfo = mergeSenderInfo(senderInfo, senderMap.get(senderId));
     }
     if (!senderInfo.senderAvatar && senderInfo.senderName) {
@@ -214,7 +214,7 @@ export default function NotificationsManager({
     return { ...dataWithMetadata, senderId: senderId || data.senderId, ...senderInfo } as Notification;
   };
 
-  const processSystemNotificationRows = (rows: any[], senderMap: Map<string, SenderContext>): Notification[] => {
+  const processSystemNotificationRows = (rows: any[], senderMap?: Map<string, SenderContext>): Notification[] => {
     return rows.map((row) => enrichSender(row as Notification, senderMap));
   };
 

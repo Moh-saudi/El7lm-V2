@@ -1,0 +1,1392 @@
+[
+  {
+    "phone": "+201112911914",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 4,
+    "accounts": [
+      {
+        "id": "fFe35ICntkYI85Bv9Is87zmbZgE3",
+        "table": "users",
+        "name": "Ahmed Yaser",
+        "email": "user_20_201112911914_1755776376392_wdw8g8@el7hm.com",
+        "accountType": "player",
+        "activityScore": 10,
+        "createdAt": "2025-08-21T11:39:36+00:00",
+        "lastLogin": "2025-11-05T13:25:37.449+00:00"
+      },
+      {
+        "id": "fFe35ICntkYI85Bv9Is87zmbZgE3",
+        "table": "players",
+        "name": "Ahmed Yaser ali diab",
+        "email": "diab7300@gmail com",
+        "accountType": "player",
+        "activityScore": 10,
+        "createdAt": null,
+        "lastLogin": "2025-11-05T13:26:51.240Z"
+      },
+      {
+        "id": "tTZhaT0QAUVyddcg7InevNkuRDt2",
+        "table": "players",
+        "name": "احمد ياسر علي ",
+        "email": "diab7300@gmail.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": "2026-03-28T12:10:54.618Z",
+        "lastLogin": "2026-03-28T12:10:54.618+00:00"
+      },
+      {
+        "id": "tTZhaT0QAUVyddcg7InevNkuRDt2",
+        "table": "users",
+        "name": "احمد ياسر علي ",
+        "email": "201112911914@el7lm.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": "2026-03-11T16:58:41.786+00:00",
+        "lastLogin": "2026-03-11T16:58:41.786+00:00"
+      }
+    ]
+  },
+  {
+    "phone": "+201123379793",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 5,
+    "accounts": [
+      {
+        "id": "uE7bvBpfTaciPoynGsznyYnUlbp2",
+        "table": "users",
+        "name": "mohamed Hassan",
+        "email": "p20_201123379793@el7lm.com",
+        "accountType": "player",
+        "activityScore": 51,
+        "createdAt": "2025-11-04T20:09:00+00:00",
+        "lastLogin": "2025-11-22T14:07:00.941+00:00"
+      },
+      {
+        "id": "uE7bvBpfTaciPoynGsznyYnUlbp2",
+        "table": "players",
+        "name": "mohamed Hassan",
+        "email": "p20_201123379793@el7lm.com",
+        "accountType": "player",
+        "activityScore": 51,
+        "createdAt": null,
+        "lastLogin": "2025-11-07T21:14:59.091Z"
+      },
+      {
+        "id": "rJG08UCl64haTKAbYQX410FdLB73",
+        "table": "players",
+        "name": "Mohammed Hassan",
+        "email": "thehassan202060@gmail.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": "2026-03-28T12:10:54.611Z",
+        "lastLogin": "2026-03-28T12:10:54.611+00:00"
+      },
+      {
+        "id": "iTKBFkiTvgUpTSaT1eA5qXeS32u1",
+        "table": "users",
+        "name": "محمد حسن السيد ",
+        "email": "p20_1123379793@el7lm.com",
+        "accountType": "player",
+        "activityScore": 2,
+        "createdAt": "2025-10-09T15:27:34+00:00",
+        "lastLogin": null
+      },
+      {
+        "id": "iTKBFkiTvgUpTSaT1eA5qXeS32u1",
+        "table": "players",
+        "name": "محمد حسن السيد ",
+        "email": "p20_1123379793@el7lm.com",
+        "accountType": "player",
+        "activityScore": 2,
+        "createdAt": null,
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+201063138763",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 4,
+    "accounts": [
+      {
+        "id": "uH8qCBl9WYfNKDSBEyx4poxY9dB2",
+        "table": "users",
+        "name": "نور خالد حسين مدبولي ",
+        "email": "p20_201063138763@el7lm.com",
+        "accountType": "player",
+        "activityScore": 7,
+        "createdAt": "2025-10-01T12:04:12+00:00",
+        "lastLogin": "2025-11-04T09:45:45.654+00:00"
+      },
+      {
+        "id": "uH8qCBl9WYfNKDSBEyx4poxY9dB2",
+        "table": "players",
+        "name": "نور خالد حسين مدبولي ",
+        "email": "p20_201063138763@el7lm.com",
+        "accountType": "player",
+        "activityScore": 7,
+        "createdAt": null,
+        "lastLogin": "2025-11-04T09:46:34.237Z"
+      },
+      {
+        "id": "cQy3dS25sDXuIbfa8luHF9XSJLj1",
+        "table": "players",
+        "name": "Khaled Madboly",
+        "email": "khaledmadboly1979@gmail.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": "2025-12-22T11:03:55.667Z",
+        "lastLogin": "2025-12-22T11:08:20.368+00:00"
+      },
+      {
+        "id": "cQy3dS25sDXuIbfa8luHF9XSJLj1",
+        "table": "users",
+        "name": "Khaled Madboly",
+        "email": "khaledmadboly1979@gmail.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": "2025-12-22T11:03:52+00:00",
+        "lastLogin": "2025-12-22T11:08:20.368+00:00"
+      }
+    ]
+  },
+  {
+    "phone": "+201055604796",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 4,
+    "accounts": [
+      {
+        "id": "vbrZnqsNseOBBWyr6JsacpcdxzN2",
+        "table": "users",
+        "name": "علي عبدالله النخلاني",
+        "email": "p20_1055604796@el7lm.com",
+        "accountType": "player",
+        "activityScore": 7,
+        "createdAt": "2025-10-12T05:49:16+00:00",
+        "lastLogin": "2026-03-23T10:20:33.741+00:00"
+      },
+      {
+        "id": "BqmKMUUYKuM9vbAoO2QjKYXpMVo1",
+        "table": "users",
+        "name": "طارق محمد سيد ",
+        "email": "user_BqmKMUUYKuM9vbAoO2QjKYXpMVo1@el7lm.com",
+        "accountType": "player",
+        "activityScore": 2,
+        "createdAt": "2025-09-25T13:07:50+00:00",
+        "lastLogin": null
+      },
+      {
+        "id": "BqmKMUUYKuM9vbAoO2QjKYXpMVo1",
+        "table": "players",
+        "name": "طارق محمد سيد ",
+        "email": "p20_201055604796@el7lm.com",
+        "accountType": "player",
+        "activityScore": 2,
+        "createdAt": null,
+        "lastLogin": null
+      },
+      {
+        "id": "vbrZnqsNseOBBWyr6JsacpcdxzN2",
+        "table": "players",
+        "name": "علي عبدالله النخلاني",
+        "email": "p20_1055604796@el7lm.com",
+        "accountType": "player",
+        "activityScore": 2,
+        "createdAt": null,
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+201002691544",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 6,
+    "accounts": [
+      {
+        "id": "kDcjrn78OqRVWcQSMH02acxRicx1",
+        "table": "users",
+        "name": "Mohamed Ahmed mohamed Hassan ",
+        "email": "mkahraba980@gmail.com",
+        "accountType": "player",
+        "activityScore": 18,
+        "createdAt": "2025-10-04T12:22:05+00:00",
+        "lastLogin": "2025-11-19T16:57:00.132+00:00"
+      },
+      {
+        "id": "kDcjrn78OqRVWcQSMH02acxRicx1",
+        "table": "players",
+        "name": "Mohamed Ahmed mohamed Hassan ",
+        "email": "mkahraba980@gmail.com",
+        "accountType": "player",
+        "activityScore": 18,
+        "createdAt": null,
+        "lastLogin": "2026-07-09T17:46:07.146+00:00"
+      },
+      {
+        "id": "LFUXLeTmECgxnTP7G1yTu4YhGvh1",
+        "table": "users",
+        "name": "Mohamed Ahmed mohamed Hassan ",
+        "email": "mkahraba980@gmail.com",
+        "accountType": "player",
+        "activityScore": 15,
+        "createdAt": "2026-01-14T01:08:45+00:00",
+        "lastLogin": "2026-01-26T12:58:44.69+00:00"
+      },
+      {
+        "id": "LFUXLeTmECgxnTP7G1yTu4YhGvh1",
+        "table": "players",
+        "name": "Mohamed Ahmed mohamed Hassan ",
+        "email": "mkahraba980@gmail.com",
+        "accountType": "player",
+        "activityScore": 15,
+        "createdAt": null,
+        "lastLogin": "2026-05-13T14:38:00.236+00:00"
+      },
+      {
+        "id": "vnxBFTg2tyf1dhgdR9KA5AgAux13",
+        "table": "users",
+        "name": "محمد احمد محمد حسان",
+        "email": "p20_201002691544@el7lm.com",
+        "accountType": "player",
+        "activityScore": 7,
+        "createdAt": "2025-10-04T12:14:43+00:00",
+        "lastLogin": "2025-10-04T12:37:18.608+00:00"
+      },
+      {
+        "id": "vnxBFTg2tyf1dhgdR9KA5AgAux13",
+        "table": "players",
+        "name": "محمد احمد محمد حسان",
+        "email": "mkahraba980@gmail.com",
+        "accountType": "player",
+        "activityScore": 7,
+        "createdAt": null,
+        "lastLogin": "2026-01-18T03:51:38.48+00:00"
+      }
+    ]
+  },
+  {
+    "phone": "+201270677242",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 4,
+    "accounts": [
+      {
+        "id": "8IwYJDFxw8Pvf1i4tRkOVD66CDm1",
+        "table": "users",
+        "name": "ماريو لطفي خليفه ",
+        "email": "mariolotfy4@gmail.com",
+        "accountType": "player",
+        "activityScore": 68,
+        "createdAt": "2025-10-09T20:27:34+00:00",
+        "lastLogin": "2025-11-21T11:02:07.421+00:00"
+      },
+      {
+        "id": "8IwYJDFxw8Pvf1i4tRkOVD66CDm1",
+        "table": "players",
+        "name": "ماريو لطفي خليفه ",
+        "email": "mariolotfy4@gmail.com",
+        "accountType": "player",
+        "activityScore": 68,
+        "createdAt": null,
+        "lastLogin": "2026-04-25T14:23:57.455+00:00"
+      },
+      {
+        "id": "wgbYucFodnQIOQoPwUugMnPdDj32",
+        "table": "users",
+        "name": "𝒎𝒂𝒓𝒊𝒐𝒍𝒐𝒕𝒇𝒚 ",
+        "email": "user_wgbYucFodnQIOQoPwUugMnPdDj32@el7lm.com",
+        "accountType": "player",
+        "activityScore": 10,
+        "createdAt": "2025-08-23T14:02:26+00:00",
+        "lastLogin": "2026-03-23T10:20:33.741+00:00"
+      },
+      {
+        "id": "wgbYucFodnQIOQoPwUugMnPdDj32",
+        "table": "players",
+        "name": "𝒎𝒂𝒓𝒊𝒐𝒍𝒐𝒕𝒇𝒚 ",
+        "email": "p20_201270677242@el7lm.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": null,
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+201017976070",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 4,
+    "accounts": [
+      {
+        "id": "xXPyB3la7gghUUB5uYwuO9DDwK12",
+        "table": "users",
+        "name": "اياد احمد عبد العزيز ",
+        "email": "user_xXPyB3la7gghUUB5uYwuO9DDwK12@el7lm.com",
+        "accountType": "player",
+        "activityScore": 7,
+        "createdAt": "2025-09-25T12:57:43+00:00",
+        "lastLogin": "2026-03-23T10:20:33.742+00:00"
+      },
+      {
+        "id": "xXPyB3la7gghUUB5uYwuO9DDwK12",
+        "table": "players",
+        "name": "اياد احمد عبد العزيز ",
+        "email": "p20_201017976070@el7lm.com",
+        "accountType": "player",
+        "activityScore": 2,
+        "createdAt": null,
+        "lastLogin": null
+      },
+      {
+        "id": "CfWvkJMgnOXV9tTfRBV1qDvYJaQ2",
+        "table": "users",
+        "name": "مؤمن مصطفي سيد ",
+        "email": "t20_1017976070@el7lm.com",
+        "accountType": "trainer",
+        "activityScore": 1,
+        "createdAt": "2025-10-12T08:03:52+00:00",
+        "lastLogin": null
+      },
+      {
+        "id": "CfWvkJMgnOXV9tTfRBV1qDvYJaQ2",
+        "table": "trainers",
+        "name": "مؤمن مصطفي سيد ",
+        "email": "t20_1017976070@el7lm.com",
+        "accountType": "trainer",
+        "activityScore": 1,
+        "createdAt": null,
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+97435265981",
+    "country": "Qatar",
+    "countryCode": "+974",
+    "conflictType": "different_users",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "xZh0O53IwIeUhJLcxf59XZjgPy43",
+        "table": "academies",
+        "name": "Lion Acaemy Qatar ",
+        "email": "0333333333@hagzzgo.com",
+        "accountType": "academy",
+        "activityScore": 81,
+        "createdAt": "2025-08-31T07:35:54.41+00:00",
+        "lastLogin": "2025-08-31T07:35:54.41+00:00"
+      },
+      {
+        "id": "xZh0O53IwIeUhJLcxf59XZjgPy43",
+        "table": "users",
+        "name": "الصاوي ",
+        "email": "0333333333@hagzzgo.com",
+        "accountType": "academy",
+        "activityScore": 81,
+        "createdAt": "2025-06-21T03:14:49+00:00",
+        "lastLogin": "2025-12-14T10:08:22.774+00:00"
+      }
+    ]
+  },
+  {
+    "phone": "+201114906366",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 4,
+    "accounts": [
+      {
+        "id": "3NPp3fcwUpZgMwwTkt7xCY6bVrA3",
+        "table": "users",
+        "name": "محمد احمد الطاهر احمد",
+        "email": "p20_201114906366@el7lm.com",
+        "accountType": "player",
+        "activityScore": 6,
+        "createdAt": "2025-12-01T21:37:00+00:00",
+        "lastLogin": "2026-04-24T18:42:36.438+00:00"
+      },
+      {
+        "id": "xcf9iKNCb8YoPgKfvjBxXdt4Rf22",
+        "table": "users",
+        "name": "mohamed ahmed eltaher",
+        "email": "abeltaher9989@gmail.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": "2025-12-09T14:14:04+00:00",
+        "lastLogin": "2025-12-24T23:22:26.172+00:00"
+      },
+      {
+        "id": "3NPp3fcwUpZgMwwTkt7xCY6bVrA3",
+        "table": "players",
+        "name": "محمد احمد الطاهر احمد",
+        "email": "p20_201114906366@el7lm.com",
+        "accountType": "player",
+        "activityScore": 1,
+        "createdAt": null,
+        "lastLogin": null
+      },
+      {
+        "id": "xcf9iKNCb8YoPgKfvjBxXdt4Rf22",
+        "table": "players",
+        "name": "mohamed ahmed eltaher",
+        "email": "abeltaher9989@gmail.com",
+        "accountType": "player",
+        "activityScore": 0,
+        "createdAt": null,
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+201122560313",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "yGuNBflDXsNtzS2pEEo9IYFufbQ2",
+        "table": "academies",
+        "name": "أكاديمية النور لكرة القدم بالشيخ عيسى",
+        "email": "hatem_200876@yahoo.com",
+        "accountType": "academy",
+        "activityScore": 7,
+        "createdAt": "2025-07-14T15:03:56.249+00:00",
+        "lastLogin": "2025-08-29T21:25:07.877+00:00"
+      },
+      {
+        "id": "yGuNBflDXsNtzS2pEEo9IYFufbQ2",
+        "table": "users",
+        "name": "وحيد ربيع",
+        "email": "user_20_1122560313_1752505407100_6qmgrp@el7hm.com",
+        "accountType": "academy",
+        "activityScore": 7,
+        "createdAt": "2025-07-14T15:03:28+00:00",
+        "lastLogin": "2025-09-17T08:59:10.738+00:00"
+      }
+    ]
+  },
+  {
+    "phone": "+201278988086",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 4,
+    "accounts": [
+      {
+        "id": "Q0B9pEsbtkWyFHh39nizb4XS9042",
+        "table": "users",
+        "name": "احمد محمد حسن",
+        "email": "user_20_201278988086_1756231625134_y5tl76@el7hm.com",
+        "accountType": "player",
+        "activityScore": 9,
+        "createdAt": "2025-08-26T18:07:07+00:00",
+        "lastLogin": "2025-11-03T13:06:07.881+00:00"
+      },
+      {
+        "id": "z3aSEQrAT4YJXydi52hSFcuI0hl2",
+        "table": "users",
+        "name": "May Shref",
+        "email": "p20_1278988086@el7lm.com",
+        "accountType": "club",
+        "activityScore": 6,
+        "createdAt": "2025-10-14T13:14:24+00:00",
+        "lastLogin": "2025-12-22T13:00:27.317+00:00"
+      },
+      {
+        "id": "Q0B9pEsbtkWyFHh39nizb4XS9042",
+        "table": "players",
+        "name": "احمد محمد حسن",
+        "email": "p20_201278988086@el7lm.com",
+        "accountType": "player",
+        "activityScore": 4,
+        "createdAt": null,
+        "lastLogin": null
+      },
+      {
+        "id": "z3aSEQrAT4YJXydi52hSFcuI0hl2",
+        "table": "players",
+        "name": "May Shref",
+        "email": "p20_1278988086@el7lm.com",
+        "accountType": "club",
+        "activityScore": 1,
+        "createdAt": null,
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+55561599",
+    "country": "Brazil",
+    "countryCode": "+55",
+    "conflictType": "different_users",
+    "accountCount": 3,
+    "accounts": [
+      {
+        "id": "12b3EOIr62bjDZaMPZjvgIsVxRD3",
+        "table": "academies",
+        "name": "أكاديمية جديدة",
+        "email": "qtrrqtr93@gmail.com",
+        "accountType": "academy",
+        "activityScore": 5,
+        "createdAt": "2025-12-22T13:23:06.127+00:00",
+        "lastLogin": "2025-12-22T13:23:06.127+00:00"
+      },
+      {
+        "id": "12b3EOIr62bjDZaMPZjvgIsVxRD3",
+        "table": "players",
+        "name": "Qtr Qtrr",
+        "email": "qtrrqtr93@gmail.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": "2025-12-22T13:19:32.805Z",
+        "lastLogin": "2025-12-22T13:20:19.421+00:00"
+      },
+      {
+        "id": "12b3EOIr62bjDZaMPZjvgIsVxRD3",
+        "table": "users",
+        "name": "أكاديمية جديدة",
+        "email": "qtrrqtr93@gmail.com",
+        "accountType": "academy",
+        "activityScore": 5,
+        "createdAt": "2025-12-22T13:19:29+00:00",
+        "lastLogin": "2025-12-22T13:23:06.127+00:00"
+      }
+    ]
+  },
+  {
+    "phone": "+962790866671",
+    "country": "Jordan",
+    "countryCode": "+962",
+    "conflictType": "different_users",
+    "accountCount": 4,
+    "accounts": [
+      {
+        "id": "d24afe5c-44da-4f81-827d-fdb041fdae7b",
+        "table": "users",
+        "name": "Jafar jalabneh",
+        "email": "ahmadjlabneh93@gmail.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": "2026-04-25T18:45:31.819+00:00",
+        "lastLogin": "2026-04-25T18:45:33.262+00:00"
+      },
+      {
+        "id": "5f433c8c-e12c-445b-bb89-5f605814a390",
+        "table": "players",
+        "name": "Jafar jalabneh",
+        "email": "ahmadjlabneh93@gmail.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": "2026-04-25T18:45:31.252Z",
+        "lastLogin": "2026-04-25T18:45:28.105Z"
+      },
+      {
+        "id": "kky7L4s4QHfIdw30CXAaW6hmgFy2",
+        "table": "users",
+        "name": "Ahmad jlabneh",
+        "email": "962790866671@el7lm.com",
+        "accountType": "agent",
+        "activityScore": 5,
+        "createdAt": "2026-01-30T14:45:47+00:00",
+        "lastLogin": "2026-01-30T14:46:49.564+00:00"
+      },
+      {
+        "id": "kky7L4s4QHfIdw30CXAaW6hmgFy2",
+        "table": "agents",
+        "name": "Ahmad jlabneh",
+        "email": "962790866671@el7lm.com",
+        "accountType": "agent",
+        "activityScore": 0,
+        "createdAt": null,
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+201019445331",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "6YBVYj0YOOQkUzBjCeXF6mgmt1e2",
+        "table": "academies",
+        "name": "Prime Academy ",
+        "email": "a20_201019445331@el7lm.com",
+        "accountType": "academy",
+        "activityScore": 6,
+        "createdAt": "2025-09-09T20:44:19.568+00:00",
+        "lastLogin": "2025-09-09T20:44:19.568+00:00"
+      },
+      {
+        "id": "6YBVYj0YOOQkUzBjCeXF6mgmt1e2",
+        "table": "users",
+        "name": "Tareq Elnaggar ",
+        "email": "a20_201019445331@el7lm.com",
+        "accountType": "academy",
+        "activityScore": 1,
+        "createdAt": "2025-09-09T20:40:01+00:00",
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+201055852805",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 3,
+    "accounts": [
+      {
+        "id": "7vWFa4rXA5a8vvPYIlHnbIVhtlJ2",
+        "table": "users",
+        "name": "كابتن صدام ",
+        "email": "c20_201055852805@el7lm.com",
+        "accountType": "club",
+        "activityScore": 10,
+        "createdAt": "2025-11-03T10:29:01+00:00",
+        "lastLogin": "2025-11-03T11:19:09.997+00:00"
+      },
+      {
+        "id": "QTGlDnP4VOPwJy6H3pxruA81J4f1",
+        "table": "users",
+        "name": "شريف حسن ",
+        "email": "p20_201055852805@el7lm.com",
+        "accountType": "player",
+        "activityScore": 6,
+        "createdAt": "2025-11-12T16:44:07+00:00",
+        "lastLogin": "2025-11-12T16:58:13.12+00:00"
+      },
+      {
+        "id": "QTGlDnP4VOPwJy6H3pxruA81J4f1",
+        "table": "players",
+        "name": "شريف حسن ",
+        "email": "p20_201055852805@el7lm.com",
+        "accountType": "player",
+        "activityScore": 1,
+        "createdAt": null,
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+201152532787",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "DmEjkjJInXYVleACjVpeCQr3Brw1",
+        "table": "academies",
+        "name": "أكاديمية جديدة",
+        "email": "a20_1152532787@el7lm.com",
+        "accountType": "academy",
+        "activityScore": 6,
+        "createdAt": "2025-10-20T20:20:35.402+00:00",
+        "lastLogin": "2025-10-20T20:20:35.402+00:00"
+      },
+      {
+        "id": "DmEjkjJInXYVleACjVpeCQr3Brw1",
+        "table": "users",
+        "name": "مصطفي حمدي محمد عبدالسلام الهنداوي",
+        "email": "a20_1152532787@el7lm.com",
+        "accountType": "academy",
+        "activityScore": 1,
+        "createdAt": "2025-10-20T20:18:32+00:00",
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+17799580",
+    "country": "USA/Canada",
+    "countryCode": "+1",
+    "conflictType": "different_users",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "yf0b8T8xuuMfP8QAfvS9TLOJjVt2",
+        "table": "players",
+        "name": "محمد جمال الدين",
+        "email": "hagzz@mesk.com.qa",
+        "accountType": "player",
+        "activityScore": 21,
+        "createdAt": "2025-05-16T23:48:55.439Z",
+        "lastLogin": "2025-08-29T21:27:00.415+00:00"
+      },
+      {
+        "id": "F3nMh0kmnndrmzmaFFW5NZw8UBI2",
+        "table": "users",
+        "name": "hagzz",
+        "email": "hagzz@el7lm.com",
+        "accountType": "club",
+        "activityScore": 6,
+        "createdAt": "2025-04-25T18:20:39+00:00",
+        "lastLogin": "2025-08-29T21:25:07.872+00:00"
+      }
+    ]
+  },
+  {
+    "phone": "+201210008280",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 4,
+    "accounts": [
+      {
+        "id": "GYQSHjR5pre20a4iMBy42wByqu83",
+        "table": "users",
+        "name": "محمد خالد محمد الصابرين",
+        "email": "p20_201210008280@el7lm.com",
+        "accountType": "player",
+        "activityScore": 28,
+        "createdAt": "2025-09-25T12:04:36+00:00",
+        "lastLogin": "2025-11-27T01:22:10.953+00:00"
+      },
+      {
+        "id": "GYQSHjR5pre20a4iMBy42wByqu83",
+        "table": "players",
+        "name": "محمد خالد محمد الصابرين",
+        "email": "p20_201210008280@el7lm.com",
+        "accountType": "player",
+        "activityScore": 28,
+        "createdAt": null,
+        "lastLogin": "2026-07-14T22:25:16.413+00:00"
+      },
+      {
+        "id": "EtCngA6VauSDZSCRGMMJFl0SGQD3",
+        "table": "users",
+        "name": "khaled elsbren",
+        "email": "khaledelsbren@gmail.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": "2026-01-22T09:54:54+00:00",
+        "lastLogin": "2026-02-25T10:25:35.01+00:00"
+      },
+      {
+        "id": "EtCngA6VauSDZSCRGMMJFl0SGQD3",
+        "table": "players",
+        "name": "khaled elsbren",
+        "email": "khaledelsbren@gmail.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": null,
+        "lastLogin": "2026-04-24T16:53:23.251+00:00"
+      }
+    ]
+  },
+  {
+    "phone": "+201000940321",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 7,
+    "accounts": [
+      {
+        "id": "FNu1kcoUJEa4FOujNvYLHOpoMg53",
+        "table": "users",
+        "name": "Shref hasn",
+        "email": "p20_1000940321@el7lm.com",
+        "accountType": "player",
+        "activityScore": 8,
+        "createdAt": "2025-10-07T17:12:36+00:00",
+        "lastLogin": "2025-10-28T17:44:07.004+00:00"
+      },
+      {
+        "id": "QAMNwgNVVRVqKw5KhXhQayrtX6h1",
+        "table": "users",
+        "name": "ابو مكه ",
+        "email": "p20_201000940321@el7lm.com",
+        "accountType": "player",
+        "activityScore": 6,
+        "createdAt": "2025-11-13T09:24:49+00:00",
+        "lastLogin": "2025-11-13T20:34:19.108+00:00"
+      },
+      {
+        "id": "N1qlF0vA0WPRdVDfE41fWVOfFJD3",
+        "table": "users",
+        "name": "راشد محسن الشهواني",
+        "email": "ag20_201000940321@el7lm.com",
+        "accountType": "agent",
+        "activityScore": 6,
+        "createdAt": "2025-11-04T17:31:33+00:00",
+        "lastLogin": null
+      },
+      {
+        "id": "FNu1kcoUJEa4FOujNvYLHOpoMg53",
+        "table": "players",
+        "name": "Shref hasn",
+        "email": "p20_1000940321@el7lm.com",
+        "accountType": "player",
+        "activityScore": 3,
+        "createdAt": null,
+        "lastLogin": null
+      },
+      {
+        "id": "M0bXmeytW5SqD023oxU8jcz95QC2",
+        "table": "users",
+        "name": "شريف حسن محمد ",
+        "email": "user_M0bXmeytW5SqD023oxU8jcz95QC2@el7lm.com",
+        "accountType": "agent",
+        "activityScore": 1,
+        "createdAt": "2025-09-26T15:05:31+00:00",
+        "lastLogin": null
+      },
+      {
+        "id": "QAMNwgNVVRVqKw5KhXhQayrtX6h1",
+        "table": "players",
+        "name": "ابو مكه ",
+        "email": "p20_201000940321@el7lm.com",
+        "accountType": "player",
+        "activityScore": 1,
+        "createdAt": null,
+        "lastLogin": null
+      },
+      {
+        "id": "M0bXmeytW5SqD023oxU8jcz95QC2",
+        "table": "agents",
+        "name": "شريف حسن محمد ",
+        "email": "ag20_201000940321@el7lm.com",
+        "accountType": "agent",
+        "activityScore": 1,
+        "createdAt": null,
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+201205131136",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 4,
+    "accounts": [
+      {
+        "id": "FwMyuqQ61MailLnrn7uQtunUpL73",
+        "table": "players",
+        "name": "Kareem Fghhj",
+        "email": "kareemfghhj@gmail.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": "2026-03-28T12:10:54.551Z",
+        "lastLogin": "2026-03-28T12:10:54.551+00:00"
+      },
+      {
+        "id": "FwMyuqQ61MailLnrn7uQtunUpL73",
+        "table": "users",
+        "name": "Kareem Fghhj",
+        "email": "kareemfghhj@gmail.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": "2026-03-24T07:18:25.235+00:00",
+        "lastLogin": "2026-03-24T07:18:25.235+00:00"
+      },
+      {
+        "id": "HRyJpCYzDdODRrBoekpGXSW9Jx73",
+        "table": "users",
+        "name": "كريم غريب حسن ",
+        "email": "p20_201205131136@el7lm.com",
+        "accountType": "player",
+        "activityScore": 4,
+        "createdAt": "2025-09-04T20:08:44+00:00",
+        "lastLogin": null
+      },
+      {
+        "id": "HRyJpCYzDdODRrBoekpGXSW9Jx73",
+        "table": "players",
+        "name": "كريم غريب حسن ",
+        "email": "p20_201205131136@el7lm.com",
+        "accountType": "player",
+        "activityScore": 4,
+        "createdAt": null,
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+201030456946",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 3,
+    "accounts": [
+      {
+        "id": "Rh76d5aIBkckFJcymDsrOXjEYRl2",
+        "table": "users",
+        "name": "شيماء شوقي",
+        "email": "p20_201030456946@el7lm.com",
+        "accountType": "player",
+        "activityScore": 43,
+        "createdAt": "2025-10-07T17:33:22+00:00",
+        "lastLogin": "2025-10-07T23:06:44.723+00:00"
+      },
+      {
+        "id": "Rh76d5aIBkckFJcymDsrOXjEYRl2",
+        "table": "players",
+        "name": "شيماء شوقي",
+        "email": "p20_201030456946@el7lm.com",
+        "accountType": "player",
+        "activityScore": 38,
+        "createdAt": null,
+        "lastLogin": null
+      },
+      {
+        "id": "HhaxbH4J3MbvbtCnvaatNZbkH1s2",
+        "table": "users",
+        "name": "كراميلا_karamila",
+        "email": "shimaashawky211@gmail.com",
+        "accountType": "player",
+        "activityScore": 11,
+        "createdAt": "2025-12-14T23:21:02+00:00",
+        "lastLogin": "2026-03-12T01:29:07.071+00:00"
+      }
+    ]
+  },
+  {
+    "phone": "+201092475558",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 4,
+    "accounts": [
+      {
+        "id": "Ner9km8QY2eqJHKjUX39VPrT6ro1",
+        "table": "users",
+        "name": "محمد حربي ",
+        "email": "mohamedharby916@gmail.com",
+        "accountType": "player",
+        "activityScore": 6,
+        "createdAt": "2025-11-04T21:43:12+00:00",
+        "lastLogin": "2025-11-14T15:41:23.022+00:00"
+      },
+      {
+        "id": "cvFk5HLHLheo4crw3hEvEqMmA7Q2",
+        "table": "users",
+        "name": "Mohamed harby ",
+        "email": "user_cvFk5HLHLheo4crw3hEvEqMmA7Q2@el7lm.com",
+        "accountType": "player",
+        "activityScore": 2,
+        "createdAt": "2025-10-07T21:41:40+00:00",
+        "lastLogin": null
+      },
+      {
+        "id": "cvFk5HLHLheo4crw3hEvEqMmA7Q2",
+        "table": "players",
+        "name": "Mohamed harby ",
+        "email": "p20_201092475558@el7lm.com",
+        "accountType": "player",
+        "activityScore": 2,
+        "createdAt": null,
+        "lastLogin": null
+      },
+      {
+        "id": "Ner9km8QY2eqJHKjUX39VPrT6ro1",
+        "table": "players",
+        "name": "محمد حربي ",
+        "email": "mohamedharby916@gmail.com",
+        "accountType": "player",
+        "activityScore": 1,
+        "createdAt": null,
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+201015650475",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 3,
+    "accounts": [
+      {
+        "id": "PHisHn8WL0OUhuSaEh61JQPPdd42",
+        "table": "users",
+        "name": "ابراهيم محمد ابراهيم عبد السلام",
+        "email": "p20_201015650475@el7lm.com",
+        "accountType": "player",
+        "activityScore": 15,
+        "createdAt": "2025-11-20T11:20:04+00:00",
+        "lastLogin": "2025-11-20T12:25:57.42+00:00"
+      },
+      {
+        "id": "PHisHn8WL0OUhuSaEh61JQPPdd42",
+        "table": "players",
+        "name": "ابراهيم محمد ابراهيم عبد السلام",
+        "email": "p20_201015650475@el7lm.com",
+        "accountType": "player",
+        "activityScore": 10,
+        "createdAt": null,
+        "lastLogin": null
+      },
+      {
+        "id": "y2Zl9HI2yIfPgJS6P6psImu7lRv1",
+        "table": "players",
+        "name": "ibrahem hassan",
+        "email": "ih7661211@gmail.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": "2026-03-28T12:10:54.629Z",
+        "lastLogin": "2026-03-28T12:10:54.629+00:00"
+      }
+    ]
+  },
+  {
+    "phone": "+201226160818",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "ZiMV03Pcg1Qhlay2SkmQWnudehA2",
+        "table": "academies",
+        "name": "أكاديمية جديدة",
+        "email": "a20_201226160818@el7lm.com",
+        "accountType": "academy",
+        "activityScore": 8,
+        "createdAt": "2025-08-15T13:08:35.299+00:00",
+        "lastLogin": "2025-08-15T13:08:35.299+00:00"
+      },
+      {
+        "id": "ZiMV03Pcg1Qhlay2SkmQWnudehA2",
+        "table": "users",
+        "name": "Mo Hossam Eldien",
+        "email": "user_ZiMV03Pcg1Qhlay2SkmQWnudehA2@el7lm.com",
+        "accountType": "academy",
+        "activityScore": 8,
+        "createdAt": "2025-08-15T13:07:51+00:00",
+        "lastLogin": "2025-08-15T13:07:51.947+00:00"
+      }
+    ]
+  },
+  {
+    "phone": "+97450940559",
+    "country": "Qatar",
+    "countryCode": "+974",
+    "conflictType": "different_users",
+    "accountCount": 9,
+    "accounts": [
+      {
+        "id": "u4k7GW48smYUOWsRQho3",
+        "table": "players",
+        "name": "يوسف عبدالوهاب محمد قاسم زباره",
+        "email": "a974_97450940559@el7lm.com",
+        "accountType": "player",
+        "activityScore": 6,
+        "createdAt": "2025-11-12T13:20:58.754Z",
+        "lastLogin": "2025-11-12T13:20:58.754Z"
+      },
+      {
+        "id": "7P46Taqt3lT4u7rNrQKR",
+        "table": "players",
+        "name": "يوسف عبدالرحمان محمد بوشيبة",
+        "email": "a974_97450940559@el7lm.com",
+        "accountType": "player",
+        "activityScore": 6,
+        "createdAt": "2025-11-12T13:12:58.590Z",
+        "lastLogin": "2025-11-12T13:12:58.590Z"
+      },
+      {
+        "id": "aPoHOAKvScqDBFuJI6yW",
+        "table": "players",
+        "name": "ادم نهاد قدري محمد نصر",
+        "email": "a974_97450940559@el7lm.com",
+        "accountType": "player",
+        "activityScore": 6,
+        "createdAt": "2025-11-12T11:41:37.631Z",
+        "lastLogin": "2025-11-12T11:41:37.630Z"
+      },
+      {
+        "id": "Pmh2ZQe7A0hcGeVfAFbN",
+        "table": "players",
+        "name": "سيف يزن هاني قدورة",
+        "email": "a974_97450940559@el7lm.com",
+        "accountType": "player",
+        "activityScore": 6,
+        "createdAt": "2025-11-11T20:19:23.051Z",
+        "lastLogin": "2025-11-11T20:19:23.051Z"
+      },
+      {
+        "id": "thAtTp8CzEwOPrL2oyxn",
+        "table": "players",
+        "name": "احمد رياض سوادى محمد الشمري",
+        "email": "a974_97450940559@el7lm.com",
+        "accountType": "player",
+        "activityScore": 6,
+        "createdAt": "2025-11-11T19:55:49.396Z",
+        "lastLogin": "2025-11-11T19:55:49.396Z"
+      },
+      {
+        "id": "muzRU8v1DqT7dJkbPhwD",
+        "table": "players",
+        "name": "عمار عاطف كمال احمد رضوان",
+        "email": "a974_97450940559@el7lm.com",
+        "accountType": "player",
+        "activityScore": 6,
+        "createdAt": "2025-11-11T19:35:02.000Z",
+        "lastLogin": "2025-11-11T20:44:21.043Z"
+      },
+      {
+        "id": "CHhr85zBmKsKwWgRMo7a",
+        "table": "players",
+        "name": "سيف محمد ابراهيم محمود ابو لبده",
+        "email": "a974_97450940559@el7lm.com",
+        "accountType": "player",
+        "activityScore": 5,
+        "createdAt": "2025-12-07T19:59:56.678Z",
+        "lastLogin": "2025-12-07T19:59:56.676Z"
+      },
+      {
+        "id": "c1X0Y332qGfX1EFEQyBNuoyhVsd2",
+        "table": "academies",
+        "name": "Lions Athletic Academy ",
+        "email": "lions.athletic.academy@gmail.com",
+        "accountType": "academy",
+        "activityScore": 5,
+        "createdAt": "2025-11-06T12:12:45.268+00:00",
+        "lastLogin": "2025-11-06T12:12:45.268+00:00"
+      },
+      {
+        "id": "c1X0Y332qGfX1EFEQyBNuoyhVsd2",
+        "table": "users",
+        "name": "Lions Athletic Academy ",
+        "email": "lions.athletic.academy@gmail.com",
+        "accountType": "academy",
+        "activityScore": 5,
+        "createdAt": "2025-11-06T11:41:12+00:00",
+        "lastLogin": "2025-11-24T11:14:57.641+00:00"
+      }
+    ]
+  },
+  {
+    "phone": "+201000493875",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 4,
+    "accounts": [
+      {
+        "id": "VOHOyXCaMOd6ZRRmOQHJbELD4Ew1",
+        "table": "users",
+        "name": "Malek Ahmed Fawzy",
+        "email": "Ahmedfawzym4413@gmail.com",
+        "accountType": "player",
+        "activityScore": 16,
+        "createdAt": "2025-11-05T08:03:23+00:00",
+        "lastLogin": "2025-11-19T14:54:16.298+00:00"
+      },
+      {
+        "id": "VOHOyXCaMOd6ZRRmOQHJbELD4Ew1",
+        "table": "players",
+        "name": "Malek Ahmed Fawzy",
+        "email": "Ahmedfawzym4413@gmail.com",
+        "accountType": "player",
+        "activityScore": 16,
+        "createdAt": null,
+        "lastLogin": "2025-11-05T08:16:07.848Z"
+      },
+      {
+        "id": "cmR1Jj2k3ZO4fSU5mMU87X34mrc2",
+        "table": "users",
+        "name": "مالك احمد فوزي ",
+        "email": "p20_201000493875@el7lm.com",
+        "accountType": "player",
+        "activityScore": 4,
+        "createdAt": "2025-09-04T18:59:40+00:00",
+        "lastLogin": null
+      },
+      {
+        "id": "cmR1Jj2k3ZO4fSU5mMU87X34mrc2",
+        "table": "players",
+        "name": "مالك احمد فوزي ",
+        "email": "p20_201000493875@el7lm.com",
+        "accountType": "player",
+        "activityScore": 4,
+        "createdAt": null,
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+201151438471",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "hC0OteCqnfX1WEtnikVB9eUO8Lp2",
+        "table": "academies",
+        "name": "الكابتن اكاديمي ",
+        "email": "a20_1151438471@el7lm.com",
+        "accountType": "academy",
+        "activityScore": 6,
+        "createdAt": "2025-10-20T12:21:40.931+00:00",
+        "lastLogin": "2025-10-20T12:21:40.931+00:00"
+      },
+      {
+        "id": "hC0OteCqnfX1WEtnikVB9eUO8Lp2",
+        "table": "users",
+        "name": "جلال احمد محمد ",
+        "email": "a20_1151438471@el7lm.com",
+        "accountType": "academy",
+        "activityScore": 1,
+        "createdAt": "2025-10-14T12:03:06+00:00",
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+201026558999",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 5,
+    "accounts": [
+      {
+        "id": "e4BAGj0JUZYXPQHqcaF1BHzmHoy2",
+        "table": "players",
+        "name": "محمد حسين",
+        "email": "mo.s19@gmail.com",
+        "accountType": "player",
+        "activityScore": 118,
+        "createdAt": "2025-07-09T00:20:21.000Z",
+        "lastLogin": null
+      },
+      {
+        "id": "KtngER5NNzVJJh3R6WJ1uahtnhI2",
+        "table": "players",
+        "name": "علاء الدين",
+        "email": "user@el7lm.com",
+        "accountType": "player",
+        "activityScore": 21,
+        "createdAt": null,
+        "lastLogin": "2025-08-13T12:06:37.418+00:00"
+      },
+      {
+        "id": "ej356ozUzGalpVXbuZD2nujeVvf1",
+        "table": "trainers",
+        "name": "عصام عماد",
+        "email": "t20_201026558999@el7lm.com",
+        "accountType": "trainer",
+        "activityScore": 13,
+        "createdAt": "2025-08-13T08:57:59.611Z",
+        "lastLogin": "2025-08-13T08:57:59.611Z"
+      },
+      {
+        "id": "ej356ozUzGalpVXbuZD2nujeVvf1",
+        "table": "users",
+        "name": "ضصص",
+        "email": "user_ej356ozUzGalpVXbuZD2nujeVvf1@el7lm.com",
+        "accountType": "trainer",
+        "activityScore": 13,
+        "createdAt": "2025-08-13T08:57:58+00:00",
+        "lastLogin": "2025-08-15T22:02:13.941+00:00"
+      },
+      {
+        "id": "ej356ozUzGalpVXbuZD2nujeVvf1",
+        "table": "players",
+        "name": "عصام عاطف",
+        "email": "user_20_201026558999_1755075477839_hg8gqd@el7hm.com",
+        "accountType": "player",
+        "activityScore": 13,
+        "createdAt": null,
+        "lastLogin": "2025-08-15T21:55:38.340Z"
+      }
+    ]
+  },
+  {
+    "phone": "+97455561599",
+    "country": "Qatar",
+    "countryCode": "+974",
+    "conflictType": "different_users",
+    "accountCount": 4,
+    "accounts": [
+      {
+        "id": "p1KkofykQwTdAfmkz0LC4reXPHv1",
+        "table": "academies",
+        "name": "LIONS ATHLEIC ACADEMY",
+        "email": "qqatari353@gmail.com",
+        "accountType": "academy",
+        "activityScore": 5,
+        "createdAt": "2025-11-09T15:00:04.089+00:00",
+        "lastLogin": "2025-11-09T15:00:04.089+00:00"
+      },
+      {
+        "id": "p1KkofykQwTdAfmkz0LC4reXPHv1",
+        "table": "users",
+        "name": "LIONS ATHLEIC ACADEMY",
+        "email": "qqatari353@gmail.com",
+        "accountType": "academy",
+        "activityScore": 5,
+        "createdAt": "2025-11-09T14:58:50+00:00",
+        "lastLogin": "2025-11-09T15:00:04.089+00:00"
+      },
+      {
+        "id": "irZOiBwfXnM5cDMvSh7W8O0cbpb2",
+        "table": "users",
+        "name": "احمد رياض الشمري ",
+        "email": "p974_97455561599@el7lm.com",
+        "accountType": "player",
+        "activityScore": 1,
+        "createdAt": "2025-11-07T19:56:19+00:00",
+        "lastLogin": null
+      },
+      {
+        "id": "irZOiBwfXnM5cDMvSh7W8O0cbpb2",
+        "table": "players",
+        "name": "احمد رياض الشمري ",
+        "email": "qqatari353@gmail.com",
+        "accountType": "player",
+        "activityScore": 1,
+        "createdAt": null,
+        "lastLogin": null
+      }
+    ]
+  },
+  {
+    "phone": "+201066269051",
+    "country": "Egypt",
+    "countryCode": "+20",
+    "conflictType": "different_users",
+    "accountCount": 2,
+    "accounts": [
+      {
+        "id": "mv9cBC6ObqTjcZ2Pi8qSNL2b0pt1",
+        "table": "academies",
+        "name": "أكاديمية جديدة",
+        "email": "a20_201066269051@el7lm.com",
+        "accountType": "academy",
+        "activityScore": 6,
+        "createdAt": "2025-09-07T12:01:10.02+00:00",
+        "lastLogin": "2025-09-07T12:01:10.02+00:00"
+      },
+      {
+        "id": "mv9cBC6ObqTjcZ2Pi8qSNL2b0pt1",
+        "table": "users",
+        "name": "Galal ahmed mohamed",
+        "email": "a20_201066269051@el7lm.com",
+        "accountType": "academy",
+        "activityScore": 1,
+        "createdAt": "2025-09-07T12:00:20+00:00",
+        "lastLogin": null
+      }
+    ]
+  }
+]

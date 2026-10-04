@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
+import { createServerErrorResponse } from '@/lib/i18n/server-error-messages';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     const phoneNumber = String(body?.phoneNumber ?? body?.phone ?? '').trim();
     if (!phoneNumber) {
-      return NextResponse.json(
-        { success: false, error: 'Phone number is required.' },
-        { status: 400 },
-      );
+      return createServerErrorResponse(request, 'accountLookupUnavailable', 400);
     }
 
     const account = await findAccountByPhone(phoneNumber);
@@ -32,13 +30,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: unknown) {
     console.error('[resolve-phone]', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'تعذر التحقق من رقم الهاتف حالياً. يرجى المحاولة مرة أخرى.',
-        code: 'ACCOUNT_LOOKUP_UNAVAILABLE',
-      },
-      { status: 500 },
-    );
+    return createServerErrorResponse(request, 'accountLookupUnavailable', 500);
   }
 }
+

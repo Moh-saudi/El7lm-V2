@@ -1,0 +1,553 @@
+[
+  {
+    "phone": "+111111111",
+    "conflict_count": 5,
+    "tables": [
+      "players",
+      "trainers"
+    ],
+    "account_types": [
+      "player",
+      "trainer"
+    ],
+    "account_ids": [
+      "8iuGxfKbL1xPHFfg3e4b",
+      "IANSStKPbyF4vC0awmlK",
+      "64wYhyuYHaQGyI8bsLuz",
+      "Tu0aTPYUh8UR7ETsH9pX",
+      "Q2yKTAqbmeYxIeFqZmlljL1NJsS2"
+    ],
+    "suspicious_reasons": [
+      "all_same_digit",
+      "mostly_same_digit",
+      "malformed_egyptian_no_country_code"
+    ],
+    "reason_description": "الرقم مكون من رقم واحد مكرر — مثال كلاسيكي لأرقام وهمية أثناء الاختبار مثل +111111111 | أغلب أرقام الرقم نفس الرقم — يشير إلى رقم وهمي أو placeholder | رقم يبدأ بـ 1 ومكون من 9 أرقام — على الأرجح رقم محلي مصري مخزن بدون كود الدولة (يجب أن يكون +201...)",
+    "recommended_action": "mark_for_deletion_after_approval"
+  },
+  {
+    "phone": "+106078056",
+    "conflict_count": 5,
+    "tables": [
+      "players"
+    ],
+    "account_types": [
+      "player"
+    ],
+    "account_ids": [
+      "aygnJ71o5tTBXgtmLCCYKVw2zg82",
+      "cboFvgjr8dU7RbcvHgfc3h7Eexo1",
+      "PGAdTYh8xpSF81fj8yxxG7cnDWD2",
+      "uTNhyvCp9QWcVLZax7wXwTQjSyu2",
+      "jQprN3XSQ0T22vOtriGPiKHWQ3O2"
+    ],
+    "suspicious_reasons": [
+      "malformed_egyptian_no_country_code",
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "رقم يبدأ بـ 1 ومكون من 9 أرقام — على الأرجح رقم محلي مصري مخزن بدون كود الدولة (يجب أن يكون +201...) | يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "fix_format_add_country_code_+20"
+  },
+  {
+    "phone": "+128059923",
+    "conflict_count": 3,
+    "tables": [
+      "players"
+    ],
+    "account_types": [
+      "player"
+    ],
+    "account_ids": [
+      "Kn3NlMQA0iT5TEIsr9DNvcCnJ1j2",
+      "L0q5pWIWNoeQTNAHTofFVBZR4Is2",
+      "RWM6ipzXWCTlWKhVPuafwVLsEPf1"
+    ],
+    "suspicious_reasons": [
+      "malformed_egyptian_no_country_code",
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "رقم يبدأ بـ 1 ومكون من 9 أرقام — على الأرجح رقم محلي مصري مخزن بدون كود الدولة (يجب أن يكون +201...) | يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "fix_format_add_country_code_+20"
+  },
+  {
+    "phone": "+101993278",
+    "conflict_count": 3,
+    "tables": [
+      "players"
+    ],
+    "account_types": [
+      "player"
+    ],
+    "account_ids": [
+      "LGBFQZrBUzLxEmh77aLQRtv7KRw2",
+      "T2YwllYRmiWOTHycjW6tdUzjGuD3",
+      "ZINDYoIpWOX4LxwuCQP3CSd1F2l2"
+    ],
+    "suspicious_reasons": [
+      "malformed_egyptian_no_country_code",
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "رقم يبدأ بـ 1 ومكون من 9 أرقام — على الأرجح رقم محلي مصري مخزن بدون كود الدولة (يجب أن يكون +201...) | يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "fix_format_add_country_code_+20"
+  },
+  {
+    "phone": "+103338202",
+    "conflict_count": 3,
+    "tables": [
+      "trainers",
+      "marketers"
+    ],
+    "account_types": [
+      "trainer",
+      "marketer"
+    ],
+    "account_ids": [
+      "FfX9wD3YhpXvoBTn7kBbNn0gIow1",
+      "PY5Nr0L7qZQJoceL8D2SgeD9mcv2",
+      "qyADQuQ3tgP0eyda5u3RHirHkv63"
+    ],
+    "suspicious_reasons": [
+      "malformed_egyptian_no_country_code",
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "رقم يبدأ بـ 1 ومكون من 9 أرقام — على الأرجح رقم محلي مصري مخزن بدون كود الدولة (يجب أن يكون +201...) | يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "fix_format_add_country_code_+20"
+  },
+  {
+    "phone": "+102939499",
+    "conflict_count": 2,
+    "tables": [
+      "players"
+    ],
+    "account_types": [
+      "player"
+    ],
+    "account_ids": [
+      "neEfb9khgDNT0EmA9zfmuakaLTi2",
+      "IX34KOCXrccUHSaj7JGOgMO7nzA2"
+    ],
+    "suspicious_reasons": [
+      "malformed_egyptian_no_country_code",
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "رقم يبدأ بـ 1 ومكون من 9 أرقام — على الأرجح رقم محلي مصري مخزن بدون كود الدولة (يجب أن يكون +201...) | يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "fix_format_add_country_code_+20"
+  },
+  {
+    "phone": "+109270428",
+    "conflict_count": 2,
+    "tables": [
+      "players"
+    ],
+    "account_types": [
+      "player"
+    ],
+    "account_ids": [
+      "IT83aO1vtsPMb8ClCW6uNR6wLj73",
+      "G0jJVt23N5WcuZwPiclLZFxE7Ny1"
+    ],
+    "suspicious_reasons": [
+      "malformed_egyptian_no_country_code",
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "رقم يبدأ بـ 1 ومكون من 9 أرقام — على الأرجح رقم محلي مصري مخزن بدون كود الدولة (يجب أن يكون +201...) | يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "fix_format_add_country_code_+20"
+  },
+  {
+    "phone": "+102980282",
+    "conflict_count": 2,
+    "tables": [
+      "players"
+    ],
+    "account_types": [
+      "player"
+    ],
+    "account_ids": [
+      "YUezyttc4WPUTiq1wHgbwMsGnB82",
+      "ttSoUdgH5yPfPVroOHwk76rGCS42"
+    ],
+    "suspicious_reasons": [
+      "malformed_egyptian_no_country_code",
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "رقم يبدأ بـ 1 ومكون من 9 أرقام — على الأرجح رقم محلي مصري مخزن بدون كود الدولة (يجب أن يكون +201...) | يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "fix_format_add_country_code_+20"
+  },
+  {
+    "phone": "+101499936",
+    "conflict_count": 2,
+    "tables": [
+      "players"
+    ],
+    "account_types": [
+      "player"
+    ],
+    "account_ids": [
+      "DUmbOIT7qsYNxL02QdYK4oPGobq1",
+      "hk1WcoGFc2bKDofWl7kOCeKilI53"
+    ],
+    "suspicious_reasons": [
+      "malformed_egyptian_no_country_code",
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "رقم يبدأ بـ 1 ومكون من 9 أرقام — على الأرجح رقم محلي مصري مخزن بدون كود الدولة (يجب أن يكون +201...) | يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "fix_format_add_country_code_+20"
+  },
+  {
+    "phone": "+199999999",
+    "conflict_count": 2,
+    "tables": [
+      "academies"
+    ],
+    "account_types": [
+      "academy"
+    ],
+    "account_ids": [
+      "mcXyLKDH9cdQ5zRnSzaLfbvSqjO2",
+      "yf0b8T8xuuMfP8QAfvS9TLOJjVt2"
+    ],
+    "suspicious_reasons": [
+      "mostly_same_digit",
+      "malformed_egyptian_no_country_code"
+    ],
+    "reason_description": "أغلب أرقام الرقم نفس الرقم — يشير إلى رقم وهمي أو placeholder | رقم يبدأ بـ 1 ومكون من 9 أرقام — على الأرجح رقم محلي مصري مخزن بدون كود الدولة (يجب أن يكون +201...)",
+    "recommended_action": "fix_format_add_country_code_+20"
+  },
+  {
+    "phone": "+101824937",
+    "conflict_count": 2,
+    "tables": [
+      "trainers"
+    ],
+    "account_types": [
+      "trainer"
+    ],
+    "account_ids": [
+      "DAmzLbIdIDdgBFkpEPvQntVhQCC3",
+      "0FuH5wD6PfTtGe4uXhkxcYFfaai1"
+    ],
+    "suspicious_reasons": [
+      "malformed_egyptian_no_country_code",
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "رقم يبدأ بـ 1 ومكون من 9 أرقام — على الأرجح رقم محلي مصري مخزن بدون كود الدولة (يجب أن يكون +201...) | يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "fix_format_add_country_code_+20"
+  },
+  {
+    "phone": "+106461108",
+    "conflict_count": 2,
+    "tables": [
+      "clubs",
+      "marketers"
+    ],
+    "account_types": [
+      "club",
+      "marketer"
+    ],
+    "account_ids": [
+      "5GPkOLHk0KhgzDPr3NrSR9yNfVl1",
+      "v7lDpI2O42VXz3G1aUtqCiwMKcR2"
+    ],
+    "suspicious_reasons": [
+      "malformed_egyptian_no_country_code",
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "رقم يبدأ بـ 1 ومكون من 9 أرقام — على الأرجح رقم محلي مصري مخزن بدون كود الدولة (يجب أن يكون +201...) | يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "fix_format_add_country_code_+20"
+  },
+  {
+    "phone": "+20106078056",
+    "conflict_count": 5,
+    "tables": [
+      "players",
+      "users"
+    ],
+    "account_types": [
+      "player"
+    ],
+    "account_ids": [
+      "aygnJ71o5tTBXgtmLCCYKVw2zg82",
+      "cboFvgjr8dU7RbcvHgfc3h7Eexo1",
+      "PGAdTYh8xpSF81fj8yxxG7cnDWD2",
+      "uTNhyvCp9QWcVLZax7wXwTQjSyu2",
+      "jQprN3XSQ0T22vOtriGPiKHWQ3O2"
+    ],
+    "suspicious_reasons": [
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "review_manual_likely_seed_data"
+  },
+  {
+    "phone": "+20128059923",
+    "conflict_count": 4,
+    "tables": [
+      "players",
+      "users"
+    ],
+    "account_types": [
+      "player",
+      "academy"
+    ],
+    "account_ids": [
+      "Kn3NlMQA0iT5TEIsr9DNvcCnJ1j2",
+      "L0q5pWIWNoeQTNAHTofFVBZR4Is2",
+      "RWM6ipzXWCTlWKhVPuafwVLsEPf1",
+      "HPJaSUeMxpYPhNmHGnCTlBjnwdH3"
+    ],
+    "suspicious_reasons": [
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "review_manual_likely_seed_data"
+  },
+  {
+    "phone": "+20101993278",
+    "conflict_count": 3,
+    "tables": [
+      "players",
+      "users"
+    ],
+    "account_types": [
+      "player"
+    ],
+    "account_ids": [
+      "LGBFQZrBUzLxEmh77aLQRtv7KRw2",
+      "T2YwllYRmiWOTHycjW6tdUzjGuD3",
+      "ZINDYoIpWOX4LxwuCQP3CSd1F2l2"
+    ],
+    "suspicious_reasons": [
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "review_manual_likely_seed_data"
+  },
+  {
+    "phone": "+20101499936",
+    "conflict_count": 3,
+    "tables": [
+      "players",
+      "users"
+    ],
+    "account_types": [
+      "player"
+    ],
+    "account_ids": [
+      "DUmbOIT7qsYNxL02QdYK4oPGobq1",
+      "iF6xsgnrNSQshXw5NNgQsQbH1702",
+      "hk1WcoGFc2bKDofWl7kOCeKilI53"
+    ],
+    "suspicious_reasons": [
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "review_manual_likely_seed_data"
+  },
+  {
+    "phone": "+17799580",
+    "conflict_count": 3,
+    "tables": [
+      "players",
+      "users"
+    ],
+    "account_types": [
+      "player",
+      "club"
+    ],
+    "account_ids": [
+      "5F3g5pzrSQapdGvTkLI2ma6wKdq1",
+      "yf0b8T8xuuMfP8QAfvS9TLOJjVt2",
+      "F3nMh0kmnndrmzmaFFW5NZw8UBI2"
+    ],
+    "suspicious_reasons": [
+      "too_short_for_e164"
+    ],
+    "reason_description": "الرقم أقصر من 9 أرقام — غير صالح كرقم E.164 حقيقي (+17799580)",
+    "recommended_action": "mark_for_deletion_after_approval"
+  },
+  {
+    "phone": "+20103338202",
+    "conflict_count": 3,
+    "tables": [
+      "trainers",
+      "users"
+    ],
+    "account_types": [
+      "trainer",
+      "marketer"
+    ],
+    "account_ids": [
+      "FfX9wD3YhpXvoBTn7kBbNn0gIow1",
+      "PY5Nr0L7qZQJoceL8D2SgeD9mcv2",
+      "qyADQuQ3tgP0eyda5u3RHirHkv63"
+    ],
+    "suspicious_reasons": [
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "review_manual_likely_seed_data"
+  },
+  {
+    "phone": "+20102939499",
+    "conflict_count": 2,
+    "tables": [
+      "players",
+      "users"
+    ],
+    "account_types": [
+      "player"
+    ],
+    "account_ids": [
+      "neEfb9khgDNT0EmA9zfmuakaLTi2",
+      "IX34KOCXrccUHSaj7JGOgMO7nzA2"
+    ],
+    "suspicious_reasons": [
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "review_manual_likely_seed_data"
+  },
+  {
+    "phone": "+20109270428",
+    "conflict_count": 2,
+    "tables": [
+      "players",
+      "users"
+    ],
+    "account_types": [
+      "player"
+    ],
+    "account_ids": [
+      "IT83aO1vtsPMb8ClCW6uNR6wLj73",
+      "G0jJVt23N5WcuZwPiclLZFxE7Ny1"
+    ],
+    "suspicious_reasons": [
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "review_manual_likely_seed_data"
+  },
+  {
+    "phone": "+20102980282",
+    "conflict_count": 2,
+    "tables": [
+      "players",
+      "users"
+    ],
+    "account_types": [
+      "player"
+    ],
+    "account_ids": [
+      "YUezyttc4WPUTiq1wHgbwMsGnB82",
+      "ttSoUdgH5yPfPVroOHwk76rGCS42"
+    ],
+    "suspicious_reasons": [
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "review_manual_likely_seed_data"
+  },
+  {
+    "phone": "+70542458",
+    "conflict_count": 2,
+    "tables": [
+      "players",
+      "academies"
+    ],
+    "account_types": [
+      "player",
+      "academy"
+    ],
+    "account_ids": [
+      "ZMMGQoZF8PREKSEh4LFYeVnJZq92",
+      "83ded7fc-43e1-4451-96cb-8be4950004e6"
+    ],
+    "suspicious_reasons": [
+      "too_short_for_e164"
+    ],
+    "reason_description": "الرقم أقصر من 9 أرقام — غير صالح كرقم E.164 حقيقي (+70542458)",
+    "recommended_action": "mark_for_deletion_after_approval"
+  },
+  {
+    "phone": "+20101824937",
+    "conflict_count": 2,
+    "tables": [
+      "trainers",
+      "users"
+    ],
+    "account_types": [
+      "trainer"
+    ],
+    "account_ids": [
+      "DAmzLbIdIDdgBFkpEPvQntVhQCC3",
+      "0FuH5wD6PfTtGe4uXhkxcYFfaai1"
+    ],
+    "suspicious_reasons": [
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "review_manual_likely_seed_data"
+  },
+  {
+    "phone": "+20106461108",
+    "conflict_count": 2,
+    "tables": [
+      "clubs",
+      "users"
+    ],
+    "account_types": [
+      "club",
+      "marketer"
+    ],
+    "account_ids": [
+      "5GPkOLHk0KhgzDPr3NrSR9yNfVl1",
+      "v7lDpI2O42VXz3G1aUtqCiwMKcR2"
+    ],
+    "suspicious_reasons": [
+      "matches_known_seed_pattern"
+    ],
+    "reason_description": "يطابق نمط من بذور الاختبار المعروفة (seed data) التي رُصدت في تحليل التعارضات",
+    "recommended_action": "review_manual_likely_seed_data"
+  },
+  {
+    "phone": "+966500000000",
+    "conflict_count": 2,
+    "tables": [
+      "clubs",
+      "users"
+    ],
+    "account_types": [
+      "club",
+      "admin"
+    ],
+    "account_ids": [
+      "hWAd3JRCJnXAowZKJ5W9qSJlA7i1",
+      "QU7WtY4IoKYcXQWIFafOBKOeBYm1"
+    ],
+    "suspicious_reasons": [
+      "known_test_admin_placeholder"
+    ],
+    "reason_description": "رقم +966500000000 مستخدم كـ placeholder للمشرفين في بيئة الاختبار",
+    "recommended_action": "update_admin_phone_to_real_number"
+  },
+  {
+    "phone": "+8796796",
+    "conflict_count": 2,
+    "tables": [
+      "players",
+      "users"
+    ],
+    "account_types": [
+      "player"
+    ],
+    "account_ids": [
+      "PUB4cPrWNqXtxnK3m0jM",
+      "jBtXzp78PZOII3Tr3kOus3ONAEr2"
+    ],
+    "suspicious_reasons": [
+      "too_short_for_e164"
+    ],
+    "reason_description": "الرقم أقصر من 9 أرقام — غير صالح كرقم E.164 حقيقي (+8796796)",
+    "recommended_action": "mark_for_deletion_after_approval"
+  }
+]

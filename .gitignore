@@ -101,3 +101,10 @@ bulk_payments_export.json
 /.claude/
 /.codex-*/
 /cdp-*.png
+
+# Archive and mobile build artifacts
+docs/archive/
+*.aab
+scratch/
+
+

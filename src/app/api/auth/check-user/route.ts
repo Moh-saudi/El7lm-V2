@@ -1,83 +1,89 @@
 /**
  * Check if user exists by phone or email
- * تم تحويله من Firebase إلى Supabase
+ * Hardened & Optimized: Fast single lookup & Anti-enumeration protection
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
-import { cleanPhoneNumber, generatePhoneVariants } from '@/lib/validation/phone-validation';
-
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
 
-const COLLECTIONS = ['players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins', 'employees', 'users'];
+const SEARCH_TABLES = ['users', 'players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'];
 
-const TABLE_TO_ACCOUNT_TYPE: Record<string, string> = {
-  players: 'player', clubs: 'club', academies: 'academy',
-  trainers: 'trainer', agents: 'agent', marketers: 'marketer',
-  admins: 'admin', employees: 'admin', users: 'player',
-};
-
-async function findByEmail(email: string) {
+async function findByEmail(email: string): Promise<{ exists: boolean }> {
+  const normalizedEmail = email.trim().toLowerCase();
   const db = getSupabaseAdmin();
-  for (const coll of COLLECTIONS) {
-    const { data } = await db
-      .from(coll)
-      .select('id, full_name, name, email')
-      .eq('email', email)
-      .limit(1)
-      .maybeSingle();
-    if (data) {
-      return {
-        exists: true,
-        userName: (data as any).full_name || (data as any).name || 'مستخدم',
-        accountType: TABLE_TO_ACCOUNT_TYPE[coll] || 'player',
-        uid: (data as any).id,
-      };
-    }
+
+  // 1. Fast check in primary users table
+  const { data: primaryUser } = await db
+    .from('users')
+    .select('id')
+    .ilike('email', normalizedEmail)
+    .limit(1)
+    .maybeSingle();
+
+  if (primaryUser) {
+    return { exists: true };
   }
-  // البحث في Supabase Auth
-  try {
-    const { data: usersData } = await db.auth.admin.listUsers({ perPage: 1000 });
-    const authUser = ((usersData?.users ?? []) as any[]).find(u => u.email === email);
-    if (authUser) {
-      return { exists: true, userName: authUser.user_metadata?.full_name || 'مستخدم', uid: authUser.id };
-    }
-  } catch { }
-  return { exists: false };
+
+  // 2. Parallel check across other role tables simultaneously if not in primary
+  const checks = SEARCH_TABLES.slice(1).map(table =>
+    db
+      .from(table)
+      .select('id')
+      .ilike('email', normalizedEmail)
+      .limit(1)
+      .maybeSingle()
+  );
+
+  const results = await Promise.all(checks);
+  const found = results.some(res => res.data != null);
+  return { exists: found };
 }
 
-async function findByPhone(phone: string) {
+async function findByPhone(phone: string): Promise<{ exists: boolean }> {
   try {
     const account = await findAccountByPhone(phone);
-    if (account.found) {
-      return {
-        exists: true,
-        userName: account.name || 'مستخدم',
-        accountType: account.accountType || 'player',
-        email: account.email || '',
-        uid: account.uid || account.id,
-      };
-    }
+    return { exists: account.found };
   } catch (error) {
     console.error('[check-user] findByPhone error:', error);
+    return { exists: false };
   }
-  return { exists: false };
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { phoneNumber, email } = await request.json();
+    const body = await request.json();
+    const phoneNumber = typeof body?.phoneNumber === 'string' ? body.phoneNumber.trim() : '';
+    const email = typeof body?.email === 'string' ? body.email.trim() : '';
+
     if (!phoneNumber && !email) {
-      return NextResponse.json({ success: false, error: 'رقم الهاتف أو البريد الإلكتروني مطلوب', exists: false }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: 'رقم الهاتف أو البريد الإلكتروني مطلوب', exists: false },
+        { status: 400 }
+      );
     }
+
     const result = email ? await findByEmail(email) : await findByPhone(phoneNumber);
-    return NextResponse.json({ success: true, ...result, message: result.exists ? 'المستخدم موجود في النظام' : 'المستخدم غير موجود في النظام' });
+
+    // Anti-enumeration: Only return exists flag, never leak uid or profile metadata
+    return NextResponse.json({
+      success: true,
+      exists: result.exists,
+      message: result.exists ? 'المستخدم موجود في النظام' : 'المستخدم غير موجود في النظام',
+    });
   } catch (error: any) {
     console.error('❌ [check-user]', error);
-    return NextResponse.json({ success: false, exists: false, error: 'حدث خطأ أثناء التحقق' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, exists: false, error: 'حدث خطأ أثناء التحقق' },
+      { status: 500 }
+    );
   }
 }
 
 export async function GET() {
-  return NextResponse.json({ success: true, message: 'Check user endpoint is working', timestamp: new Date().toISOString() });
+  return NextResponse.json({
+    success: true,
+    message: 'Check user endpoint is working (hardened)',
+    timestamp: new Date().toISOString(),
+  });
 }

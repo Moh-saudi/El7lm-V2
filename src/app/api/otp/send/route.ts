@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sendOTP, SendOTPOptions } from '@/lib/otp/unified-otp-service';
 import { isPlayReviewPhone } from '@/lib/otp/play-review-otp';
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
+import { getServerErrorMessage } from '@/lib/i18n/server-error-messages';
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,18 +32,22 @@ export async function POST(request: NextRequest) {
 
     const account = await findAccountByPhone(phoneNumber);
     if (purpose === 'login' && !account.found) {
+      const text = getServerErrorMessage(request, 'accountNotFoundRegisterFirst');
       return NextResponse.json({
         success: false,
         code: 'ACCOUNT_NOT_FOUND',
-        error: 'رقم الهاتف هذا غير مسجل. يرجى إنشاء حساب جديد أولاً.',
+        error: text,
+        message: text,
       }, { status: 404 });
     }
     if (purpose === 'registration' && account.found) {
+      const text = getServerErrorMessage(request, 'accountAlreadyExistsLogin');
       return NextResponse.json({
         success: false,
         code: 'ACCOUNT_ALREADY_EXISTS',
         accountType: account.accountType,
-        error: 'رقم الهاتف هذا مسجل بالفعل. يرجى تسجيل الدخول بدلاً من ذلك.',
+        error: text,
+        message: text,
       }, { status: 409 });
     }
     if (
@@ -51,11 +56,13 @@ export async function POST(request: NextRequest) {
       expectedAccountType &&
       String(expectedAccountType).trim().toLowerCase() !== account.accountType
     ) {
+      const text = getServerErrorMessage(request, 'accountTypeMismatch');
       return NextResponse.json({
         success: false,
         code: 'ACCOUNT_TYPE_MISMATCH',
         accountType: account.accountType,
-        error: 'This phone number is registered under another account type.',
+        error: text,
+        message: text,
       }, { status: 409 });
     }
 
@@ -87,18 +94,29 @@ export async function POST(request: NextRequest) {
         ...(process.env.NODE_ENV === 'development' && { otp: result.otp })
       });
     } else {
+      let localizedError = result.error || 'فشل في إرسال رمز التحقق';
+      if (result.code === 'OTP_TEMPLATE_REJECTED') {
+        localizedError = getServerErrorMessage(request, 'otpTemplateRejected');
+      } else if (result.code === 'OTP_DELIVERY_NOT_CONFIGURED') {
+        localizedError = getServerErrorMessage(request, 'otpDeliveryNotConfigured');
+      }
+
       return NextResponse.json({
         success: false,
         code: result.code || 'OTP_DELIVERY_FAILED',
-        error: result.error || 'فشل في إرسال رمز التحقق',
+        error: localizedError,
+        message: localizedError,
         channel: result.channel
       }, { status: 400 });
     }
   } catch (error: any) {
     console.error('❌ [Unified OTP API] Error:', error);
+    const text = getServerErrorMessage(request, 'serviceUnavailable');
     return NextResponse.json({
       success: false,
-      error: error.message || 'حدث خطأ أثناء إرسال رمز التحقق'
+      code: 'SERVICE_UNAVAILABLE',
+      error: text,
+      message: text,
     }, { status: 500 });
   }
 }

@@ -104,6 +104,11 @@ interface PlayerData {
   marketValue?: number;
   currentClub?: string;
   contractEndDate?: any;
+  club_id?: string;
+  academy_id?: string;
+  trainer_id?: string;
+  agent_id?: string;
+  [key: string]: any;
 }
 
 const POSITIONS = [

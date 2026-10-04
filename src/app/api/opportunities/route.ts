@@ -41,6 +41,14 @@ function buildPayload(data: Record<string, unknown>): Record<string, unknown> {
   return payload;
 }
 
+const PUBLIC_COLUMNS = [
+  'id', 'organizerId', 'organizerName', 'organizerType', 'organizerAvatar',
+  'title', 'description', 'opportunityType', 'country', 'city', 'salary',
+  'contractDuration', 'requirements', 'positions', 'ageRange', 'deadline',
+  'status', 'isActive', 'isFeatured', 'viewCount', 'currentApplicants',
+  'maxApplicants', 'tags', 'metadata', 'createdAt'
+].join(',');
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const organizerId = searchParams.get('organizerId');
@@ -51,24 +59,48 @@ export async function GET(request: NextRequest) {
   const id = searchParams.get('id');
   const targetLang = (searchParams.get('locale') || searchParams.get('lang') || request.headers.get('accept-language')?.slice(0, 2) || '').toLowerCase();
 
+  // Safe pagination
+  const limitParam = parseInt(searchParams.get('limit') || '30', 10);
+  const limit = Math.min(Math.max(isNaN(limitParam) ? 30 : limitParam, 1), 50);
+  const offsetParam = parseInt(searchParams.get('offset') || '0', 10);
+  const offset = Math.max(isNaN(offsetParam) ? 0 : offsetParam, 0);
+
   try {
     const db = getSupabaseAdmin();
-    let query = db.from('opportunities').select('*');
+    let query = db.from('opportunities').select(PUBLIC_COLUMNS);
 
     if (id) {
       query = query.eq('id', id).eq('status', 'active').eq('isActive', true) as typeof query;
-    } else if (explore) {
+    } else if (explore || !organizerId) {
       // Public explore: only active opportunities
       query = query.eq('status', 'active').eq('isActive', true) as typeof query;
     } else if (organizerId) {
+      // Organizer view: if requesting non-active status, verify caller authorization
+      let isOwnerOrAdmin = false;
+      try {
+        const auth = await authorizeUser(request);
+        if (auth.ok && (auth.user.id === organizerId || (auth.user as any).accountType === 'admin')) {
+          isOwnerOrAdmin = true;
+        }
+      } catch {
+        // Not authenticated
+      }
+
       query = query.eq('organizerId', organizerId) as typeof query;
-      if (status) query = query.eq('status', status) as typeof query;
+      if (isOwnerOrAdmin && status) {
+        query = query.eq('status', status) as typeof query;
+      } else {
+        query = query.eq('status', 'active').eq('isActive', true) as typeof query;
+      }
     }
 
     if (type) query = query.eq('opportunityType', type) as typeof query;
     if (country) query = query.eq('country', country) as typeof query;
 
-    const { data, error } = await query.order('createdAt', { ascending: false });
+    // Apply ordering and pagination limit
+    const { data, error } = await query
+      .order('createdAt', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) {
       console.error('[/api/opportunities GET] error:', error);
@@ -92,7 +124,7 @@ export async function GET(request: NextRequest) {
       return item;
     });
 
-    return NextResponse.json({ data: merged });
+    return NextResponse.json({ data: merged, pagination: { limit, offset, count: merged.length } });
   } catch (err: any) {
     if (explore) {
       return NextResponse.json({ data: [] });

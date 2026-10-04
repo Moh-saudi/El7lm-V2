@@ -8,54 +8,51 @@ type UserAuthorization =
 
 export async function authorizeUser(request: NextRequest): Promise<UserAuthorization> {
   const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401, headers: { 'Cache-Control': 'no-store' } }
-      ),
-    };
-  }
-
-  const token = authHeader.slice(7).trim();
-  if (!token) {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401, headers: { 'Cache-Control': 'no-store' } }
-      ),
-    };
+  let token: string | null = null;
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.slice(7).trim();
   }
 
   let user: User | null = null;
   let authError: any = null;
 
-  try {
-    const admin = getSupabaseAdmin();
-    const { data, error } = await admin.auth.getUser(token);
-    user = data?.user ?? null;
-    authError = error;
-  } catch (err) {
-    authError = err;
-  }
-
-  // Fallback to anon client if admin client fails or is unconfigured
-  if (!user && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (token) {
     try {
-      const { createClient } = await import('@supabase/supabase-js');
-      const fallbackClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      );
-      const { data, error } = await fallbackClient.auth.getUser(token);
-      if (data?.user) {
-        user = data.user;
-        authError = null;
+      const admin = getSupabaseAdmin();
+      const { data, error } = await admin.auth.getUser(token);
+      user = data?.user ?? null;
+      authError = error;
+    } catch (err) {
+      authError = err;
+    }
+
+    // Fallback to anon client if admin client fails or is unconfigured
+    if (!user && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const fallbackClient = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        );
+        const { data, error } = await fallbackClient.auth.getUser(token);
+        if (data?.user) {
+          user = data.user;
+          authError = null;
+        }
+      } catch (fallbackErr) {
+        console.warn('Fallback token verification failed:', fallbackErr);
       }
-    } catch (fallbackErr) {
-      console.warn('Fallback token verification failed:', fallbackErr);
+    }
+  } else {
+    // Fallback to cookie-based session for web requests
+    try {
+      const { createSupabaseRouteClient } = await import('@/lib/supabase/server');
+      const routeClient = await createSupabaseRouteClient();
+      const { data, error } = await routeClient.auth.getUser();
+      user = data?.user ?? null;
+      authError = error;
+    } catch (cookieErr) {
+      authError = cookieErr;
     }
   }
 

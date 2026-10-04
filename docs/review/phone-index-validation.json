@@ -1,0 +1,378 @@
+{
+  "metadata": {
+    "generatedAt": "2026-09-25T18:22:03.515Z",
+    "platform": "El7lm-V2 / Hagzz",
+    "phase": "Phase 6 — Phone Identity Layer Validation"
+  },
+  "metrics": {
+    "classA_archived": 38,
+    "classB_active_same_user": 767,
+    "classC_conflict_different_users": 30,
+    "classD_unverified_malformed": 193,
+    "classE_active_unique": 65,
+    "totalIndexedPhones": 1093,
+    "totalCoveredAccounts": 2336
+  },
+  "sampleIndexedRecords": [
+    {
+      "phone_e164": "+201023361064",
+      "country_code": "+20",
+      "phone_normalized": "+201023361064",
+      "primary_account_id": "qWQfgalM1vgLtbyjHvew6aVv3tH2",
+      "primary_account_type": "players",
+      "status": "active",
+      "verification_status": "verified",
+      "verified_at": "2026-09-25T18:22:03.478Z",
+      "created_at": "2026-09-25T18:22:03.480Z",
+      "updated_at": "2026-09-25T18:22:03.480Z",
+      "linked_accounts": [
+        {
+          "id": "qWQfgalM1vgLtbyjHvew6aVv3tH2",
+          "table": "players",
+          "accountType": "player",
+          "name": "حماده احمد عبدالحميد علي اسماعيل شعبان ",
+          "email": "p20_201023361064@el7lm.com",
+          "activityScore": 11,
+          "createdAt": null,
+          "lastLogin": null
+        },
+        {
+          "id": "6l0OBQ5nTDRbJftPBPsn6KGWA0n1",
+          "table": "players",
+          "accountType": "player",
+          "name": "حماده احمد عبد الحميد ",
+          "email": "p20_201023361064@el7lm.com",
+          "activityScore": 7,
+          "createdAt": null,
+          "lastLogin": "2026-05-11T20:49:21.175+00:00"
+        },
+        {
+          "id": "qWQfgalM1vgLtbyjHvew6aVv3tH2",
+          "table": "users",
+          "accountType": "player",
+          "name": "حماده احمد عبدالحميد علي اسماعيل شعبان ",
+          "email": "p20_201023361064@el7lm.com",
+          "activityScore": 6,
+          "createdAt": "2025-11-06T21:05:18+00:00",
+          "lastLogin": "2026-03-23T10:20:33.607+00:00"
+        },
+        {
+          "id": "6l0OBQ5nTDRbJftPBPsn6KGWA0n1",
+          "table": "users",
+          "accountType": "player",
+          "name": "حماده احمد عبد الحميد ",
+          "email": "user_6l0OBQ5nTDRbJftPBPsn6KGWA0n1@el7lm.com",
+          "activityScore": 2,
+          "createdAt": "2025-10-01T12:59:00+00:00",
+          "lastLogin": null
+        }
+      ],
+      "review_notes": "Class B: Same user duplicated across 4 records. Primary selected by activity score (players:qWQfgalM1vgLtbyjHvew6aVv3tH2)."
+    },
+    {
+      "phone_e164": "+201013714944",
+      "country_code": "+20",
+      "phone_normalized": "+201013714944",
+      "primary_account_id": "qZfIOur8FTcNb3oEEl6LH24uMS43",
+      "primary_account_type": "users",
+      "status": "active",
+      "verification_status": "verified",
+      "verified_at": "2026-09-25T18:22:03.480Z",
+      "created_at": "2026-09-25T18:22:03.480Z",
+      "updated_at": "2026-09-25T18:22:03.480Z",
+      "linked_accounts": [
+        {
+          "id": "qZfIOur8FTcNb3oEEl6LH24uMS43",
+          "table": "users",
+          "accountType": "player",
+          "name": "ادهم محمد رمضان",
+          "email": "p20_201013714944@el7lm.com",
+          "activityScore": 7,
+          "createdAt": "2025-09-16T19:24:20+00:00",
+          "lastLogin": "2025-11-22T14:36:29.108+00:00"
+        },
+        {
+          "id": "qZfIOur8FTcNb3oEEl6LH24uMS43",
+          "table": "players",
+          "accountType": "player",
+          "name": "ادهم محمد رمضان",
+          "email": "p20_201013714944@el7lm.com",
+          "activityScore": 2,
+          "createdAt": null,
+          "lastLogin": null
+        }
+      ],
+      "review_notes": "Class B: Same user duplicated across 2 records. Primary selected by activity score (users:qZfIOur8FTcNb3oEEl6LH24uMS43)."
+    },
+    {
+      "phone_e164": "+201550750661",
+      "country_code": "+20",
+      "phone_normalized": "+201550750661",
+      "primary_account_id": "qbCcdxWlx4S7kaupO97XP9Hi66v1",
+      "primary_account_type": "users",
+      "status": "active",
+      "verification_status": "verified",
+      "verified_at": "2026-09-25T18:22:03.480Z",
+      "created_at": "2026-09-25T18:22:03.480Z",
+      "updated_at": "2026-09-25T18:22:03.480Z",
+      "linked_accounts": [
+        {
+          "id": "qbCcdxWlx4S7kaupO97XP9Hi66v1",
+          "table": "users",
+          "accountType": "player",
+          "name": "Mostafa Sheta",
+          "email": "mostafasheta413@gmail.com",
+          "activityScore": 5,
+          "createdAt": "2026-01-08T20:23:57+00:00",
+          "lastLogin": "2026-01-08T20:24:17.245+00:00"
+        }
+      ],
+      "review_notes": "Class E: Clean, unique trusted phone identity."
+    },
+    {
+      "phone_e164": "+20102546196",
+      "country_code": "+20",
+      "phone_normalized": "+20102546196",
+      "primary_account_id": "qhAtfyjq4ufwcFLgQaEgoISsbT82",
+      "primary_account_type": "users",
+      "status": "active",
+      "verification_status": "unverified",
+      "verified_at": null,
+      "created_at": "2026-09-25T18:22:03.480Z",
+      "updated_at": "2026-09-25T18:22:03.480Z",
+      "linked_accounts": [
+        {
+          "id": "qhAtfyjq4ufwcFLgQaEgoISsbT82",
+          "table": "users",
+          "accountType": "player",
+          "name": "احمد رمضان عبد الله عمار محمود عمار",
+          "email": "user_20_20102546196_1758040848956_4kf29b@el7lm.com",
+          "activityScore": 7,
+          "createdAt": "2025-09-16T16:40:50+00:00",
+          "lastLogin": "2026-03-23T10:20:33.738+00:00"
+        },
+        {
+          "id": "qhAtfyjq4ufwcFLgQaEgoISsbT82",
+          "table": "players",
+          "accountType": "player",
+          "name": "احمد رمضان عبد الله عمار محمود عمار",
+          "email": "p20_20102546196@el7lm.com",
+          "activityScore": 2,
+          "createdAt": null,
+          "lastLogin": null
+        }
+      ],
+      "review_notes": "Class D: Non-standard phone format (INVALID_EGYPT_LENGTH_OR_PREFIX)."
+    },
+    {
+      "phone_e164": "+212773220551",
+      "country_code": "+212",
+      "phone_normalized": "+212773220551",
+      "primary_account_id": "qjO2AGuhAwbXF8E6iliiUFw3A1u2",
+      "primary_account_type": "users",
+      "status": "active",
+      "verification_status": "verified",
+      "verified_at": "2026-09-25T18:22:03.481Z",
+      "created_at": "2026-09-25T18:22:03.481Z",
+      "updated_at": "2026-09-25T18:22:03.481Z",
+      "linked_accounts": [
+        {
+          "id": "qjO2AGuhAwbXF8E6iliiUFw3A1u2",
+          "table": "users",
+          "accountType": "player",
+          "name": "mohammed yahya maanan",
+          "email": "212773220551@el7lm.com",
+          "activityScore": 5,
+          "createdAt": "2026-01-16T20:40:59+00:00",
+          "lastLogin": "2026-01-16T20:41:22.248+00:00"
+        },
+        {
+          "id": "qjO2AGuhAwbXF8E6iliiUFw3A1u2",
+          "table": "players",
+          "accountType": "player",
+          "name": "mohammed yahya maanan",
+          "email": "212773220551@el7lm.com",
+          "activityScore": 0,
+          "createdAt": null,
+          "lastLogin": null
+        }
+      ],
+      "review_notes": "Class B: Same user duplicated across 2 records. Primary selected by activity score (users:qjO2AGuhAwbXF8E6iliiUFw3A1u2)."
+    },
+    {
+      "phone_e164": "+97433423370",
+      "country_code": "+974",
+      "phone_normalized": "+97433423370",
+      "primary_account_id": "qmtxAndV8CfiuTE4C9WBvxHybna2",
+      "primary_account_type": "users",
+      "status": "active",
+      "verification_status": "verified",
+      "verified_at": "2026-09-25T18:22:03.481Z",
+      "created_at": "2026-09-25T18:22:03.481Z",
+      "updated_at": "2026-09-25T18:22:03.481Z",
+      "linked_accounts": [
+        {
+          "id": "qmtxAndV8CfiuTE4C9WBvxHybna2",
+          "table": "users",
+          "accountType": "player",
+          "name": "يوسف عبدالرحمن بوشيبة ",
+          "email": "p974_97433423370@el7lm.com",
+          "activityScore": 6,
+          "createdAt": "2025-11-07T19:30:08+00:00",
+          "lastLogin": "2026-03-23T10:20:33.738+00:00"
+        },
+        {
+          "id": "qmtxAndV8CfiuTE4C9WBvxHybna2",
+          "table": "players",
+          "accountType": "player",
+          "name": "يوسف عبدالرحمن بوشيبة ",
+          "email": "p974_97433423370@el7lm.com",
+          "activityScore": 1,
+          "createdAt": null,
+          "lastLogin": null
+        }
+      ],
+      "review_notes": "Class B: Same user duplicated across 2 records. Primary selected by activity score (users:qmtxAndV8CfiuTE4C9WBvxHybna2)."
+    },
+    {
+      "phone_e164": "+20109831918",
+      "country_code": "+20",
+      "phone_normalized": "+20109831918",
+      "primary_account_id": "qpzGtUwptqfGMu97EXIDpw95bRj2",
+      "primary_account_type": "users",
+      "status": "active",
+      "verification_status": "unverified",
+      "verified_at": null,
+      "created_at": "2026-09-25T18:22:03.481Z",
+      "updated_at": "2026-09-25T18:22:03.481Z",
+      "linked_accounts": [
+        {
+          "id": "qpzGtUwptqfGMu97EXIDpw95bRj2",
+          "table": "users",
+          "accountType": "player",
+          "name": "Moaz bahaa mohamed",
+          "email": "user_20_20109831918_1758095763710_g6e0tx@el7lm.com",
+          "activityScore": 7,
+          "createdAt": "2025-09-17T07:59:55+00:00",
+          "lastLogin": "2026-03-23T10:20:33.739+00:00"
+        },
+        {
+          "id": "qpzGtUwptqfGMu97EXIDpw95bRj2",
+          "table": "players",
+          "accountType": "player",
+          "name": "Moaz bahaa mohamed",
+          "email": "p20_20109831918@el7lm.com",
+          "activityScore": 2,
+          "createdAt": null,
+          "lastLogin": null
+        }
+      ],
+      "review_notes": "Class D: Non-standard phone format (INVALID_EGYPT_LENGTH_OR_PREFIX)."
+    },
+    {
+      "phone_e164": "+212673890155",
+      "country_code": "+212",
+      "phone_normalized": "+212673890155",
+      "primary_account_id": "qsjhkfyIHEdZelPnWFIG6Y0FLpo2",
+      "primary_account_type": "users",
+      "status": "active",
+      "verification_status": "verified",
+      "verified_at": "2026-09-25T18:22:03.481Z",
+      "created_at": "2026-09-25T18:22:03.481Z",
+      "updated_at": "2026-09-25T18:22:03.481Z",
+      "linked_accounts": [
+        {
+          "id": "qsjhkfyIHEdZelPnWFIG6Y0FLpo2",
+          "table": "users",
+          "accountType": "player",
+          "name": "يوسف علوان",
+          "email": "212673890155@el7lm.com",
+          "activityScore": 5,
+          "createdAt": "2026-01-23T22:23:07+00:00",
+          "lastLogin": "2026-01-23T22:32:04.077+00:00"
+        },
+        {
+          "id": "qsjhkfyIHEdZelPnWFIG6Y0FLpo2",
+          "table": "players",
+          "accountType": "player",
+          "name": "يوسف علوان",
+          "email": "212673890155@el7lm.com",
+          "activityScore": 0,
+          "createdAt": null,
+          "lastLogin": null
+        }
+      ],
+      "review_notes": "Class B: Same user duplicated across 2 records. Primary selected by activity score (users:qsjhkfyIHEdZelPnWFIG6Y0FLpo2)."
+    },
+    {
+      "phone_e164": "+9747205318",
+      "country_code": "+974",
+      "phone_normalized": "+9747205318",
+      "primary_account_id": "r3ngUV3ie6QOtKmmG7dtKytVyNb2",
+      "primary_account_type": "users",
+      "status": "archived",
+      "verification_status": "unverified",
+      "verified_at": null,
+      "created_at": "2026-09-25T18:22:03.481Z",
+      "updated_at": "2026-09-25T18:22:03.481Z",
+      "linked_accounts": [
+        {
+          "id": "r3ngUV3ie6QOtKmmG7dtKytVyNb2",
+          "table": "users",
+          "accountType": "club",
+          "name": "hagzz",
+          "email": "hagzz@el7lm.com",
+          "activityScore": 6,
+          "createdAt": "2025-04-25T18:26:40+00:00",
+          "lastLogin": "2025-08-29T21:25:07.872+00:00"
+        },
+        {
+          "id": "HxibD8KGk3X5FK0UCLE9DhcTFTF3",
+          "table": "users",
+          "accountType": "club",
+          "name": "hagzz",
+          "email": "hagzz@el7lm.com",
+          "activityScore": 6,
+          "createdAt": "2025-04-25T18:22:25.453+00:00",
+          "lastLogin": "2025-08-29T21:25:07.872+00:00"
+        }
+      ],
+      "review_notes": "Class A: Test or development dummy account."
+    },
+    {
+      "phone_e164": "+201154440480",
+      "country_code": "+20",
+      "phone_normalized": "+201154440480",
+      "primary_account_id": "r3wkefq30ifrujszxENxggJABdv2",
+      "primary_account_type": "users",
+      "status": "active",
+      "verification_status": "verified",
+      "verified_at": "2026-09-25T18:22:03.481Z",
+      "created_at": "2026-09-25T18:22:03.481Z",
+      "updated_at": "2026-09-25T18:22:03.481Z",
+      "linked_accounts": [
+        {
+          "id": "r3wkefq30ifrujszxENxggJABdv2",
+          "table": "users",
+          "accountType": "player",
+          "name": "Karim khalifa ",
+          "email": "p20_1154440480@el7lm.com",
+          "activityScore": 7,
+          "createdAt": "2025-10-09T18:29:13+00:00",
+          "lastLogin": "2026-03-23T10:20:33.739+00:00"
+        },
+        {
+          "id": "r3wkefq30ifrujszxENxggJABdv2",
+          "table": "players",
+          "accountType": "player",
+          "name": "Karim khalifa ",
+          "email": "p20_1154440480@el7lm.com",
+          "activityScore": 2,
+          "createdAt": null,
+          "lastLogin": null
+        }
+      ],
+      "review_notes": "Class B: Same user duplicated across 2 records. Primary selected by activity score (users:r3wkefq30ifrujszxENxggJABdv2)."
+    }
+  ]
+}

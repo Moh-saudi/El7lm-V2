@@ -71,14 +71,60 @@ function normalizedAccountType(
     : TABLE_ACCOUNT_TYPE[table];
 }
 
+// In-memory cache for instant lookups without repetitive queries
+interface CacheEntry {
+  result: PhoneAccountLookup;
+  expiresAt: number;
+}
+const phoneLookupCache = new Map<string, CacheEntry>();
+const CACHE_TTL_FOUND_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_NOT_FOUND_MS = 60 * 1000; // 1 minute
+
+export function invalidatePhoneAccountCache(phoneNumber?: string) {
+  if (!phoneNumber) {
+    phoneLookupCache.clear();
+    return;
+  }
+  const variants = generatePhoneVariants(phoneNumber);
+  for (const v of variants) {
+    phoneLookupCache.delete(v);
+  }
+}
+
 export async function findAccountByPhone(
   phoneNumber: string,
 ): Promise<PhoneAccountLookup> {
   const variants = generatePhoneVariants(phoneNumber);
   if (variants.length === 0) return { found: false };
 
+  // 1. Instant cache check across any phone variant
+  const now = Date.now();
+  for (const v of variants) {
+    const cached = phoneLookupCache.get(v);
+    if (cached) {
+      if (cached.expiresAt > now) {
+        return cached.result;
+      }
+      phoneLookupCache.delete(v);
+    }
+  }
+
   const db = getSupabaseAdmin();
   let successfulLookups = 0;
+
+  // Helper to store in cache for all variants
+  const setInCache = (res: PhoneAccountLookup) => {
+    const ttl = res.found ? CACHE_TTL_FOUND_MS : CACHE_TTL_NOT_FOUND_MS;
+    const expiresAt = Date.now() + ttl;
+    for (const v of variants) {
+      phoneLookupCache.set(v, { result: res, expiresAt });
+    }
+    // Limit cache size to prevent memory leaks
+    if (phoneLookupCache.size > 2000) {
+      const oldestKeys = Array.from(phoneLookupCache.keys()).slice(0, 500);
+      for (const k of oldestKeys) phoneLookupCache.delete(k);
+    }
+  };
 
   // Query all valid phone columns across all tables in parallel
   const queries: Promise<{
@@ -116,7 +162,7 @@ export async function findAccountByPhone(
       if (isUnavailable(row)) continue;
       const id = String(row.id ?? '').trim();
       if (!id) continue;
-      return {
+      const foundResult: PhoneAccountLookup = {
         found: true,
         table,
         id,
@@ -127,6 +173,8 @@ export async function findAccountByPhone(
         ).trim(),
         accountType: normalizedAccountType(row, table),
       };
+      setInCache(foundResult);
+      return foundResult;
     }
   }
 
@@ -158,7 +206,7 @@ export async function findAccountByPhone(
         )
           .trim()
           .toLowerCase();
-        return {
+        const authFoundResult: PhoneAccountLookup = {
           found: true,
           table: 'users',
           id: match.id,
@@ -173,6 +221,8 @@ export async function findAccountByPhone(
             ? rawType
             : 'player',
         };
+        setInCache(authFoundResult);
+        return authFoundResult;
       }
     }
   } catch (error) {
@@ -183,5 +233,7 @@ export async function findAccountByPhone(
     throw new Error('Account database lookup is unavailable.');
   }
 
-  return { found: false };
+  const notFoundResult: PhoneAccountLookup = { found: false };
+  setInCache(notFoundResult);
+  return notFoundResult;
 }

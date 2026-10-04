@@ -1,0 +1,256 @@
+{
+  "metadata": {
+    "generatedAt": "2026-09-25T19:39:38.209Z",
+    "phase": "Phase 6.1 — Safe Delete Candidates",
+    "policy": "STRICT_SAFETY_CRITERIA_ENFORCED",
+    "criteria": [
+      "Clearly test/development data OR unquestionably redundant duplicate",
+      "No unique business data or profiles",
+      "No unique videos",
+      "No unique messages",
+      "No unique relationships",
+      "No required authentication identity",
+      "No important foreign-key dependencies in notifications, messages, conversations, favorites, opportunities",
+      "Deletion will not remove information belonging to the canonical account"
+    ]
+  },
+  "totalCandidates": 21,
+  "candidates": [
+    {
+      "accountId": "IAueTamMAydLDD875IL3ixyG50w1",
+      "tableName": "players",
+      "name": "محمد احمد سيد",
+      "rawPhone": "+201006038037",
+      "normalizedPhone": "+201006038037",
+      "country": "Egypt",
+      "category": "SAFE_DUPLICATE",
+      "safeReason": "Unquestionably redundant duplicate player profile row with zero activity and zero foreign keys",
+      "canonicalAccountId": "n4eIk2y6OIdIzOnwA97YMOiKHmh2",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "test_trainer_01000000003",
+      "tableName": "trainers",
+      "name": "الكابتن أحمد التجريبي",
+      "rawPhone": "+201000000003",
+      "normalizedPhone": "+201000000003",
+      "country": "Egypt",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "test_player_01000000004",
+      "tableName": "players",
+      "name": "لاعب الحلم التجريبي",
+      "rawPhone": "+201000000004",
+      "normalizedPhone": "+201000000004",
+      "country": "Egypt",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "test_agent_01000000005",
+      "tableName": "agents",
+      "name": "وكيل لاعبين تجريبي",
+      "rawPhone": "+201000000005",
+      "normalizedPhone": "+201000000005",
+      "country": "Egypt",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "test_marketer_01000000006",
+      "tableName": "marketers",
+      "name": "مسوّق الحلم التجريبي",
+      "rawPhone": "+201000000006",
+      "normalizedPhone": "+201000000006",
+      "country": "Egypt",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "AjZm7yasznYN5n7qgL9Z",
+      "tableName": "users",
+      "name": "شريف حسن",
+      "rawPhone": "01017799580",
+      "normalizedPhone": "+201017799580",
+      "country": "Egypt",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "IOLqqZ1Lvqep1RcPTAAz9px4CJU2",
+      "tableName": "users",
+      "name": "مصطفي اسماعيل",
+      "rawPhone": "+201017799580",
+      "normalizedPhone": "+201017799580",
+      "country": "Egypt",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "UCRYaIbDNBHqtA0Y4eJs",
+      "tableName": "players",
+      "name": "Mohamed saudi",
+      "rawPhone": "01017799580",
+      "normalizedPhone": "+201017799580",
+      "country": "Egypt",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "7VwkM1UIFdcfiVSFBvm1",
+      "tableName": "players",
+      "name": "مختار",
+      "rawPhone": "01017799580",
+      "normalizedPhone": "+201017799580",
+      "country": "Egypt",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "M7UP64xP6aLdUR8spJae",
+      "tableName": "players",
+      "name": "مازن السيد",
+      "rawPhone": "01017799580",
+      "normalizedPhone": "+201017799580",
+      "country": "Egypt",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "1f2dWITeCTflSTzsPRxatkGGWO73",
+      "tableName": "players",
+      "name": "hagzz app",
+      "rawPhone": "33333333333",
+      "normalizedPhone": "+33333333333",
+      "country": "France",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "4PhRmJVLdncNOcVBvAmUztAxkkm2",
+      "tableName": "users",
+      "name": "Tttt",
+      "rawPhone": "705424366",
+      "normalizedPhone": "705424366",
+      "country": "Invalid",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "ls9eL2YFKkoFi7kMfqKr",
+      "tableName": "players",
+      "name": "Tttt",
+      "rawPhone": "705424366",
+      "normalizedPhone": "705424366",
+      "country": "Invalid",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "kC5qOqWk8fQzbbmXjwbc0s5bdl33",
+      "tableName": "players",
+      "name": " Mohamed hossam Rabiaa abdelatif",
+      "rawPhone": "01114696735",
+      "normalizedPhone": "+201114696735",
+      "country": "Egypt",
+      "category": "SAFE_DUPLICATE",
+      "safeReason": "Unquestionably redundant duplicate player profile row with zero activity and zero foreign keys",
+      "canonicalAccountId": "4QR7STGslnQqy07SDHcqU4vnCq33",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "LVhtnyer9OMJDclXQRQSmbM5eiC2",
+      "tableName": "players",
+      "name": "محمد عماد صابر احمد محمد سالم مباشر",
+      "rawPhone": "201032695740",
+      "normalizedPhone": "+201032695740",
+      "country": "Egypt",
+      "category": "SAFE_DUPLICATE",
+      "safeReason": "Unquestionably redundant duplicate player profile row with zero activity and zero foreign keys",
+      "canonicalAccountId": "2lrEBTkDOoTRpDzrlzqtaa9fvL03",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "d42a6715-53f4-4768-ac9b-c29be0f3a5bb",
+      "tableName": "users",
+      "name": "عبد الحليم احمد عبد الحليم خاطر جلال",
+      "rawPhone": "+201104840453",
+      "normalizedPhone": "+201104840453",
+      "country": "Egypt",
+      "category": "SAFE_DUPLICATE",
+      "safeReason": "Unquestionably redundant duplicate user row with zero activity and zero foreign key dependencies",
+      "canonicalAccountId": "ed796abc-d44a-4986-9d2b-f2cff5a00e9c",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "JJ8MJBUvdRhTz7XZeQU3qBdjSbG2",
+      "tableName": "players",
+      "name": "fady",
+      "rawPhone": "70542458",
+      "normalizedPhone": "70542458",
+      "country": "Invalid",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "ZMMGQoZF8PREKSEh4LFYeVnJZq92",
+      "tableName": "academies",
+      "name": "أكاديمية جديدة",
+      "rawPhone": "70542458",
+      "normalizedPhone": "70542458",
+      "country": "Invalid",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "ea5c5523-6eec-46ff-9b13-783dd71a8b2e",
+      "tableName": "users",
+      "name": "يوسف ياسر السيد أحمد",
+      "rawPhone": "+201025519031",
+      "normalizedPhone": "+201025519031",
+      "country": "Egypt",
+      "category": "SAFE_DUPLICATE",
+      "safeReason": "Unquestionably redundant duplicate user row with zero activity and zero foreign key dependencies",
+      "canonicalAccountId": "54c9eb87-c860-4e97-b24d-2e174ed83426",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "test_club_01000000001",
+      "tableName": "clubs",
+      "name": "نادي الحلم التجريبي",
+      "rawPhone": "+201000000001",
+      "normalizedPhone": "+201000000001",
+      "country": "Egypt",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    },
+    {
+      "accountId": "test_academy_01000000002",
+      "tableName": "academies",
+      "name": "أكاديمية الحلم الدولية",
+      "rawPhone": "+201000000002",
+      "normalizedPhone": "+201000000002",
+      "country": "Egypt",
+      "category": "TEST_DATA",
+      "safeReason": "Pure test/seed data with 0 foreign keys, 0 videos, 0 messages, and 0 notifications",
+      "hasForeignKeys": false
+    }
+  ]
+}

@@ -1,0 +1,3121 @@
+{
+  "metadata": {
+    "generatedAt": "2026-09-25T19:39:38.211Z",
+    "phase": "Phase 6.1 — Manual Review Records",
+    "totalRecords": 183
+  },
+  "totalRecords": 183,
+  "records": [
+    {
+      "accountId": "r3ngUV3ie6QOtKmmG7dtKytVyNb2",
+      "tableName": "users",
+      "name": "hagzz",
+      "rawPhone": "9747205318",
+      "normalizedPhone": "+9747205318",
+      "country": "Qatar",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "HxibD8KGk3X5FK0UCLE9DhcTFTF3",
+      "tableName": "users",
+      "name": "hagzz",
+      "rawPhone": "9747205318",
+      "normalizedPhone": "+9747205318",
+      "country": "Qatar",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "qyADQuQ3tgP0eyda5u3RHirHkv63",
+      "tableName": "marketers",
+      "name": "حسام محمد محمد عثمان ",
+      "rawPhone": "20103338202",
+      "normalizedPhone": "+20103338202",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "FfX9wD3YhpXvoBTn7kBbNn0gIow1",
+      "tableName": "trainers",
+      "name": "حسام محمد محمد عثمان ",
+      "rawPhone": "20103338202",
+      "normalizedPhone": "+20103338202",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "PY5Nr0L7qZQJoceL8D2SgeD9mcv2",
+      "tableName": "marketers",
+      "name": "حسام محمد محمد عثمان ",
+      "rawPhone": "20103338202",
+      "normalizedPhone": "+20103338202",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "sSOJ195XvAOk9DChjTVwZGgv9xZ2",
+      "tableName": "players",
+      "name": "اختبار",
+      "rawPhone": "201022920076",
+      "normalizedPhone": "+201022920076",
+      "country": "Egypt",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "tKto8ZS94XcMUhXyWBBaR5cEMFs2",
+      "tableName": "marketers",
+      "name": "بلال سيد",
+      "rawPhone": "+204548796565",
+      "normalizedPhone": "+204548796565",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "tTZhaT0QAUVyddcg7InevNkuRDt2",
+      "tableName": "players",
+      "name": "احمد ياسر علي ",
+      "rawPhone": "+201112911914",
+      "normalizedPhone": "+201112911914",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "fFe35ICntkYI85Bv9Is87zmbZgE3",
+      "tableName": "players",
+      "name": "Ahmed Yaser ali diab",
+      "rawPhone": "201112911914",
+      "normalizedPhone": "+201112911914",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "ttSoUdgH5yPfPVroOHwk76rGCS42",
+      "tableName": "players",
+      "name": "ادهم كمال الشهابي ",
+      "rawPhone": "+20102980282",
+      "normalizedPhone": "+20102980282",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "YUezyttc4WPUTiq1wHgbwMsGnB82",
+      "tableName": "players",
+      "name": "ادهم كمال الشهابي  ",
+      "rawPhone": "+20102980282",
+      "normalizedPhone": "+20102980282",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "tyZWVlAEYHaEkDJXOlX9sJVPQi73",
+      "tableName": "trainers",
+      "name": "حسام كهرباء",
+      "rawPhone": "+209857584585",
+      "normalizedPhone": "+209857584585",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "uE7bvBpfTaciPoynGsznyYnUlbp2",
+      "tableName": "players",
+      "name": "mohamed Hassan",
+      "rawPhone": "201123379793",
+      "normalizedPhone": "+201123379793",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "iTKBFkiTvgUpTSaT1eA5qXeS32u1",
+      "tableName": "players",
+      "name": "محمد حسن السيد ",
+      "rawPhone": "201123379793",
+      "normalizedPhone": "+201123379793",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "rJG08UCl64haTKAbYQX410FdLB73",
+      "tableName": "players",
+      "name": "Mohammed Hassan",
+      "rawPhone": "01123379793",
+      "normalizedPhone": "+201123379793",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "uH8qCBl9WYfNKDSBEyx4poxY9dB2",
+      "tableName": "players",
+      "name": "نور خالد حسين مدبولي ",
+      "rawPhone": "201063138763",
+      "normalizedPhone": "+201063138763",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "cQy3dS25sDXuIbfa8luHF9XSJLj1",
+      "tableName": "players",
+      "name": "Khaled Madboly",
+      "rawPhone": "01063138763",
+      "normalizedPhone": "+201063138763",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "uTNhyvCp9QWcVLZax7wXwTQjSyu2",
+      "tableName": "players",
+      "name": "يوسف محمد السيد صفا ",
+      "rawPhone": "+20106078056",
+      "normalizedPhone": "+20106078056",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "PGAdTYh8xpSF81fj8yxxG7cnDWD2",
+      "tableName": "players",
+      "name": "يوسف محمد صفا",
+      "rawPhone": "+20106078056",
+      "normalizedPhone": "+20106078056",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "jQprN3XSQ0T22vOtriGPiKHWQ3O2",
+      "tableName": "players",
+      "name": "يوسف محمد السيد صفا ",
+      "rawPhone": "+20106078056",
+      "normalizedPhone": "+20106078056",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "aygnJ71o5tTBXgtmLCCYKVw2zg82",
+      "tableName": "players",
+      "name": "يوسف محمد السيد صفا ",
+      "rawPhone": "+20106078056",
+      "normalizedPhone": "+20106078056",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "cboFvgjr8dU7RbcvHgfc3h7Eexo1",
+      "tableName": "players",
+      "name": "يوسف محمد السيد صفا ",
+      "rawPhone": "+20106078056",
+      "normalizedPhone": "+20106078056",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "iF6xsgnrNSQshXw5NNgQsQbH1702",
+      "tableName": "players",
+      "name": "محمد رضا كمال عبد المجيد محمود الشافعي ",
+      "rawPhone": "20101499936",
+      "normalizedPhone": "+20101499936",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "DUmbOIT7qsYNxL02QdYK4oPGobq1",
+      "tableName": "players",
+      "name": "محمد رضا كمال عبدالمجيد محمود الشافعي",
+      "rawPhone": "+20101499936",
+      "normalizedPhone": "+20101499936",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "hk1WcoGFc2bKDofWl7kOCeKilI53",
+      "tableName": "players",
+      "name": "محمد رضا كمال عبد المجيد محمود الشافعي",
+      "rawPhone": "+20101499936",
+      "normalizedPhone": "+20101499936",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "v7lDpI2O42VXz3G1aUtqCiwMKcR2",
+      "tableName": "marketers",
+      "name": "شعبان محمد ركابى ",
+      "rawPhone": "20106461108",
+      "normalizedPhone": "+20106461108",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "5GPkOLHk0KhgzDPr3NrSR9yNfVl1",
+      "tableName": "clubs",
+      "name": "شعبان محمد ركابى ",
+      "rawPhone": "20106461108",
+      "normalizedPhone": "+20106461108",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "vbrZnqsNseOBBWyr6JsacpcdxzN2",
+      "tableName": "players",
+      "name": "علي عبدالله النخلاني",
+      "rawPhone": "201055604796",
+      "normalizedPhone": "+201055604796",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "BqmKMUUYKuM9vbAoO2QjKYXpMVo1",
+      "tableName": "players",
+      "name": "طارق محمد سيد ",
+      "rawPhone": "201055604796",
+      "normalizedPhone": "+201055604796",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "vnxBFTg2tyf1dhgdR9KA5AgAux13",
+      "tableName": "players",
+      "name": "محمد احمد محمد حسان",
+      "rawPhone": "201002691544",
+      "normalizedPhone": "+201002691544",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "LFUXLeTmECgxnTP7G1yTu4YhGvh1",
+      "tableName": "players",
+      "name": "Mohamed Ahmed mohamed Hassan ",
+      "rawPhone": "201002691544",
+      "normalizedPhone": "+201002691544",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "kDcjrn78OqRVWcQSMH02acxRicx1",
+      "tableName": "players",
+      "name": "Mohamed Ahmed mohamed Hassan ",
+      "rawPhone": "201002691544",
+      "normalizedPhone": "+201002691544",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "wgbYucFodnQIOQoPwUugMnPdDj32",
+      "tableName": "players",
+      "name": "𝒎𝒂𝒓𝒊𝒐𝒍𝒐𝒕𝒇𝒚 ",
+      "rawPhone": "201270677242",
+      "normalizedPhone": "+201270677242",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "8IwYJDFxw8Pvf1i4tRkOVD66CDm1",
+      "tableName": "players",
+      "name": "ماريو لطفي خليفه ",
+      "rawPhone": "201270677242",
+      "normalizedPhone": "+201270677242",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "xXPyB3la7gghUUB5uYwuO9DDwK12",
+      "tableName": "players",
+      "name": "اياد احمد عبد العزيز ",
+      "rawPhone": "201017976070",
+      "normalizedPhone": "+201017976070",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "CfWvkJMgnOXV9tTfRBV1qDvYJaQ2",
+      "tableName": "trainers",
+      "name": "مؤمن مصطفي سيد ",
+      "rawPhone": "201017976070",
+      "normalizedPhone": "+201017976070",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "xZh0O53IwIeUhJLcxf59XZjgPy43",
+      "tableName": "academies",
+      "name": "Lion Acaemy Qatar ",
+      "rawPhone": "97435265981",
+      "normalizedPhone": "+97435265981",
+      "country": "Qatar",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Ambiguous identity relationship requiring manual investigation",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "xcf9iKNCb8YoPgKfvjBxXdt4Rf22",
+      "tableName": "players",
+      "name": "mohamed ahmed eltaher",
+      "rawPhone": "01114906366",
+      "normalizedPhone": "+201114906366",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "3NPp3fcwUpZgMwwTkt7xCY6bVrA3",
+      "tableName": "players",
+      "name": "محمد احمد الطاهر احمد",
+      "rawPhone": "201114906366",
+      "normalizedPhone": "+201114906366",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "xk3GbcbPdwQt6lRWnZPxz8adalt2",
+      "tableName": "academies",
+      "name": "أكاديمية جديدة",
+      "rawPhone": "20102515855",
+      "normalizedPhone": "+20102515855",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "PAzrupsysETgIInrMHaqT3fsM5B3",
+      "tableName": "trainers",
+      "name": "محمد بيومي حسين بيومي ",
+      "rawPhone": "20102515855",
+      "normalizedPhone": "+20102515855",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "yGuNBflDXsNtzS2pEEo9IYFufbQ2",
+      "tableName": "academies",
+      "name": "أكاديمية النور لكرة القدم بالشيخ عيسى",
+      "rawPhone": "201122560313",
+      "normalizedPhone": "+201122560313",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Ambiguous identity relationship requiring manual investigation",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "ycQorhkWvihfFBbzVS13e9v6Yiu1",
+      "tableName": "clubs",
+      "name": "ااااا",
+      "rawPhone": "207205318833",
+      "normalizedPhone": "+207205318833",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "LD6sBBbrtyVnOG4ErNyh3wsgCOl1",
+      "tableName": "players",
+      "name": "ddd",
+      "rawPhone": "207205318833",
+      "normalizedPhone": "+207205318833",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "t1ev0surGVWVj3b5XOSxB22sycL2",
+      "tableName": "players",
+      "name": "رضا جميل",
+      "rawPhone": "97472053188",
+      "normalizedPhone": "+97472053188",
+      "country": "Qatar",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "2qEmubLWjtU8yUyHJQtkJX9Fw582",
+      "tableName": "clubs",
+      "name": "الدحيل اختبار",
+      "rawPhone": "97472053188",
+      "normalizedPhone": "+97472053188",
+      "country": "Qatar",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "BgvcBwSls9WG97LSHAnMf53CSAx2",
+      "tableName": "clubs",
+      "name": "الدحيل اختبار",
+      "rawPhone": "97472053188",
+      "normalizedPhone": "+97472053188",
+      "country": "Qatar",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "Ei7gofYLCKc9oPFqmDcqLQhp0VS2",
+      "tableName": "clubs",
+      "name": "الدحيل اختبار",
+      "rawPhone": "97472053188",
+      "normalizedPhone": "+97472053188",
+      "country": "Qatar",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "E4P1SrsL2ban2fd5vwnnRJwmiLo1",
+      "tableName": "players",
+      "name": "uuuuuuuSaudi",
+      "rawPhone": "97472053188",
+      "normalizedPhone": "+97472053188",
+      "country": "Qatar",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "z3aSEQrAT4YJXydi52hSFcuI0hl2",
+      "tableName": "players",
+      "name": "May Shref",
+      "rawPhone": "201278988086",
+      "normalizedPhone": "+201278988086",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "Q0B9pEsbtkWyFHh39nizb4XS9042",
+      "tableName": "players",
+      "name": "احمد محمد حسن",
+      "rawPhone": "201278988086",
+      "normalizedPhone": "+201278988086",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "0FuH5wD6PfTtGe4uXhkxcYFfaai1",
+      "tableName": "trainers",
+      "name": "ك محمود ساديو ",
+      "rawPhone": "20101824937",
+      "normalizedPhone": "+20101824937",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "DAmzLbIdIDdgBFkpEPvQntVhQCC3",
+      "tableName": "trainers",
+      "name": "كابتن محمود ساديو ",
+      "rawPhone": "20101824937",
+      "normalizedPhone": "+20101824937",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "10lC5QmgqXYiCIICFYBuK8tWTAZ2",
+      "tableName": "agents",
+      "name": "العالمي",
+      "rawPhone": "+209898989898",
+      "normalizedPhone": "+209898989898",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "12b3EOIr62bjDZaMPZjvgIsVxRD3",
+      "tableName": "academies",
+      "name": "أكاديمية جديدة",
+      "rawPhone": "55561599",
+      "normalizedPhone": "+55561599",
+      "country": "Brazil",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Ambiguous identity relationship requiring manual investigation",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "2Uj9vwRn9jfVsQtrvX4B",
+      "tableName": "users",
+      "name": "مصطفي محمد",
+      "rawPhone": "01017799580",
+      "normalizedPhone": "+201017799580",
+      "country": "Egypt",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "ml99m6hRCYe2F9By1G7uDTBk8cn1",
+      "tableName": "users",
+      "name": "محمد جمال الدين",
+      "rawPhone": "01017799580",
+      "normalizedPhone": "+201017799580",
+      "country": "Egypt",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "GQSMfDZabaaMbQxI22ZqOsWmcA32",
+      "tableName": "players",
+      "name": "mohamed saudi",
+      "rawPhone": "201017799580",
+      "normalizedPhone": "+201017799580",
+      "country": "Egypt",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": true
+      }
+    },
+    {
+      "accountId": "HTMQqeUeTi8lsdlYfskV",
+      "tableName": "players",
+      "name": "حمزة العليمي",
+      "rawPhone": "201017799580",
+      "normalizedPhone": "+201017799580",
+      "country": "Egypt",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "XTx6sHL0Bta5B6iBMIko79A398k1",
+      "tableName": "players",
+      "name": "احمد جمال محمد ",
+      "rawPhone": "01017799580",
+      "normalizedPhone": "+201017799580",
+      "country": "Egypt",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "XeiioYl6l3RXRiUqJyPi7jjrmz32",
+      "tableName": "players",
+      "name": "احمد محمد ياسين",
+      "rawPhone": "01017799580",
+      "normalizedPhone": "+201017799580",
+      "country": "Egypt",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "wN7Tv9OnjPMP84qTfmp6",
+      "tableName": "players",
+      "name": "محمد حسام",
+      "rawPhone": "01017799580",
+      "normalizedPhone": "+201017799580",
+      "country": "Egypt",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "orpTdxCsJVEWHFhSDFez",
+      "tableName": "players",
+      "name": "سيسس",
+      "rawPhone": "01017799580",
+      "normalizedPhone": "+201017799580",
+      "country": "Egypt",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "TnSvLJgehmftXNY024Y0cjib6NI3",
+      "tableName": "players",
+      "name": "علي محمد",
+      "rawPhone": "01017799580",
+      "normalizedPhone": "+201017799580",
+      "country": "Egypt",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "IOLqqZ1Lvqep1RcPTAAz9px4CJU2",
+      "tableName": "players",
+      "name": "مصطفي اسماعيل",
+      "rawPhone": "+201017799580",
+      "normalizedPhone": "+201017799580",
+      "country": "Egypt",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "d24afe5c-44da-4f81-827d-fdb041fdae7b",
+      "tableName": "users",
+      "name": "Jafar jalabneh",
+      "rawPhone": "00962790866671",
+      "normalizedPhone": "+962790866671",
+      "country": "Jordan",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "kky7L4s4QHfIdw30CXAaW6hmgFy2",
+      "tableName": "agents",
+      "name": "Ahmad jlabneh",
+      "rawPhone": "+962790866671",
+      "normalizedPhone": "+962790866671",
+      "country": "Jordan",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "5f433c8c-e12c-445b-bb89-5f605814a390",
+      "tableName": "players",
+      "name": "Jafar jalabneh",
+      "rawPhone": "00962790866671",
+      "normalizedPhone": "+962790866671",
+      "country": "Jordan",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "3Zg7uIxnOEVKFPLuiJQSaSaSklZ2",
+      "tableName": "trainers",
+      "name": "ابراهيم رياض ",
+      "rawPhone": "20127888388",
+      "normalizedPhone": "+20127888388",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "eRHtpnGpYKgph8l6q3Ytpng5xph1",
+      "tableName": "marketers",
+      "name": "22222222",
+      "rawPhone": "218222222222",
+      "normalizedPhone": "218222222222",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "6YBVYj0YOOQkUzBjCeXF6mgmt1e2",
+      "tableName": "academies",
+      "name": "Prime Academy ",
+      "rawPhone": "201019445331",
+      "normalizedPhone": "+201019445331",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Ambiguous identity relationship requiring manual investigation",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "75v5joY3rZfeFBtwVji8ZyB4QF32",
+      "tableName": "clubs",
+      "name": "نادي طرابزون سبور التركي ",
+      "rawPhone": "22880658842388",
+      "normalizedPhone": "22880658842388",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "7be37m8KKmS4MKwAluaBFnUxvUw1",
+      "tableName": "clubs",
+      "name": "نادي العين",
+      "rawPhone": "1234567880",
+      "normalizedPhone": "+1234567880",
+      "country": "USA/Canada",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "7vWFa4rXA5a8vvPYIlHnbIVhtlJ2",
+      "tableName": "users",
+      "name": "كابتن صدام ",
+      "rawPhone": "201055852805",
+      "normalizedPhone": "+201055852805",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "QTGlDnP4VOPwJy6H3pxruA81J4f1",
+      "tableName": "players",
+      "name": "شريف حسن ",
+      "rawPhone": "201055852805",
+      "normalizedPhone": "+201055852805",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "8P9CbolRFsNUX2KPLaogkemuN1p2",
+      "tableName": "academies",
+      "name": "أكادي فاين سكيلز",
+      "rawPhone": "20103200385",
+      "normalizedPhone": "+20103200385",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "qTU43iobqSQY5CthgWQIYiUOqMn2",
+      "tableName": "clubs",
+      "name": "ك صلاح عاطف ",
+      "rawPhone": "20103200385",
+      "normalizedPhone": "+20103200385",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "DKq7qw7CMvcFEydz5VQ0y1JTBi43",
+      "tableName": "marketers",
+      "name": "محمد محمد محمود",
+      "rawPhone": "20122701759",
+      "normalizedPhone": "+20122701759",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "0GA9TbXVFYSi1aWWlhhgWjO4sVB2",
+      "tableName": "players",
+      "name": "Moaz moustfa ",
+      "rawPhone": "201208183362",
+      "normalizedPhone": "+201208183362",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "YrXFKuFMD8XT4yWQ81byaSG9pc73",
+      "tableName": "players",
+      "name": "Moaz Idres",
+      "rawPhone": "+201208183362",
+      "normalizedPhone": "+201208183362",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "3dOQ70vLVVSdDiEmpcMtgCcGAiO2",
+      "tableName": "players",
+      "name": "محمد جلال ",
+      "rawPhone": "1234567892",
+      "normalizedPhone": "+1234567892",
+      "country": "USA/Canada",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "2hLPCeQszng4TQrjQlpYZ3PtYmm2",
+      "tableName": "players",
+      "name": "احمد محمد فتحي",
+      "rawPhone": "1234567892",
+      "normalizedPhone": "+1234567892",
+      "country": "USA/Canada",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "DmEjkjJInXYVleACjVpeCQr3Brw1",
+      "tableName": "academies",
+      "name": "أكاديمية جديدة",
+      "rawPhone": "201152532787",
+      "normalizedPhone": "+201152532787",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Ambiguous identity relationship requiring manual investigation",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "9dXin9IK27ddn7TB2OPQvQepLVz1",
+      "tableName": "clubs",
+      "name": "نادي فيينا",
+      "rawPhone": "0777777777",
+      "normalizedPhone": "0777777777",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "9qDARZrusgcRsyZPRHfvTQCefvp2",
+      "tableName": "academies",
+      "name": "جولدن فوت",
+      "rawPhone": "0222222222",
+      "normalizedPhone": "0222222222",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "1adnTHZw4FencNWw65CL",
+      "tableName": "players",
+      "name": "عالي حسين ",
+      "rawPhone": "0222222222",
+      "normalizedPhone": "0222222222",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "BIVvbBVvGYYNWxYbs88km8aM6Ek2",
+      "tableName": "clubs",
+      "name": "غاعاهههه",
+      "rawPhone": "+202565656566",
+      "normalizedPhone": "+202565656566",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "F3nMh0kmnndrmzmaFFW5NZw8UBI2",
+      "tableName": "users",
+      "name": "hagzz",
+      "rawPhone": "0017799580",
+      "normalizedPhone": "+17799580",
+      "country": "USA/Canada",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "yf0b8T8xuuMfP8QAfvS9TLOJjVt2",
+      "tableName": "academies",
+      "name": "ride",
+      "rawPhone": "0199999999",
+      "normalizedPhone": "0199999999",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "GYQSHjR5pre20a4iMBy42wByqu83",
+      "tableName": "players",
+      "name": "محمد خالد محمد الصابرين",
+      "rawPhone": "201210008280",
+      "normalizedPhone": "+201210008280",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "EtCngA6VauSDZSCRGMMJFl0SGQD3",
+      "tableName": "players",
+      "name": "khaled elsbren",
+      "rawPhone": "01210008280",
+      "normalizedPhone": "+201210008280",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "G0jJVt23N5WcuZwPiclLZFxE7Ny1",
+      "tableName": "players",
+      "name": "محمد خالد صقر ",
+      "rawPhone": "+20109270428",
+      "normalizedPhone": "+20109270428",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "IT83aO1vtsPMb8ClCW6uNR6wLj73",
+      "tableName": "players",
+      "name": "محمد خالد صقر ",
+      "rawPhone": "+20109270428",
+      "normalizedPhone": "+20109270428",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "EeajpOrhW8MBIToKM8n7KMaRfjq1",
+      "tableName": "clubs",
+      "name": "Falcons FC ",
+      "rawPhone": "0",
+      "normalizedPhone": "0",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "If0czaDWtFTXSzVVbN5veUjAI8m2",
+      "tableName": "players",
+      "name": "براء باسر فرج عبدالحميد",
+      "rawPhone": "201003231729",
+      "normalizedPhone": "+201003231729",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "aXcLL3eJulaRbtGa4WnTFnD192i1",
+      "tableName": "players",
+      "name": "براءة ياسر فرج",
+      "rawPhone": "201003231729",
+      "normalizedPhone": "+201003231729",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "KOI6u94kicVq77orkVKevjvBcry2",
+      "tableName": "agents",
+      "name": "Abdallah Ali gomaa",
+      "rawPhone": "20155208166",
+      "normalizedPhone": "+20155208166",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "F9UvdjTrtJbPvGf8F1ZzbFSKx6m1",
+      "tableName": "users",
+      "name": "بلدية",
+      "rawPhone": "72053188",
+      "normalizedPhone": "72053188",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "Jkzcp3U15UWgG8GD97oqPZFSvt92",
+      "tableName": "clubs",
+      "name": "الدحيل اختبار",
+      "rawPhone": "72053188",
+      "normalizedPhone": "72053188",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "YXYvy1LYBwbgpabpfhcWojAEAMG2",
+      "tableName": "users",
+      "name": "بلديةx",
+      "rawPhone": "72053188",
+      "normalizedPhone": "72053188",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "mCp3B5xQG9PQ12TxdBb0GXte79p1",
+      "tableName": "users",
+      "name": "محمد",
+      "rawPhone": "72053188",
+      "normalizedPhone": "72053188",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "M9DDihHQZQyCwj6s1SoA",
+      "tableName": "players",
+      "name": "mohamed saudi",
+      "rawPhone": "72053188",
+      "normalizedPhone": "72053188",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "jG0lmo3x7wRODTZES9b9GddBYZa2",
+      "tableName": "players",
+      "name": "Mohamed Saudi",
+      "rawPhone": "72053188",
+      "normalizedPhone": "72053188",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "bMu9qPx7m3VhhqxBpeCU2lyvKR13",
+      "tableName": "players",
+      "name": "علي محمد علي",
+      "rawPhone": "72053188",
+      "normalizedPhone": "72053188",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "slBxvl5YImGn6jw037Dk",
+      "tableName": "players",
+      "name": "mohamed saudi",
+      "rawPhone": "72053188",
+      "normalizedPhone": "72053188",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "zTFTwGU4v2GdYE9SCtmm",
+      "tableName": "players",
+      "name": "mohamed saudi",
+      "rawPhone": "72053188",
+      "normalizedPhone": "72053188",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "FNu1kcoUJEa4FOujNvYLHOpoMg53",
+      "tableName": "players",
+      "name": "Shref hasn",
+      "rawPhone": "201000940321",
+      "normalizedPhone": "+201000940321",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "N1qlF0vA0WPRdVDfE41fWVOfFJD3",
+      "tableName": "users",
+      "name": "راشد محسن الشهواني",
+      "rawPhone": "201000940321",
+      "normalizedPhone": "+201000940321",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "QAMNwgNVVRVqKw5KhXhQayrtX6h1",
+      "tableName": "players",
+      "name": "ابو مكه ",
+      "rawPhone": "201000940321",
+      "normalizedPhone": "+201000940321",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "M0bXmeytW5SqD023oxU8jcz95QC2",
+      "tableName": "agents",
+      "name": "شريف حسن محمد ",
+      "rawPhone": "201000940321",
+      "normalizedPhone": "+201000940321",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "Fh9naqi4M9OBpnXNCsijMxkQkTv2",
+      "tableName": "agents",
+      "name": "اسامة بدوي",
+      "rawPhone": "3214569879",
+      "normalizedPhone": "3214569879",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "FhNmAqluG7P7WTwlyRqnTnf0qf23",
+      "tableName": "players",
+      "name": "ابراهيم",
+      "rawPhone": "05555555",
+      "normalizedPhone": "05555555",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "oWOfAwoRh3PzBWNDq8GTO5YSA1P2",
+      "tableName": "users",
+      "name": "نادي اختبار",
+      "rawPhone": "3216547894",
+      "normalizedPhone": "3216547894",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "QU7WtY4IoKYcXQWIFafOBKOeBYm1",
+      "tableName": "admins",
+      "name": "مدير النظام الرئيسي",
+      "rawPhone": "+966500000000",
+      "normalizedPhone": "+966500000000",
+      "country": "Saudi Arabia",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "hWAd3JRCJnXAowZKJ5W9qSJlA7i1",
+      "tableName": "admins",
+      "name": "مدير النظام",
+      "rawPhone": "+966500000000",
+      "normalizedPhone": "+966500000000",
+      "country": "Saudi Arabia",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "kiQktw04FaZwoQQ8JT1WEZ7QcIP2",
+      "tableName": "users",
+      "name": "مدير النظام",
+      "rawPhone": "+966500000000",
+      "normalizedPhone": "+966500000000",
+      "country": "Saudi Arabia",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "FwMyuqQ61MailLnrn7uQtunUpL73",
+      "tableName": "players",
+      "name": "Kareem Fghhj",
+      "rawPhone": "01205131136",
+      "normalizedPhone": "+201205131136",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "HRyJpCYzDdODRrBoekpGXSW9Jx73",
+      "tableName": "players",
+      "name": "كريم غريب حسن ",
+      "rawPhone": "201205131136",
+      "normalizedPhone": "+201205131136",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "a4i3fk7xU6T9Mn4Vtjzdb5jlTC93",
+      "tableName": "academies",
+      "name": "اكاديميمة ريال مدريد",
+      "rawPhone": "0666666666",
+      "normalizedPhone": "0666666666",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "01METNFmZIhS7OtQBt6OVh9Trdl2",
+      "tableName": "players",
+      "name": "هههههههههه",
+      "rawPhone": "20123456789",
+      "normalizedPhone": "+20123456789",
+      "country": "Egypt",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "HPJaSUeMxpYPhNmHGnCTlBjnwdH3",
+      "tableName": "academies",
+      "name": "أكاديمية جديدة",
+      "rawPhone": "20128059923",
+      "normalizedPhone": "+20128059923",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "Kn3NlMQA0iT5TEIsr9DNvcCnJ1j2",
+      "tableName": "players",
+      "name": "يوسف احمد معوض غندور ",
+      "rawPhone": "+20128059923",
+      "normalizedPhone": "+20128059923",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "L0q5pWIWNoeQTNAHTofFVBZR4Is2",
+      "tableName": "players",
+      "name": "يوسف احمد معوض غندور ",
+      "rawPhone": "+20128059923",
+      "normalizedPhone": "+20128059923",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "RWM6ipzXWCTlWKhVPuafwVLsEPf1",
+      "tableName": "players",
+      "name": "يوسف احمد معوض غندور ",
+      "rawPhone": "+20128059923",
+      "normalizedPhone": "+20128059923",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "IX34KOCXrccUHSaj7JGOgMO7nzA2",
+      "tableName": "players",
+      "name": "محمد جمعه محمد ",
+      "rawPhone": "+20102939499",
+      "normalizedPhone": "+20102939499",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "neEfb9khgDNT0EmA9zfmuakaLTi2",
+      "tableName": "players",
+      "name": "محمد جمعه محمد ",
+      "rawPhone": "+20102939499",
+      "normalizedPhone": "+20102939499",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "83ded7fc-43e1-4451-96cb-8be4950004e6",
+      "tableName": "academies",
+      "name": "الابداع والتطوير ا",
+      "rawPhone": "70542458",
+      "normalizedPhone": "70542458",
+      "country": "Invalid",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": true
+      }
+    },
+    {
+      "accountId": "HhaxbH4J3MbvbtCnvaatNZbkH1s2",
+      "tableName": "users",
+      "name": "كراميلا_karamila",
+      "rawPhone": "01030456946",
+      "normalizedPhone": "+201030456946",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "Rh76d5aIBkckFJcymDsrOXjEYRl2",
+      "tableName": "players",
+      "name": "شيماء شوقي",
+      "rawPhone": "201030456946",
+      "normalizedPhone": "+201030456946",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "LGBFQZrBUzLxEmh77aLQRtv7KRw2",
+      "tableName": "players",
+      "name": "معاذ رمضان القاضي ",
+      "rawPhone": "+20101993278",
+      "normalizedPhone": "+20101993278",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "T2YwllYRmiWOTHycjW6tdUzjGuD3",
+      "tableName": "players",
+      "name": "معاذ القاضي",
+      "rawPhone": "+20101993278",
+      "normalizedPhone": "+20101993278",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "ZINDYoIpWOX4LxwuCQP3CSd1F2l2",
+      "tableName": "players",
+      "name": "معاذ رمضان القاضي ",
+      "rawPhone": "+20101993278",
+      "normalizedPhone": "+20101993278",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "Ner9km8QY2eqJHKjUX39VPrT6ro1",
+      "tableName": "players",
+      "name": "محمد حربي ",
+      "rawPhone": "201092475558",
+      "normalizedPhone": "+201092475558",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "cvFk5HLHLheo4crw3hEvEqMmA7Q2",
+      "tableName": "players",
+      "name": "Mohamed harby ",
+      "rawPhone": "201092475558",
+      "normalizedPhone": "+201092475558",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "PHisHn8WL0OUhuSaEh61JQPPdd42",
+      "tableName": "players",
+      "name": "ابراهيم محمد ابراهيم عبد السلام",
+      "rawPhone": "201015650475",
+      "normalizedPhone": "+201015650475",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Ambiguous identity relationship requiring manual investigation",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "y2Zl9HI2yIfPgJS6P6psImu7lRv1",
+      "tableName": "players",
+      "name": "ibrahem hassan",
+      "rawPhone": "01015650475",
+      "normalizedPhone": "+201015650475",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Ambiguous identity relationship requiring manual investigation",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "MN8Cmn8rBnQlj9q87k7skX3zDKJ2",
+      "tableName": "clubs",
+      "name": "محمد عبد الحليم عبد الحليم ",
+      "rawPhone": "20120166795",
+      "normalizedPhone": "+20120166795",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "Q2yKTAqbmeYxIeFqZmlljL1NJsS2",
+      "tableName": "trainers",
+      "name": "نادر شوقي ",
+      "rawPhone": "0111111111",
+      "normalizedPhone": "0111111111",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "neqG4GAs7fWFSPew5xNBllh8wNC2",
+      "tableName": "users",
+      "name": "محمد صلاح محسن",
+      "rawPhone": "0111111111",
+      "normalizedPhone": "0111111111",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "8iuGxfKbL1xPHFfg3e4b",
+      "tableName": "players",
+      "name": "علي مصطفي",
+      "rawPhone": "0111111111",
+      "normalizedPhone": "0111111111",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "ELDzth11cuBv8nocdFcw",
+      "tableName": "players",
+      "name": "الحاوي",
+      "rawPhone": "0111111111",
+      "normalizedPhone": "0111111111",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "IANSStKPbyF4vC0awmlK",
+      "tableName": "players",
+      "name": "خليل جميل",
+      "rawPhone": "0111111111",
+      "normalizedPhone": "0111111111",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "64wYhyuYHaQGyI8bsLuz",
+      "tableName": "players",
+      "name": "محمد صلاح محسن",
+      "rawPhone": "0111111111",
+      "normalizedPhone": "0111111111",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "Tu0aTPYUh8UR7ETsH9pX",
+      "tableName": "players",
+      "name": "عبدالظاهر السقا",
+      "rawPhone": "0111111111",
+      "normalizedPhone": "0111111111",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "ihZnllLriZE5v8ciWtuI",
+      "tableName": "players",
+      "name": "تيري هنري",
+      "rawPhone": "0111111111",
+      "normalizedPhone": "0111111111",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "Rqk1g1rpG3VmmG7X1yrwmcuAJET2",
+      "tableName": "players",
+      "name": " سعيد محمد ابراهيم ",
+      "rawPhone": "201066573162",
+      "normalizedPhone": "+201066573162",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "cUd2uWgveCXu6ZHGpGjLO3Nw9im2",
+      "tableName": "players",
+      "name": "يوسف محمد",
+      "rawPhone": "201066573162",
+      "normalizedPhone": "+201066573162",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "KugxKRoTH6ZUQ3jOjhClBagrvVH2",
+      "tableName": "clubs",
+      "name": "Mohamed saudi",
+      "rawPhone": "963123456789",
+      "normalizedPhone": "+963123456789",
+      "country": "Syria",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "QgypAFJcRhg31F5OAsdvZwJnF4n2",
+      "tableName": "players",
+      "name": "حامد ياسر الطناحي",
+      "rawPhone": "201060901948",
+      "normalizedPhone": "+201060901948",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "cWThxvOR6QeLsd2Gno7EL8cfTsN2",
+      "tableName": "players",
+      "name": "حامدياسر الطناحي ",
+      "rawPhone": "201060901948",
+      "normalizedPhone": "+201060901948",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "LrZ96RteFrOB9YHtj3Dw1VY1COi2",
+      "tableName": "marketers",
+      "name": "mohamed saudi",
+      "rawPhone": "20",
+      "normalizedPhone": "+20",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "Y9Jpw2MGHpdu0fk3AGpo3lxCl9m1",
+      "tableName": "clubs",
+      "name": "نادي الاهلي",
+      "rawPhone": "1234567899",
+      "normalizedPhone": "+1234567899",
+      "country": "USA/Canada",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "ZiMV03Pcg1Qhlay2SkmQWnudehA2",
+      "tableName": "academies",
+      "name": "أكاديمية جديدة",
+      "rawPhone": "201226160818",
+      "normalizedPhone": "+201226160818",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Ambiguous identity relationship requiring manual investigation",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "R8OFOiSHMLS9GiTDeWQh7QcmriF2",
+      "tableName": "academies",
+      "name": "أكاديمية جديدة",
+      "rawPhone": "201015054726",
+      "normalizedPhone": "+201015054726",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Ambiguous identity relationship requiring manual investigation",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "c1X0Y332qGfX1EFEQyBNuoyhVsd2",
+      "tableName": "academies",
+      "name": "Lions Athletic Academy ",
+      "rawPhone": "97450940559",
+      "normalizedPhone": "+97450940559",
+      "country": "Qatar",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "thAtTp8CzEwOPrL2oyxn",
+      "tableName": "players",
+      "name": "احمد رياض سوادى محمد الشمري",
+      "rawPhone": "97450940559",
+      "normalizedPhone": "+97450940559",
+      "country": "Qatar",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "7P46Taqt3lT4u7rNrQKR",
+      "tableName": "players",
+      "name": "يوسف عبدالرحمان محمد بوشيبة",
+      "rawPhone": "97450940559",
+      "normalizedPhone": "+97450940559",
+      "country": "Qatar",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "CHhr85zBmKsKwWgRMo7a",
+      "tableName": "players",
+      "name": "سيف محمد ابراهيم محمود ابو لبده",
+      "rawPhone": "97450940559",
+      "normalizedPhone": "+97450940559",
+      "country": "Qatar",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "Pmh2ZQe7A0hcGeVfAFbN",
+      "tableName": "players",
+      "name": "سيف يزن هاني قدورة",
+      "rawPhone": "97450940559",
+      "normalizedPhone": "+97450940559",
+      "country": "Qatar",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "aPoHOAKvScqDBFuJI6yW",
+      "tableName": "players",
+      "name": "ادم نهاد قدري محمد نصر",
+      "rawPhone": "97450940559",
+      "normalizedPhone": "+97450940559",
+      "country": "Qatar",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "muzRU8v1DqT7dJkbPhwD",
+      "tableName": "players",
+      "name": "عمار عاطف كمال احمد رضوان",
+      "rawPhone": "97450940559",
+      "normalizedPhone": "+97450940559",
+      "country": "Qatar",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "u4k7GW48smYUOWsRQho3",
+      "tableName": "players",
+      "name": "يوسف عبدالوهاب محمد قاسم زباره",
+      "rawPhone": "97450940559",
+      "normalizedPhone": "+97450940559",
+      "country": "Qatar",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "c9F975YF3XWBssiXaaZItbBVM2Q2",
+      "tableName": "players",
+      "name": "علاء محمد  عمر",
+      "rawPhone": "05555555",
+      "normalizedPhone": "05555555",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "cmR1Jj2k3ZO4fSU5mMU87X34mrc2",
+      "tableName": "players",
+      "name": "مالك احمد فوزي ",
+      "rawPhone": "201000493875",
+      "normalizedPhone": "+201000493875",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "VOHOyXCaMOd6ZRRmOQHJbELD4Ew1",
+      "tableName": "players",
+      "name": "Malek Ahmed Fawzy",
+      "rawPhone": "201000493875",
+      "normalizedPhone": "+201000493875",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "hC0OteCqnfX1WEtnikVB9eUO8Lp2",
+      "tableName": "academies",
+      "name": "الكابتن اكاديمي ",
+      "rawPhone": "201151438471",
+      "normalizedPhone": "+201151438471",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Ambiguous identity relationship requiring manual investigation",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "ej356ozUzGalpVXbuZD2nujeVvf1",
+      "tableName": "trainers",
+      "name": "عصام عماد",
+      "rawPhone": "201026558999",
+      "normalizedPhone": "+201026558999",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "KtngER5NNzVJJh3R6WJ1uahtnhI2",
+      "tableName": "players",
+      "name": "علاء الدين",
+      "rawPhone": "01026558999",
+      "normalizedPhone": "+201026558999",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "e4BAGj0JUZYXPQHqcaF1BHzmHoy2",
+      "tableName": "players",
+      "name": "محمد حسين",
+      "rawPhone": "01026558999",
+      "normalizedPhone": "+201026558999",
+      "country": "Egypt",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": true,
+        "inConversations": true,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "irZOiBwfXnM5cDMvSh7W8O0cbpb2",
+      "tableName": "players",
+      "name": "احمد رياض الشمري ",
+      "rawPhone": "97455561599",
+      "normalizedPhone": "+97455561599",
+      "country": "Qatar",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "p1KkofykQwTdAfmkz0LC4reXPHv1",
+      "tableName": "academies",
+      "name": "LIONS ATHLEIC ACADEMY",
+      "rawPhone": "+97455561599",
+      "normalizedPhone": "+97455561599",
+      "country": "Qatar",
+      "category": "REAL_CONFLICT",
+      "reviewReason": "Distinct individual sharing phone number with another real user. Requires manual phone update/reassignment.",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "kMdCJAUAp7fVbBcFg1g9bPwnfIH3",
+      "tableName": "trainers",
+      "name": "سمير عبد الله أحمد ظفر ",
+      "rawPhone": "20128250339",
+      "normalizedPhone": "+20128250339",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "m0fduSBldXV8qr4qdMyVv4eKoGz1",
+      "tableName": "users",
+      "name": "سيسس",
+      "rawPhone": "1234567891",
+      "normalizedPhone": "+1234567891",
+      "country": "USA/Canada",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "YWGHzaxr08YE8vwmPK2i",
+      "tableName": "players",
+      "name": "سيسس",
+      "rawPhone": "1234567891",
+      "normalizedPhone": "+1234567891",
+      "country": "USA/Canada",
+      "category": "TEST_DATA_WITH_DEPENDENCIES",
+      "reviewReason": "Test data account has existing foreign key references (notifications/messages/conversations). Requires cascade cleanup review before deletion.",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "mcXyLKDH9cdQ5zRnSzaLfbvSqjO2",
+      "tableName": "academies",
+      "name": "ride",
+      "rawPhone": "0199999999",
+      "normalizedPhone": "0199999999",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "mv9cBC6ObqTjcZ2Pi8qSNL2b0pt1",
+      "tableName": "academies",
+      "name": "أكاديمية جديدة",
+      "rawPhone": "201066269051",
+      "normalizedPhone": "+201066269051",
+      "country": "Egypt",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Ambiguous identity relationship requiring manual investigation",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "oAsshvM54jgoZSkhhNbt2LxuQhI2",
+      "tableName": "trainers",
+      "name": "22222222222222222222",
+      "rawPhone": "218222222223",
+      "normalizedPhone": "218222222223",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "4mhzybfAyOEHygMnh7W1",
+      "tableName": "players",
+      "name": "سعيد احمد",
+      "rawPhone": "077777777777",
+      "normalizedPhone": "077777777777",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "hChYVnu04cXe3KK8JJQu",
+      "tableName": "players",
+      "name": "علي فراس",
+      "rawPhone": "077777777777",
+      "normalizedPhone": "077777777777",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": false,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "kAkowrdy2ROOW22plFLD",
+      "tableName": "players",
+      "name": "مصطفي",
+      "rawPhone": "077777777777",
+      "normalizedPhone": "077777777777",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "rRJx6CWw9LjxAzt1HXfc",
+      "tableName": "players",
+      "name": "عاصي",
+      "rawPhone": "077777777777",
+      "normalizedPhone": "077777777777",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "fmrnT921oR9xy5mtC6AQ",
+      "tableName": "players",
+      "name": "نادر شوقي",
+      "rawPhone": "077777777777",
+      "normalizedPhone": "077777777777",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    },
+    {
+      "accountId": "cAcwfAjp4WdKFRIekjzJOtTNVn72",
+      "tableName": "players",
+      "name": "ابراهيم",
+      "rawPhone": "05555555",
+      "normalizedPhone": "05555555",
+      "country": "Invalid",
+      "category": "UNRESOLVED_OR_MALFORMED",
+      "reviewReason": "Malformed phone number format requiring manual contact correction",
+      "foreignKeys": {
+        "inNotifications": true,
+        "inMessages": false,
+        "inConversations": false,
+        "inFavorites": false,
+        "inOpportunities": false
+      }
+    }
+  ]
+}

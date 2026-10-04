@@ -1,0 +1,1293 @@
+{
+  "metadata": {
+    "phase": "Phase 9.1 — Identity Reconciliation Audit",
+    "timestamp": "2026-09-25T20:06:49.506Z",
+    "platform": "El7lm-V2 / Supabase Production",
+    "auditMode": "STRICTLY_READ_ONLY",
+    "modifications": {
+      "database_modifications": 0,
+      "rows_modified": 0,
+      "rows_deleted": 0,
+      "schema_modifications": 0
+    }
+  },
+  "users_classification": {
+    "ACTIVE_AUTH": 149,
+    "LEGACY_AUTH": 993,
+    "NO_AUTH": 83,
+    "DUPLICATE_UID": 0,
+    "MISSING_PHONE": 128,
+    "VALID_IDENTITY": 1,
+    "AMBIGUOUS_IDENTITY": 3
+  },
+  "auth_reconciliation": {
+    "EXACT_MATCH": 149,
+    "UID_MATCH": 0,
+    "EMAIL_MATCH": 708,
+    "PHONE_MATCH": 2,
+    "NO_AUTH_MATCH": 498,
+    "AMBIGUOUS": 0
+  },
+  "profile_reconciliation": {
+    "summary": {
+      "MATCHED_PROFILE": 1196,
+      "PROFILE_WITHOUT_USER": 54,
+      "USER_WITHOUT_PROFILE": 176,
+      "IDENTITY_MISMATCH": 16,
+      "MULTIPLE_PROFILE_MATCH": 0
+    },
+    "byTable": {
+      "players": {
+        "total": 1079,
+        "matched": 1023,
+        "mismatch": 7,
+        "orphan": 49
+      },
+      "clubs": {
+        "total": 39,
+        "matched": 36,
+        "mismatch": 1,
+        "orphan": 2
+      },
+      "academies": {
+        "total": 39,
+        "matched": 31,
+        "mismatch": 6,
+        "orphan": 2
+      },
+      "trainers": {
+        "total": 50,
+        "matched": 48,
+        "mismatch": 2,
+        "orphan": 0
+      },
+      "agents": {
+        "total": 29,
+        "matched": 28,
+        "mismatch": 0,
+        "orphan": 1
+      },
+      "marketers": {
+        "total": 27,
+        "matched": 27,
+        "mismatch": 0,
+        "orphan": 0
+      },
+      "admins": {
+        "total": 3,
+        "matched": 3,
+        "mismatch": 0,
+        "orphan": 0
+      }
+    }
+  },
+  "phone_ownership": {
+    "SINGLE_OWNER": 64,
+    "SAME_PERSON_DUPLICATE": 762,
+    "DIFFERENT_PERSON_CONFLICT": 23,
+    "TEST_PHONE": 39,
+    "INVALID_PHONE": 205,
+    "AMBIGUOUS": 0
+  },
+  "duplicate_groups_resolution": {
+    "totalGroups": 962,
+    "keepIdentityGroups": 762,
+    "phoneConflictGroups": 23,
+    "testDataGroups": 24,
+    "reviewIdentityGroups": 153,
+    "sampleGroups": [
+      {
+        "normalizedPhone": "+201023361064",
+        "countryCode": "+20",
+        "accountsCount": 4,
+        "ownershipStatus": "SAME_PERSON_DUPLICATE",
+        "decision": "KEEP_IDENTITY",
+        "confidence": {
+          "sameIdentityConfidence": 0.98,
+          "sameUserConfidence": 0.98,
+          "differentUserConfidence": 0.05,
+          "testDataConfidence": 0.01
+        },
+        "accounts": [
+          {
+            "table": "users",
+            "accountId": "qWQfgalM1vgLtbyjHvew6aVv3tH2",
+            "accountType": "player",
+            "name": "حماده احمد عبدالحميد علي اسماعيل شعبان",
+            "email": "p20_201023361064@el7lm.com",
+            "uid": "qWQfgalM1vgLtbyjHvew6aVv3tH2"
+          },
+          {
+            "table": "users",
+            "accountId": "6l0OBQ5nTDRbJftPBPsn6KGWA0n1",
+            "accountType": "player",
+            "name": "حماده احمد عبد الحميد",
+            "email": "user_6l0obq5ntdrbjftpbpsn6kgwa0n1@el7lm.com",
+            "uid": "6l0OBQ5nTDRbJftPBPsn6KGWA0n1"
+          },
+          {
+            "table": "players",
+            "accountId": "6l0OBQ5nTDRbJftPBPsn6KGWA0n1",
+            "accountType": "player",
+            "name": "حماده احمد عبد الحميد",
+            "email": "p20_201023361064@el7lm.com",
+            "uid": "74dbfd89-3db4-4fc0-b41e-a733a6f31232"
+          },
+          {
+            "table": "players",
+            "accountId": "qWQfgalM1vgLtbyjHvew6aVv3tH2",
+            "accountType": "player",
+            "name": "حماده احمد عبدالحميد علي اسماعيل شعبان",
+            "email": "p20_201023361064@el7lm.com",
+            "uid": "qWQfgalM1vgLtbyjHvew6aVv3tH2"
+          }
+        ]
+      },
+      {
+        "normalizedPhone": "+201013714944",
+        "countryCode": "+20",
+        "accountsCount": 2,
+        "ownershipStatus": "SAME_PERSON_DUPLICATE",
+        "decision": "KEEP_IDENTITY",
+        "confidence": {
+          "sameIdentityConfidence": 0.98,
+          "sameUserConfidence": 0.98,
+          "differentUserConfidence": 0.05,
+          "testDataConfidence": 0.01
+        },
+        "accounts": [
+          {
+            "table": "users",
+            "accountId": "qZfIOur8FTcNb3oEEl6LH24uMS43",
+            "accountType": "player",
+            "name": "ادهم محمد رمضان",
+            "email": "p20_201013714944@el7lm.com",
+            "uid": "qZfIOur8FTcNb3oEEl6LH24uMS43"
+          },
+          {
+            "table": "players",
+            "accountId": "qZfIOur8FTcNb3oEEl6LH24uMS43",
+            "accountType": "player",
+            "name": "ادهم محمد رمضان",
+            "email": "p20_201013714944@el7lm.com",
+            "uid": "qZfIOur8FTcNb3oEEl6LH24uMS43"
+          }
+        ]
+      },
+      {
+        "normalizedPhone": "+20102546196",
+        "countryCode": "+20",
+        "accountsCount": 2,
+        "ownershipStatus": "INVALID_PHONE",
+        "decision": "REVIEW_IDENTITY",
+        "confidence": {
+          "sameIdentityConfidence": 0.5,
+          "sameUserConfidence": 0.95,
+          "differentUserConfidence": 0.05,
+          "testDataConfidence": 0.01
+        },
+        "accounts": [
+          {
+            "table": "users",
+            "accountId": "qhAtfyjq4ufwcFLgQaEgoISsbT82",
+            "accountType": "player",
+            "name": "احمد رمضان عبد الله عمار محمود عمار",
+            "email": "user_20_20102546196_1758040848956_4kf29b@el7lm.com",
+            "uid": "qhAtfyjq4ufwcFLgQaEgoISsbT82"
+          },
+          {
+            "table": "players",
+            "accountId": "qhAtfyjq4ufwcFLgQaEgoISsbT82",
+            "accountType": "player",
+            "name": "احمد رمضان عبد الله عمار محمود عمار",
+            "email": "p20_20102546196@el7lm.com",
+            "uid": "qhAtfyjq4ufwcFLgQaEgoISsbT82"
+          }
+        ]
+      },
+      {
+        "normalizedPhone": "+212773220551",
+        "countryCode": "+212",
+        "accountsCount": 2,
+        "ownershipStatus": "SAME_PERSON_DUPLICATE",
+        "decision": "KEEP_IDENTITY",
+        "confidence": {
+          "sameIdentityConfidence": 0.98,
+          "sameUserConfidence": 0.98,
+          "differentUserConfidence": 0.05,
+          "testDataConfidence": 0.01
+        },
+        "accounts": [
+          {
+            "table": "users",
+            "accountId": "qjO2AGuhAwbXF8E6iliiUFw3A1u2",
+            "accountType": "player",
+            "name": "mohammed yahya maanan",
+            "email": "212773220551@el7lm.com",
+            "uid": "qjO2AGuhAwbXF8E6iliiUFw3A1u2"
+          },
+          {
+            "table": "players",
+            "accountId": "qjO2AGuhAwbXF8E6iliiUFw3A1u2",
+            "accountType": "player",
+            "name": "mohammed yahya maanan",
+            "email": "212773220551@el7lm.com",
+            "uid": "qjO2AGuhAwbXF8E6iliiUFw3A1u2"
+          }
+        ]
+      },
+      {
+        "normalizedPhone": "+97433423370",
+        "countryCode": "+974",
+        "accountsCount": 2,
+        "ownershipStatus": "SAME_PERSON_DUPLICATE",
+        "decision": "KEEP_IDENTITY",
+        "confidence": {
+          "sameIdentityConfidence": 0.98,
+          "sameUserConfidence": 0.98,
+          "differentUserConfidence": 0.05,
+          "testDataConfidence": 0.01
+        },
+        "accounts": [
+          {
+            "table": "users",
+            "accountId": "qmtxAndV8CfiuTE4C9WBvxHybna2",
+            "accountType": "player",
+            "name": "يوسف عبدالرحمن بوشيبة",
+            "email": "p974_97433423370@el7lm.com",
+            "uid": "qmtxAndV8CfiuTE4C9WBvxHybna2"
+          },
+          {
+            "table": "players",
+            "accountId": "qmtxAndV8CfiuTE4C9WBvxHybna2",
+            "accountType": "player",
+            "name": "يوسف عبدالرحمن بوشيبة",
+            "email": "p974_97433423370@el7lm.com",
+            "uid": "qmtxAndV8CfiuTE4C9WBvxHybna2"
+          }
+        ]
+      },
+      {
+        "normalizedPhone": "+20109831918",
+        "countryCode": "+20",
+        "accountsCount": 2,
+        "ownershipStatus": "INVALID_PHONE",
+        "decision": "REVIEW_IDENTITY",
+        "confidence": {
+          "sameIdentityConfidence": 0.5,
+          "sameUserConfidence": 0.95,
+          "differentUserConfidence": 0.05,
+          "testDataConfidence": 0.01
+        },
+        "accounts": [
+          {
+            "table": "users",
+            "accountId": "qpzGtUwptqfGMu97EXIDpw95bRj2",
+            "accountType": "player",
+            "name": "Moaz bahaa mohamed",
+            "email": "user_20_20109831918_1758095763710_g6e0tx@el7lm.com",
+            "uid": "qpzGtUwptqfGMu97EXIDpw95bRj2"
+          },
+          {
+            "table": "players",
+            "accountId": "qpzGtUwptqfGMu97EXIDpw95bRj2",
+            "accountType": "player",
+            "name": "Moaz bahaa mohamed",
+            "email": "p20_20109831918@el7lm.com",
+            "uid": "qpzGtUwptqfGMu97EXIDpw95bRj2"
+          }
+        ]
+      },
+      {
+        "normalizedPhone": "+212673890155",
+        "countryCode": "+212",
+        "accountsCount": 2,
+        "ownershipStatus": "SAME_PERSON_DUPLICATE",
+        "decision": "KEEP_IDENTITY",
+        "confidence": {
+          "sameIdentityConfidence": 0.98,
+          "sameUserConfidence": 0.98,
+          "differentUserConfidence": 0.05,
+          "testDataConfidence": 0.01
+        },
+        "accounts": [
+          {
+            "table": "users",
+            "accountId": "qsjhkfyIHEdZelPnWFIG6Y0FLpo2",
+            "accountType": "player",
+            "name": "يوسف علوان",
+            "email": "212673890155@el7lm.com",
+            "uid": "qsjhkfyIHEdZelPnWFIG6Y0FLpo2"
+          },
+          {
+            "table": "players",
+            "accountId": "qsjhkfyIHEdZelPnWFIG6Y0FLpo2",
+            "accountType": "player",
+            "name": "يوسف علوان",
+            "email": "212673890155@el7lm.com",
+            "uid": "qsjhkfyIHEdZelPnWFIG6Y0FLpo2"
+          }
+        ]
+      },
+      {
+        "normalizedPhone": "+9747205318",
+        "countryCode": "+974",
+        "accountsCount": 2,
+        "ownershipStatus": "TEST_PHONE",
+        "decision": "TEST_DATA",
+        "confidence": {
+          "sameIdentityConfidence": 0.1,
+          "sameUserConfidence": 0.95,
+          "differentUserConfidence": 0.05,
+          "testDataConfidence": 0.99
+        },
+        "accounts": [
+          {
+            "table": "users",
+            "accountId": "r3ngUV3ie6QOtKmmG7dtKytVyNb2",
+            "accountType": "club",
+            "name": "hagzz",
+            "email": "hagzz@el7lm.com",
+            "uid": null
+          },
+          {
+            "table": "users",
+            "accountId": "HxibD8KGk3X5FK0UCLE9DhcTFTF3",
+            "accountType": "club",
+            "name": "hagzz",
+            "email": "hagzz@el7lm.com",
+            "uid": null
+          }
+        ]
+      },
+      {
+        "normalizedPhone": "+201154440480",
+        "countryCode": "+20",
+        "accountsCount": 2,
+        "ownershipStatus": "SAME_PERSON_DUPLICATE",
+        "decision": "KEEP_IDENTITY",
+        "confidence": {
+          "sameIdentityConfidence": 0.98,
+          "sameUserConfidence": 0.98,
+          "differentUserConfidence": 0.05,
+          "testDataConfidence": 0.01
+        },
+        "accounts": [
+          {
+            "table": "users",
+            "accountId": "r3wkefq30ifrujszxENxggJABdv2",
+            "accountType": "player",
+            "name": "Karim khalifa",
+            "email": "p20_1154440480@el7lm.com",
+            "uid": "r3wkefq30ifrujszxENxggJABdv2"
+          },
+          {
+            "table": "players",
+            "accountId": "r3wkefq30ifrujszxENxggJABdv2",
+            "accountType": "player",
+            "name": "Karim khalifa",
+            "email": "p20_1154440480@el7lm.com",
+            "uid": "r3wkefq30ifrujszxENxggJABdv2"
+          }
+        ]
+      },
+      {
+        "normalizedPhone": "+96555482547688",
+        "countryCode": "+965",
+        "accountsCount": 2,
+        "ownershipStatus": "SAME_PERSON_DUPLICATE",
+        "decision": "KEEP_IDENTITY",
+        "confidence": {
+          "sameIdentityConfidence": 0.98,
+          "sameUserConfidence": 0.98,
+          "differentUserConfidence": 0.05,
+          "testDataConfidence": 0.01
+        },
+        "accounts": [
+          {
+            "table": "users",
+            "accountId": "r4DLmOreSPNI4Xkw4ez0JvErrwu2",
+            "accountType": "club",
+            "name": "نادي القاسم العراقي",
+            "email": "c20_@el7lm.com96555482547688",
+            "uid": "r4DLmOreSPNI4Xkw4ez0JvErrwu2"
+          },
+          {
+            "table": "clubs",
+            "accountId": "r4DLmOreSPNI4Xkw4ez0JvErrwu2",
+            "accountType": "club",
+            "name": "نادي القاسم العراقي",
+            "email": "c20_@el7lm.com96555482547688",
+            "uid": "r4DLmOreSPNI4Xkw4ez0JvErrwu2"
+          }
+        ]
+      }
+    ]
+  },
+  "orphan_profiles": {
+    "total": 54,
+    "profiles": [
+      {
+        "table": "players",
+        "profileId": "1adnTHZw4FencNWw65CL",
+        "name": "عالي حسين",
+        "phoneRaw": "0222222222",
+        "phoneNormalized": "0222222222",
+        "uid": "",
+        "email": "kpis@kpis.com",
+        "createdAt": "2025-06-21T16:46:40.155Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "9qDARZrusgcRsyZPRHfvTQCefvp2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "4mhzybfAyOEHygMnh7W1",
+        "name": "سعيد احمد",
+        "phoneRaw": "077777777777",
+        "phoneNormalized": "077777777777",
+        "uid": "",
+        "email": "mo.saudi19@gmail.com",
+        "createdAt": "2025-06-23T00:40:14.023Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "thAtTp8CzEwOPrL2oyxn",
+        "name": "احمد رياض سوادى محمد الشمري",
+        "phoneRaw": "97450940559",
+        "phoneNormalized": "+97450940559",
+        "uid": "",
+        "email": "a974_97450940559@el7lm.com",
+        "createdAt": "2025-11-11T19:55:49.396Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "c1X0Y332qGfX1EFEQyBNuoyhVsd2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "7P46Taqt3lT4u7rNrQKR",
+        "name": "يوسف عبدالرحمان محمد بوشيبة",
+        "phoneRaw": "97450940559",
+        "phoneNormalized": "+97450940559",
+        "uid": "",
+        "email": "a974_97450940559@el7lm.com",
+        "createdAt": "2025-11-12T13:12:58.590Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "c1X0Y332qGfX1EFEQyBNuoyhVsd2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "8iuGxfKbL1xPHFfg3e4b",
+        "name": "علي مصطفي",
+        "phoneRaw": "0111111111",
+        "phoneNormalized": "0111111111",
+        "uid": "",
+        "email": "m@go.com",
+        "createdAt": "2025-06-21T21:47:08.558Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "Q2yKTAqbmeYxIeFqZmlljL1NJsS2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "AywExNnwTuK1HhShSIGh",
+        "name": "محمد احمد",
+        "phoneRaw": "01017995800",
+        "phoneNormalized": "+201017995800",
+        "uid": "",
+        "email": "q@q.com",
+        "createdAt": "2025-06-21T17:27:10.162Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "Tjuo4cipd4PUc90GuPyfTLUDye92",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "CHhr85zBmKsKwWgRMo7a",
+        "name": "سيف محمد ابراهيم محمود ابو لبده",
+        "phoneRaw": "97450940559",
+        "phoneNormalized": "+97450940559",
+        "uid": "",
+        "email": "a974_97450940559@el7lm.com",
+        "createdAt": "2025-12-07T19:59:56.678Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "c1X0Y332qGfX1EFEQyBNuoyhVsd2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "ELDzth11cuBv8nocdFcw",
+        "name": "الحاوي",
+        "phoneRaw": "0111111111",
+        "phoneNormalized": "0111111111",
+        "uid": "",
+        "email": "m@go.com",
+        "createdAt": "2025-06-23T22:59:25.564Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "Q2yKTAqbmeYxIeFqZmlljL1NJsS2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "HTMQqeUeTi8lsdlYfskV",
+        "name": "حمزة العليمي",
+        "phoneRaw": "201017799580",
+        "phoneNormalized": "+201017799580",
+        "uid": "",
+        "email": "user_20_201017799580_1755026927645_o58h37@el7hm.com",
+        "createdAt": "2025-11-08T13:26:50.000Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "2Uj9vwRn9jfVsQtrvX4B",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "IANSStKPbyF4vC0awmlK",
+        "name": "خليل جميل",
+        "phoneRaw": "0111111111",
+        "phoneNormalized": "0111111111",
+        "uid": "",
+        "email": "hagzz@mesk.com.qa",
+        "createdAt": "2025-06-21T17:39:26.153Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "Q2yKTAqbmeYxIeFqZmlljL1NJsS2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "M9DDihHQZQyCwj6s1SoA",
+        "name": "mohamed saudi",
+        "phoneRaw": "72053188",
+        "phoneNormalized": "72053188",
+        "uid": "",
+        "email": "mo.saudi19@gmail.com",
+        "createdAt": null,
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "F9UvdjTrtJbPvGf8F1ZzbFSKx6m1",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "PUB4cPrWNqXtxnK3m0jM",
+        "name": "جاسم سعيد الشعلي",
+        "phoneRaw": "8796796",
+        "phoneNormalized": "8796796",
+        "uid": "",
+        "email": "ahmedabusaidmansourgg@gmail.com",
+        "createdAt": "2026-02-04T14:21:00.611Z",
+        "activityCount": 1,
+        "authMatch": "",
+        "possibleParentIdentity": "jBtXzp78PZOII3Tr3kOus3ONAEr2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "Pmh2ZQe7A0hcGeVfAFbN",
+        "name": "سيف يزن هاني قدورة",
+        "phoneRaw": "97450940559",
+        "phoneNormalized": "+97450940559",
+        "uid": "",
+        "email": "a974_97450940559@el7lm.com",
+        "createdAt": "2025-11-11T20:19:23.051Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "c1X0Y332qGfX1EFEQyBNuoyhVsd2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "64wYhyuYHaQGyI8bsLuz",
+        "name": "محمد صلاح محسن",
+        "phoneRaw": "0111111111",
+        "phoneNormalized": "0111111111",
+        "uid": "",
+        "email": "m@go.com",
+        "createdAt": "2025-06-23T04:01:07.270Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "Q2yKTAqbmeYxIeFqZmlljL1NJsS2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "Tu0aTPYUh8UR7ETsH9pX",
+        "name": "عبدالظاهر السقا",
+        "phoneRaw": "0111111111",
+        "phoneNormalized": "0111111111",
+        "uid": "",
+        "email": "m@go.com",
+        "createdAt": "2025-06-23T03:26:35.498Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "Q2yKTAqbmeYxIeFqZmlljL1NJsS2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "UCRYaIbDNBHqtA0Y4eJs",
+        "name": "Mohamed saudi",
+        "phoneRaw": "01017799580",
+        "phoneNormalized": "+201017799580",
+        "uid": "",
+        "email": "mo.saudi19@gmail.com",
+        "createdAt": "2025-06-25T16:44:28.843Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "2Uj9vwRn9jfVsQtrvX4B",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "Qalhg9PlrKbIydXUqhdkOtFyxEp1",
+        "name": "",
+        "phoneRaw": "",
+        "phoneNormalized": null,
+        "uid": "",
+        "email": "uu@el7hm.comu",
+        "createdAt": "2025-08-09T08:49:25.000Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "7VwkM1UIFdcfiVSFBvm1",
+        "name": "مختار",
+        "phoneRaw": "01017799580",
+        "phoneNormalized": "+201017799580",
+        "uid": "",
+        "email": "eskllcqa@gmail.com",
+        "createdAt": "2025-07-07T06:53:21.000Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "2Uj9vwRn9jfVsQtrvX4B",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "jG0lmo3x7wRODTZES9b9GddBYZa2",
+        "name": "Mohamed Saudi",
+        "phoneRaw": "72053188",
+        "phoneNormalized": "72053188",
+        "uid": "",
+        "email": "mo.saudi19@gail.com",
+        "createdAt": "2025-03-24T01:57:58.000Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "F9UvdjTrtJbPvGf8F1ZzbFSKx6m1",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "5f433c8c-e12c-445b-bb89-5f605814a390",
+        "name": "Jafar jalabneh",
+        "phoneRaw": "00962790866671",
+        "phoneNormalized": "+962790866671",
+        "uid": "",
+        "email": "ahmadjlabneh93@gmail.com",
+        "createdAt": "2026-04-25T18:45:31.252Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "d24afe5c-44da-4f81-827d-fdb041fdae7b",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "wFOILtsWmDcJ96dW0YFNHu9oo6b2",
+        "name": "Ahmad abdelkhleq",
+        "phoneRaw": "+962785346905",
+        "phoneNormalized": "+962785346905",
+        "uid": "4cc84c4e-1e0d-4b9f-9254-c0c1ed2206e6",
+        "email": "ahmadabdelkhleq@gmail.com",
+        "createdAt": "2026-03-26T17:37:56.317Z",
+        "activityCount": 0,
+        "authMatch": true,
+        "possibleParentIdentity": "4cc84c4e-1e0d-4b9f-9254-c0c1ed2206e6",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "Y5j7j4D6uP8Lj9vbakZg",
+        "name": "Heroes",
+        "phoneRaw": "70542258",
+        "phoneNormalized": "70542258",
+        "uid": "",
+        "email": "mo.@gmail.com",
+        "createdAt": "2026-01-09T16:11:50.800Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "YWGHzaxr08YE8vwmPK2i",
+        "name": "سيسس",
+        "phoneRaw": "1234567891",
+        "phoneNormalized": "+1234567891",
+        "uid": "",
+        "email": "kpi@kpi.com",
+        "createdAt": null,
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "m0fduSBldXV8qr4qdMyVv4eKoGz1",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "aPoHOAKvScqDBFuJI6yW",
+        "name": "ادم نهاد قدري محمد نصر",
+        "phoneRaw": "97450940559",
+        "phoneNormalized": "+97450940559",
+        "uid": "",
+        "email": "a974_97450940559@el7lm.com",
+        "createdAt": "2025-11-12T11:41:37.631Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "c1X0Y332qGfX1EFEQyBNuoyhVsd2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "e4BAGj0JUZYXPQHqcaF1BHzmHoy2",
+        "name": "محمد حسين",
+        "phoneRaw": "01026558999",
+        "phoneNormalized": "+201026558999",
+        "uid": "",
+        "email": "mo.s19@gmail.com",
+        "createdAt": "2025-07-09T00:20:21.000Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "ej356ozUzGalpVXbuZD2nujeVvf1",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "evzECEBBgaP74lQIMKUQ",
+        "name": "عزالدين محمد",
+        "phoneRaw": "0111111",
+        "phoneNormalized": "0111111",
+        "uid": "",
+        "email": "m@m.com",
+        "createdAt": "2025-06-24T11:01:17.756Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "hChYVnu04cXe3KK8JJQu",
+        "name": "علي فراس",
+        "phoneRaw": "077777777777",
+        "phoneNormalized": "077777777777",
+        "uid": "",
+        "email": "mo.saudi19@gmail.com",
+        "createdAt": "2025-06-21T21:36:11.082Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "jaHdssB01rv2V3p40hA7",
+        "name": "Mohamed Mohamedsaudi",
+        "phoneRaw": "30511350",
+        "phoneNormalized": "30511350",
+        "uid": "",
+        "email": "el@gmail.com",
+        "createdAt": "2026-01-09T00:26:47.725Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "opmVXYFpMTPPusJGgwcuxrxkb0T2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "kAkowrdy2ROOW22plFLD",
+        "name": "مصطفي",
+        "phoneRaw": "077777777777",
+        "phoneNormalized": "077777777777",
+        "uid": "",
+        "email": "mo.saudi19@gmail.com",
+        "createdAt": "2025-06-21T14:23:29.788Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "DvNaEk3LQ3ptbiZN1ucC",
+        "name": "سيسس",
+        "phoneRaw": "12345678912",
+        "phoneNormalized": "+12345678912",
+        "uid": "",
+        "email": "hagzz@mesk.com.qa",
+        "createdAt": "2025-06-21T17:15:10.438Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "ls9eL2YFKkoFi7kMfqKr",
+        "name": "Tttt",
+        "phoneRaw": "705424366",
+        "phoneNormalized": "705424366",
+        "uid": "",
+        "email": "saudi19@gmail.com",
+        "createdAt": "2026-01-09T14:38:47.289Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "4PhRmJVLdncNOcVBvAmUztAxkkm2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "oteJcqOvg5nQdtrblNdz",
+        "name": "محمد عزمي",
+        "phoneRaw": "017779999",
+        "phoneNormalized": "017779999",
+        "uid": "",
+        "email": "m@go.com",
+        "createdAt": "2025-06-23T10:57:59.036Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "qQT5zSxleoe3viXIr9hIVGLHwLy1",
+        "name": "Mohamed Saudi",
+        "phoneRaw": "72053180",
+        "phoneNormalized": "72053180",
+        "uid": "",
+        "email": "mo.saudi19@j.com",
+        "createdAt": "2025-03-25T08:28:55.000Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "rJG08UCl64haTKAbYQX410FdLB73",
+        "name": "Mohammed Hassan",
+        "phoneRaw": "01123379793",
+        "phoneNormalized": "+201123379793",
+        "uid": "rJG08UCl64haTKAbYQX410FdLB73",
+        "email": "thehassan202060@gmail.com",
+        "createdAt": "2026-03-28T12:10:54.611Z",
+        "activityCount": 0,
+        "authMatch": false,
+        "possibleParentIdentity": "uE7bvBpfTaciPoynGsznyYnUlbp2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "rRJx6CWw9LjxAzt1HXfc",
+        "name": "عاصي",
+        "phoneRaw": "077777777777",
+        "phoneNormalized": "077777777777",
+        "uid": "",
+        "email": "mo.saudi19@gmail.com",
+        "createdAt": "2025-06-21T14:38:56.648Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "slBxvl5YImGn6jw037Dk",
+        "name": "mohamed saudi",
+        "phoneRaw": "72053188",
+        "phoneNormalized": "72053188",
+        "uid": "",
+        "email": "mo.saudi19@gmail.com",
+        "createdAt": null,
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "F9UvdjTrtJbPvGf8F1ZzbFSKx6m1",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "fmrnT921oR9xy5mtC6AQ",
+        "name": "نادر شوقي",
+        "phoneRaw": "077777777777",
+        "phoneNormalized": "077777777777",
+        "uid": "",
+        "email": "mo.saudi19@gmail.com",
+        "createdAt": "2025-06-21T14:25:04.179Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "uTx345hEyudcuifi4LYSKq2Mmu83",
+        "name": "ابو يوسف",
+        "phoneRaw": "",
+        "phoneNormalized": null,
+        "uid": "uTx345hEyudcuifi4LYSKq2Mmu83",
+        "email": "a47254522@gmail.com",
+        "createdAt": "2026-03-28T12:10:54.620Z",
+        "activityCount": 0,
+        "authMatch": false,
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "um5GMDcnhjCIaPuUDEAW",
+        "name": "ahmed magdy",
+        "phoneRaw": "201090000964",
+        "phoneNormalized": "+201090000964",
+        "uid": "",
+        "email": "medo_magdy_1711@yahoo.com",
+        "createdAt": "2025-08-30T16:20:42.314Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "9SiTv8Gi8wVi0b0JrzMdsUUv07t2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "wN7Tv9OnjPMP84qTfmp6",
+        "name": "محمد حسام",
+        "phoneRaw": "01017799580",
+        "phoneNormalized": "+201017799580",
+        "uid": "",
+        "email": "mo.saudi19@gmail.com",
+        "createdAt": "2025-06-23T23:08:26.510Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "2Uj9vwRn9jfVsQtrvX4B",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "xkSCyDOID3OV614rMHf7",
+        "name": "علي حسن",
+        "phoneRaw": "07777777777",
+        "phoneNormalized": "07777777777",
+        "uid": "",
+        "email": "m@m.com",
+        "createdAt": "2025-06-21T16:20:45.050Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "y2Zl9HI2yIfPgJS6P6psImu7lRv1",
+        "name": "ibrahem hassan",
+        "phoneRaw": "01015650475",
+        "phoneNormalized": "+201015650475",
+        "uid": "y2Zl9HI2yIfPgJS6P6psImu7lRv1",
+        "email": "ih7661211@gmail.com",
+        "createdAt": "2026-03-28T12:10:54.629Z",
+        "activityCount": 0,
+        "authMatch": false,
+        "possibleParentIdentity": "PHisHn8WL0OUhuSaEh61JQPPdd42",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "ihZnllLriZE5v8ciWtuI",
+        "name": "تيري هنري",
+        "phoneRaw": "0111111111",
+        "phoneNormalized": "0111111111",
+        "uid": "",
+        "email": "m@go.com",
+        "createdAt": "2025-06-23T03:28:50.726Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "Q2yKTAqbmeYxIeFqZmlljL1NJsS2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "google-play-review-player",
+        "name": "Google Play Review Player",
+        "phoneRaw": "201000000000",
+        "phoneNormalized": "+201000000000",
+        "uid": "2c6da7a3-cc21-43e0-94bf-259717f5155a",
+        "email": "googleplay.review@el7lm.com",
+        "createdAt": null,
+        "activityCount": 0,
+        "authMatch": true,
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "orpTdxCsJVEWHFhSDFez",
+        "name": "سيسس",
+        "phoneRaw": "01017799580",
+        "phoneNormalized": "+201017799580",
+        "uid": "",
+        "email": "q@q.com",
+        "createdAt": null,
+        "activityCount": 1,
+        "authMatch": "",
+        "possibleParentIdentity": "2Uj9vwRn9jfVsQtrvX4B",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "zTFTwGU4v2GdYE9SCtmm",
+        "name": "mohamed saudi",
+        "phoneRaw": "72053188",
+        "phoneNormalized": "72053188",
+        "uid": "",
+        "email": "mo.saudi19@gmail.com",
+        "createdAt": null,
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "F9UvdjTrtJbPvGf8F1ZzbFSKx6m1",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "M7UP64xP6aLdUR8spJae",
+        "name": "مازن السيد",
+        "phoneRaw": "01017799580",
+        "phoneNormalized": "+201017799580",
+        "uid": "",
+        "email": "mo.saudi19@gmail.com",
+        "createdAt": "2025-06-23T23:16:29.791Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "2Uj9vwRn9jfVsQtrvX4B",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "muzRU8v1DqT7dJkbPhwD",
+        "name": "عمار عاطف كمال احمد رضوان",
+        "phoneRaw": "97450940559",
+        "phoneNormalized": "+97450940559",
+        "uid": "",
+        "email": "a974_97450940559@el7lm.com",
+        "createdAt": "2025-11-11T19:35:02.000Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "c1X0Y332qGfX1EFEQyBNuoyhVsd2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "players",
+        "profileId": "u4k7GW48smYUOWsRQho3",
+        "name": "يوسف عبدالوهاب محمد قاسم زباره",
+        "phoneRaw": "97450940559",
+        "phoneNormalized": "+97450940559",
+        "uid": "",
+        "email": "a974_97450940559@el7lm.com",
+        "createdAt": "2025-11-12T13:20:58.754Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "c1X0Y332qGfX1EFEQyBNuoyhVsd2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "clubs",
+        "profileId": "JtHRiAFa2Cbd46wzHhFZvK5aIPD3",
+        "name": "نادي المقاولون العرب مصر",
+        "phoneRaw": "",
+        "phoneNormalized": null,
+        "uid": "",
+        "email": "user@el7lm.com",
+        "createdAt": "2025-04-29T14:43:21+00:00",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "clubs",
+        "profileId": "1",
+        "name": "",
+        "phoneRaw": "",
+        "phoneNormalized": null,
+        "uid": "",
+        "email": "",
+        "createdAt": "2025-11-10T11:11:11.556+00:00",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      },
+      {
+        "table": "academies",
+        "profileId": "df822904-ec26-4788-b69e-cabb04eea1ed",
+        "name": "",
+        "phoneRaw": "97470421252",
+        "phoneNormalized": "+97470421252",
+        "uid": "",
+        "email": "a974_97470421252@el7lm.com",
+        "createdAt": "2026-04-24T18:29:08.474+00:00",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "KZmKBAzGDAVMqgGSkrIgy7UbaXJ2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "academies",
+        "profileId": "83ded7fc-43e1-4451-96cb-8be4950004e6",
+        "name": "الابداع والتطوير ا",
+        "phoneRaw": "70542458",
+        "phoneNormalized": "70542458",
+        "uid": "",
+        "email": "mo.saudi19@gmail.com",
+        "createdAt": "2026-04-23T20:22:14.766+00:00",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": "JJ8MJBUvdRhTz7XZeQU3qBdjSbG2",
+        "recommendedStatus": "RECONCILE_TO_PARENT_USER"
+      },
+      {
+        "table": "agents",
+        "profileId": "2",
+        "name": "",
+        "phoneRaw": "",
+        "phoneNormalized": null,
+        "uid": "",
+        "email": "",
+        "createdAt": "2025-11-10T11:11:21.237Z",
+        "activityCount": 0,
+        "authMatch": "",
+        "possibleParentIdentity": null,
+        "recommendedStatus": "GENERATE_PARENT_USER"
+      }
+    ]
+  },
+  "no_phone_accounts": {
+    "total": 287,
+    "byTable": {
+      "users": 176,
+      "players": 83,
+      "clubs": 5,
+      "academies": 8,
+      "trainers": 3,
+      "agents": 4,
+      "marketers": 7,
+      "admins": 1
+    },
+    "categorization": {
+      "AUTH_PHONE_AVAILABLE": 1,
+      "NO_PHONE_ANYWHERE": 286,
+      "LEGACY_PHONE_FIELD": 0,
+      "INVALID_PHONE": 0
+    }
+  },
+  "canonical_identity_fields": [
+    {
+      "field": "id",
+      "status": "EXISTS",
+      "table": "users",
+      "note": "Immutable primary key (Firestore Document ID). SAFE_TO_MIGRATE"
+    },
+    {
+      "field": "supabase_uid",
+      "status": "MISSING",
+      "table": "users",
+      "note": "Currently stored in uid column mixed with Firebase UIDs. SAFE_TO_MIGRATE after adding column"
+    },
+    {
+      "field": "phone_e164",
+      "status": "MISSING",
+      "table": "users",
+      "note": "Currently dispersed across phone/phoneNormalized. SAFE_TO_MIGRATE after normalization backfill"
+    },
+    {
+      "field": "country_code",
+      "status": "DUPLICATED",
+      "table": "users",
+      "note": "Exists as countryCode in users and 5 profile tables. SAFE_TO_MIGRATE"
+    },
+    {
+      "field": "account_type",
+      "status": "EXISTS",
+      "table": "users",
+      "note": "Exists as accountType string. SAFE_TO_MIGRATE into ENUM"
+    },
+    {
+      "field": "email",
+      "status": "DUPLICATED",
+      "table": "users",
+      "note": "Exists in users and profiles. SAFE_TO_MIGRATE"
+    },
+    {
+      "field": "full_name",
+      "status": "DUPLICATED",
+      "table": "users",
+      "note": "Split between name, full_name, displayName. SAFE_TO_MIGRATE"
+    },
+    {
+      "field": "is_active",
+      "status": "EXISTS",
+      "table": "users",
+      "note": "Exists as isActive boolean. SAFE_TO_MIGRATE"
+    },
+    {
+      "field": "is_verified",
+      "status": "EXISTS",
+      "table": "users",
+      "note": "Exists as isVerified. SAFE_TO_MIGRATE"
+    },
+    {
+      "field": "created_at",
+      "status": "DUPLICATED",
+      "table": "users",
+      "note": "Exists as both createdAt (TIMESTAMP) and created_at (JSONB). SAFE_TO_MIGRATE"
+    },
+    {
+      "field": "updated_at",
+      "status": "DUPLICATED",
+      "table": "users",
+      "note": "Exists as both updatedAt and updated_at. SAFE_TO_MIGRATE"
+    },
+    {
+      "field": "last_login_at",
+      "status": "DUPLICATED",
+      "table": "users",
+      "note": "Exists as lastLogin and last_login. SAFE_TO_MIGRATE"
+    }
+  ],
+  "phone_e164_readiness": {
+    "totalAccounts": 2623,
+    "validE164Accounts": 1888,
+    "cleanCoveragePercentage": "72.0%",
+    "requiresGuessing": "0% (Non-standard or countryless phones flagged for manual review)"
+  },
+  "blockers_before_unique_constraint": [
+    "24 Real Conflict Groups (106 accounts) where different individuals share the same phone number (will trigger unique_violation error 23505).",
+    "864 Legacy Duplicate Groups (1,839 accounts) where users and players records share the same phone (requires setting phone_e164 ONLY on users, not on profile tables).",
+    "21 Test Data Groups with repeated dummy numbers (e.g. 0111111111, +201017799580) across 82 accounts.",
+    "287 accounts without any phone number (requires allowing NULL until phone registration, or populating from Auth if available)."
+  ]
+}
