@@ -95,3 +95,30 @@ CREATE INDEX idx_phone_acc_uid ON phone_accounts_index(supabase_uid);
 #### المرحلة 4: الاعتماد الكامل والرجوع (Rollback Strategy)
 - بعد استقرار النظام لـ 72 ساعة والتأكد من انعدام الفروقات، يتم اعتماد الجدول رسمياً وحذف الكود القديم.
 - **خطة الرجوع:** التراجع عن كود `findAccountByPhone` في Git ليعود إلى استعلام الجداول، دون الحاجة لحذف الجدول المنشأ في قاعدة البيانات.
+
+---
+
+## 4. نتائج الفحص الميداني المباشر لقاعدة البيانات (Live DB Verification)
+
+تم إجراء فحص برمجي مباشر لبيئة Supabase الحية بتاريخ 2026-10-05:
+
+1. **حالة الجداول القديمة الميتة (Legacy Tables):**
+   - تم التحقق من اختفائها بالكامل وعدم وجودها في الـ Schema:
+     - `bulk_payments`, `wallet`, `instapay`, `vodafone_cash`, `tournament_payments`, `bulkPayments`, `geidea_payments`, `invoices` ❌ غير موجودة (تم تنظيفها).
+     - `academys` ❌ غير موجود (يُستخدم بدلاً منه `academies` المعتمد).
+     - `careerApplications` و `careers_applications` ❌ غير موجودين (يُستخدم بدلاً منهما `career_applications` المعتمد).
+     - `tournamentRegistrations` ❌ غير موجود (يُستخدم بدلاً منه `tournament_registrations` المعتمد).
+
+2. **الجداول الأساسية الحية (Active Canonical Counts):**
+   - `users`: 1,313 مستخدم
+   - `players`: 1,028 لاعب
+   - `academies`: 39 أكاديمية
+   - `notifications`: 4,397 إشعار (الجدول الموحد للويب والموبايل)
+   - `otp_verifications`: 146 رمز تحقق نشط
+   - `tournament_registrations`: 14 تسجيل
+
+3. **حزمة الأداء والأمان الموحدة:**
+   - تم تجهيز وتوثيق حزمة SQL الشاملة لتطبيق الفهارس الحيوية وحماية RLS في:
+     [`docs/review/sql/01_production_performance_and_security_patch.sql`](file:///d:/El7lm-V2/docs/review/sql/01_production_performance_and_security_patch.sql)
+   - تشمل الفهارس: فهارس الإشعارات المركبة والجزئية، فهارس الرسائل والمحادثات، فهارس الـ UID والهواتف الموحدة، وفهارس الفرص والمفضلات، وسياسات RLS لإشعارات المستخدمين وحماية رموز OTP.
+
