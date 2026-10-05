@@ -48,10 +48,9 @@ async function hasDuplicateRecent(
     const db = getSupabaseAdmin();
     const since = new Date(Date.now() - windowMs).toISOString();
     const { data } = await db
-      .from('interaction_notifications')
+      .from('notifications')
       .select('createdAt')
       .eq('userId', targetUserId)
-      .eq('viewerId', actorId)
       .eq('type', eventType)
       .gt('createdAt', since)
       .limit(1);
@@ -180,17 +179,33 @@ export async function POST(req: NextRequest) {
     const content = buildInAppContent(body);
     const db = getSupabaseAdmin();
 
-    // 1. Create in-app notification
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    // 1. Create in-app notification in canonical notifications table
     const now = new Date().toISOString();
-    await db.from('interaction_notifications').insert({
+    await db.from('notifications').insert({
       id: crypto.randomUUID(),
-      userId: targetUserId, viewerId: actorId, viewerName: actorName,
-      viewerType: ACCOUNT_LABELS[actorAccountType] || actorAccountType,
-      viewerAccountType: actorAccountType,
-      type: eventType, title: content.title, message: content.message,
-      emoji: content.emoji, isRead: false, priority: content.priority,
-      metadata: metadata || {}, createdAt: now, expiresAt,
+      userId: targetUserId,
+      title: content.title,
+      message: content.message,
+      type: eventType,
+      priority: content.priority,
+      read: false,
+      isRead: false,
+      data: {
+        actorId,
+        actorName,
+        actorAccountType: ACCOUNT_LABELS[actorAccountType] || actorAccountType,
+        emoji: content.emoji,
+        ...(metadata || {}),
+      },
+      metadata: {
+        actorId,
+        actorName,
+        actorAccountType: ACCOUNT_LABELS[actorAccountType] || actorAccountType,
+        emoji: content.emoji,
+        ...(metadata || {}),
+      },
+      createdAt: now,
+      updatedAt: now,
     });
 
     // 2. WhatsApp template

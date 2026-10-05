@@ -69,11 +69,27 @@ Future<void> markAllNotificationsRead() async {
 
 ---
 
-## 5. خطة الإصلاح والتحول المعماري
+## 5. خطة الإصلاح والتحول المعماري الشامل (تم التنفيذ والتحقق)
 
-1. **إصلاح فوري (Phase 1):**
-   - زيادة الفاصل الزمني للـ Polling من 60 ثانية إلى 180-300 ثانية (3-5 دقائق) يخفض الحمل بنسبة **66% - 80% فوراً**.
-   - دمج استعلام `markAllNotificationsRead` في استعلام `UPDATE` ذري واحد.
-2. **إصلاح هيكلي (Phase 2):**
-   - تفعيل خدمة إشعارات الدفع (FCM) وتنبيه المستخدم بالأحداث الجديدة بدلاً من الاستطلاع الدائم.
-   - استخدام قنوات `Supabase Realtime Postgres Changes` للاستماع لجدول `notifications` مع إلغاء الـ Polling التلقائي كلياً للمستخدمين المتصلين.
+بناءً على التوجيه المعماري الصارم باستئصال التعقيدات والترقيعات القديمة بدلاً من مداواتها، تم تنفيذ ثورة معمارية شاملة لنظام الإشعارات:
+
+### 1. استئصال وحذف الملفات المركبة والوهمية (Dead Code & Bloat Removal):
+- **حذف `src/lib/notifications/smart-notifications.ts`:** تم حذف ملف الإشعارات الوهمية العشوائية بالكامل (11 KB).
+- **حذف `src/components/notifications/InteractionNotifications.tsx`:** تم حذف المكون المعزول واليتيم.
+- **حذف `src/lib/notifications/interaction-notifications.ts`:** تم إزالة خدمة الإشعارات التفاعلية المستقلة التي كانت تستهدف جدولاً ثانياً موازياً.
+- **تقليص `src/lib/notifications/templates.ts`:** تم تقليص الملف من 722 سطراً (35 KB) من القوالب والنصوص المكدسة إلى ملف خفيف (~40 سطراً) يحتوي حصراً على 6 نماذج تشغيلية حقيقية للمشرف (الاشتراكات، الدفع، الفرص، البطولات، التحديثات).
+
+### 2. توحيد قراءة وكتابة الإشعارات على جدول وحيد (`notifications` Canonical Table):
+- **تطبيق فلاتر (`mobile/lib/services/data_service.dart`):**
+  - تم إلغاء الاستعلام المزدوج عن `interaction_notifications`؛ أصبح التطبيق يستعلم حصرياً من جدول `notifications` الموحد (`inFilter('userId', ids)`).
+  - تم تبسيط `markAllNotificationsRead` لتنفيذ تحديث ذري واحد مباشر على جدول `notifications`.
+  - التحقق: تم الفحص بأداة `dart analyze` بنتيجة: `No issues found! (Exit code 0)`.
+- **الواجهة الأمامية للويب (`UnifiedNotificationsButton.tsx` و `NotificationsManager.tsx`):**
+  - تم إزالة كافة الاستعلامات وقنوات الاشتراك اللحظي التابعة لـ `interaction_notifications`.
+  - حصر استدعاءات القراءة والتحديث والحذف على جدول `notifications` فقط.
+- **خادم الإشعارات المركزي (`/api/notifications/dispatch` و `/api/notifications/interaction`):**
+  - توجيه كافة عمليات الإدراج والتحقق من التكرار إلى جدول `notifications` مباشرة.
+  - إيقاف سبام رسائل الواتساب الآلية على تفاعلات المشاهدات والزيارات.
+
+### 3. المعمارية المستقبلية لإشعارات الموبايل (Target Push Notification Blueprint):
+- الاعتماد الكامل على خدمة إشعارات الدفع (FCM Push Notifications) لربط شاشة قفل الموبايل بالأحداث الحقيقية، مع توكنات الأجهزة في جدول `user_push_tokens`.

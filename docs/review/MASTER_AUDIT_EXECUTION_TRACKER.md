@@ -167,6 +167,27 @@
   - التحقق الصارم من هوية المرسل وكونه مشاركاً حقيقياً في المحادثة قبل السماح بالإرسال.
   - تنقية الرسائل وتطهيرها برمجياً (Sanitization) وتحديث العدادات المتبادلة تلقائياً.
 
+### 🔔 7. فلسفة استئصال تعقيدات الإشعارات وتوحيد المعمارية (Notifications Architecture Overhaul)
+* **المشكلة السابقة:**
+  - تشتت بيانات الإشعارات عبر 7 جداول متفرقة (`notifications`, `interaction_notifications`, `smart_notifications`, إلخ) مع تضارب المسميات (`read` مقابل `isRead`).
+  - وجود كود متضخم ومصطنع لتوليد إشعارات ورسائل وهمية برمجياً (`smart-notifications.ts` و `templates.ts` بحجم 35 KB).
+  - قيام تطبيق فلاتر ومكونات الويب بالاستعلام المزدوج من جدولين مختلفين وعمل دمج يدوي في الذاكرة كل دقيقة.
+  - إطلاق سبام رسائل واتساب آلية على كل مشاهدة فيديو أو زيارة للملف الشخصي عبر مسار `/api/notifications/dispatch`.
+* **القرار المعماري المتخذ:**
+  1. **الاستئصال الجذري للكود الميت والوهمي (Dead Code Removal):**
+     - تم حذف `src/lib/notifications/smart-notifications.ts` (11 KB).
+     - تم حذف المكون المعزول `src/components/notifications/InteractionNotifications.tsx`.
+     - تم حذف خدمة `src/lib/notifications/interaction-notifications.ts`.
+     - تم تقليص `src/lib/notifications/templates.ts` من 722 سطراً (35 KB) إلى ~40 سطراً تحتوي فقط على 6 نماذج تشغيلية حقيقية للمشرف.
+  2. **توحيد الموبايل والويب على جدول موحد (`notifications` Canonical Table):**
+     - تم تعديل `mobile/lib/services/data_service.dart` لإلغاء القراءة والكتابة في `interaction_notifications`؛ أصبح تطبيق الهاتف يتعامل حصرياً مع جدول `notifications` الموحد بتحديثات دُفعية ذرية.
+     - تم تطهير مكونات الويب (`UnifiedNotificationsButton.tsx` و `NotificationsManager.tsx`) من أي استعلامات أو قنوات استماع لحظية لـ `interaction_notifications`.
+     - تم توجيه كافة مسارات الخادم (`/api/notifications/dispatch` و `/api/notifications/interaction`) للكتابة المباشرة في جدول `notifications` مع إلغاء سبام الواتساب على مشاهدات الفيديو.
+  3. **النتيجة والأثر الفعلي:**
+     - خفض عدد استعلامات شبكة الإشعارات في الموبايل بنسبة 66% فوراً (رفع الفاصل إلى 180s واستعلام جدول واحد).
+     - القضاء التام على مشكلة N+1 في تمييز الإشعارات كمقروءة.
+     - اعتماد المعمارية القياسية لربط إشعارات الموبايل الحقيقية مستقبلاً عبر FCM Push Notifications.
+
 ---
 
 ## 6. خارطة طريق الخطوات القادمة للمشروع (Next Action Steps)

@@ -68,13 +68,12 @@ export default function UnifiedNotificationsButton() {
     if (!user?.id) return;
     const NOTIF_LIMIT = 20;
 
-    const [{ data: d1 }, { data: d2 }, { data: d3 }] = await Promise.all([
+    const [{ data: notifRows }, { data: broadcastRows }] = await Promise.all([
       supabase.from('notifications').select('*').eq('userId', user.id).order('createdAt', { ascending: false }).limit(NOTIF_LIMIT),
-      supabase.from('interaction_notifications').select('*').eq('userId', user.id).order('createdAt', { ascending: false }).limit(NOTIF_LIMIT),
       supabase.from('broadcasts').select('*').order('createdAt', { ascending: false }).limit(10),
     ]);
 
-    const broadcastItems = (d3 || []).map((row: any) => ({
+    const broadcastItems = (broadcastRows || []).map((row: any) => ({
       id: `bc_${row.id}`,
       title: t('sharedComponents.notifications.newOpportunity'),
       message: t('sharedComponents.notifications.publishedOpportunity')
@@ -89,10 +88,7 @@ export default function UnifiedNotificationsButton() {
       actionUrl: row.actionUrl || '/dashboard/opportunities',
     }));
 
-    const rawItems = [
-      ...(d1 || []).map((r: any) => ({ ...r, category: 'system' })),
-      ...(d2 || []).map((r: any) => ({ ...r, category: 'interaction' }))
-    ];
+    const rawItems = (notifRows || []).map((r: any) => ({ ...r, category: 'system' }));
 
     const processed = await Promise.all(rawItems.map(async (item: any) => {
       const metadata = normalizeNotificationMetadata(item.metadata);
@@ -113,12 +109,12 @@ export default function UnifiedNotificationsButton() {
         id: item.id,
         title: item.title,
         message: item.message,
-        isRead: item.isRead || false,
+        isRead: item.isRead || item.read || false,
         createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
         senderName: name || 'System',
         senderAvatar: avatar,
         type: item.type || 'info',
-        category: item.category as any,
+        category: 'system' as const,
         actionUrl: item.actionUrl || item.link || metadata?.link
       };
     }));
@@ -138,7 +134,6 @@ export default function UnifiedNotificationsButton() {
     const channel = supabase
       .channel(`unified-notifs-${user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `userId=eq.${user.id}` }, () => loadAndMerge())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'interaction_notifications', filter: `userId=eq.${user.id}` }, () => loadAndMerge())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'broadcasts' }, () => loadAndMerge())
       .subscribe();
 
@@ -148,12 +143,12 @@ export default function UnifiedNotificationsButton() {
   const markAllRead = async () => {
     if (!user?.id) return;
     try {
-      const systemIds = notifications.filter(n => !n.isRead && !n.id.startsWith('bc_') && n.category === 'system').map(n => n.id);
-      const interactionIds = notifications.filter(n => !n.isRead && !n.id.startsWith('bc_') && n.category === 'interaction').map(n => n.id);
+      const notifIds = notifications.filter(n => !n.isRead && !n.id.startsWith('bc_')).map(n => n.id);
       const bcItems = notifications.filter(n => !n.isRead && n.id.startsWith('bc_'));
 
-      if (systemIds.length) await supabase.from('notifications').update({ isRead: true }).in('id', systemIds);
-      if (interactionIds.length) await supabase.from('interaction_notifications').update({ isRead: true }).in('id', interactionIds);
+      if (notifIds.length) {
+        await supabase.from('notifications').update({ isRead: true, read: true }).in('id', notifIds);
+      }
       bcItems.forEach(n => markBroadcastSeen(n.id.slice(3)));
 
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
@@ -161,15 +156,14 @@ export default function UnifiedNotificationsButton() {
     } catch (e) { console.error(e); }
   };
 
-  const markRead = async (id: string, category: string) => {
+  const markRead = async (id: string, _category: string) => {
     try {
       if (id.startsWith('bc_')) {
         markBroadcastSeen(id.slice(3));
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
         setUnreadCount(prev => Math.max(0, prev - 1));
       } else {
-        const coll = category === 'system' ? 'notifications' : 'interaction_notifications';
-        await supabase.from(coll).update({ isRead: true }).eq('id', id);
+        await supabase.from('notifications').update({ isRead: true, read: true }).eq('id', id);
       }
     } catch (e) { console.error(e); }
   };

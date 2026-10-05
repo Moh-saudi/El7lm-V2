@@ -258,69 +258,8 @@ export default function NotificationsManager({
       setSystemNotifications(sortedData);
     };
 
-    // جلب الإشعارات التفاعلية
-    const fetchInteractionNotifications = async () => {
-      const { data, error } = await supabase
-        .from('interaction_notifications')
-        .select('*')
-        .eq('userId', user.id)
-        .limit(100);
-
-      if (error) {
-        console.error('خطأ في جلب الإشعارات التفاعلية:', error);
-        return;
-      }
-
-      const rows = data ?? [];
-
-      const interactionSenderIds = rows.map((row: any) => String(row.viewerId || row.senderId || row.profileOwnerId || '')).filter(Boolean);
-      const senderMap = await fetchSenderInfoBatch(interactionSenderIds);
-      const interactionNotificationsData = rows.map((row) => {
-        const normalizedMetadata = normalizeNotificationMetadata(row.metadata);
-        const enrichedData = { ...row, metadata: normalizedMetadata };
-        const senderCandidateId = row.viewerId || row.senderId || row.profileOwnerId;
-        const senderInfo = mergeSenderInfo(getInitialSenderInfo(enrichedData as Notification), senderMap.get(String(senderCandidateId)));
-        if (!senderInfo.senderAvatar && senderInfo.senderName) {
-          senderInfo.senderAvatar = generateAvatarFromName(senderInfo.senderName);
-        }
-
-        return {
-          id: row.id,
-          userId: row.userId,
-          title: row.title || nt('interactiveNotification'),
-          message: row.message || nt('noDetails'),
-          type: row.type === 'profile_view' ? 'info' :
-            row.type === 'message_sent' ? 'success' :
-              row.type === 'connection_request' ? 'warning' : 'info',
-          isRead: row.isRead || false,
-          link: row.actionUrl,
-          metadata: {
-            ...enrichedData,
-            profileOwnerId: row.profileOwnerId,
-            viewerId: row.viewerId,
-            profileType: row.profileType || 'player'
-          },
-          scope: 'system',
-          createdAt: row.createdAt,
-          updatedAt: row.createdAt,
-          actionType: row.type,
-          senderId: senderCandidateId || row.senderId,
-          ...senderInfo
-        } as Notification;
-      });
-
-      // ترتيب البيانات يدوياً حسب التاريخ
-      const sortedData = interactionNotificationsData.sort((a, b) => {
-        const dateA = new Date(a.createdAt);
-        const dateB = new Date(b.createdAt);
-        return dateB.getTime() - dateA.getTime();
-      });
-
-      setInteractionNotifications(sortedData);
-    };
-
+    // جلب الإشعارات الموحدة
     fetchSystemNotifications();
-    fetchInteractionNotifications();
 
     // Supabase realtime: notifications
     const notificationsChannel = supabase.channel('notifications_mgr_channel')
@@ -334,21 +273,8 @@ export default function NotificationsManager({
       })
       .subscribe();
 
-    // Supabase realtime: interaction_notifications
-    const interactionChannel = supabase.channel('interaction_notifications_mgr_channel')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'interaction_notifications',
-        filter: `userId=eq.${user.id}`
-      }, () => {
-        fetchInteractionNotifications();
-      })
-      .subscribe();
-
     return () => {
       supabase.removeChannel(notificationsChannel);
-      supabase.removeChannel(interactionChannel);
     };
   }, [user, userData]);
 
@@ -447,16 +373,10 @@ export default function NotificationsManager({
       // محاولة تحديث في notifications أولاً
       const { error: notifError } = await supabase
         .from('notifications')
-        .update({ isRead: true, updatedAt: new Date().toISOString() })
+        .update({ isRead: true, read: true, updatedAt: new Date().toISOString() })
         .eq('id', notificationId);
 
-      if (notifError) {
-        // إذا فشل، جرب interaction_notifications
-        await supabase
-          .from('interaction_notifications')
-          .update({ isRead: true })
-          .eq('id', notificationId);
-      }
+      if (notifError) throw notifError;
 
       toast.success(nt('markedAsRead'));
     } catch (error) {
@@ -479,7 +399,11 @@ export default function NotificationsManager({
   // حذف الإشعار
   const deleteNotification = async (notificationId: string) => {
     try {
-      // هنا يمكن إضافة منطق الحذف في Supabase
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId);
+      if (error) throw error;
       toast.success(nt('deleted'));
     } catch (error) {
       console.error('خطأ في حذف الإشعار:', error);
@@ -488,37 +412,28 @@ export default function NotificationsManager({
   };
 
   // الرد على الإشعار
-  const replyToNotification = (notification: Notification) => {
-    // هنا يمكن إضافة منطق الرد
+  const replyToNotification = (_notification: Notification) => {
     toast.success(nt('openingReply'));
   };
 
   // إعادة توجيه الإشعار
-  const forwardNotification = (notification: Notification) => {
-    // هنا يمكن إضافة منطق إعادة التوجيه
+  const forwardNotification = (_notification: Notification) => {
     toast.success(nt('openingForward'));
   };
 
   // تحديد جميع الإشعارات كمقروءة
   const markAllAsRead = async () => {
     try {
-      const unreadNotifications = notifications.filter(n => !n.isRead);
-      const updatePromises = unreadNotifications.map(async (notification) => {
-        const { error: notifError } = await supabase
+      const unreadIds = notifications.filter(n => !n.isRead).map(n => n.id);
+      if (unreadIds.length > 0) {
+        const { error } = await supabase
           .from('notifications')
-          .update({ isRead: true, updatedAt: new Date().toISOString() })
-          .eq('id', notification.id);
+          .update({ isRead: true, read: true, updatedAt: new Date().toISOString() })
+          .in('id', unreadIds);
+        if (error) throw error;
+      }
 
-        if (notifError) {
-          // إذا فشل، جرب interaction_notifications
-          await supabase
-            .from('interaction_notifications')
-            .update({ isRead: true })
-            .eq('id', notification.id);
-        }
-      });
-
-      await Promise.all(updatePromises);
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       toast.success(nt('allMarkedRead'));
     } catch (error) {
       console.error('خطأ في تحديث جميع الإشعارات:', error);
