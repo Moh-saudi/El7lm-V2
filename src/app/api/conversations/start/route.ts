@@ -150,9 +150,10 @@ export async function POST(request: NextRequest) {
         isRead: false,
       };
 
-      await db.from('messages').insert(messageDoc).catch((err: any) => {
-        console.warn('⚠️ [conversations/start] Initial message insert failed:', err);
-      });
+      const { error: msgErr } = await db.from('messages').insert(messageDoc);
+      if (msgErr) {
+        console.warn('⚠️ [conversations/start] Initial message insert failed:', msgErr);
+      }
     }
 
     return NextResponse.json({

@@ -11,6 +11,7 @@ import { sendOTP, SendOTPOptions } from '@/lib/otp/unified-otp-service';
 import { isPlayReviewPhone } from '@/lib/otp/play-review-otp';
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
 import { getServerErrorMessage } from '@/lib/i18n/server-error-messages';
+import { rateLimiter, getClientIpFromHeaders } from '@/lib/security/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,6 +29,58 @@ export async function POST(request: NextRequest) {
         success: false,
         error: 'رقم الهاتف مطلوب'
       }, { status: 400 });
+    }
+
+    // 1. تقييد المعدل على مستوى عنوان IP (حماية من الإغراق وهجمات DoS)
+    const clientIp = getClientIpFromHeaders(request.headers) || 'unknown';
+    const ipRate = rateLimiter.check(`otp_ip:${clientIp}`, {
+      windowMs: 10 * 60 * 1000, // 10 دقائق
+      max: 10,                   // 10 طلبات لكل IP
+      minIntervalMs: 2000,       // ثانيتان كحد أدنى بين الطلب والآخر
+    });
+
+    if (!ipRate.allowed) {
+      const waitSeconds = Math.max(1, Math.ceil(ipRate.retryAfterMs / 1000));
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'RATE_LIMIT_EXCEEDED',
+          error: `تم تجاوز الحد المسموح به من الطلبات. يرجى المحاولة بعد ${waitSeconds} ثانية.`,
+          retryAfterSeconds: waitSeconds,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(waitSeconds),
+          },
+        }
+      );
+    }
+
+    // 2. تقييد المعدل على مستوى رقم الهاتف (حماية من استنزاف رصيد WhatsApp/SMS)
+    const cleanPhone = String(phoneNumber).replace(/[^0-9]/g, '');
+    const phoneRate = rateLimiter.check(`otp_phone:${cleanPhone}`, {
+      windowMs: 10 * 60 * 1000, // 10 دقائق
+      max: 5,                    // 5 طلبات كحد أقصى للرقم الواحد
+      minIntervalMs: 30000,      // 30 ثانية كحد أدنى بين كل رسالة لنفس الرقم
+    });
+
+    if (!phoneRate.allowed) {
+      const waitSeconds = Math.max(1, Math.ceil(phoneRate.retryAfterMs / 1000));
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'PHONE_RATE_LIMIT_EXCEEDED',
+          error: `يرجى الانتظار ${waitSeconds} ثانية قبل إعادة إرسال رمز التحقق لهذا الرقم.`,
+          retryAfterSeconds: waitSeconds,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(waitSeconds),
+          },
+        }
+      );
     }
 
     const account = await findAccountByPhone(phoneNumber);

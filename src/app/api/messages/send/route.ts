@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       [receiverId]: (currentUnread[receiverId] || 0) + 1,
     };
 
-    await db
+    const { error: updateErr } = await db
       .from('conversations')
       .update({
         lastMessage: messageDoc.message,
@@ -111,10 +111,11 @@ export async function POST(request: NextRequest) {
         unreadCount: updatedUnread,
         updatedAt: now,
       })
-      .eq('id', conversationId)
-      .catch((updateErr: any) => {
-        console.warn('⚠️ [messages/send] Failed to update conversation summary:', updateErr);
-      });
+      .eq('id', conversationId);
+
+    if (updateErr) {
+      console.warn('⚠️ [messages/send] Failed to update conversation summary:', updateErr);
+    }
 
     return NextResponse.json({
       success: true,
