@@ -53,26 +53,25 @@ class DataService {
 
     final client = Supabase.instance.client;
     final result = <AppNotification>[];
-    for (final source in ['notifications', 'interaction_notifications']) {
-      try {
-        final rows = await client
-            .from(source)
-            .select()
-            .inFilter('userId', ids)
-            .order('createdAt', ascending: false)
-            .limit(100);
-        result.addAll(
-          rows.map(
-            (row) => AppNotification.fromJson(
-              Map<String, dynamic>.from(row),
-              sourceTable: source,
-            ),
+    try {
+      final rows = await client
+          .from('notifications')
+          .select()
+          .inFilter('userId', ids)
+          .order('createdAt', ascending: false)
+          .limit(50);
+      result.addAll(
+        rows.map(
+          (row) => AppNotification.fromJson(
+            Map<String, dynamic>.from(row),
+            sourceTable: 'notifications',
           ),
-        );
-      } catch (_) {
-        // A second notification source can still be available under stricter RLS.
-      }
+        ),
+      );
+    } catch (_) {
+      // Supabase notifications read fallback
     }
+
     final profileReminder = await InAppNotificationService()
         .getProfileCompletionNotification();
     if (profileReminder != null) result.add(profileReminder);
@@ -92,10 +91,10 @@ class DataService {
     }
     _requireSupabase();
     await Supabase.instance.client
-        .from(notification.sourceTable)
+        .from('notifications')
         .update({
           'isRead': true,
-          if (notification.sourceTable == 'notifications') 'read': true,
+          'read': true,
         })
         .eq('id', notification.id);
   }
@@ -105,14 +104,14 @@ class DataService {
     final unread = notifications.where((item) => !item.isRead).toList();
     if (unread.isEmpty) return;
 
-    final byTable = <String, List<String>>{};
+    final ids = <String>[];
     bool hasProfileReminder = false;
 
     for (final item in unread) {
       if (item.sourceTable == InAppNotificationService.profileReminderSource) {
         hasProfileReminder = true;
       } else {
-        byTable.putIfAbsent(item.sourceTable, () => []).add(item.id);
+        ids.add(item.id);
       }
     }
 
@@ -120,29 +119,12 @@ class DataService {
       await InAppNotificationService().markProfileCompletionNotificationRead();
     }
 
-    if (byTable.isNotEmpty) {
+    if (ids.isNotEmpty) {
       _requireSupabase();
-      final client = Supabase.instance.client;
-      final futures = <Future<dynamic>>[];
-
-      for (final entry in byTable.entries) {
-        final table = entry.key;
-        final ids = entry.value;
-        if (ids.isEmpty) continue;
-
-        final updateData = <String, dynamic>{'isRead': true};
-        if (table == 'notifications') {
-          updateData['read'] = true;
-        }
-
-        futures.add(
-          client.from(table).update(updateData).inFilter('id', ids),
-        );
-      }
-
-      if (futures.isNotEmpty) {
-        await Future.wait(futures);
-      }
+      await Supabase.instance.client
+          .from('notifications')
+          .update({'isRead': true, 'read': true})
+          .inFilter('id', ids);
     }
   }
 
