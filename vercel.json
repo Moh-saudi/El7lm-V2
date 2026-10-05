@@ -18,10 +18,6 @@
     {
       "path": "/api/otp/cleanup",
       "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/health",
-      "schedule": "0 */12 * * *"
     }
   ],
   "headers": [
