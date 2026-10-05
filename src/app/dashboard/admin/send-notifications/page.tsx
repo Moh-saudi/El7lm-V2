@@ -152,42 +152,51 @@ export default function SendNotificationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8" dir="rtl">
-      {/* Header */}
+    <div className="min-h-screen bg-slate-50/80 text-slate-900 p-4 md:p-8" dir="rtl">
+      {/* Executive Light Header Banner */}
       <div className="max-w-6xl mx-auto mb-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                <Bell className="w-5 h-5" />
-              </span>
-              <h1 className="text-2xl font-bold tracking-tight">مركز إرسال الإشعارات</h1>
+        <div className="relative overflow-hidden rounded-3xl bg-white text-slate-900 p-6 md:p-8 shadow-sm border border-slate-200/90">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-xs font-semibold text-blue-800">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-blue-900 font-bold">منصة الحلم</span>
+                <span className="text-blue-300">|</span>
+                <span>مركز الإشعارات الموحد</span>
+              </div>
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-sm shrink-0">
+                  <Bell className="w-5 h-5 text-blue-600" />
+                </div>
+                إرسال الإشعارات المركزية
+              </h1>
+              <p className="text-slate-500 text-sm max-w-2xl leading-relaxed">
+                إرسال إشعارات موجهة وفورية لمستخدمي تطبيق الموبايل ولوحات تحكم المنصة بدقة وسرعة فائقة.
+              </p>
             </div>
-            <p className="text-slate-400 text-sm">
-              إرسال إشعارات موحدة ومباشرة إلى تطبيق الموبايل ومنصة الويب بأعلى سرعة وموثوقية
-            </p>
+
+            <Badge variant="outline" className="w-fit bg-emerald-50 text-emerald-700 border-emerald-300 px-3.5 py-1.5 gap-1.5 text-xs font-bold">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" /> نظام الإشعارات v2
+            </Badge>
           </div>
-          <Badge variant="outline" className="w-fit bg-emerald-500/10 text-emerald-400 border-emerald-500/20 px-3 py-1.5 gap-1.5">
-            <ShieldCheck className="w-4 h-4" /> نظام الإشعارات الموحد v2
-          </Badge>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column: Form (8 cols) */}
+        {/* Left Column: Form (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
-          {/* Target Audience */}
-          <Card className="bg-slate-900/60 border-slate-800 backdrop-blur">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold flex items-center gap-2 text-slate-200">
-                <Users className="w-4 h-4 text-blue-400" />
+          {/* 1. Target Audience */}
+          <Card className="bg-white border-slate-200/90 shadow-sm rounded-2xl">
+            <CardHeader className="pb-3 border-b border-slate-100">
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800">
+                <Users className="w-4 h-4 text-blue-600" />
                 1. تحديد الفئة المستهدفة
               </CardTitle>
-              <CardDescription className="text-slate-400 text-xs">
-                اختر شريحة المستخدمين الذين سيصلهم الإشعار
+              <CardDescription className="text-slate-500 text-xs">
+                اختر شريحة الحسابات التي ستستلم الإشعار
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {TARGET_OPTIONS.map(opt => {
                   const Icon = opt.icon;
@@ -199,16 +208,16 @@ export default function SendNotificationsPage() {
                       onClick={() => setTarget(opt.id)}
                       className={`p-3 rounded-xl border text-right transition-all flex flex-col justify-between ${
                         isSelected
-                          ? 'bg-blue-600/15 border-blue-500/50 text-blue-200 shadow-sm'
-                          : 'bg-slate-800/40 border-slate-800 text-slate-400 hover:bg-slate-800/70 hover:text-slate-300'
+                          ? 'bg-blue-50/80 border-blue-500 text-blue-900 shadow-sm ring-1 ring-blue-500/20'
+                          : 'bg-slate-50/70 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                       }`}
                     >
                       <div className="flex items-center justify-between w-full mb-2">
-                        <Icon className={`w-4 h-4 ${isSelected ? 'text-blue-400' : 'text-slate-500'}`} />
-                        {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-blue-400" />}
+                        <Icon className={`w-4 h-4 ${isSelected ? 'text-blue-600' : 'text-slate-400'}`} />
+                        {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />}
                       </div>
                       <div>
-                        <div className="font-semibold text-xs text-slate-200">{opt.label}</div>
+                        <div className="font-bold text-xs text-slate-900">{opt.label}</div>
                         <div className="text-[10px] text-slate-500 line-clamp-1">{opt.description}</div>
                       </div>
                     </button>
@@ -218,36 +227,36 @@ export default function SendNotificationsPage() {
 
               {/* Custom User Search */}
               {target === 'custom' && (
-                <div className="mt-4 pt-4 border-t border-slate-800 space-y-3">
-                  <Label className="text-xs text-slate-300">ابحث عن المستخدمين بالاسم أو الهاتف:</Label>
+                <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                  <Label className="text-xs font-bold text-slate-700">ابحث عن المستخدمين بالاسم أو الهاتف:</Label>
                   <div className="relative">
-                    <Search className="w-4 h-4 absolute right-3 top-3 text-slate-500" />
+                    <Search className="w-4 h-4 absolute right-3 top-3 text-slate-400" />
                     <Input
                       value={searchQuery}
                       onChange={e => handleSearch(e.target.value)}
                       placeholder="اكتب اسم اللاعب، رقم الهاتف، أو البريد الإلكتروني..."
-                      className="pr-9 bg-slate-950/60 border-slate-800 text-xs text-slate-200 placeholder:text-slate-600"
+                      className="pr-9 bg-white border-slate-200 text-xs text-slate-900 placeholder:text-slate-400"
                     />
                     {searching && (
-                      <Loader2 className="w-4 h-4 absolute left-3 top-3 animate-spin text-blue-400" />
+                      <Loader2 className="w-4 h-4 absolute left-3 top-3 animate-spin text-blue-600" />
                     )}
                   </div>
 
                   {/* Search Results Dropdown */}
                   {searchResults.length > 0 && (
-                    <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-800 bg-slate-900 divide-y divide-slate-800/60">
+                    <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg divide-y divide-slate-100">
                       {searchResults.map(u => (
                         <button
                           key={u.id}
                           type="button"
                           onClick={() => selectUser(u)}
-                          className="w-full text-right p-2.5 hover:bg-slate-800/60 flex items-center justify-between text-xs"
+                          className="w-full text-right p-2.5 hover:bg-slate-50 flex items-center justify-between text-xs transition-colors"
                         >
                           <div>
-                            <div className="font-medium text-slate-200">{u.displayName}</div>
+                            <div className="font-bold text-slate-900">{u.displayName}</div>
                             <div className="text-[11px] text-slate-500">{u.phone || u.email || 'بدون اتصال'}</div>
                           </div>
-                          <Badge variant="outline" className="text-[10px] bg-slate-800 text-slate-400 border-slate-700">
+                          <Badge variant="outline" className="text-[10px] bg-slate-100 text-slate-600 border-slate-200">
                             {u.accountType}
                           </Badge>
                         </button>
@@ -261,13 +270,13 @@ export default function SendNotificationsPage() {
                       {selectedUsers.map(u => (
                         <span
                           key={u.id}
-                          className="inline-flex items-center gap-1.5 text-xs bg-blue-500/10 text-blue-300 border border-blue-500/20 px-2.5 py-1 rounded-full"
+                          className="inline-flex items-center gap-1.5 text-xs bg-blue-50 text-blue-800 border border-blue-200 px-2.5 py-1 rounded-full font-medium"
                         >
                           {u.displayName}
                           <button
                             type="button"
                             onClick={() => removeUser(u.id)}
-                            className="text-blue-400 hover:text-blue-200"
+                            className="text-blue-600 hover:text-blue-900"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -280,25 +289,25 @@ export default function SendNotificationsPage() {
             </CardContent>
           </Card>
 
-          {/* Quick Templates */}
-          <Card className="bg-slate-900/60 border-slate-800 backdrop-blur">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold flex items-center gap-2 text-slate-200">
-                <Sparkles className="w-4 h-4 text-amber-400" />
+          {/* 2. Quick Templates */}
+          <Card className="bg-white border-slate-200/90 shadow-sm rounded-2xl">
+            <CardHeader className="pb-3 border-b border-slate-100">
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800">
+                <Sparkles className="w-4 h-4 text-amber-500" />
                 2. قوالب جاهزة سريعة
               </CardTitle>
-              <CardDescription className="text-slate-400 text-xs">
-                اضغط على أي قالب لتعبئة محتوى الإشعار مباشرة
+              <CardDescription className="text-slate-500 text-xs">
+                اضغط على أي قالب لتعبئة النموذج بنقرة واحدة
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               <div className="flex flex-wrap gap-2">
                 {messageTemplates.map(t => (
                   <button
                     key={t.id}
                     type="button"
                     onClick={() => applyTemplate(t)}
-                    className="text-xs bg-slate-800/60 hover:bg-slate-800 text-slate-300 border border-slate-700/60 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                    className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200/80 px-3 py-1.5 rounded-lg transition-colors font-medium flex items-center gap-1.5"
                   >
                     <span>{t.title}</span>
                   </button>
@@ -307,49 +316,49 @@ export default function SendNotificationsPage() {
             </CardContent>
           </Card>
 
-          {/* Notification Content */}
-          <Card className="bg-slate-900/60 border-slate-800 backdrop-blur">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold flex items-center gap-2 text-slate-200">
-                <Bell className="w-4 h-4 text-blue-400" />
+          {/* 3. Notification Content */}
+          <Card className="bg-white border-slate-200/90 shadow-sm rounded-2xl">
+            <CardHeader className="pb-3 border-b border-slate-100">
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800">
+                <Bell className="w-4 h-4 text-blue-600" />
                 3. محتوى الإشعار
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-4">
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">عنوان الإشعار:</Label>
+                <Label className="text-xs font-bold text-slate-700">عنوان الإشعار:</Label>
                 <Input
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   placeholder="مثال: فرصة تجارب أداء جديدة في نادي..."
-                  className="bg-slate-950/60 border-slate-800 text-sm text-slate-100 placeholder:text-slate-600"
+                  className="bg-white border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-300">نص الرسالة:</Label>
+                <Label className="text-xs font-bold text-slate-700">نص الرسالة:</Label>
                 <Textarea
                   value={message}
                   onChange={e => setMessage(e.target.value)}
                   placeholder="اكتب تفاصيل الإشعار بوضوح هنا..."
                   rows={4}
-                  className="bg-slate-950/60 border-slate-800 text-sm text-slate-100 placeholder:text-slate-600 resize-none"
+                  className="bg-white border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 resize-none focus:border-blue-500"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-300">رابط الإجراء (Deep Link - اختياري):</Label>
+                  <Label className="text-xs font-bold text-slate-700">رابط الإجراء (Deep Link - اختياري):</Label>
                   <Input
                     value={actionUrl}
                     onChange={e => setActionUrl(e.target.value)}
                     placeholder="مثال: /dashboard/player/tournaments"
-                    className="bg-slate-950/60 border-slate-800 text-xs text-slate-300 placeholder:text-slate-600"
+                    className="bg-white border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:border-blue-500"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-300">درجة الأهمية:</Label>
+                  <Label className="text-xs font-bold text-slate-700">درجة الأهمية:</Label>
                   <div className="flex gap-2">
                     {[
                       { id: 'normal', label: 'عادي' },
@@ -360,10 +369,10 @@ export default function SendNotificationsPage() {
                         key={p.id}
                         type="button"
                         onClick={() => setPriority(p.id as any)}
-                        className={`flex-1 py-2 text-xs rounded-lg border transition-all ${
+                        className={`flex-1 py-2 text-xs rounded-xl border transition-all ${
                           priority === p.id
-                            ? 'bg-blue-600 text-white border-blue-500 font-semibold'
-                            : 'bg-slate-800/40 text-slate-400 border-slate-800 hover:bg-slate-800'
+                            ? 'bg-blue-600 text-white border-blue-600 font-bold shadow-sm'
+                            : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
                         }`}
                       >
                         {p.label}
@@ -373,11 +382,11 @@ export default function SendNotificationsPage() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-800">
+              <div className="pt-4 border-t border-slate-100">
                 <Button
                   onClick={handleSend}
                   disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 text-sm gap-2"
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 text-sm gap-2 shadow-md shadow-blue-600/20 rounded-xl"
                 >
                   {loading ? (
                     <>
@@ -398,61 +407,71 @@ export default function SendNotificationsPage() {
 
         {/* Right Column: Live Mobile Preview (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
-          <Card className="bg-slate-900/60 border-slate-800 sticky top-8">
-            <CardHeader className="pb-3 border-b border-slate-800/60">
+          <Card className="bg-white border-slate-200/90 shadow-sm rounded-2xl sticky top-8">
+            <CardHeader className="pb-3 border-b border-slate-100">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2 text-slate-300">
-                  <Smartphone className="w-4 h-4 text-emerald-400" />
+                <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-800">
+                  <Smartphone className="w-4 h-4 text-emerald-600" />
                   معاينة حية لشاشة الموبايل
                 </CardTitle>
-                <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 font-bold">
                   مباشر
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              {/* Phone Frame Mockup */}
-              <div className="w-full max-w-[320px] mx-auto bg-slate-950 border-4 border-slate-800 rounded-3xl p-4 shadow-2xl relative overflow-hidden">
+              {/* Phone Frame Mockup (Executive Light Frame) */}
+              <div className="w-full max-w-[320px] mx-auto bg-slate-100 border-4 border-slate-300 rounded-[2.5rem] p-3.5 shadow-xl relative overflow-hidden">
                 {/* Phone Speaker Notch */}
-                <div className="w-20 h-3 bg-slate-800 rounded-full mx-auto mb-4" />
+                <div className="w-20 h-3 bg-slate-300 rounded-full mx-auto mb-3" />
 
-                {/* Notification Item in App */}
-                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 shadow-md">
-                  <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0">
-                      <Bell className="w-4 h-4 text-blue-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1 mb-1">
-                        <span className="font-semibold text-xs text-slate-100 truncate">
-                          {title.trim() || 'عنوان الإشعار هنا'}
-                        </span>
-                        <span className="text-[10px] text-slate-500 shrink-0">الآن</span>
+                {/* Inner Screen */}
+                <div className="bg-slate-50 border border-slate-200 rounded-[1.8rem] p-3 shadow-inner flex flex-col justify-between min-h-[360px]">
+                  {/* Status Bar */}
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 pb-2.5 mb-2 border-b border-slate-200">
+                    <span className="font-bold text-slate-700">تطبيق الحلم</span>
+                    <span className="flex items-center gap-1 font-semibold text-emerald-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      متصل
+                    </span>
+                  </div>
+
+                  {/* Notification Item in App */}
+                  <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-sm my-auto">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
+                        <Bell className="w-4 h-4 text-blue-600" />
                       </div>
-                      <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-3">
-                        {message.trim() || 'نص الإشعار سيظهر هنا للاعب في التطبيق...'}
-                      </p>
-                      {actionUrl && (
-                        <div className="mt-2.5 pt-2 border-t border-slate-800/60 flex items-center gap-1 text-[10px] text-blue-400 font-medium">
-                          <ExternalLink className="w-3 h-3" />
-                          <span>فتح الرابط المرفق</span>
+                      <div className="flex-1 min-w-0 text-right">
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="font-bold text-xs text-slate-900 truncate">
+                            {title.trim() || 'عنوان الإشعار هنا'}
+                          </span>
+                          <span className="text-[10px] text-slate-400 shrink-0">الآن</span>
                         </div>
-                      )}
+                        <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-3">
+                          {message.trim() || 'نص الإشعار سيظهر هنا للاعب في التطبيق...'}
+                        </p>
+                        {actionUrl && (
+                          <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center gap-1 text-[10px] text-blue-600 font-bold">
+                            <ExternalLink className="w-3 h-3" />
+                            <span>فتح الرابط المرفق</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Status bar & simulated phone content */}
-                <div className="mt-6 pt-4 border-t border-slate-800/50 flex items-center justify-between text-[10px] text-slate-600">
-                  <span>منصة الحلم الرياضية</span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    متصل
-                  </span>
+                  {/* Simulated App Navigation Footer */}
+                  <div className="mt-4 pt-2.5 border-t border-slate-200 flex items-center justify-around text-[10px] text-slate-400">
+                    <span className="text-blue-600 font-bold">الإشعارات</span>
+                    <span>الرئيسية</span>
+                    <span>الملف</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-4 p-3 rounded-xl bg-slate-800/30 border border-slate-800/60 text-xs text-slate-400 text-center">
+              <div className="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 text-center font-medium">
                 يصل الإشعار فوراً لحساب اللاعب ويظهر في شريط الإشعارات وعداد الرسائل غير المقروءة.
               </div>
             </CardContent>
