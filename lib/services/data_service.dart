@@ -104,7 +104,46 @@ class DataService {
     final notifications = await fetchNotifications();
     final unread = notifications.where((item) => !item.isRead).toList();
     if (unread.isEmpty) return;
-    await Future.wait(unread.map(markNotificationRead));
+
+    final byTable = <String, List<String>>{};
+    bool hasProfileReminder = false;
+
+    for (final item in unread) {
+      if (item.sourceTable == InAppNotificationService.profileReminderSource) {
+        hasProfileReminder = true;
+      } else {
+        byTable.putIfAbsent(item.sourceTable, () => []).add(item.id);
+      }
+    }
+
+    if (hasProfileReminder) {
+      await InAppNotificationService().markProfileCompletionNotificationRead();
+    }
+
+    if (byTable.isNotEmpty) {
+      _requireSupabase();
+      final client = Supabase.instance.client;
+      final futures = <Future<dynamic>>[];
+
+      for (final entry in byTable.entries) {
+        final table = entry.key;
+        final ids = entry.value;
+        if (ids.isEmpty) continue;
+
+        final updateData = <String, dynamic>{'isRead': true};
+        if (table == 'notifications') {
+          updateData['read'] = true;
+        }
+
+        futures.add(
+          client.from(table).update(updateData).inFilter('id', ids),
+        );
+      }
+
+      if (futures.isNotEmpty) {
+        await Future.wait(futures);
+      }
+    }
   }
 
   Future<List<Player>> fetchPlayers() {

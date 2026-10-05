@@ -64,7 +64,7 @@ class _AppShellState extends State<AppShell> {
       _ensureProfileCompletionReminder();
     });
     _unreadTimer = Timer.periodic(
-      const Duration(seconds: 60),
+      const Duration(seconds: 180),
       (_) => _fetchUnreadCounts(),
     );
   }
