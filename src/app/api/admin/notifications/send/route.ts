@@ -39,17 +39,41 @@ export async function POST(req: NextRequest) {
       (pRows || []).forEach(r => r.id && set.add(r.id));
       recipientIds = Array.from(set);
     } else if (target === 'clubs') {
-      const { data } = await db.from('clubs').select('id');
-      recipientIds = (data || []).map(r => r.id).filter(Boolean);
+      const [{ data: uRows }, { data: cRows }] = await Promise.all([
+        db.from('users').select('id').eq('accountType', 'club'),
+        db.from('clubs').select('id'),
+      ]);
+      const set = new Set<string>();
+      (uRows || []).forEach(r => r.id && set.add(r.id));
+      (cRows || []).forEach(r => r.id && set.add(r.id));
+      recipientIds = Array.from(set);
     } else if (target === 'academies') {
-      const { data } = await db.from('academies').select('id');
-      recipientIds = (data || []).map(r => r.id).filter(Boolean);
+      const [{ data: uRows }, { data: aRows }] = await Promise.all([
+        db.from('users').select('id').eq('accountType', 'academy'),
+        db.from('academies').select('id'),
+      ]);
+      const set = new Set<string>();
+      (uRows || []).forEach(r => r.id && set.add(r.id));
+      (aRows || []).forEach(r => r.id && set.add(r.id));
+      recipientIds = Array.from(set);
     } else if (target === 'trainers') {
-      const { data } = await db.from('trainers').select('id');
-      recipientIds = (data || []).map(r => r.id).filter(Boolean);
+      const [{ data: uRows }, { data: tRows }] = await Promise.all([
+        db.from('users').select('id').in('accountType', ['trainer', 'coach']),
+        db.from('trainers').select('id'),
+      ]);
+      const set = new Set<string>();
+      (uRows || []).forEach(r => r.id && set.add(r.id));
+      (tRows || []).forEach(r => r.id && set.add(r.id));
+      recipientIds = Array.from(set);
     } else if (target === 'agents') {
-      const { data } = await db.from('agents').select('id');
-      recipientIds = (data || []).map(r => r.id).filter(Boolean);
+      const [{ data: uRows }, { data: agRows }] = await Promise.all([
+        db.from('users').select('id').in('accountType', ['agent', 'marketer']),
+        db.from('agents').select('id'),
+      ]);
+      const set = new Set<string>();
+      (uRows || []).forEach(r => r.id && set.add(r.id));
+      (agRows || []).forEach(r => r.id && set.add(r.id));
+      recipientIds = Array.from(set);
     } else {
       // 'all'
       const { data } = await db.from('users').select('id');
