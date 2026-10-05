@@ -78,9 +78,8 @@ export function useUsers(initialLimit = 2000) {
                     isGoogleUser,
                     suspensionReason,
                     suspendedAt,
-                    parentAccountId,
-                    parentAccountType,
-                    parentOrganizationName
+                    academyId,
+                    clubId
                 `)
                 .order('created_at', { ascending: false })
                 .limit(initialLimit);
@@ -121,9 +120,9 @@ export function useUsers(initialLimit = 2000) {
                     city: row.city || '',
                     createdAt: toDate(row.created_at || row.createdAt || row.registrationDate),
                     lastLogin: toDate(row.lastLogin || row.last_login),
-                    parentAccountId: row.parentAccountId,
-                    parentAccountType: row.parentAccountType,
-                    parentOrganizationName: row.parentOrganizationName,
+                    parentAccountId: row.academyId || row.clubId || undefined,
+                    parentAccountType: row.academyId ? 'academy' : (row.clubId ? 'club' : undefined),
+                    parentOrganizationName: undefined,
                     suspendReason: row.suspensionReason || row.suspendReason,
                     suspendedAt: toDate(row.suspendedAt),
                     profileImage,
