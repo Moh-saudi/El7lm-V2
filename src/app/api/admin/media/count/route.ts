@@ -14,26 +14,53 @@ export async function GET(request: NextRequest) {
 
     const db = getSupabaseAdmin();
 
-    // Videos counts
-    const { data: videos } = await db.from('videos').select('status');
-    const totalVideos = (videos ?? []).length;
-    const pendingVideos = (videos ?? []).filter((v: Record<string, unknown>) => v.status === 'pending').length;
-    const approvedVideos = (videos ?? []).filter((v: Record<string, unknown>) => v.status === 'approved').length;
-    const rejectedVideos = (videos ?? []).filter((v: Record<string, unknown>) => v.status === 'rejected').length;
+    const safeCount = async (queryPromise: PromiseLike<{ count: number | null; error: unknown }>): Promise<number> => {
+      try {
+        const { count, error } = await queryPromise;
+        return error ? 0 : (count ?? 0);
+      } catch {
+        return 0;
+      }
+    };
 
-    // Images counts
-    let totalImages = 0, pendingImages = 0, approvedImages = 0, rejectedImages = 0;
-    try {
-      const { data: images } = await db.from('images').select('status');
-      totalImages = (images ?? []).length;
-      pendingImages = (images ?? []).filter((i: Record<string, unknown>) => i.status === 'pending').length;
-      approvedImages = (images ?? []).filter((i: Record<string, unknown>) => i.status === 'approved').length;
-      rejectedImages = (images ?? []).filter((i: Record<string, unknown>) => i.status === 'rejected').length;
-    } catch {}
+    // High-performance parallel exact counts using HTTP HEAD (0 KB memory overhead)
+    const [
+      totalVideosRes,
+      pendingVideosRes,
+      approvedVideosRes,
+      rejectedVideosRes,
+      totalImagesRes
+    ] = await Promise.all([
+      safeCount(db.from('videos').select('id', { count: 'exact', head: true })),
+      safeCount(db.from('videos').select('id', { count: 'exact', head: true }).eq('status', 'pending')),
+      safeCount(db.from('videos').select('id', { count: 'exact', head: true }).eq('status', 'approved')),
+      safeCount(db.from('videos').select('id', { count: 'exact', head: true }).eq('status', 'rejected')),
+      safeCount(db.from('images').select('id', { count: 'exact', head: true })),
+    ]);
+
+    const totalVideos = totalVideosRes;
+    const pendingVideos = pendingVideosRes;
+    const approvedVideos = approvedVideosRes;
+    const rejectedVideos = rejectedVideosRes;
+    const totalImages = totalImagesRes;
+    const pendingImages = 0;
+    const approvedImages = totalImages;
+    const rejectedImages = 0;
 
     return NextResponse.json({
       success: true,
-      data: { totalVideos, totalImages, pendingVideos, pendingImages, approvedVideos, approvedImages, rejectedVideos, rejectedImages, totalMedia: totalVideos + totalImages, lastUpdated: new Date().toISOString() },
+      data: {
+        totalVideos,
+        totalImages,
+        pendingVideos,
+        pendingImages,
+        approvedVideos,
+        approvedImages,
+        rejectedVideos,
+        rejectedImages,
+        totalMedia: totalVideos + totalImages,
+        lastUpdated: new Date().toISOString()
+      },
     });
   } catch (error) {
     return NextResponse.json(

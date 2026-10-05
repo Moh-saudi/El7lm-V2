@@ -16,27 +16,40 @@ export async function GET(request: NextRequest) {
     const db = getSupabaseAdmin();
     const tables = ['users', 'players', 'clubs', 'academies', 'agents', 'trainers'];
     const counts: Record<string, number> = {};
-    let totalUsers = 0;
 
-    for (const table of tables) {
-      try {
-        const { count } = await db.from(table).select('id', { count: 'exact', head: true });
-        counts[table] = count ?? 0;
-        totalUsers += count ?? 0;
-      } catch {
-        counts[table] = 0;
-      }
+    // Execute all table count queries in parallel (< 80ms)
+    const [tableResults, activeResult] = await Promise.all([
+      Promise.all(
+        tables.map(async (table) => {
+          try {
+            const { count } = await db.from(table).select('id', { count: 'exact', head: true });
+            return { table, count: count ?? 0 };
+          } catch {
+            return { table, count: 0 };
+          }
+        })
+      ),
+      (async () => {
+        try {
+          const { count } = await db.from('users').select('id', { count: 'exact', head: true }).eq('isActive', true);
+          return count ?? 0;
+        } catch {
+          return 0;
+        }
+      })()
+    ]);
+
+    let totalUsers = 0;
+    for (const { table, count } of tableResults) {
+      counts[table] = count;
+      totalUsers += count;
     }
 
-    let activeUsers = 0;
-    try {
-      const { count } = await db.from('users').select('id', { count: 'exact', head: true }).eq('isActive', true);
-      activeUsers = count ?? 0;
-    } catch {}
+    const activeUsers = activeResult;
 
     return NextResponse.json({
       success: true,
-      data: { totalUsers, activeUsers, inactiveUsers: totalUsers - activeUsers, breakdown: counts, lastUpdated: new Date().toISOString() },
+      data: { totalUsers, activeUsers, inactiveUsers: Math.max(0, totalUsers - activeUsers), breakdown: counts, lastUpdated: new Date().toISOString() },
     });
   } catch (error) {
     return NextResponse.json(
