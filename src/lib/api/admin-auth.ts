@@ -117,6 +117,42 @@ export async function authorizeAdmin(request: NextRequest): Promise<AdminAuthori
       } as unknown as User;
     }
 
+    // Fallback: verify admin by x-user-email or x-user-phone if token is absent
+    if (!user) {
+      const headerEmail = request.headers.get('x-user-email')?.trim()?.toLowerCase();
+      const headerPhone = request.headers.get('x-user-phone')?.trim();
+      if (headerEmail || headerPhone) {
+        try {
+          const admin = getSupabaseAdmin();
+          let matchedAdmin: any = null;
+          if (headerEmail) {
+            const { data } = await admin.from('users').select('id, email, phone, accountType, role').eq('email', headerEmail).maybeSingle();
+            if (data && (data.accountType === 'admin' || data.role === 'admin' || SUPER_ADMIN_EMAILS.has(headerEmail))) {
+              matchedAdmin = data;
+            }
+          }
+          if (!matchedAdmin && headerPhone) {
+            const cleanPhone = headerPhone.replace(/\D/g, '');
+            if (cleanPhone.length >= 8) {
+              const { data } = await admin.from('users').select('id, email, phone, accountType, role').ilike('phone', `%${cleanPhone.slice(-8)}%`).maybeSingle();
+              if (data && (data.accountType === 'admin' || data.role === 'admin')) {
+                matchedAdmin = data;
+              }
+            }
+          }
+          if (matchedAdmin) {
+            user = {
+              id: matchedAdmin.id,
+              email: matchedAdmin.email,
+              phone: matchedAdmin.phone,
+              user_metadata: { role: 'admin', accountType: 'admin' },
+              app_metadata: { role: 'admin' },
+            } as unknown as User;
+          }
+        } catch {}
+      }
+    }
+
     if (!user) return denied(401);
 
     const email = String(user.email || request.headers.get('x-user-email') || '').toLowerCase().trim();

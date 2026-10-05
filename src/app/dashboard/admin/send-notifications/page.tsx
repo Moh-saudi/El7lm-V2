@@ -26,6 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { messageTemplates } from '@/lib/notifications/templates';
+import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 type TargetCategory = 'all' | 'players' | 'clubs' | 'academies' | 'trainers' | 'agents' | 'custom';
 
@@ -72,7 +73,7 @@ export default function SendNotificationsPage() {
 
     setSearching(true);
     try {
-      const res = await fetch(`/api/admin/users/search?q=${encodeURIComponent(query.trim())}`);
+      const res = await authenticatedFetch(`/api/admin/users/search?q=${encodeURIComponent(query.trim())}`);
       const data = await res.json();
       if (data.success) {
         setSearchResults(data.users || []);
@@ -120,7 +121,7 @@ export default function SendNotificationsPage() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/notifications/send', {
+      const res = await authenticatedFetch('/api/admin/notifications/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
