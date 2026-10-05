@@ -51,19 +51,16 @@ export async function POST(request: NextRequest) {
       priority: 'medium',
       read: false,
       isRead: false,
+      body: body.message || getDefaultMessage(body.type, viewerName),
       actionUrl: body.actionUrl || getDefaultActionUrl(body.type, body.profileOwnerId, body.videoId),
-      data: {
+      link: body.actionUrl || getDefaultActionUrl(body.type, body.profileOwnerId, body.videoId),
+      metadata: {
         viewerId: authUser.id,
         viewerName,
         viewerType: body.viewerType || 'user',
         viewerAccountType: body.viewerAccountType || 'player',
         videoId: body.videoId,
         profileType: body.metadata?.profileType || 'player',
-        ...(body.metadata || {}),
-      },
-      metadata: {
-        viewerId: authUser.id,
-        viewerName,
         ...(body.metadata || {}),
       },
       createdAt: now,

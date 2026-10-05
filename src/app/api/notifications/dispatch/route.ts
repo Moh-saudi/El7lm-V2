@@ -186,17 +186,11 @@ export async function POST(req: NextRequest) {
       userId: targetUserId,
       title: content.title,
       message: content.message,
+      body: content.message,
       type: eventType,
       priority: content.priority,
       read: false,
       isRead: false,
-      data: {
-        actorId,
-        actorName,
-        actorAccountType: ACCOUNT_LABELS[actorAccountType] || actorAccountType,
-        emoji: content.emoji,
-        ...(metadata || {}),
-      },
       metadata: {
         actorId,
         actorName,
