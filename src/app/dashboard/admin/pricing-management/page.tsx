@@ -20,7 +20,6 @@ import dayjs from 'dayjs';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabase/config';
 import { PricingService } from '@/lib/pricing/pricing-service';
-import { useAuth } from '@/lib/firebase/auth-provider';
 import { useAbility } from '@/hooks/useAbility';
 import AccessDenied from '@/components/admin/AccessDenied';
 import EditPlanModal from '@/components/admin/pricing/EditPlanModal';
