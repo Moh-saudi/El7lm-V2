@@ -38,6 +38,15 @@ async function getAuthUser(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // 1. التحقق من المصادقة (Auth Check)
+    const authUser = await getAuthUser(request);
+    if (!authUser) {
+      return NextResponse.json(
+        { error: 'غير مصرح لك. يرجى تسجيل الدخول أولاً' },
+        { status: 401 }
+      );
+    }
+
     const formData = await request.formData();
 
     const file = formData.get('file') as File | null;
@@ -58,6 +67,44 @@ export async function POST(request: NextRequest) {
     }
     if (!title.trim()) {
       return NextResponse.json({ error: 'عنوان الفيديو مطلوب' }, { status: 400 });
+    }
+
+    // 2. التحقق من صلاحية الحساب والملكية (Ownership Check)
+    if (authUser.id !== userId && authUser.id !== ownerId) {
+      const { getSupabaseAdmin } = await import('@/lib/supabase/admin');
+      const adminDb = getSupabaseAdmin();
+      const { data: adminRecord } = await adminDb
+        .from('admins')
+        .select('id')
+        .or(`id.eq.${authUser.id},user_id.eq.${authUser.id}`)
+        .maybeSingle();
+
+      if (!adminRecord) {
+        return NextResponse.json(
+          { error: 'لا تملك صلاحية رفع فيديو لهذا الحساب' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // 3. التحقق من حجم ونوع ملف الفيديو
+    const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+    if (file.size > MAX_VIDEO_SIZE) {
+      return NextResponse.json(
+        { error: 'حجم ملف الفيديو يتجاوز الحد المسموح به (50 ميجابايت)' },
+        { status: 413 }
+      );
+    }
+
+    const isValidVideoType =
+      file.type.startsWith('video/') ||
+      /\.(mp4|mov|avi|webm|mkv)$/i.test(file.name);
+
+    if (!isValidVideoType) {
+      return NextResponse.json(
+        { error: 'صيغة الملف غير مدعومة. يرجى رفع ملف فيديو صالح (MP4, MOV, WebM)' },
+        { status: 400 }
+      );
     }
 
     let tags: string[] = [];

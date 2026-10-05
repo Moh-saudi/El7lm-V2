@@ -11,11 +11,19 @@
     },
     "src/app/api/admin/users/count/route.ts": {
       "maxDuration": 10
-    },
-    "src/app/api/admin/settings/route.ts": {
-      "maxDuration": 10
     }
   },
+  "regions": ["fra1"],
+  "crons": [
+    {
+      "path": "/api/otp/cleanup",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/health",
+      "schedule": "0 */12 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/api/upload/video",
@@ -30,7 +38,24 @@
         },
         {
           "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type"
+          "value": "Content-Type, Authorization"
+        }
+      ]
+    },
+    {
+      "source": "/api/media/presigned-url/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "POST, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
         }
       ]
     }

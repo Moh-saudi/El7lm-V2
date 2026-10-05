@@ -1,13 +1,11 @@
+/**
+ * Canonical Server Endpoint: Send a message within an existing conversation
+ * Validates caller authorization and conversation membership
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeUser } from '@/lib/api/user-auth';
-
-function sanitizeMessage(text: string): string {
-  if (!text) return '';
-  return text
-    .replace(/\0/g, '') // remove null bytes
-    .slice(0, 4000); // enforce maximum length
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,161 +14,116 @@ export async function POST(request: NextRequest) {
       return authResult.response;
     }
 
-    const currentUserId = authResult.user.id;
+    const callerUser = authResult.user;
     const body = await request.json().catch(() => ({}));
-
-    const conversationId = body.conversationId;
-    const rawContent = body.content || body.message || '';
-    const mediaUrl = body.mediaUrl || body.imageUrl || body.voiceUrl || null;
-    const mediaType = body.mediaType || body.messageType || (body.voiceUrl ? 'voice' : body.imageUrl ? 'image' : 'text');
-    const voiceDuration = typeof body.voiceDuration === 'number' ? body.voiceDuration : 0;
+    const {
+      conversationId,
+      message = '',
+      messageType = 'text',
+      imageUrl = null,
+      voiceUrl = null,
+      voiceDuration = 0,
+    } = body;
 
     if (!conversationId || typeof conversationId !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'conversationId is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'معرف المحادثة مطلوب' }, { status: 400 });
     }
 
-    const messageContent = sanitizeMessage(typeof rawContent === 'string' ? rawContent.trim() : '');
-
-    if (!messageContent && !mediaUrl) {
-      return NextResponse.json(
-        { success: false, error: 'Message content or mediaUrl is required' },
-        { status: 400 }
-      );
+    const trimmedText = typeof message === 'string' ? message.trim() : '';
+    if (!trimmedText && !imageUrl && !voiceUrl) {
+      return NextResponse.json({ success: false, error: 'محتوى الرسالة فارغ' }, { status: 400 });
     }
 
-    const admin = getSupabaseAdmin();
+    const db = getSupabaseAdmin();
 
-    // 1. Fetch conversation and verify current user is a participant
-    const { data: conv, error: convError } = await admin
+    // 1. Fetch conversation to verify membership & get receiver
+    const { data: conv, error: convError } = await db
       .from('conversations')
-      .select('*')
+      .select('id, participants, participantNames, participantTypes, unreadCount')
       .eq('id', conversationId)
-      .single();
+      .maybeSingle();
 
     if (convError || !conv) {
-      return NextResponse.json(
-        { success: false, error: 'Conversation not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: false, error: 'المحادثة غير موجودة' }, { status: 404 });
     }
 
     const participants: string[] = Array.isArray(conv.participants) ? conv.participants : [];
-    if (!participants.includes(currentUserId)) {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden: You are not a participant in this conversation' },
-        { status: 403 }
-      );
+    if (!participants.includes(callerUser.id)) {
+      return NextResponse.json({ success: false, error: 'غير مصرح لك بالإرسال في هذه المحادثة' }, { status: 403 });
     }
 
-    // Determine recipient
-    const recipientId = body.receiverId || participants.find((p) => p !== currentUserId) || '';
+    const receiverId = participants.find((p) => p !== callerUser.id) || callerUser.id;
+    const pNames = (conv.participantNames as Record<string, string>) || {};
+    const pTypes = (conv.participantTypes as Record<string, string>) || {};
 
-    const participantNames = (conv.participantNames as Record<string, string>) || {};
-    const participantTypes = (conv.participantTypes as Record<string, string>) || {};
-
-    const senderName =
-      participantNames[currentUserId] ||
-      authResult.user.user_metadata?.full_name ||
-      authResult.user.user_metadata?.name ||
-      'User';
-
-    const receiverName =
-      (recipientId ? participantNames[recipientId] : '') ||
-      body.receiverName ||
-      'Recipient';
-
-    const senderType =
-      participantTypes[currentUserId] ||
-      authResult.user.user_metadata?.accountType ||
-      'user';
-
-    const receiverType =
-      (recipientId ? participantTypes[recipientId] : '') ||
-      body.receiverType ||
-      'user';
+    const senderName = pNames[callerUser.id] || callerUser.user_metadata?.full_name || 'User';
+    const receiverName = pNames[receiverId] || 'User';
+    const senderType = pTypes[callerUser.id] || callerUser.user_metadata?.accountType || 'player';
+    const receiverType = pTypes[receiverId] || 'player';
 
     const now = new Date().toISOString();
-    const messageId = crypto.randomUUID();
+    const subId = callerUser.id.length > 4 ? callerUser.id.substring(0, 4) : callerUser.id;
+    const messageId = `msg_${Date.now()}_${subId}`;
 
-    // 2. Insert message into messages table
-    const messageRecord: Record<string, unknown> = {
+    const messageDoc = {
       id: messageId,
       conversationId,
-      senderId: currentUserId,
-      receiverId: recipientId,
+      senderId: callerUser.id,
+      receiverId,
       senderName,
       receiverName,
       senderType,
       receiverType,
-      message: messageContent,
-      messageType: mediaType,
-      imageUrl: mediaType === 'image' ? mediaUrl : (body.imageUrl || null),
-      voiceUrl: mediaType === 'voice' ? mediaUrl : (body.voiceUrl || null),
-      voiceDuration,
+      message: trimmedText || (messageType === 'voice' ? 'تسجيل صوتي' : 'صورة'),
+      messageType,
+      imageUrl: imageUrl || null,
+      voiceUrl: voiceUrl || null,
+      voiceDuration: Number(voiceDuration) || 0,
+      deliveryStatus: 'sent',
       timestamp: now,
       isRead: false,
-      deliveryStatus: 'sent',
-      createdAt: now,
-      updatedAt: now,
     };
 
-    if (mediaUrl) {
-      messageRecord.mediaUrl = mediaUrl;
-    }
-
-    const { error: msgInsertError } = await admin
+    // 2. Insert message into messages table
+    const { error: insertError } = await db
       .from('messages')
-      .insert(messageRecord);
+      .insert(messageDoc);
 
-    if (msgInsertError) {
-      console.error('Failed to insert message:', msgInsertError);
-      return NextResponse.json(
-        { success: false, error: 'Failed to save message' },
-        { status: 500 }
-      );
+    if (insertError) {
+      console.error('❌ [messages/send] Insert message error:', insertError);
+      return NextResponse.json({ success: false, error: 'فشل إرسال الرسالة' }, { status: 500 });
     }
 
-    // 3. Update conversation lastMessage & unread count
-    const unreadCount = (conv.unreadCount as Record<string, number>) || {};
-    const currentReceiverUnread = Number(unreadCount[recipientId] || 0);
-
+    // 3. Update conversation last message & unread counter
+    const currentUnread = (conv.unreadCount as Record<string, number>) || {};
     const updatedUnread = {
-      ...unreadCount,
-      [currentUserId]: 0,
-      [recipientId]: currentReceiverUnread + 1,
+      ...currentUnread,
+      [callerUser.id]: 0,
+      [receiverId]: (currentUnread[receiverId] || 0) + 1,
     };
 
-    const displaySummary = messageContent || (mediaType === 'voice' ? 'تسجيل صوتي' : mediaType === 'image' ? 'صورة' : 'مرفق');
-
-    try {
-      await admin
-        .from('conversations')
-        .update({
-          lastMessage: displaySummary,
-          lastMessageTime: now,
-          lastSenderId: currentUserId,
-          unreadCount: updatedUnread,
-          updatedAt: now,
-        })
-        .eq('id', conversationId);
-    } catch (updateErr) {
-      console.warn('Failed to update conversation summary:', updateErr);
-    }
+    await db
+      .from('conversations')
+      .update({
+        lastMessage: messageDoc.message,
+        lastMessageTime: now,
+        lastSenderId: callerUser.id,
+        unreadCount: updatedUnread,
+        updatedAt: now,
+      })
+      .eq('id', conversationId)
+      .catch((updateErr: any) => {
+        console.warn('⚠️ [messages/send] Failed to update conversation summary:', updateErr);
+      });
 
     return NextResponse.json({
       success: true,
       messageId,
-      sentAt: now,
-      deliveryStatus: 'sent',
+      timestamp: now,
     });
+
   } catch (error: any) {
-    console.error('Error in /api/messages/send:', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('❌ [messages/send] Unhandled error:', error);
+    return NextResponse.json({ success: false, error: error.message || 'حدث خطأ غير متوقع' }, { status: 500 });
   }
 }

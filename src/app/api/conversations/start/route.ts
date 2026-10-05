@@ -1,6 +1,51 @@
+/**
+ * Canonical Server Endpoint: Start or retrieve a conversation
+ * Validates authentication, participant identities, and prevents self-messaging
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeUser } from '@/lib/api/user-auth';
+
+const ROLE_TABLES: Record<string, string> = {
+  player: 'players',
+  club: 'clubs',
+  academy: 'academies',
+  trainer: 'trainers',
+  agent: 'agents',
+  marketer: 'marketers',
+  admin: 'admins',
+};
+
+async function resolveUserInfo(db: any, userId: string): Promise<{ name: string; type: string; avatar: string }> {
+  // First check users table
+  const { data: userRow } = await db
+    .from('users')
+    .select('full_name, name, accountType, profile_image, avatar')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (userRow) {
+    return {
+      name: userRow.full_name || userRow.name || 'User',
+      type: userRow.accountType || 'player',
+      avatar: userRow.profile_image || userRow.avatar || '',
+    };
+  }
+
+  // Check auth user metadata
+  const { data: authData } = await db.auth.admin.getUserById(userId).catch(() => ({ data: null }));
+  if (authData?.user) {
+    const meta = authData.user.user_metadata || {};
+    return {
+      name: meta.full_name || meta.name || authData.user.email?.split('@')[0] || 'User',
+      type: meta.accountType || 'player',
+      avatar: meta.avatar_url || meta.picture || '',
+    };
+  }
+
+  return { name: 'User', type: 'player', avatar: '' };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,185 +54,117 @@ export async function POST(request: NextRequest) {
       return authResult.response;
     }
 
-    const currentUserId = authResult.user.id;
+    const callerUser = authResult.user;
     const body = await request.json().catch(() => ({}));
     const { recipientId, initialMessage, context } = body;
 
     if (!recipientId || typeof recipientId !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'recipientId is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: 'معرف المستلم مطلوب' }, { status: 400 });
     }
 
-    if (recipientId === currentUserId) {
-      return NextResponse.json(
-        { success: false, error: 'Cannot start conversation with yourself' },
-        { status: 400 }
-      );
+    if (recipientId === callerUser.id) {
+      return NextResponse.json({ success: false, error: 'لا يمكن بدء محادثة مع نفسك' }, { status: 400 });
     }
 
-    const admin = getSupabaseAdmin();
+    const db = getSupabaseAdmin();
 
-    // 1. Check if conversation already exists between current user and recipient
-    const { data: existingConvs, error: searchError } = await admin
+    // 1. Check if conversation already exists between both participants
+    const { data: existingConvs, error: searchError } = await db
       .from('conversations')
-      .select('id, createdAt, updatedAt, participants')
-      .filter('participants', 'cs', JSON.stringify([currentUserId]))
+      .select('id, participants, updatedAt')
+      .contains('participants', [callerUser.id])
       .limit(30);
 
-    if (!searchError && existingConvs && existingConvs.length > 0) {
-      const matched = existingConvs.find((c: any) => {
-        const parts = Array.isArray(c.participants) ? c.participants : [];
-        return parts.includes(recipientId);
-      });
-
-      if (matched) {
+    if (!searchError && existingConvs) {
+      const match = existingConvs.find((c: any) =>
+        Array.isArray(c.participants) && c.participants.includes(recipientId)
+      );
+      if (match) {
         return NextResponse.json({
           success: true,
-          conversationId: matched.id,
-          status: 'existing',
-          createdAt: matched.createdAt,
+          conversationId: match.id,
+          isNew: false,
+          status: 'active',
         });
       }
     }
 
-    // 2. Fetch profiles for current user and recipient to store display metadata
-    const { data: usersData } = await admin
-      .from('users')
-      .select('id, full_name, name, role, account_type, accountType, avatar_url, profile_image')
-      .in('id', [currentUserId, recipientId]);
-
-    const senderProfile: any = (usersData || []).find((u: any) => u.id === currentUserId) || {};
-    const recipientProfile: any = (usersData || []).find((u: any) => u.id === recipientId) || {};
-
-    const senderName: string =
-      senderProfile.full_name ||
-      senderProfile.name ||
-      authResult.user.user_metadata?.full_name ||
-      authResult.user.user_metadata?.name ||
-      'User';
-
-    const recipientName: string =
-      recipientProfile.full_name ||
-      recipientProfile.name ||
-      body.recipientName ||
-      'Recipient';
-
-    const senderType: string =
-      senderProfile.account_type ||
-      senderProfile.accountType ||
-      senderProfile.role ||
-      authResult.user.user_metadata?.accountType ||
-      'user';
-
-    const recipientType: string =
-      recipientProfile.account_type ||
-      recipientProfile.accountType ||
-      recipientProfile.role ||
-      body.recipientType ||
-      'user';
-
-    const senderAvatar: string =
-      senderProfile.avatar_url ||
-      senderProfile.profile_image ||
-      authResult.user.user_metadata?.avatar_url ||
-      '';
-
-    const recipientAvatar: string =
-      recipientProfile.avatar_url ||
-      recipientProfile.profile_image ||
-      body.recipientAvatar ||
-      '';
+    // 2. Resolve caller & recipient profiles
+    const [senderInfo, recipientInfo] = await Promise.all([
+      resolveUserInfo(db, callerUser.id),
+      resolveUserInfo(db, recipientId),
+    ]);
 
     const now = new Date().toISOString();
-    const shortUid = currentUserId.length > 6 ? currentUserId.substring(0, 6) : currentUserId;
-    const conversationId = `conv_${Date.now()}_${shortUid}`;
-
-    const trimmedInitial = typeof initialMessage === 'string' ? initialMessage.trim() : '';
+    const subId = callerUser.id.length > 6 ? callerUser.id.substring(0, 6) : callerUser.id;
+    const conversationId = `conv_${Date.now()}_${subId}`;
 
     const newConversation = {
       id: conversationId,
-      participants: [currentUserId, recipientId],
+      participants: [callerUser.id, recipientId],
       participantNames: {
-        [currentUserId]: senderName,
-        [recipientId]: recipientName,
+        [callerUser.id]: senderInfo.name,
+        [recipientId]: recipientInfo.name,
       },
       participantTypes: {
-        [currentUserId]: senderType,
-        [recipientId]: recipientType,
+        [callerUser.id]: senderInfo.type,
+        [recipientId]: recipientInfo.type,
       },
       participantAvatars: {
-        [currentUserId]: senderAvatar,
-        [recipientId]: recipientAvatar,
+        [callerUser.id]: senderInfo.avatar,
+        [recipientId]: recipientInfo.avatar,
       },
-      lastMessage: trimmedInitial,
+      lastMessage: typeof initialMessage === 'string' ? initialMessage.trim() : '',
       lastMessageTime: now,
-      lastSenderId: currentUserId,
-      unreadCount: {
-        [currentUserId]: 0,
-        [recipientId]: trimmedInitial ? 1 : 0,
-      },
-      context: context && typeof context === 'object' ? context : null,
-      isActive: true,
-      createdAt: now,
+      lastSenderId: callerUser.id,
+      unreadCount: { [callerUser.id]: 0, [recipientId]: initialMessage ? 1 : 0 },
+      metadata: context || null,
       updatedAt: now,
+      createdAt: now,
     };
 
-    const { error: insertError } = await admin
+    const { error: insertConvError } = await db
       .from('conversations')
       .insert(newConversation);
 
-    if (insertError) {
-      console.error('Error creating conversation:', insertError);
-      return NextResponse.json(
-        { success: false, error: 'Failed to create conversation in database' },
-        { status: 500 }
-      );
+    if (insertConvError) {
+      console.error('❌ [conversations/start] Insert conversation error:', insertConvError);
+      return NextResponse.json({ success: false, error: 'فشل إنشاء المحادثة' }, { status: 500 });
     }
 
-    // If an initial message was supplied, insert it
-    if (trimmedInitial) {
-      const messageId = crypto.randomUUID();
-      const messageRecord = {
-        id: messageId,
+    // 3. Insert initial message if provided
+    if (typeof initialMessage === 'string' && initialMessage.trim().length > 0) {
+      const messageDoc = {
+        id: `msg_${Date.now()}_${callerUser.id.slice(0, 4)}`,
         conversationId,
-        senderId: currentUserId,
+        senderId: callerUser.id,
         receiverId: recipientId,
-        senderName,
-        receiverName: recipientName,
-        senderType,
-        receiverType: recipientType,
-        message: trimmedInitial,
+        senderName: senderInfo.name,
+        receiverName: recipientInfo.name,
+        senderType: senderInfo.type,
+        receiverType: recipientInfo.type,
+        message: initialMessage.trim(),
         messageType: 'text',
+        deliveryStatus: 'sent',
         timestamp: now,
         isRead: false,
-        deliveryStatus: 'sent',
-        createdAt: now,
-        updatedAt: now,
       };
 
-      try {
-        await admin.from('messages').insert(messageRecord);
-      } catch (msgErr) {
-        console.warn('Initial message insert warning:', msgErr);
-      }
+      await db.from('messages').insert(messageDoc).catch((err: any) => {
+        console.warn('⚠️ [conversations/start] Initial message insert failed:', err);
+      });
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        conversationId,
-        status: 'active',
-        createdAt: now,
-      },
-      { status: 201 }
-    );
+    return NextResponse.json({
+      success: true,
+      conversationId,
+      isNew: true,
+      status: 'active',
+      createdAt: now,
+    }, { status: 201 });
+
   } catch (error: any) {
-    console.error('Error in /api/conversations/start:', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('❌ [conversations/start] Unhandled error:', error);
+    return NextResponse.json({ success: false, error: error.message || 'حدث خطأ غير متوقع' }, { status: 500 });
   }
 }
