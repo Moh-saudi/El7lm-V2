@@ -53,13 +53,13 @@ export default function UsersFiltersBar({
     filteredCount,
 }: UsersFiltersBarProps) {
     return (
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200/80">
             {/* صف البحث والمعلومات */}
-            <div className="flex flex-wrap gap-4 items-center justify-between mb-4 pb-4 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex flex-wrap gap-4 items-center justify-between mb-4 pb-4 border-b border-slate-100">
                 <div className="flex items-center gap-3">
                     <Badge
                         status="processing"
-                        text={<span className="font-bold text-gray-700 dark:text-gray-200">إجمالي النتائج: {filteredCount}</span>}
+                        text={<span className="font-bold text-slate-800">إجمالي النتائج: {filteredCount}</span>}
                     />
                     {activeFiltersCount > 0 && (
                         <Text type="secondary" className="text-xs">
@@ -138,7 +138,7 @@ export default function UsersFiltersBar({
             </div>
 
             {/* صف الفلاتر الإضافية */}
-            <div className="flex flex-wrap gap-3 items-center mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex flex-wrap gap-3 items-center mt-3 pt-3 border-t border-slate-100">
                 {/* حالة التحقق */}
                 <Select
                     value={filters.verification}

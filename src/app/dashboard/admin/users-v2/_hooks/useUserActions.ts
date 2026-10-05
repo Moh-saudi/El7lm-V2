@@ -57,6 +57,7 @@ export function useUserActions() {
                 isActive: false,
                 suspendedAt: new Date().toISOString(),
                 suspendReason: reason,
+                suspensionReason: reason,
             }).eq('id', user.id);
 
             // تحديث في users أيضاً إذا كان مختلف
@@ -64,7 +65,7 @@ export function useUserActions() {
                 await supabase.from('users').update({
                     isActive: false,
                     suspendedAt: new Date().toISOString(),
-                    suspendReason: reason,
+                    suspensionReason: reason,
                 }).eq('id', user.id);
             }
 
@@ -92,13 +93,14 @@ export function useUserActions() {
                 isActive: true,
                 suspendedAt: null,
                 suspendReason: null,
+                suspensionReason: null,
             }).eq('id', user.id);
 
             if (tableName !== 'users') {
                 await supabase.from('users').update({
                     isActive: true,
                     suspendedAt: null,
-                    suspendReason: null,
+                    suspensionReason: null,
                 }).eq('id', user.id);
             }
 

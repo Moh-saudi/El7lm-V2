@@ -1,16 +1,16 @@
 /**
  * Hook لجلب المستخدمين من Supabase
+ * تم تحسينه للعمل بكفاءة فائقة مع 10,000 مستخدم
+ * يعتمد على جدول users القانوني الموحد (Canonical Identity Table)
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/config';
-import { User, UsersStats, UsersFilters, AccountType } from '../_types';
+import { User, UsersStats, UsersFilters, AccountType, AccountStatus } from '../_types';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 
 dayjs.extend(isBetween);
-
-const TABLES = ['users', 'players', 'clubs', 'academies', 'trainers', 'agents', 'marketers'];
 
 // تحويل قيمة التاريخ إلى Date
 const toDate = (value: any): Date | null => {
@@ -28,7 +28,7 @@ const calculateProfileCompletion = (data: any): number => {
     return Math.round((filledFields.length / requiredFields.length) * 100);
 };
 
-export function useUsers(initialLimit = 100) {
+export function useUsers(initialLimit = 2000) {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -49,102 +49,95 @@ export function useUsers(initialLimit = 100) {
             setLoading(true);
             setError(null);
 
-            const usersMap = new Map<string, User>();
+            // استعلام خفيف وسريع على جدول users الموحد فقط مع جلب الحقول المطلوبة للعرض
+            const { data, error: fetchError } = await supabase
+                .from('users')
+                .select(`
+                    id,
+                    uid,
+                    name,
+                    full_name,
+                    displayName,
+                    email,
+                    phone,
+                    phoneNumber,
+                    accountType,
+                    role,
+                    isActive,
+                    isDeleted,
+                    country,
+                    countryCode,
+                    city,
+                    createdAt,
+                    created_at,
+                    registrationDate,
+                    lastLogin,
+                    profile_image,
+                    avatar,
+                    isSynced,
+                    isGoogleUser,
+                    suspensionReason,
+                    suspendedAt,
+                    parentAccountId,
+                    parentAccountType,
+                    parentOrganizationName
+                `)
+                .order('created_at', { ascending: false })
+                .limit(initialLimit);
 
-            // Fetch account tables in parallel. initialLimit was previously ignored,
-            // which caused every row from every account table to be downloaded serially.
-            const tableResults = await Promise.all(
-                TABLES.map(async tableName => {
-                    try {
-                        const { data, error } = await supabase
-                            .from(tableName)
-                            .select('*')
-                            .limit(initialLimit);
-                        return { tableName, rows: data || [], error };
-                    } catch (error) {
-                        return { tableName, rows: [], error };
-                    }
-                })
-            );
-
-            for (const { tableName, rows, error: fetchError } of tableResults) {
-                if (fetchError) {
-                    console.warn(`Error fetching ${tableName}:`, fetchError);
-                    continue;
-                }
-
-                rows.forEach((data: any) => {
-                    const id = data.id;
-                    if (!id) return;
-                    const accountType = (data.accountType || data.role || tableName.replace(/s$/, '')) as AccountType;
-
-                    const userData: User = {
-                        id,
-                        uid: id,
-                        name: data.full_name || data.name || data.club_name || data.academy_name || 'غير محدد',
-                        email: data.email || '',
-                        phone: data.phone || data.phoneNumber || '',
-                        accountType,
-                        status: data.isDeleted ? 'deleted' : data.isActive === false ? 'suspended' : 'active',
-                        isActive: data.isActive !== false,
-                        isDeleted: data.isDeleted || false,
-                        verificationStatus: data.verificationStatus || 'pending',
-                        profileCompletion: calculateProfileCompletion(data),
-                        country: data.country || '',
-                        countryCode: data.countryCode || '',
-                        city: data.city || '',
-                        createdAt: toDate(data.createdAt || data.created_at || data.registrationDate || data.date),
-                        lastLogin: toDate(data.lastLogin || data.last_login),
-                        parentAccountId: data.parentAccountId || data.clubId || data.academyId,
-                        parentAccountType: data.parentAccountType,
-                        parentOrganizationName: data.parentOrganizationName,
-                        suspendReason: data.suspendReason,
-                        suspendedAt: toDate(data.suspendedAt),
-                        profileImage: data.profile_image || data.profileImage || data.avatar ||
-                            data.photoURL || data.image || data.logo || data.club_logo ||
-                            data.academy_logo || data.photo || '',
-                        isSynced: data.isSynced || false,
-                        isGoogleUser: data.isGoogleUser || false,
-                        isPhoneAuth: data.isPhoneAuth || false,
-                    };
-
-                    if (usersMap.has(id)) {
-                        const existing = usersMap.get(id)!;
-                        usersMap.set(id, {
-                            ...existing,
-                            name: (userData.name !== 'غير محدد' && userData.name) || existing.name,
-                            email: userData.email || existing.email,
-                            phone: userData.phone || existing.phone,
-                            country: userData.country || existing.country,
-                            city: userData.city || existing.city,
-                            profileImage: userData.profileImage || existing.profileImage,
-                            lastLogin: (userData.lastLogin && existing.lastLogin)
-                                ? (userData.lastLogin > existing.lastLogin ? userData.lastLogin : existing.lastLogin)
-                                : (userData.lastLogin || existing.lastLogin),
-                            createdAt: existing.createdAt || userData.createdAt,
-                            profileCompletion: Math.max(existing.profileCompletion, userData.profileCompletion),
-                            isSynced: existing.isSynced || userData.isSynced,
-                            isGoogleUser: existing.isGoogleUser || userData.isGoogleUser,
-                            isPhoneAuth: existing.isPhoneAuth || userData.isPhoneAuth,
-                        });
-                    } else {
-                        usersMap.set(id, userData);
-                    }
-                });
+            if (fetchError) {
+                throw fetchError;
             }
 
-            const allUsers = Array.from(usersMap.values());
+            const allUsers: User[] = (data || []).map((row: any) => {
+                const id = row.id || row.uid;
+                const accountType = (row.accountType || row.role || 'player') as AccountType;
+                const isDeleted = Boolean(row.isDeleted);
+                const isActive = row.isActive !== false;
+                const status: AccountStatus = isDeleted ? 'deleted' : (!isActive ? 'suspended' : 'active');
 
-            // ترتيب حسب تاريخ الإنشاء
-            allUsers.sort((a, b) => {
-                const dateA = a.createdAt?.getTime() || 0;
-                const dateB = b.createdAt?.getTime() || 0;
-                return dateB - dateA;
+                // تحسين حجم الذاكرة: تجنب نصوص base64 الطويلة في الـ listings
+                let profileImage = '';
+                if (typeof row.profile_image === 'string' && row.profile_image.length < 1000) {
+                    profileImage = row.profile_image;
+                } else if (typeof row.avatar === 'string' && row.avatar.length < 1000) {
+                    profileImage = row.avatar;
+                }
+
+                const userData: User = {
+                    id,
+                    uid: id,
+                    name: row.full_name || row.displayName || row.name || 'غير محدد',
+                    email: row.email || '',
+                    phone: row.phone || row.phoneNumber || '',
+                    accountType,
+                    status,
+                    isActive,
+                    isDeleted,
+                    verificationStatus: row.verificationStatus || (row.isVerified ? 'verified' : 'pending'),
+                    profileCompletion: calculateProfileCompletion(row),
+                    country: row.country || '',
+                    countryCode: row.countryCode || '',
+                    city: row.city || '',
+                    createdAt: toDate(row.created_at || row.createdAt || row.registrationDate),
+                    lastLogin: toDate(row.lastLogin || row.last_login),
+                    parentAccountId: row.parentAccountId,
+                    parentAccountType: row.parentAccountType,
+                    parentOrganizationName: row.parentOrganizationName,
+                    suspendReason: row.suspensionReason || row.suspendReason,
+                    suspendedAt: toDate(row.suspendedAt),
+                    profileImage,
+                    isSynced: Boolean(row.isSynced),
+                    isGoogleUser: Boolean(row.isGoogleUser),
+                    isPhoneAuth: Boolean(row.phone && !row.isGoogleUser),
+                };
+
+                return userData;
             });
 
             setUsers(allUsers);
 
-            // حساب الإحصائيات
+            // حساب الإحصائيات بكفاءة
             const now = new Date();
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -243,7 +236,7 @@ export function filterUsers(users: User[], filters: UsersFilters): User[] {
             if (filters.isSynced === 'no' && user.isSynced) return false;
         }
 
-        // نطاق التاريخ - تعديل ليكون دقيقاً وشاملاً لليوم بالكامل
+        // نطاق التاريخ
         if (user.createdAt) {
             const userDate = dayjs(user.createdAt);
             if (filters.dateRange[0]) {
@@ -255,7 +248,6 @@ export function filterUsers(users: User[], filters: UsersFilters): User[] {
                 if (userDate.isAfter(endDate)) return false;
             }
         } else if (filters.dateRange[0] || filters.dateRange[1]) {
-            // إذا كان هناك فلتر تاريخ والمستخدم ليس لديه تاريخ، نستبعده
             return false;
         }
 

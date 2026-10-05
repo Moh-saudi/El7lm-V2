@@ -150,18 +150,18 @@ export default function BulkActionsBar({
     return (
         <>
             <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center gap-4">
+                <div className="bg-white rounded-xl shadow-2xl border border-slate-200 px-6 py-3 flex items-center gap-4">
                     {/* العدد المحدد */}
-                    <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                        <span className="text-blue-600 dark:text-blue-400 font-bold text-lg">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-lg">
+                        <span className="text-emerald-700 font-bold text-lg">
                             {selectedUsers.length}
                         </span>
-                        <span className="text-blue-600 dark:text-blue-400 text-sm">
+                        <span className="text-emerald-700 text-sm font-medium">
                             محدد
                         </span>
                     </div>
 
-                    <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
+                    <div className="h-6 w-px bg-slate-200" />
 
                     {/* الإجراءات */}
                     <Space size="small">
@@ -233,7 +233,7 @@ export default function BulkActionsBar({
                         )}
                     </Space>
 
-                    <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
+                    <div className="h-6 w-px bg-slate-200" />
 
                     {/* إلغاء التحديد */}
                     <Button

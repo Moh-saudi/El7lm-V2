@@ -113,7 +113,7 @@ export default function UserDetailsModal({
             </div>
 
             {/* الأزرار */}
-            <div className="flex flex-wrap gap-2 mb-6 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="flex flex-wrap gap-2 mb-6 p-3 bg-slate-50 border border-slate-200/80 rounded-lg">
                 {permissions.edit && (
                     <Button icon={<EditOutlined />} onClick={() => onEdit(user)}>
                         تعديل
@@ -228,7 +228,7 @@ export default function UserDetailsModal({
             </Descriptions>
 
             {/* معرف المستخدم */}
-            <div className="mt-4 p-2 bg-gray-50 dark:bg-gray-800 rounded text-xs text-gray-500 font-mono">
+            <div className="mt-4 p-2 bg-slate-50 border border-slate-200/80 rounded text-xs text-slate-500 font-mono">
                 ID: <Text copyable={{ text: user.id }}>{user.id}</Text>
             </div>
         </Modal>

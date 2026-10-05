@@ -1,33 +1,29 @@
 /**
- * رسوم بيانية للإحصائيات - تصميم محسّن
+ * الرسوم البيانية لإحصائيات المستخدمين - تصميم نهاري تنفيذي (Executive Light Mode)
  */
 
 'use client';
 
 import React from 'react';
-import { Card, Row, Col, Empty, Spin, Statistic } from 'antd';
+import { Card, Row, Col, Empty } from 'antd';
 import {
-    AreaChart,
-    Area,
     PieChart,
     Pie,
     Cell,
-    BarChart,
-    Bar,
+    ResponsiveContainer,
+    Tooltip,
+    Legend,
+    AreaChart,
+    Area,
     XAxis,
     YAxis,
     CartesianGrid,
-    Tooltip,
-    Legend,
-    ResponsiveContainer,
-    RadialBarChart,
-    RadialBar,
 } from 'recharts';
 import {
     UserOutlined,
+    CheckCircleOutlined,
     RiseOutlined,
     GlobalOutlined,
-    CheckCircleOutlined,
 } from '@ant-design/icons';
 import { UsersStats, ACCOUNT_TYPE_LABELS, AccountType } from '../_types';
 
@@ -36,25 +32,25 @@ interface UsersChartsProps {
     loading?: boolean;
 }
 
-// ألوان أنواع الحسابات - ألوان متدرجة جميلة
+// ألوان متناسقة للأنواع
 const TYPE_COLORS: Record<string, string> = {
-    player: '#3B82F6',
-    club: '#10B981',
-    academy: '#8B5CF6',
-    trainer: '#F59E0B',
-    agent: '#06B6D4',
-    marketer: '#EC4899',
-    parent: '#F97316',
-    admin: '#EF4444',
+    player: '#059669', // Emerald
+    club: '#2563EB',   // Royal Blue
+    academy: '#7C3AED',// Purple
+    trainer: '#D97706',// Amber
+    agent: '#0891B2',  // Cyan
+    marketer: '#DB2777', // Pink
+    parent: '#4F46E5', // Indigo
+    admin: '#E11D48',  // Rose
 };
 
 // Custom Tooltip للرسوم البيانية
 const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
         return (
-            <div className="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-                <p className="font-semibold text-gray-900 dark:text-white mb-1">{label || payload[0]?.name}</p>
-                <p className="text-blue-600 dark:text-blue-400 font-bold text-lg">
+            <div className="bg-white shadow-xl rounded-lg p-3 border border-slate-200">
+                <p className="font-semibold text-slate-800 mb-1">{label || payload[0]?.name}</p>
+                <p className="text-emerald-600 font-bold text-lg">
                     {payload[0]?.value?.toLocaleString('ar-EG')} مستخدم
                 </p>
             </div>
@@ -70,50 +66,41 @@ export default function UsersCharts({ stats, loading }: UsersChartsProps) {
         .map(([type, count]) => ({
             name: ACCOUNT_TYPE_LABELS[type as AccountType] || type,
             value: count,
-            color: TYPE_COLORS[type] || '#3B82F6',
-            fill: TYPE_COLORS[type] || '#3B82F6',
+            color: TYPE_COLORS[type] || '#2563EB',
+            fill: TYPE_COLORS[type] || '#2563EB',
         }))
         .sort((a, b) => b.value - a.value);
 
     // بيانات الحالة
     const statusData = [
-        { name: 'نشط', value: stats.active, color: '#10B981', fill: '#10B981' },
-        { name: 'موقوف', value: stats.suspended, color: '#F59E0B', fill: '#F59E0B' },
-        { name: 'محذوف', value: stats.deleted, color: '#EF4444', fill: '#EF4444' },
+        { name: 'نشط', value: stats.active, color: '#059669', fill: '#059669' },
+        { name: 'موقوف', value: stats.suspended, color: '#D97706', fill: '#D97706' },
+        { name: 'محذوف', value: stats.deleted, color: '#E11D48', fill: '#E11D48' },
     ].filter(item => item.value > 0);
 
     // بيانات النمو
     const growthData = [
         { name: 'اليوم', value: stats.newToday, icon: '📅' },
-        { name: 'الأسبوع', value: stats.newThisWeek, icon: '📊' },
-        { name: 'الشهر', value: stats.newThisMonth, icon: '📈' },
+        { name: 'هذا الأسبوع', value: stats.newThisWeek, icon: '📊' },
+        { name: 'هذا الشهر', value: stats.newThisMonth, icon: '📈' },
     ];
 
-    // بيانات البلدان (أعلى 6)
+    // أعلى 5 بلدان
     const countryData = Object.entries(stats.byCountry)
-        .filter(([country]) => country)
         .sort(([, a], [, b]) => b - a)
-        .slice(0, 6)
-        .map(([country, count], index) => ({
-            name: country,
-            value: count,
-            fill: [
-                '#3B82F6', '#10B981', '#8B5CF6',
-                '#F59E0B', '#06B6D4', '#EC4899'
-            ][index] || '#3B82F6',
-        }));
+        .slice(0, 5)
+        .map(([country, count], index) => {
+            const colors = ['#059669', '#2563EB', '#7C3AED', '#D97706', '#0891B2'];
+            return {
+                name: country,
+                value: count,
+                fill: colors[index] || '#64748B',
+            };
+        });
 
-    // حساب النسب المئوية للحالة
-    const totalForStatus = stats.active + stats.suspended + stats.deleted;
-    const activePercent = totalForStatus > 0 ? Math.round((stats.active / totalForStatus) * 100) : 0;
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <Spin size="large" />
-            </div>
-        );
-    }
+    const activePercent = stats.total > 0
+        ? Math.round((stats.active / stats.total) * 100)
+        : 0;
 
     return (
         <div className="space-y-6">
@@ -122,18 +109,18 @@ export default function UsersCharts({ stats, loading }: UsersChartsProps) {
                 {/* توزيع أنواع الحسابات */}
                 <Col xs={24} lg={14}>
                     <Card
-                        className="h-full shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900"
+                        className="h-full shadow-sm border border-slate-200/80 bg-white rounded-xl"
                         styles={{ body: { padding: '24px' } }}
                     >
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                                <UserOutlined className="text-white text-lg" />
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                <UserOutlined className="text-lg" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white m-0">
+                                <h3 className="text-lg font-bold text-slate-800 m-0">
                                     توزيع أنواع الحسابات
                                 </h3>
-                                <p className="text-sm text-gray-500 m-0">
+                                <p className="text-sm text-slate-500 m-0">
                                     إجمالي {stats.total.toLocaleString('ar-EG')} مستخدم
                                 </p>
                             </div>
@@ -146,11 +133,11 @@ export default function UsersCharts({ stats, loading }: UsersChartsProps) {
                                     const percent = Math.round((item.value / maxValue) * 100);
                                     return (
                                         <div key={index} className="flex items-center gap-3">
-                                            <div className="w-20 text-sm font-medium text-gray-700 dark:text-gray-300 text-left">
+                                            <div className="w-20 text-sm font-medium text-slate-700 text-left">
                                                 {item.name}
                                             </div>
                                             <div className="flex-1">
-                                                <div className="h-8 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden relative">
+                                                <div className="h-8 bg-slate-100 rounded-lg overflow-hidden relative">
                                                     <div
                                                         className="h-full rounded-lg transition-all duration-700 flex items-center justify-end px-3"
                                                         style={{
@@ -178,18 +165,18 @@ export default function UsersCharts({ stats, loading }: UsersChartsProps) {
                 {/* حالة الحسابات */}
                 <Col xs={24} lg={10}>
                     <Card
-                        className="h-full shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900"
+                        className="h-full shadow-sm border border-slate-200/80 bg-white rounded-xl"
                         styles={{ body: { padding: '24px' } }}
                     >
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-                                <CheckCircleOutlined className="text-white text-lg" />
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                <CheckCircleOutlined className="text-lg" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white m-0">
+                                <h3 className="text-lg font-bold text-slate-800 m-0">
                                     حالة الحسابات
                                 </h3>
-                                <p className="text-sm text-gray-500 m-0">
+                                <p className="text-sm text-slate-500 m-0">
                                     {activePercent}% نشط
                                 </p>
                             </div>
@@ -203,34 +190,19 @@ export default function UsersCharts({ stats, loading }: UsersChartsProps) {
                                             data={statusData}
                                             cx="50%"
                                             cy="50%"
-                                            innerRadius={55}
-                                            outerRadius={85}
+                                            innerRadius={60}
+                                            outerRadius={80}
                                             paddingAngle={4}
                                             dataKey="value"
-                                            stroke="none"
                                         >
                                             {statusData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                                <Cell key={`cell-${index}`} fill={entry.fill} />
                                             ))}
                                         </Pie>
                                         <Tooltip content={<CustomTooltip />} />
+                                        <Legend />
                                     </PieChart>
                                 </ResponsiveContainer>
-
-                                {/* المفتاح */}
-                                <div className="flex flex-wrap justify-center gap-4 mt-2">
-                                    {statusData.map((item, index) => (
-                                        <div key={index} className="flex items-center gap-2">
-                                            <div
-                                                className="w-3 h-3 rounded-full"
-                                                style={{ backgroundColor: item.color }}
-                                            />
-                                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                                                {item.name}: <strong>{item.value}</strong>
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
                             </div>
                         ) : (
                             <Empty description="لا توجد بيانات" />
@@ -244,18 +216,18 @@ export default function UsersCharts({ stats, loading }: UsersChartsProps) {
                 {/* المستخدمين الجدد */}
                 <Col xs={24} lg={12}>
                     <Card
-                        className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900"
+                        className="shadow-sm border border-slate-200/80 bg-white rounded-xl"
                         styles={{ body: { padding: '24px' } }}
                     >
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-                                <RiseOutlined className="text-white text-lg" />
+                            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                                <RiseOutlined className="text-lg" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white m-0">
+                                <h3 className="text-lg font-bold text-slate-800 m-0">
                                     المستخدمين الجدد
                                 </h3>
-                                <p className="text-sm text-gray-500 m-0">
+                                <p className="text-sm text-slate-500 m-0">
                                     معدل النمو
                                 </p>
                             </div>
@@ -265,13 +237,13 @@ export default function UsersCharts({ stats, loading }: UsersChartsProps) {
                             {growthData.map((item, index) => (
                                 <div
                                     key={index}
-                                    className="text-center p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800"
+                                    className="text-center p-4 rounded-xl bg-slate-50 border border-slate-100"
                                 >
                                     <div className="text-2xl mb-2">{item.icon}</div>
-                                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                                    <div className="text-2xl font-bold text-slate-800">
                                         {item.value.toLocaleString('ar-EG')}
                                     </div>
-                                    <div className="text-sm text-gray-500">{item.name}</div>
+                                    <div className="text-sm text-slate-500">{item.name}</div>
                                 </div>
                             ))}
                         </div>
@@ -280,18 +252,18 @@ export default function UsersCharts({ stats, loading }: UsersChartsProps) {
                             <AreaChart data={growthData}>
                                 <defs>
                                     <linearGradient id="colorGrowth" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
+                                        <stop offset="5%" stopColor="#059669" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#059669" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} />
                                 <YAxis hide />
                                 <Tooltip content={<CustomTooltip />} />
                                 <Area
                                     type="monotone"
                                     dataKey="value"
-                                    stroke="#F59E0B"
+                                    stroke="#059669"
                                     strokeWidth={3}
                                     fill="url(#colorGrowth)"
                                 />
@@ -303,18 +275,18 @@ export default function UsersCharts({ stats, loading }: UsersChartsProps) {
                 {/* أعلى البلدان */}
                 <Col xs={24} lg={12}>
                     <Card
-                        className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900"
+                        className="shadow-sm border border-slate-200/80 bg-white rounded-xl"
                         styles={{ body: { padding: '24px' } }}
                     >
                         <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-                                <GlobalOutlined className="text-white text-lg" />
+                            <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                <GlobalOutlined className="text-lg" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white m-0">
+                                <h3 className="text-lg font-bold text-slate-800 m-0">
                                     أعلى البلدان
                                 </h3>
-                                <p className="text-sm text-gray-500 m-0">
+                                <p className="text-sm text-slate-500 m-0">
                                     توزيع جغرافي
                                 </p>
                             </div>
@@ -327,19 +299,19 @@ export default function UsersCharts({ stats, loading }: UsersChartsProps) {
                                     const percent = Math.round((item.value / maxValue) * 100);
                                     return (
                                         <div key={index} className="flex items-center gap-3">
-                                            <div className="w-6 text-center font-bold text-gray-400">
+                                            <div className="w-6 text-center font-bold text-slate-400">
                                                 {index + 1}
                                             </div>
                                             <div className="flex-1">
                                                 <div className="flex justify-between mb-1">
-                                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                    <span className="text-sm font-medium text-slate-700">
                                                         {item.name}
                                                     </span>
-                                                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                                                    <span className="text-sm font-bold text-slate-900">
                                                         {item.value.toLocaleString('ar-EG')}
                                                     </span>
                                                 </div>
-                                                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                                                     <div
                                                         className="h-full rounded-full transition-all duration-500"
                                                         style={{

@@ -1,11 +1,11 @@
 /**
- * إحصائيات المستخدمين
+ * إحصائيات المستخدمين - تصميم نهاري تنفيذي (Executive Light Mode)
  */
 
 'use client';
 
 import React from 'react';
-import { Card, Statistic, Row, Col, Progress, Tooltip } from 'antd';
+import { Card, Statistic, Row, Col, Progress } from 'antd';
 import {
     UserOutlined,
     CheckCircleOutlined,
@@ -27,93 +27,94 @@ export default function UsersStatsCards({ stats, loading }: UsersStatsCardsProps
             {/* الإحصائيات الرئيسية */}
             <Row gutter={[16, 16]}>
                 <Col xs={12} sm={6}>
-                    <Card bordered={false} className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
+                    <Card bordered={false} className="bg-white border border-slate-200/80 shadow-sm rounded-xl hover:shadow-md transition-shadow">
                         <Statistic
-                            title={<span className="text-gray-600 dark:text-gray-300">إجمالي المستخدمين</span>}
+                            title={<span className="text-slate-600 font-medium">إجمالي المستخدمين</span>}
                             value={stats.total}
                             loading={loading}
-                            prefix={<TeamOutlined className="text-blue-500" />}
-                            valueStyle={{ color: '#1890ff' }}
+                            prefix={<TeamOutlined className="text-emerald-600 p-2 bg-emerald-50 rounded-lg ml-2" />}
+                            valueStyle={{ color: '#0f172a', fontWeight: 700 }}
                         />
                     </Card>
                 </Col>
 
                 <Col xs={12} sm={6}>
-                    <Card bordered={false} className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
+                    <Card bordered={false} className="bg-white border border-slate-200/80 shadow-sm rounded-xl hover:shadow-md transition-shadow">
                         <Statistic
-                            title={<span className="text-gray-600 dark:text-gray-300">نشط</span>}
+                            title={<span className="text-slate-600 font-medium">نشط</span>}
                             value={stats.active}
                             loading={loading}
-                            prefix={<CheckCircleOutlined className="text-green-500" />}
-                            valueStyle={{ color: '#52c41a' }}
+                            prefix={<CheckCircleOutlined className="text-emerald-500 p-2 bg-emerald-50 rounded-lg ml-2" />}
+                            valueStyle={{ color: '#059669', fontWeight: 700 }}
                         />
                     </Card>
                 </Col>
 
                 <Col xs={12} sm={6}>
-                    <Card bordered={false} className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20">
+                    <Card bordered={false} className="bg-white border border-slate-200/80 shadow-sm rounded-xl hover:shadow-md transition-shadow">
                         <Statistic
-                            title={<span className="text-gray-600 dark:text-gray-300">موقوف</span>}
+                            title={<span className="text-slate-600 font-medium">موقوف</span>}
                             value={stats.suspended}
                             loading={loading}
-                            prefix={<StopOutlined className="text-orange-500" />}
-                            valueStyle={{ color: '#fa8c16' }}
+                            prefix={<StopOutlined className="text-amber-500 p-2 bg-amber-50 rounded-lg ml-2" />}
+                            valueStyle={{ color: '#d97706', fontWeight: 700 }}
                         />
                     </Card>
                 </Col>
 
                 <Col xs={12} sm={6}>
-                    <Card bordered={false} className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20">
+                    <Card bordered={false} className="bg-white border border-slate-200/80 shadow-sm rounded-xl hover:shadow-md transition-shadow">
                         <Statistic
-                            title={<span className="text-gray-600 dark:text-gray-300">محذوف</span>}
+                            title={<span className="text-slate-600 font-medium">محذوف</span>}
                             value={stats.deleted}
                             loading={loading}
-                            prefix={<DeleteOutlined className="text-red-500" />}
-                            valueStyle={{ color: '#ff4d4f' }}
+                            prefix={<DeleteOutlined className="text-rose-500 p-2 bg-rose-50 rounded-lg ml-2" />}
+                            valueStyle={{ color: '#e11d48', fontWeight: 700 }}
                         />
                     </Card>
                 </Col>
             </Row>
 
-            {/* إحصائيات النمو */}
+            {/* إحصائيات النمو وتوزيع الحسابات */}
             <Row gutter={[16, 16]}>
                 <Col xs={24} md={12}>
                     <Card
                         title={
-                            <span className="flex items-center gap-2">
-                                <RiseOutlined className="text-green-500" />
-                                النمو
+                            <span className="flex items-center gap-2 text-slate-800 font-bold">
+                                <RiseOutlined className="text-emerald-600" />
+                                النمو والتسجيلات الجديدة
                             </span>
                         }
                         bordered={false}
+                        className="bg-white border border-slate-200/80 shadow-sm rounded-xl"
                         size="small"
                     >
                         <Row gutter={16}>
                             <Col span={8}>
                                 <Statistic
-                                    title="اليوم"
+                                    title={<span className="text-slate-500 text-xs">اليوم</span>}
                                     value={stats.newToday}
                                     loading={loading}
-                                    valueStyle={{ fontSize: '1.2rem' }}
-                                    suffix={<span className="text-green-500 text-sm">+</span>}
+                                    valueStyle={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}
+                                    suffix={<span className="text-emerald-600 text-sm font-semibold">+</span>}
                                 />
                             </Col>
                             <Col span={8}>
                                 <Statistic
-                                    title="هذا الأسبوع"
+                                    title={<span className="text-slate-500 text-xs">هذا الأسبوع</span>}
                                     value={stats.newThisWeek}
                                     loading={loading}
-                                    valueStyle={{ fontSize: '1.2rem' }}
-                                    suffix={<span className="text-green-500 text-sm">+</span>}
+                                    valueStyle={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}
+                                    suffix={<span className="text-emerald-600 text-sm font-semibold">+</span>}
                                 />
                             </Col>
                             <Col span={8}>
                                 <Statistic
-                                    title="هذا الشهر"
+                                    title={<span className="text-slate-500 text-xs">هذا الشهر</span>}
                                     value={stats.newThisMonth}
                                     loading={loading}
-                                    valueStyle={{ fontSize: '1.2rem' }}
-                                    suffix={<span className="text-green-500 text-sm">+</span>}
+                                    valueStyle={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}
+                                    suffix={<span className="text-emerald-600 text-sm font-semibold">+</span>}
                                 />
                             </Col>
                         </Row>
@@ -124,12 +125,13 @@ export default function UsersStatsCards({ stats, loading }: UsersStatsCardsProps
                 <Col xs={24} md={12}>
                     <Card
                         title={
-                            <span className="flex items-center gap-2">
-                                <UserOutlined className="text-blue-500" />
-                                أنواع الحسابات
+                            <span className="flex items-center gap-2 text-slate-800 font-bold">
+                                <UserOutlined className="text-indigo-600" />
+                                توزيع أنواع الحسابات
                             </span>
                         }
                         bordered={false}
+                        className="bg-white border border-slate-200/80 shadow-sm rounded-xl"
                         size="small"
                     >
                         <div className="space-y-2">
@@ -138,17 +140,17 @@ export default function UsersStatsCards({ stats, loading }: UsersStatsCardsProps
                                 .slice(0, 4)
                                 .map(([type, count]) => (
                                     <div key={type} className="flex items-center gap-2">
-                                        <span className="w-20 text-sm text-gray-600">
-                                            {ACCOUNT_TYPE_LABELS[type as AccountType]}
+                                        <span className="w-20 text-sm text-slate-600 font-medium">
+                                            {ACCOUNT_TYPE_LABELS[type as AccountType] || type}
                                         </span>
                                         <Progress
-                                            percent={Math.round((count / stats.total) * 100)}
+                                            percent={stats.total > 0 ? Math.round((count / stats.total) * 100) : 0}
                                             size="small"
-                                            strokeColor={getColorHex(ACCOUNT_TYPE_COLORS[type as AccountType])}
+                                            strokeColor={getColorHex(ACCOUNT_TYPE_COLORS[type as AccountType] || 'blue')}
                                             showInfo={false}
                                             className="flex-1"
                                         />
-                                        <span className="w-10 text-sm text-right">{count}</span>
+                                        <span className="w-12 text-sm text-left font-semibold text-slate-700">{count}</span>
                                     </div>
                                 ))}
                         </div>
@@ -159,17 +161,17 @@ export default function UsersStatsCards({ stats, loading }: UsersStatsCardsProps
     );
 }
 
-// تحويل اسم اللون إلى hex
+// تحويل اسم اللون إلى hex متناسق مع التصميم النهاري
 function getColorHex(color: string): string {
     const colors: Record<string, string> = {
-        blue: '#1890ff',
-        green: '#52c41a',
-        purple: '#722ed1',
-        orange: '#fa8c16',
-        cyan: '#13c2c2',
-        magenta: '#eb2f96',
-        gold: '#faad14',
-        red: '#ff4d4f',
+        blue: '#2563eb',
+        green: '#059669',
+        purple: '#7c3aed',
+        orange: '#d97706',
+        cyan: '#0891b2',
+        magenta: '#db2777',
+        gold: '#d97706',
+        red: '#e11d48',
     };
-    return colors[color] || '#1890ff';
+    return colors[color] || '#059669';
 }

@@ -320,19 +320,20 @@ function UsersPageContent() {
             theme={{
                 token: {
                     fontFamily: 'inherit',
-                    colorPrimary: '#1890ff',
+                    colorPrimary: '#059669',
+                    borderRadius: 10,
                 },
             }}
         >
             <App>
-                <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+                <div className="p-6 space-y-6 bg-slate-50 min-h-screen">
                     {/* الهيدر */}
                     <div className="flex flex-wrap items-center justify-between gap-4">
                         <div>
-                            <Title level={2} className="m-0 mb-1">
+                            <Title level={2} className="m-0 mb-1 !text-slate-800 font-bold">
                                 إدارة المستخدمين
                             </Title>
-                            <Text type="secondary">
+                            <Text type="secondary" className="!text-slate-500">
                                 {filteredUsers.length} مستخدم {activeFiltersCount > 0 && `(مُفلتر من ${users.length})`}
                             </Text>
                         </div>
@@ -343,14 +344,15 @@ function UsersPageContent() {
                                 onClick={handleSyncUsers}
                                 loading={isSyncing}
                                 disabled={isSyncing}
+                                className="border-slate-300 hover:border-emerald-500 text-slate-700"
                             >
                                 مزامنة البيانات
                             </Button>
 
                             {/* التحديث التلقائي */}
                             <Tooltip title={autoRefresh ? 'إيقاف التحديث التلقائي' : 'تفعيل التحديث التلقائي (كل 30 ثانية)'}>
-                                <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                                    <SyncOutlined spin={autoRefresh} className={autoRefresh ? 'text-green-500' : 'text-gray-400'} />
+                                <div className="flex items-center gap-2 px-3 py-1 bg-white border border-slate-200 rounded-lg shadow-sm">
+                                    <SyncOutlined spin={autoRefresh} className={autoRefresh ? 'text-emerald-500' : 'text-slate-400'} />
                                     <Switch
                                         size="small"
                                         checked={autoRefresh}
@@ -417,7 +419,7 @@ function UsersPageContent() {
                             />
 
                             {/* الجدول */}
-                            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden">
                                 <UsersTable
                                     users={filteredUsers}
                                     loading={loading}
