@@ -121,7 +121,7 @@ BEGIN
       USING (
         auth.uid() IS NOT NULL AND (
           "userId" = auth.uid()::text OR
-          "userId" IN (SELECT id::text FROM public.users WHERE uid = auth.uid())
+          "userId" IN (SELECT id::text FROM public.users WHERE uid = auth.uid()::text OR id = auth.uid()::text)
         )
       );
   END IF;
@@ -139,13 +139,13 @@ BEGIN
       USING (
         auth.uid() IS NOT NULL AND (
           "userId" = auth.uid()::text OR
-          "userId" IN (SELECT id::text FROM public.users WHERE uid = auth.uid())
+          "userId" IN (SELECT id::text FROM public.users WHERE uid = auth.uid()::text OR id = auth.uid()::text)
         )
       )
       WITH CHECK (
         auth.uid() IS NOT NULL AND (
           "userId" = auth.uid()::text OR
-          "userId" IN (SELECT id::text FROM public.users WHERE uid = auth.uid())
+          "userId" IN (SELECT id::text FROM public.users WHERE uid = auth.uid()::text OR id = auth.uid()::text)
         )
       );
   END IF;
