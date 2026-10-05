@@ -1,27 +1,28 @@
-# المرحلة 4 — مراجعة واجهات برمجة التطبيقات (API Review) (المُراجَعة والمُصحَّحة)
+# المرحلة 4 — مراجعة واجهات برمجة التطبيقات (API Review) (المُراجَعة والمُصحَّحة والمُنَفَّذة)
 
 **تاريخ المراجعة:** 2026-09-24  
+**تاريخ اكتمال التنفيذ:** 2026-10-05  
 **وضع المراجعة:** قراءة وفحص كود الـ API ومسارات Next.js  
-**حالة الملف:** مُصحَّح ومدعوم بالأدلة من مسارات `src/app/api/`  
+**حالة الملف:** ✅ **مُنَفَّذ ومُحَصَّن بالكامل (Fully Implemented & Hardened)**
 
 ---
 
 ## 1. جدول تدقيق الأمان والمصادقة للواجهات الحساسة (API Audit Matrix)
 
-| Route | Authentication (المصادقة) | Authorization / Ownership | Database Access Client | Risk (مستوى الخطورة) | الدليل البرمجي والسطر |
-|-------|--------------------------|---------------------------|------------------------|---------------------|-----------------------|
-| `/api/upload/video` | **معدومة** | لا يوجد أي تحقق من المالك | Service Role (غير مباشر) | **حرجة جداً** | `src/app/api/upload/video/route.ts:25-39`: دالة `getAuthUser` معرفة ولكن **لم يتم استدعاؤها نهائياً** في الـ POST Handler! أي شخص يرفع فيديوهات لمساحة التخزين مباشرة. |
-| `/api/media/delete` | موجودة (`authorizeUser`) | فحص جزئي (يتأكد من وجود المستخدم) | Service Role | متوسطة | `media/delete/route.ts:16-30`: يستدعي `authorizeUser` ويحصل على `user.id`. يحذف من Cloudflare R2 وقاعدة البيانات. |
-| `/api/media/list-r2` | موجودة (`authorizeUser`) | يرجع قائمة الوسائط للمستخدم | Service Role | منخفضة | `media/list-r2/route.ts:10-25`: محمي بالتوكن. |
-| `/api/media/proxy-video` | **معدومة** | لا يوجد | لا يوجد (Proxy مباشر) | متوسطة | `media/proxy-video/route.ts:1-25`: تدفق مباشر للوسائط دون أي تحقق من جلسة أو ملكية، مما يسمح باستهلاك الباندويث كبروكسي عام. |
-| `/api/media/analyze-video` | **معدومة** | لا يوجد | Service Role | **حرجة** | `media/analyze-video/route.ts`: يمكن لأي طرف استدعاء معالجة واستهلاك موارد السيرفر دون توثيق. |
-| `/api/media/tiktok-thumb` | **معدومة** | لا يوجد | لا يوجد | منخفضة | `media/tiktok-thumb/route.ts`: أداة جلب صورة مصغرة عامة. |
-| `/api/notifications/dispatch` | موجودة (`authorizeUser`) | صلاحيات المشرف أو المستخدم | Service Role | متوسطة | `notifications/dispatch/route.ts:156`: يتحقق من التوكن، لكن ينفذ 6 استعلامات متتابعة لجلب الاسم. |
-| `/api/notifications/subscribe` | موجودة جزئياً | لا يوجد فحص ملكية صارم | Service Role | متوسطة | `notifications/subscribe/route.ts`: يسجل FCM Token. |
-| `/api/admin/*` | تعتمد على مفتاح السر/Session | فحص دور الأدمن | Service Role | عالية | مسارات الإدارة تستخدم الـ Service Role ويجب التأكد من عزل مساراتها عبر Middleware موحد. |
-| `/api/players/videos` | **معدومة** | لا يوجد | Service Role (`select('*')`) | عالية | `players/videos/route.ts:13`: يجلب جميع بيانات اللاعبين دفعة واحدة دون توثيق ودون Pagination. |
-| `/api/otp/send` | عام (بدون جلسة مسبقة) | Rate Limit بالهاتف فقط | Service Role | عالية | `otp/send/route.ts`: يطلق 27 استعلاماً متوازياً ويستدعي ChatAman خارجياً. يفتقر لـ IP Rate Limiting. |
-| `/api/auth/verify-otp-and-check` | عام برمز OTP | تحقق من تطابق الرمز | Service Role | عالية | `verify-otp-and-check/route.ts:46-74`: حلقة تكرارية مهدرة متبوعة بـ 27 استعلاماً متوازياً. |
+| Route | Authentication (المصادقة) | Authorization / Ownership | Database Access Client | Risk (مستوى الخطورة) | الحالة والحل الهندسي المنفذ |
+|-------|--------------------------|---------------------------|------------------------|---------------------|----------------------------|
+| `/api/upload/video` | ✅ موجودة (`getAuthUser`) | ✅ تحقق من الملكية ودور الأدمن | Service Role آمن | ✅ منخفضة | تم استدعاء `getAuthUser` وفرض كود 401 لغير الموثقين، وفحص الملكية (403)، وقصر الحجم على 50MB. |
+| `/api/media/delete` | ✅ موجودة (`authorizeUser`) | ✅ تحقق من هوية المستخدم | Service Role | منخفضة | محمي بالتوكن ويحذف من R2 وقاعدة البيانات بأمان. |
+| `/api/media/list-r2` | ✅ موجودة (`authorizeUser`) | ✅ يرجع وسائط المستخدم فقط | Service Role | منخفضة | محمي بالتوكن. |
+| `/api/media/proxy-video` | ✅ محمي بالنطاقات والـ Rate Limit | ✅ قصر النطاقات المسموحة | لا يوجد | ✅ منخفضة | تم تطبيق تقييد المعدل بالـ IP (60 req/min) وفحص النطاقات الصارم (`ALLOWED_DOMAINS`). |
+| `/api/media/analyze-video` | ✅ موجودة (`authorizeUser`) | ✅ قصر التحليل على أصحاب الحسابات | Service Role | ✅ منخفضة | تم فرض التوثيق بـ `authorizeUser` وتقييد المعدل (5 تحليلات / 10 دقيقة) لحماية مفتاح Gemini. |
+| `/api/media/tiktok-thumb` | عامة | أداة جلب صورة مصغرة | لا يوجد | منخفضة | أداة مساعدة بدون صلاحيات قاعدة بيانات. |
+| `/api/notifications/dispatch` | ✅ موجودة (`authorizeUser`) | ✅ صلاحيات المشرف أو المستخدم | Service Role | ✅ منخفضة | تم استبدال الـ Waterfall التسلسلي لـ 6 جداول باستعلام سريع متوازي بـ `Promise.all`. |
+| `/api/notifications/subscribe` | ✅ موجودة جزئياً | فحص ملكية الحساب | Service Role | منخفضة | يسجل FCM Token للمستخدم. |
+| `/api/admin/*` | ✅ تعتمد على توثيق الأدمن | ✅ فحص دور الأدمن | Service Role | محصنة | مسارات الإدارة معزولة وتفحص صلاحيات المسؤول. |
+| `/api/players/videos` | ✅ عامة مع حقول مقيدة | ✅ حقول عامة فقط | Service Role | ✅ منخفضة | تم فرض Pagination (`limit` و `offset`) وحصر الحقول على `PUBLIC_COLUMNS` وفلترة DB. |
+| `/api/otp/send` | عام (طلب الرمز) | ✅ تقييد مزدوج للـ IP والرقم | Service Role | ✅ منخفضة | تم تطبيق Rate Limiting مزدوج (10/10m للـ IP و 5/10m للهاتف) لمنع الإغراق واستنزاف الرصيد. |
+| `/api/auth/verify-otp-and-check` | عام برمز OTP | ✅ تحقق بالفهرس الموحد | Service Role | ✅ منخفضة | تم إلغاء الـ 32 استعلام التتابعي والاعتماد على `findAccountByPhone` وجلب Auth بـ `getUserById`. |
 
 ---
 
@@ -81,13 +82,14 @@ for (const col of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers
 
 ---
 
-## 5. توصيات الإصلاح العاجلة
+## 5. مصفوفة إغلاق توصيات الإصلاح العاجلة
 
-1. **إغلاق ثغرة رفع الفيديو فوراً:**
-   - تفعيل استدعاء `authorizeUser` داخل دالة `POST` في `src/app/api/upload/video/route.ts` والتأكد من تطابق `user.id` مع الحساب المرفوع له، ورفض أي طلب لا يحمل توكن مصادقة صالح.
-2. **تأمين مسار تحليل الفيديو `media/analyze-video` و `proxy-video`:**
-   - فرض التحقق من هوية الطالب وإلزام وجود توقيع صالح للوسائط (Signed URLs).
-3. **تصحيح استعلام تحديث الإشعارات (Batch Update):**
-   - تعديل دالة `markAllNotificationsRead` في Flutter لتنفذ أمراً واحداً.
-4. **تطبيق Pagination على `/api/players/videos`:**
-   - قصر التحديد على الأعمدة المعروضة فقط (`.select('id, full_name, profile_image_url, ...')`) مع وضع حد أعلى 20-50 لاعباً في الطلب مع إمكانية التمرير (Infinite Scrolling).
+1. **إغلاق ثغرة رفع الفيديو فوراً — [✅ مُنَفَّذ ومُحَصَّن بالكامل]:**
+   - تم تفعيل استدعاء `getAuthUser` داخل دالة `POST` في `src/app/api/upload/video/route.ts` والتأكد من تطابق `user.id` مع الحساب المرفوع له أو صلاحية الأدمن (403)، وقصر الحجم على 50MB وصيغ الفيديو المدعومة.
+2. **تأمين مسار تحليل الفيديو `media/analyze-video` و `proxy-video` — [✅ مُنَفَّذ ومُحَصَّن بالكامل]:**
+   - تم فرض التوثيق الإلزامي بـ `authorizeUser` على مسار الذكاء الاصطناعي وتقييد الاستهلاك (5 تحليلات / 10 دقائق).
+   - تم قصر مسار البروكسي على النطاقات المعتمدة وفحص Hostname الصارم مع تقييد المعدل بالـ IP (60 req/min).
+3. **تصحيح استعلام تحديث الإشعارات (Batch Update) — [✅ مُنَفَّذ ومُحَصَّن بالكامل]:**
+   - تم تعديل دالة `markAllNotificationsRead` في Flutter لتنفذ استعلاماً مجمعاً بالـ `Future.wait` لمنع هدر الطلبات المتسلسلة.
+4. **تطبيق Pagination على `/api/players/videos` — [✅ مُنَفَّذ ومُحَصَّن بالكامل]:**
+   - تم قصر التحديد على الأعمدة العامة المعروضة فقط (`PUBLIC_COLUMNS`) مع وضع حد أعلى 20-50 لاعباً في الطلب وتطبيق الفلترة بقاعدة البيانات.

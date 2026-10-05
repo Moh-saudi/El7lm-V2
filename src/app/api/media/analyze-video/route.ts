@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { authorizeUser } from '@/lib/api/user-auth';
+import { rateLimiter } from '@/lib/security/rate-limit';
 
 export const runtime    = 'nodejs';
 export const dynamic    = 'force-dynamic';
@@ -44,6 +46,27 @@ async function urlToBase64Part(url: string) {
 
 export async function POST(req: NextRequest) {
     try {
+        // 1. التحقق من المصادقة (Auth Check) لمنع استنزاف موارد Gemini
+        const authResult = await authorizeUser(req);
+        if (!authResult.ok) {
+            return authResult.response;
+        }
+
+        // 2. تقييد المعدل لمنع الاستنزاف المتكرر (5 تحليلات لكل مستخدم / 10 دقائق)
+        const rateCheck = rateLimiter.check(`ai_analyze:${authResult.user.id}`, {
+            windowMs: 10 * 60 * 1000,
+            max: 5,
+            minIntervalMs: 5000,
+        });
+
+        if (!rateCheck.allowed) {
+            const waitSeconds = Math.max(1, Math.ceil(rateCheck.retryAfterMs / 1000));
+            return NextResponse.json(
+                { error: `تجاوزت الحد المسموح به من طلبات التحليل الذكي. يرجى الانتظار ${waitSeconds} ثانية.` },
+                { status: 429, headers: { 'Retry-After': String(waitSeconds) } }
+            );
+        }
+
         const { videoUrl, frameUrls, mediaType, playerName, playerPosition, playerAge } = await req.json();
 
         if (!videoUrl && (!frameUrls || frameUrls.length === 0)) {

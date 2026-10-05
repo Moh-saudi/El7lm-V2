@@ -202,15 +202,28 @@ export async function POST(req: NextRequest) {
     if (chatAmanConfig && phone) {
       const tmpl = templateConfig[eventType];
       if (tmpl) {
-        // Get recipient name
+        // Get recipient name (fast-path + parallel fallback instead of sequential waterfall)
         let recipientName = 'اللاعب';
         try {
-          for (const col of ['users', 'players', 'clubs', 'academies', 'agents', 'trainers']) {
-            const { data } = await db.from(col).select('full_name, name, displayName').eq('id', targetUserId).limit(1);
-            if (data?.length) {
-              const r = data[0] as Record<string, unknown>;
-              const name = String(r.full_name ?? r.displayName ?? r.name ?? '');
-              if (name) { recipientName = name; break; }
+          const { data: userRow } = await db
+            .from('users')
+            .select('full_name, name, displayName')
+            .eq('id', targetUserId)
+            .maybeSingle();
+
+          if (userRow?.full_name || userRow?.displayName || userRow?.name) {
+            recipientName = String(userRow.full_name ?? userRow.displayName ?? userRow.name);
+          } else {
+            const tables = ['players', 'clubs', 'academies', 'agents', 'trainers'];
+            const results = await Promise.all(
+              tables.map(t => db.from(t).select('full_name, name, displayName').eq('id', targetUserId).limit(1).maybeSingle())
+            );
+            for (const res of results) {
+              if (res.data) {
+                const r = res.data as Record<string, unknown>;
+                const name = String(r.full_name ?? r.displayName ?? r.name ?? '');
+                if (name) { recipientName = name; break; }
+              }
             }
           }
         } catch {}

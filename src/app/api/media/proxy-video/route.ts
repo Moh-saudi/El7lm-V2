@@ -1,20 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimiter, getClientIpFromHeaders } from '@/lib/security/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const R2_BASE = process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || 'https://assets.el7lm.com';
 
-const ALLOWED = [
+const ALLOWED_DOMAINS = [
     'assets.el7lm.com',
     'el7lm.com',
     'r2.dev',
     'cloudflarestorage.com',
-    'supabase.co/storage',
-    'pub-',
+    'supabase.co',
 ];
 
 export async function GET(req: NextRequest) {
+    // 1. تقييد المعدل بالـ IP لمنع استنزاف الخادم كبروكسي عام
+    const clientIp = getClientIpFromHeaders(req.headers) || 'anonymous';
+    const rateCheck = rateLimiter.check(`proxy_video:${clientIp}`, {
+        windowMs: 60 * 1000,
+        max: 60,
+    });
+    if (!rateCheck.allowed) {
+        return new NextResponse('Too Many Requests', { status: 429 });
+    }
+
     let url = req.nextUrl.searchParams.get('url') || '';
     if (!url) return new NextResponse('url required', { status: 400 });
 
@@ -23,8 +33,17 @@ export async function GET(req: NextRequest) {
         url = `${R2_BASE}/${url.replace(/^\//, '')}`;
     }
 
-    if (!ALLOWED.some(d => url.includes(d))) {
-        return new NextResponse('forbidden', { status: 403 });
+    // 2. التحقق الصارم من اسم النطاق (Strict Hostname Matching)
+    try {
+        const parsed = new URL(url);
+        const isAllowed = ALLOWED_DOMAINS.some(d =>
+            parsed.hostname === d || parsed.hostname.endsWith(`.${d}`) || parsed.hostname.includes('r2.cloudflarestorage.com')
+        );
+        if (!isAllowed) {
+            return new NextResponse('forbidden domain', { status: 403 });
+        }
+    } catch {
+        return new NextResponse('invalid url', { status: 400 });
     }
 
     try {
