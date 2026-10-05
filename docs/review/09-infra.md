@@ -39,18 +39,21 @@
 
 ---
 
-## 4. سلوك الخمول وإعادة التشغيل (Supabase Project Inactivity Pause)
+## 4. سلوك الخمول وإعادة التشغيل (Supabase Project Inactivity Pause) & قيود Vercel Hobby
 
-- **[الحالة: تم الحل والتنفيذ بنجاح ✅]:**
-  - تم إنشاء مسار فحص الصحة الموحد [`GET /api/health`](file:///d:/El7lm-V2/src/app/api/health/route.ts) الذي يقوم بعملية استعلام خفيفة جداً ومحددة بمهلة (3s Ping) لجدول `platform_settings`.
-  - تم ربط هذا الفحص بجدولة دورية تعمل كل 12 ساعة في `vercel.json`:
+- **[الحالة: تم التوافق مع قيود Vercel Hobby بنجاح ✅]:**
+  - تفرض منصة Vercel في خطتها المجانية (**Hobby Plan**) قيداً صارماً على المهام المجدولة (Cron Jobs):
+    > *"Hobby accounts are limited to cron jobs that run once per day. Expressions that would run more frequently will fail during deployment."*
+  - لذلك، تم ضبط الجدولة في `vercel.json` لتقتصر على مهمة يومية واحدة (Daily Cron Job) تعمل الساعة 03:00 فجراً بالتوقيت العالمي:
     ```json
-    {
-      "path": "/api/health",
-      "schedule": "0 */12 * * *"
-    }
+    "crons": [
+      {
+        "path": "/api/otp/cleanup",
+        "schedule": "0 3 * * *"
+      }
+    ]
     ```
-  - **النتيجة:** بقاء حاوية الـ PostgreSQL نشطة وسريعة الاستجابة ومنع تجميد المشروع المجاني (Cold Start) نهائياً.
+  - أما بالنسبة لفحص صحة الخادم [`GET /api/health`](file:///d:/El7lm-V2/src/app/api/health/route.ts)، فيظل متاحاً ومستقلاً كمسار مراقبة صحية ونشاط طبيعي مع حركة المستخدمين والزيارات اليومية للتطبيق والمنصة، دون الحاجة لترقية Vercel إلى الخطة المدفوعة (Pro $20/mo) فقط من أجل جدولة المهام.
 
 ---
 
