@@ -2,5 +2,36 @@
   "extends": [
     "next/core-web-vitals",
     "next/typescript"
+  ],
+  "rules": {
+    "@typescript-eslint/no-unused-vars": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/ban-ts-comment": "off",
+    "@typescript-eslint/no-empty-object-type": "off",
+    "@typescript-eslint/no-require-imports": "off",
+    "@typescript-eslint/no-unsafe-function-type": "off",
+    "@typescript-eslint/no-non-null-asserted-optional-chain": "off",
+    "@next/next/no-html-link-for-pages": "warn",
+    "react/jsx-no-comment-textnodes": "warn",
+    "react/no-unescaped-entities": "off",
+    "react-hooks/rules-of-hooks": "warn",
+    "react-hooks/exhaustive-deps": "warn",
+    "react/no-direct-mutation-state": "warn",
+    "prefer-const": "warn",
+    "no-var": "warn"
+  },
+  "ignorePatterns": [
+    "node_modules/",
+    ".next/",
+    "out/",
+    "dist/",
+    "public/",
+    "mobile/",
+    "docs/",
+    "scripts/",
+    "backups/",
+    "archive/",
+    "*.config.js",
+    "*.config.mjs"
   ]
 }

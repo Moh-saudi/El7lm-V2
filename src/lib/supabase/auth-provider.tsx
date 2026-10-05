@@ -262,33 +262,14 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
 
+  const router = useRouter();
+
   const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' ||
     (process.env.NODE_ENV === 'production' && typeof window === 'undefined');
 
-  if (isBuildTime) {
-    const mockValue: AuthContextType = {
-      user: null, userData: null, loading: false, error: null,
-      login: async () => { throw new Error('Auth not available during build'); },
-      signInWithGoogle: async () => { throw new Error('Auth not available during build'); },
-      register: async () => { throw new Error('Auth not available during build'); },
-      logout: async () => { },
-      signOut: async () => { },
-      updateUserData: async () => { },
-      resetPassword: async () => { },
-      changePassword: async () => { },
-      clearError: () => { },
-      refreshUserData: async () => { },
-      setupRecaptcha: async () => null,
-      sendPhoneOTP: async () => { throw new Error('Auth not available during build'); },
-      verifyPhoneOTP: async () => { throw new Error('Auth not available during build'); },
-    };
-    return <AuthContext.Provider value={mockValue}>{children}</AuthContext.Provider>;
-  }
-
-  const router = useRouter();
-
   // Timeout guards
   useEffect(() => {
+    if (isBuildTime) return;
     const timer = setTimeout(() => {
       if (loading && !hasInitialized) {
         if (user) { setLoading(false); setHasInitialized(true); }
@@ -299,13 +280,14 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
   }, [loading, hasInitialized, user]);
 
   useEffect(() => {
+    if (isBuildTime) return;
     if (loading && hasInitialized && user && !userData) {
       const t = setTimeout(() => {
         if (!userData) { setLoading(false); setHasInitialized(true); }
       }, 10000);
       return () => clearTimeout(t);
     }
-  }, [loading, hasInitialized, user, userData]);
+  }, [loading, hasInitialized, user, userData, isBuildTime]);
 
   // Helper: save basic user doc
   const createBasicUserDocument = async (userId: string, email: string, role: UserRole = 'player', additionalData: Record<string, unknown> = {}): Promise<UserData> => {
@@ -335,6 +317,7 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
 
   // Auth state listener
   useEffect(() => {
+    if (isBuildTime) return;
     let isSubscribed = true;
     let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
     let listenerRun = 0;
@@ -809,6 +792,26 @@ export function SupabaseAuthProvider({ children }: SupabaseAuthProviderProps) {
     clearError, refreshUserData,
     setupRecaptcha, sendPhoneOTP, verifyPhoneOTP,
   };
+
+  if (isBuildTime) {
+    const mockValue: AuthContextType = {
+      user: null, userData: null, loading: false, error: null,
+      login: async () => { throw new Error('Auth not available during build'); },
+      signInWithGoogle: async () => { throw new Error('Auth not available during build'); },
+      register: async () => { throw new Error('Auth not available during build'); },
+      logout: async () => { },
+      signOut: async () => { },
+      updateUserData: async () => { },
+      resetPassword: async () => { },
+      changePassword: async () => { },
+      clearError: () => { },
+      refreshUserData: async () => { },
+      setupRecaptcha: async () => null,
+      sendPhoneOTP: async () => { throw new Error('Auth not available during build'); },
+      verifyPhoneOTP: async () => { throw new Error('Auth not available during build'); },
+    };
+    return <AuthContext.Provider value={mockValue}>{children}</AuthContext.Provider>;
+  }
 
   return (
     <AuthContext.Provider value={value}>
