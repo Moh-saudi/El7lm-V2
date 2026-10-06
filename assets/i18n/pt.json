@@ -878,5 +878,6 @@
   "nisrMicError": "Não foi possível iniciar o microfone.",
   "nisrVoiceTooShort": "A gravação é demasiado curta. Fala um pouco mais e envia.",
   "nisrHistoryTitle": "Histórico do NISR",
-  "nisrHistoryComingSoon": "Os teus planos e conversas guardados aparecerão aqui na próxima fase."
+  "nisrHistoryComingSoon": "Os teus planos e conversas guardados aparecerão aqui na próxima fase.",
+  "conversationStartFailed": "Não foi possível iniciar a conversa. Verifique sua conexão e tente novamente."
 }

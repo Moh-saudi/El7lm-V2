@@ -128,21 +128,56 @@ class DataService {
     }
   }
 
-  Future<List<Player>> fetchPlayers() {
-    final existing = _playersInFlight;
-    if (existing != null) return existing;
-    late final Future<List<Player>> pending;
-    pending = _fetchPlayers().whenComplete(() {
-      if (identical(_playersInFlight, pending)) _playersInFlight = null;
-    });
-    _playersInFlight = pending;
-    return pending;
+  Future<List<Player>> fetchPlayers({
+    int page = 1,
+    int limit = 25,
+    String? search,
+    String? position,
+    String? city,
+  }) {
+    if (page == 1 && search == null && position == null && city == null) {
+      final existing = _playersInFlight;
+      if (existing != null) return existing;
+      late final Future<List<Player>> pending;
+      pending = _fetchPlayers(
+        page: page,
+        limit: limit,
+        search: search,
+        position: position,
+        city: city,
+      ).whenComplete(() {
+        if (identical(_playersInFlight, pending)) _playersInFlight = null;
+      });
+      _playersInFlight = pending;
+      return pending;
+    }
+    return _fetchPlayers(
+      page: page,
+      limit: limit,
+      search: search,
+      position: position,
+      city: city,
+    );
   }
 
-  Future<List<Player>> _fetchPlayers() async {
+  Future<List<Player>> _fetchPlayers({
+    int page = 1,
+    int limit = 25,
+    String? search,
+    String? position,
+    String? city,
+  }) async {
     // 1. Try canonical /api/players endpoint first
     try {
-      final response = await _api.get('/api/players', query: {'limit': '50'});
+      final query = <String, String>{
+        'limit': '$limit',
+        'page': '$page',
+      };
+      if (search != null && search.isNotEmpty) query['search'] = search;
+      if (position != null && position.isNotEmpty) query['position'] = position;
+      if (city != null && city.isNotEmpty) query['city'] = city;
+
+      final response = await _api.get('/api/players', query: query);
       final data = response['data'];
       if (data is List && data.isNotEmpty) {
         return data
@@ -155,14 +190,26 @@ class DataService {
     if (AppConfig.hasSupabaseConfiguration && _auth.hasSession) {
       try {
         final client = Supabase.instance.client;
-        final playerRows = await client.from('players').select().limit(50);
+        final from = (page - 1) * limit;
+        final to = from + limit - 1;
+        var playerQuery = client.from('players').select();
+        if (position != null && position.isNotEmpty) {
+          playerQuery = playerQuery.ilike('position', '%$position%');
+        }
+        if (city != null && city.isNotEmpty) {
+          playerQuery = playerQuery.ilike('city', '%$city%');
+        }
+        if (search != null && search.isNotEmpty) {
+          playerQuery = playerQuery.ilike('full_name', '%$search%');
+        }
+        final playerRows = await playerQuery.range(from, to);
         List<Map<String, dynamic>> userRows = const [];
         try {
           final rows = await client
               .from('users')
               .select()
               .eq('accountType', 'player')
-              .limit(50);
+              .range(from, to);
           userRows = rows.map(Map<String, dynamic>.from).toList();
         } catch (_) {
           // Player records alone still contain the complete sports profile.
@@ -1586,21 +1633,10 @@ class DataService {
           .single();
       return ConversationModel.fromJson(Map<String, dynamic>.from(inserted));
     } catch (e) {
-      debugPrint('⚠️ [DataService] Failed to insert conversation in DB: $e');
-      // If client insert failed due to permission or connection, rethrow if critical
-      // or provide fallback for offline draft state with clear logging
-      return ConversationModel(
-        id: convId,
-        participants: [senderId, targetId],
-        participantNames: {senderId: senderName, targetId: targetName},
-        participantTypes: {senderId: senderType, targetId: targetType},
-        participantAvatars: {senderId: '', targetId: targetAvatar ?? ''},
-        subject: 'General Chat',
-        lastMessage: '',
-        lastMessageTime: now,
-        lastSenderId: senderId,
-        unreadCount: {senderId: 0, targetId: 0},
-        updatedAt: now,
+      debugPrint('❌ [DataService] Failed to insert conversation in DB: $e');
+      throw const ApiException(
+        'Failed to start conversation. Please check your connection and try again.',
+        translationKey: 'conversationStartFailed',
       );
     }
   }

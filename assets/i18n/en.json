@@ -878,5 +878,6 @@
   "nisrMicError": "The Microphone Could Not Start.",
   "nisrVoiceTooShort": "The Recording Is Too Short. Speak a Little Longer and Send It.",
   "nisrHistoryTitle": "NISR History",
-  "nisrHistoryComingSoon": "Your saved plans and conversations will appear here in the next phase."
+  "nisrHistoryComingSoon": "Your saved plans and conversations will appear here in the next phase.",
+  "conversationStartFailed": "Failed to start conversation. Please check your connection and try again."
 }

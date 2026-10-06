@@ -878,5 +878,6 @@
   "nisrMicError": "Impossible de démarrer le microphone.",
   "nisrVoiceTooShort": "L’enregistrement est trop court. Parlez un peu plus longtemps puis envoyez-le.",
   "nisrHistoryTitle": "Historique NISR",
-  "nisrHistoryComingSoon": "Vos plans et conversations enregistrés apparaîtront ici lors de la prochaine étape."
+  "nisrHistoryComingSoon": "Vos plans et conversations enregistrés apparaîtront ici lors de la prochaine étape.",
+  "conversationStartFailed": "Impossible de démarrer la conversation. Veuillez vérifier votre connexion et réessayer."
 }
