@@ -61,14 +61,14 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       const { data: admin } = await db
         .from('admins')
-        .select('id, uid, full_name, name, email')
+        .select('id, uid, name, email')
         .in('phone', phoneVariants)
         .limit(1)
         .maybeSingle();
       if (admin) {
         userId = admin.id;
         accountType = 'admin';
-        userName = admin.full_name || admin.name || '';
+        userName = admin.name || '';
         userEmail = admin.email || '';
         cachedSupabaseUid = isUUID(admin.uid) ? admin.uid : null;
       }

@@ -44,7 +44,7 @@ export default function PlayersSectionManager() {
       
       const { data: playersData, error: playersErr } = await supabase
         .from('players')
-        .select(`id, full_name, name, displayName, primary_position, position, profile_image, avatar, country, isDeleted`);
+        .select(`id, full_name, name, primary_position, position, profile_image, country, isDeleted`);
 
       const { data: usersData, error: usersErr } = await supabase
         .from('users')
@@ -76,9 +76,9 @@ export default function PlayersSectionManager() {
         if (!p.isDeleted) {
           playersMap.set(p.id, {
             id: p.id,
-            name: p.full_name || p.displayName || p.name || 'بدون اسم',
+            name: p.full_name || p.name || 'بدون اسم',
             position: p.primary_position || p.position || 'غير محدد',
-            avatar: getImageUrl(p.profile_image) || getImageUrl(p.avatar),
+            avatar: getImageUrl(p.profile_image),
             country: p.country || ''
           });
         }

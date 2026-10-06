@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       // Check admin table
       const { data: adminUser } = await admin
         .from('admins')
-        .select('id, uid, full_name, name, email')
+        .select('id, uid, name, email')
         .in('phone', phoneVariants)
         .limit(1)
         .maybeSingle();
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       if (adminUser) {
         userId = adminUser.id;
         accountType = 'admin';
-        userName = adminUser.full_name || adminUser.name || 'Admin';
+        userName = adminUser.name || 'Admin';
         userEmail = adminUser.email || '';
         cachedUid = adminUser.uid || null;
         isProfileComplete = true;

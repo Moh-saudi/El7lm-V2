@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       // التحقق من حسابات الإدارة التي لا يشملها البحث العام
       const { data: admin } = await db
         .from('admins')
-        .select('id, uid, full_name, name, email')
+        .select('id, uid, name, email')
         .in('phone', phoneVariants)
         .limit(1)
         .maybeSingle();
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       if (admin) {
         userId = admin.id;
         accountType = 'admin';
-        userName = admin.full_name || admin.name || '';
+        userName = admin.name || '';
         userEmail = admin.email || '';
         cachedSupabaseUid = admin.uid || null;
       }

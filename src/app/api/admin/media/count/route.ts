@@ -31,11 +31,11 @@ export async function GET(request: NextRequest) {
       rejectedVideosRes,
       totalImagesRes
     ] = await Promise.all([
-      safeCount(db.from('videos').select('id', { count: 'exact', head: true })),
-      safeCount(db.from('videos').select('id', { count: 'exact', head: true }).eq('status', 'pending')),
-      safeCount(db.from('videos').select('id', { count: 'exact', head: true }).eq('status', 'approved')),
-      safeCount(db.from('videos').select('id', { count: 'exact', head: true }).eq('status', 'rejected')),
-      safeCount(db.from('images').select('id', { count: 'exact', head: true })),
+      safeCount(db.from('player_videos').select('id', { count: 'exact', head: true })),
+      safeCount(db.from('player_videos').select('id', { count: 'exact', head: true }).eq('status', 'pending')),
+      safeCount(db.from('player_videos').select('id', { count: 'exact', head: true }).eq('status', 'approved')),
+      safeCount(db.from('player_videos').select('id', { count: 'exact', head: true }).eq('status', 'rejected')),
+      safeCount(db.from('media_moderation').select('status', { count: 'exact', head: true })),
     ]);
 
     const totalVideos = totalVideosRes;
