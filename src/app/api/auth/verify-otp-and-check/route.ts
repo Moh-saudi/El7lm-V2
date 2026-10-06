@@ -10,6 +10,9 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { cleanPhoneNumber, generatePhoneVariants } from '@/lib/validation/phone-validation';
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUUID = (v: unknown): v is string => typeof v === 'string' && UUID_REGEX.test(v);
+
 export async function POST(request: NextRequest) {
   try {
     const { phoneNumber, otp } = await request.json();
@@ -47,7 +50,9 @@ export async function POST(request: NextRequest) {
       userName = resolvedAccount.name;
       accountType = resolvedAccount.accountType;
       userEmail = resolvedAccount.email;
-      cachedSupabaseUid = resolvedAccount.uid;
+      cachedSupabaseUid = isUUID(resolvedAccount.uid)
+        ? resolvedAccount.uid
+        : (isUUID(resolvedAccount.id) ? resolvedAccount.id : null);
     } else {
       // التحقق من حسابات الإدارة التي لا يشملها البحث العام
       const { data: admin } = await db
@@ -62,7 +67,9 @@ export async function POST(request: NextRequest) {
         accountType = 'admin';
         userName = admin.name || '';
         userEmail = admin.email || '';
-        cachedSupabaseUid = admin.uid || null;
+        cachedSupabaseUid = isUUID(admin.uid)
+          ? admin.uid
+          : (isUUID(admin.id) ? admin.id : null);
       }
     }
 
@@ -89,9 +96,34 @@ export async function POST(request: NextRequest) {
     }
 
     if (!supabaseUserId) {
+      // Fast path: find in users table by email before loading Auth users list
+      try {
+        const { data: dbUser } = await db
+          .from('users')
+          .select('id, uid, email')
+          .or(`email.eq.${constructedEmail}${userEmail ? `,email.eq.${userEmail}` : ''}`)
+          .limit(1)
+          .maybeSingle();
+
+        if (dbUser) {
+          const candidate = isUUID(dbUser.id) ? dbUser.id : (isUUID(dbUser.uid) ? dbUser.uid : null);
+          if (candidate) {
+            const { data: authUserData } = await db.auth.admin.getUserById(candidate);
+            if (authUserData?.user) {
+              supabaseUserId = authUserData.user.id;
+              authEmail = authUserData.user.email || constructedEmail;
+            }
+          }
+        }
+      } catch (err: any) {
+        console.warn('[verify-otp-and-check] Fast DB email lookup note:', err?.message);
+      }
+    }
+
+    if (!supabaseUserId) {
       // البحث في Auth إذا لم نجد المعرف المخزن
       try {
-        const { data: usersData } = await db.auth.admin.listUsers({ perPage: 2000 });
+        const { data: usersData } = await db.auth.admin.listUsers({ perPage: 1000 });
         const allUsers = usersData?.users ?? [];
         const foundUser = allUsers.find(u =>
           (userEmail && u.email === userEmail) ||

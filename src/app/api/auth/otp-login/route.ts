@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       userEmail = resolvedAccount.email;
       cachedSupabaseUid = isUUID(resolvedAccount.uid)
         ? resolvedAccount.uid
-        : null;
+        : (isUUID(resolvedAccount.id) ? resolvedAccount.id : null);
     }
 
     // Preserve OTP access for admins, who are not part of the public lookup.
@@ -70,7 +70,9 @@ export async function POST(request: NextRequest) {
         accountType = 'admin';
         userName = admin.name || '';
         userEmail = admin.email || '';
-        cachedSupabaseUid = isUUID(admin.uid) ? admin.uid : null;
+        cachedSupabaseUid = isUUID(admin.uid)
+          ? admin.uid
+          : (isUUID(admin.id) ? admin.id : null);
       }
     }
 
@@ -100,9 +102,34 @@ export async function POST(request: NextRequest) {
     }
 
     if (!supabaseUserId) {
-      // نبحث في Auth عن طريق listUsers (محاطة بـ try-catch للأمان)
+      // Fast path: find in users table by email before loading Auth users list
       try {
-        const { data: usersData, error: listError } = await db.auth.admin.listUsers({ perPage: 2000 });
+        const { data: dbUser } = await db
+          .from('users')
+          .select('id, uid, email')
+          .or(`email.eq.${constructedEmail}${userEmail ? `,email.eq.${userEmail}` : ''}`)
+          .limit(1)
+          .maybeSingle();
+
+        if (dbUser) {
+          const candidate = isUUID(dbUser.id) ? dbUser.id : (isUUID(dbUser.uid) ? dbUser.uid : null);
+          if (candidate) {
+            const { data: authUserData } = await db.auth.admin.getUserById(candidate);
+            if (authUserData?.user) {
+              supabaseUserId = authUserData.user.id;
+              authEmail = authUserData.user.email || constructedEmail;
+            }
+          }
+        }
+      } catch (err: any) {
+        console.warn('[OTP Login] Fast DB email lookup note:', err?.message);
+      }
+    }
+
+    if (!supabaseUserId) {
+      // نبحث في Auth عن طريق listUsers كـ Fallback أخير للأمان
+      try {
+        const { data: usersData, error: listError } = await db.auth.admin.listUsers({ perPage: 1000 });
         if (listError) {
           console.warn('[OTP Login] listUsers error (non-fatal):', listError.message);
         } else {
