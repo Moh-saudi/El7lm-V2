@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/app_config.dart';
@@ -687,9 +688,16 @@ class DataService {
       }
     }
 
-    final base64Data = base64Encode(bytes);
-    final mime = contentType.isNotEmpty ? contentType : 'image/jpeg';
-    return 'data:$mime;base64,$base64Data';
+    if (bytes.lengthInBytes <= 150 * 1024) {
+      final base64Data = base64Encode(bytes);
+      final mime = contentType.isNotEmpty ? contentType : 'image/jpeg';
+      return 'data:$mime;base64,$base64Data';
+    }
+
+    throw const ApiException(
+      'Failed to upload profile image.',
+      translationKey: 'mediaUploadFailed',
+    );
   }
 
   Future<String> uploadPlayerMedia({
@@ -699,7 +707,6 @@ class DataService {
     required bool isVideo,
     bool isDocument = false,
   }) async {
-    _requireSupabase();
     final ownerId = _auth.authUserId ?? await _auth.legacyUserId() ?? 'user';
     final safeExtension = extension.toLowerCase().replaceAll(
       RegExp(r'[^a-z0-9]'),
@@ -709,37 +716,131 @@ class DataService {
         ? (isVideo ? 'mp4' : (isDocument ? 'pdf' : 'jpg'))
         : safeExtension;
     final timeStamp = DateTime.now().microsecondsSinceEpoch;
-    final flatPath = '${ownerId}_$timeStamp.$ext';
+    final fileName = '${ownerId}_$timeStamp.$ext';
 
-    final primaryBucket = isVideo
-        ? 'videos'
-        : (isDocument ||
-                  contentType.contains('pdf') ||
-                  contentType.contains('document')
-              ? 'documents'
-              : 'profile-images');
-
-    final client = Supabase.instance.client;
-    try {
-      await client.storage
-          .from(primaryBucket)
-          .uploadBinary(
-            flatPath,
-            bytes,
-            fileOptions: FileOptions(contentType: contentType, upsert: true),
+    // 1. Direct Cloudflare R2 Presigned Upload for Videos
+    if (isVideo) {
+      final token = _auth.accessToken;
+      if (token != null && token.isNotEmpty) {
+        try {
+          final presignedRes = await _api.post(
+            '/api/media/presigned-url',
+            body: {
+              'fileName': fileName,
+              'fileType': contentType.isNotEmpty ? contentType : 'video/mp4',
+              'fileSize': bytes.lengthInBytes,
+              'userId': ownerId,
+            },
+            accessToken: token,
           );
-      return client.storage.from(primaryBucket).getPublicUrl(flatPath);
-    } catch (e) {
-      debugPrint('Player media upload error ($primaryBucket/$flatPath): $e');
+
+          final presignedUrl = presignedRes['presignedUrl']?.toString();
+          final publicUrl = presignedRes['publicUrl']?.toString();
+          final storagePath = presignedRes['storagePath']?.toString();
+          final videoId = presignedRes['videoId']?.toString();
+
+          if (presignedUrl != null && publicUrl != null && storagePath != null) {
+            final uploadHeaders = <String, String>{
+              'Content-Type': contentType.isNotEmpty ? contentType : 'video/mp4',
+            };
+            final r2Upload = await http.put(
+              Uri.parse(presignedUrl),
+              headers: uploadHeaders,
+              body: bytes,
+            );
+
+            if (r2Upload.statusCode >= 200 && r2Upload.statusCode < 300) {
+              try {
+                await _api.post(
+                  '/api/media/presigned-url/complete',
+                  body: {
+                    'videoId': videoId,
+                    'storagePath': storagePath,
+                    'publicUrl': publicUrl,
+                    'title': 'Video $timeStamp',
+                    'fileName': fileName,
+                    'fileSize': bytes.lengthInBytes,
+                    'fileType': contentType.isNotEmpty ? contentType : 'video/mp4',
+                    'userId': ownerId,
+                  },
+                  accessToken: token,
+                );
+              } catch (completeErr) {
+                debugPrint('⚠️ Video metadata record warning: $completeErr');
+              }
+              return publicUrl;
+            } else {
+              debugPrint('⚠️ R2 upload failed with HTTP status ${r2Upload.statusCode}');
+            }
+          }
+        } catch (r2Err) {
+          debugPrint('⚠️ R2 Presigned upload failed, falling back to Supabase: $r2Err');
+        }
+      }
+
+      // 2. Supabase Storage fallback for videos
+      if (AppConfig.hasSupabaseConfiguration) {
+        try {
+          final client = Supabase.instance.client;
+          await client.storage
+              .from('videos')
+              .uploadBinary(
+                fileName,
+                bytes,
+                fileOptions: FileOptions(
+                  contentType: contentType.isNotEmpty ? contentType : 'video/mp4',
+                  upsert: true,
+                ),
+              );
+          return client.storage.from('videos').getPublicUrl(fileName);
+        } catch (supaErr) {
+          debugPrint('⚠️ Supabase Storage video upload error: $supaErr');
+        }
+      }
+
+      // STRICT ZERO PATCHWORK RULE: Never store Base64 video payload in Postgres!
+      throw const ApiException(
+        'Failed to upload video to cloud storage.',
+        translationKey: 'videoUploadFailed',
+      );
     }
 
-    final base64Data = base64Encode(bytes);
-    final fallbackMime = contentType.isNotEmpty
-        ? contentType
-        : (isVideo
-              ? 'video/mp4'
-              : (isDocument ? 'application/pdf' : 'image/jpeg'));
-    return 'data:$fallbackMime;base64,$fallbackMime;base64,$base64Data';
+    // 3. Supabase Storage for Images and Documents
+    final primaryBucket = isDocument ||
+            contentType.contains('pdf') ||
+            contentType.contains('document')
+        ? 'documents'
+        : 'profile-images';
+
+    if (AppConfig.hasSupabaseConfiguration) {
+      try {
+        final client = Supabase.instance.client;
+        await client.storage
+            .from(primaryBucket)
+            .uploadBinary(
+              fileName,
+              bytes,
+              fileOptions: FileOptions(contentType: contentType, upsert: true),
+            );
+        return client.storage.from(primaryBucket).getPublicUrl(fileName);
+      } catch (e) {
+        debugPrint('Player media upload error ($primaryBucket/$fileName): $e');
+      }
+    }
+
+    // 4. Base64 fallback ONLY for small non-video assets (<= 150 KB, e.g. signatures)
+    if (bytes.lengthInBytes <= 150 * 1024) {
+      final base64Data = base64Encode(bytes);
+      final fallbackMime = contentType.isNotEmpty
+          ? contentType
+          : (isDocument ? 'application/pdf' : 'image/jpeg');
+      return 'data:$fallbackMime;base64,$base64Data';
+    }
+
+    throw const ApiException(
+      'Failed to upload media.',
+      translationKey: 'mediaUploadFailed',
+    );
   }
 
   Future<List<Map<String, dynamic>>> fetchManagedPlayers(

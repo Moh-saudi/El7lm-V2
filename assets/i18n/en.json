@@ -759,6 +759,7 @@
   "chooseVideo": "Choose Video from Device",
   "mediaUploadSuccess": "Media added to your profile successfully.",
   "mediaUploadFailed": "Failed to upload media. Please try again.",
+  "videoUploadFailed": "Failed to upload video to cloud storage. Please check your connection and try again.",
   "enterOrgCode": "Enter Organization / Dream Ambassadors Code",
   "changeOrgCode": "Change Organization Code",
   "joinOrgTitle": "Join Organization or Dream Ambassadors",

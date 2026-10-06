@@ -759,6 +759,7 @@
   "chooseVideo": "Choisir une vidéo",
   "mediaUploadSuccess": "Média ajouté avec succès à votre profil.",
   "mediaUploadFailed": "Échec du téléchargement du média. Veuillez réessayer.",
+  "videoUploadFailed": "Échec du téléchargement de la vidéo sur le stockage cloud. Veuillez vérifier votre connexion et réessayer.",
   "enterOrgCode": "Entrer le code de l'organisation / Ambassadeurs",
   "changeOrgCode": "Modifier le code de l'organisation",
   "joinOrgTitle": "Rejoindre une organisation ou Ambassadeurs",

@@ -759,6 +759,7 @@
   "chooseVideo": "Escolher Vídeo do Dispositivo",
   "mediaUploadSuccess": "Mídia adicionada com sucesso ao seu perfil.",
   "mediaUploadFailed": "Falha no envio da mídia. Tente novamente.",
+  "videoUploadFailed": "Falha ao enviar o vídeo para o armazenamento em nuvem. Verifique sua conexão e tente novamente.",
   "enterOrgCode": "Inserir Código da Organização / Embaixadores",
   "changeOrgCode": "Alterar Código da Organização",
   "joinOrgTitle": "Ingressar em Organização ou Embaixadores",

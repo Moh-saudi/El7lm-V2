@@ -759,6 +759,7 @@
   "chooseVideo": "Elegir Video del Dispositivo",
   "mediaUploadSuccess": "Multimedia añadida con éxito a tu perfil.",
   "mediaUploadFailed": "Error al subir multimedia. Inténtalo de nuevo.",
+  "videoUploadFailed": "Error al subir el video al almacenamiento en la nube. Por favor comprueba tu conexión e inténtalo de nuevo.",
   "enterOrgCode": "Ingresar Código de Organización / Embajadores",
   "changeOrgCode": "Cambiar Código de Organización",
   "joinOrgTitle": "Unirse a una Organización o Embajadores",
