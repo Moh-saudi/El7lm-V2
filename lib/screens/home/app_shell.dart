@@ -42,7 +42,7 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int selectedIndex = 0;
   final Set<int> _loadedTabs = {0};
   int _unreadMessagesCount = 0;
@@ -56,6 +56,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initDestinations();
     _initialUnreadTimer = Timer(const Duration(seconds: 2), () {
       if (mounted) _fetchUnreadCounts();
@@ -63,6 +64,11 @@ class _AppShellState extends State<AppShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureProfileCompletionReminder();
     });
+    _startUnreadTimer();
+  }
+
+  void _startUnreadTimer() {
+    _unreadTimer?.cancel();
     _unreadTimer = Timer.periodic(
       const Duration(seconds: 180),
       (_) => _fetchUnreadCounts(),
@@ -70,7 +76,19 @@ class _AppShellState extends State<AppShell> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _unreadTimer?.cancel();
+      _unreadTimer = null;
+    } else if (state == AppLifecycleState.resumed) {
+      if (mounted) _fetchUnreadCounts();
+      _startUnreadTimer();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _unreadTimer?.cancel();
     _initialUnreadTimer?.cancel();
     super.dispose();
