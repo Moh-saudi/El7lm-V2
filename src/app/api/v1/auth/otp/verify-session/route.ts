@@ -171,10 +171,35 @@ export async function POST(request: NextRequest) {
         .catch(() => {});
     }
 
-    // 5. Construct canonical response conforming to PLAN-01
+    // 5. Update lastLogin and lastLoginDevice on users & role tables
+    const userAgent = request.headers.get('user-agent') || '';
+    const clientPlatform = request.headers.get('x-client-platform') || (deviceInfo?.platform ? 'mobile' : '');
+    const isMobile = clientPlatform === 'mobile' || /okhttp|Dart|CFNetwork|Dalvik|Mobile/i.test(userAgent);
+    const platformDevice = isMobile ? 'mobile' : 'web';
+
+    const loginUpdate = {
+      uid: authUid || userId,
+      lastLogin: new Date().toISOString(),
+      lastLoginDevice: platformDevice,
+    };
+    await admin.from('users').update(loginUpdate as any).eq('id', userId);
+    const collectionMap: Record<string, string> = {
+      player: 'players', club: 'clubs', agent: 'agents',
+      academy: 'academies', trainer: 'trainers', marketer: 'marketers',
+    };
+    const tableName = collectionMap[accountType];
+    if (tableName) {
+      await admin.from(tableName).update(loginUpdate as any).eq('id', userId);
+    }
+
+    // 6. Construct canonical response conforming to PLAN-01 (with hoisted backward-compatibility)
     return NextResponse.json({
       success: true,
+      uid: userId,
+      accountType,
+      userName,
       authEmail: constructedEmail,
+      authPassword: tempPassword,
       tempPassword,
       deviceInfo,
       user: {
