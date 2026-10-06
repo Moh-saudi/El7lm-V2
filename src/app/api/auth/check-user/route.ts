@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { findAccountByPhone } from '@/lib/auth/phone-account-lookup';
+import { rateLimiter, getClientIpFromHeaders } from '@/lib/security/rate-limit';
 
 const SEARCH_TABLES = ['users', 'players', 'clubs', 'academies', 'agents', 'trainers', 'marketers', 'admins'];
 
@@ -52,6 +53,29 @@ async function findByPhone(phone: string): Promise<{ exists: boolean }> {
 
 export async function POST(request: NextRequest) {
   try {
+    // 1. IP Rate Limiting (Anti-enumeration / Brute-force protection)
+    const clientIp = getClientIpFromHeaders(request.headers);
+    const rateCheck = rateLimiter.check(`check_user:${clientIp}`, {
+      windowMs: 60 * 1000, // 1 minute
+      max: 10,             // 10 checks per minute per IP
+      minIntervalMs: 300,  // minimum 300ms between checks
+    });
+
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          exists: false,
+          error: 'تم تجاوز الحد المسموح به من الطلبات. يرجى المحاولة بعد قليل.',
+          retryAfterMs: rateCheck.retryAfterMs,
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(Math.ceil(rateCheck.retryAfterMs / 1000)) },
+        }
+      );
+    }
+
     const body = await request.json();
     const phoneNumber = typeof body?.phoneNumber === 'string' ? body.phoneNumber.trim() : '';
     const email = typeof body?.email === 'string' ? body.email.trim() : '';
