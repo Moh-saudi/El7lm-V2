@@ -49,10 +49,7 @@ export function useUsers(initialLimit = 2000) {
             setLoading(true);
             setError(null);
 
-            // استعلام خفيف وسريع على جدول users الموحد فقط مع جلب الحقول المطلوبة للعرض
-            const { data, error: fetchError } = await supabase
-                .from('users')
-                .select(`
+            const userSelectColumns = `
                     id,
                     uid,
                     name,
@@ -80,13 +77,26 @@ export function useUsers(initialLimit = 2000) {
                     suspendedAt,
                     academyId,
                     clubId
-                `)
-                .order('created_at', { ascending: false })
-                .limit(initialLimit);
+            `;
 
-            if (fetchError) {
-                throw fetchError;
-            }
+            // جلب المستخدمين عبر شريحتين متوازيتين لتخطي سقف PostgREST الافتراضي (1000 صف لكل طلب)
+            const [batch1, batch2] = await Promise.all([
+                supabase
+                    .from('users')
+                    .select(userSelectColumns)
+                    .order('created_at', { ascending: false })
+                    .range(0, 999),
+                supabase
+                    .from('users')
+                    .select(userSelectColumns)
+                    .order('created_at', { ascending: false })
+                    .range(1000, 1999),
+            ]);
+
+            if (batch1.error) throw batch1.error;
+            if (batch2.error) throw batch2.error;
+
+            const data = [...(batch1.data || []), ...(batch2.data || [])];
 
             const allUsers: User[] = (data || []).map((row: any) => {
                 const id = row.id || row.uid;
