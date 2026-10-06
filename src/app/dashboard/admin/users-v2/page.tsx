@@ -42,7 +42,7 @@ import BulkActionsBar from './_components/BulkActionsBar';
 import UsersCharts from './_components/UsersCharts';
 
 // الـ Hooks
-import { useUsers, filterUsers } from './_hooks/useUsers';
+import { useUsers } from './_hooks/useUsers';
 import { useUserActions } from './_hooks/useUserActions';
 
 // الأدوات
@@ -80,6 +80,8 @@ function UsersPageContent() {
     }), [can]);
 
     // الحالة
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
     const [filters, setFilters] = useState<UsersFilters>(DEFAULT_FILTERS);
     const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
     const [detailsModal, setDetailsModal] = useState<{ visible: boolean; user: User | null }>({
@@ -98,31 +100,29 @@ function UsersPageContent() {
     const [autoRefresh, setAutoRefresh] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
 
-    // جلب البيانات - زيادة الحد لجلب جميع المستخدمين
-    const { users, loading, error, stats, refetch } = useUsers(2000);
+    // جلب البيانات بمعمارية الترقيم السحابي المقسم (Server-Side Pagination)
+    const { users, totalCount, availableCountries, loading, error, stats, refetch } = useUsers({
+        page,
+        pageSize,
+        filters,
+    });
     const { suspendUser, activateUser, deleteUser, verifyUser, updateUser, sendMessage } = useUserActions();
 
-    // فلترة المستخدمين
+    // تطبيق قيود النطاق الجغرافي من CASL إذا وجدت
     const filteredUsers = useMemo(() => {
-        let baseFiltered = filterUsers(users, filters);
-
-        // استبعاد حسابات المسؤولين (الموظفين) لأن لهم صفحة خاصة ولا يجب أن يظهروا هنا
-        baseFiltered = baseFiltered.filter(user => user.accountType !== 'admin');
-
-        // تطبيق قيود النطاق الجغرافي من CASL إذا وجدت
-        // نقوم بالتحقق مما إذا كان المستخدم يملك صلاحية القراءة لهذا المستخدم المحدد (بناءً على بلده)
-        return baseFiltered.filter(user => can('read', { resource: 'users', country: user.country } as any));
-    }, [users, filters, can]);
+        return users.filter(user => can('read', { resource: 'users', country: user.country } as any));
+    }, [users, can]);
 
     // المستخدمين المحددين
     const selectedUsers = useMemo(() => {
         return users.filter(u => selectedRowKeys.includes(u.id));
     }, [users, selectedRowKeys]);
 
-    // قائمة البلدان المتاحة
+    // قائمة البلدان المتاحة (تأتي مباشرة من قاعدة البيانات بالكامل)
     const countries = useMemo(() => {
+        if (availableCountries && availableCountries.length > 0) return availableCountries;
         return [...new Set(users.map(u => u.country).filter(Boolean))].sort();
-    }, [users]);
+    }, [availableCountries, users]);
 
     // عدد الفلاتر النشطة
     const activeFiltersCount = useMemo(() => {
@@ -148,14 +148,22 @@ function UsersPageContent() {
         return () => clearInterval(interval);
     }, [autoRefresh, refetch]);
 
-    // تحديث الفلاتر
+    // تغيير الصفحة وحجمها سحابياً
+    const handlePageChange = useCallback((newPage: number, newPageSize: number) => {
+        setPage(newPage);
+        setPageSize(newPageSize);
+    }, []);
+
+    // تحديث الفلاتر مع إعادة الصفحة للبداية
     const handleFiltersChange = useCallback((newFilters: Partial<UsersFilters>) => {
         setFilters(prev => ({ ...prev, ...newFilters }));
+        setPage(1);
     }, []);
 
     // إعادة تعيين الفلاتر
     const handleResetFilters = useCallback(() => {
         setFilters(DEFAULT_FILTERS);
+        setPage(1);
     }, []);
 
     // عرض تفاصيل المستخدم
@@ -414,8 +422,8 @@ function UsersPageContent() {
                                 loading={loading}
                                 countries={countries}
                                 activeFiltersCount={activeFiltersCount}
-                                totalCount={users.length}
-                                filteredCount={filteredUsers.length}
+                                totalCount={stats.total}
+                                filteredCount={totalCount}
                             />
 
                             {/* الجدول */}
@@ -424,6 +432,10 @@ function UsersPageContent() {
                                     users={filteredUsers}
                                     loading={loading}
                                     permissions={permissions}
+                                    page={page}
+                                    pageSize={pageSize}
+                                    total={totalCount}
+                                    onPageChange={handlePageChange}
                                     onView={handleViewUser}
                                     onEdit={handleEditUser}
                                     onSuspend={suspendUser}

@@ -1,6 +1,7 @@
 /**
  * Hook لجلب المستخدمين من Supabase
- * تم تحسينه للعمل بكفاءة فائقة مع 10,000 مستخدم
+ * معمارية متكاملة للترقيم والفلترة السحابية (Server-Side Pagination & Querying)
+ * مصممة للعمل بكفاءة فائقة مع 10,000 إلى 100,000 مستخدم بصفر استهلاك للذاكرة
  * يعتمد على جدول users القانوني الموحد (Canonical Identity Table)
  */
 
@@ -28,8 +29,17 @@ const calculateProfileCompletion = (data: any): number => {
     return Math.round((filledFields.length / requiredFields.length) * 100);
 };
 
-export function useUsers(initialLimit = 2000) {
+export interface UseUsersOptions {
+    page?: number;
+    pageSize?: number;
+    filters?: UsersFilters;
+}
+
+export function useUsers(options: UseUsersOptions = {}) {
+    const { page = 1, pageSize = 20, filters } = options;
     const [users, setUsers] = useState<User[]>([]);
+    const [totalCount, setTotalCount] = useState(0);
+    const [availableCountries, setAvailableCountries] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [stats, setStats] = useState<UsersStats>({
@@ -43,6 +53,20 @@ export function useUsers(initialLimit = 2000) {
         newThisWeek: 0,
         newThisMonth: 0,
     });
+
+    useEffect(() => {
+        supabase
+            .from('users')
+            .select('country')
+            .neq('accountType', 'admin')
+            .not('country', 'is', null)
+            .then(({ data }) => {
+                if (data) {
+                    const uniqueCountries = [...new Set(data.map((d: any) => d.country).filter(Boolean))].sort() as string[];
+                    setAvailableCountries(uniqueCountries);
+                }
+            });
+    }, []);
 
     const fetchUsers = useCallback(async () => {
         try {
@@ -79,24 +103,45 @@ export function useUsers(initialLimit = 2000) {
                     clubId
             `;
 
-            // جلب المستخدمين عبر شريحتين متوازيتين لتخطي سقف PostgREST الافتراضي (1000 صف لكل طلب)
-            const [batch1, batch2] = await Promise.all([
-                supabase
-                    .from('users')
-                    .select(userSelectColumns)
-                    .order('created_at', { ascending: false })
-                    .range(0, 999),
-                supabase
-                    .from('users')
-                    .select(userSelectColumns)
-                    .order('created_at', { ascending: false })
-                    .range(1000, 1999),
-            ]);
+            const from = (page - 1) * pageSize;
+            const to = from + pageSize - 1;
 
-            if (batch1.error) throw batch1.error;
-            if (batch2.error) throw batch2.error;
+            // 1. استعلام الجدول المقسم سحابياً (Server-side Pagination)
+            let query = supabase
+                .from('users')
+                .select(userSelectColumns, { count: 'exact' })
+                .neq('accountType', 'admin') // استبعاد المشرفين من جدول المستخدمين العاديين
+                .order('created_at', { ascending: false });
 
-            const data = [...(batch1.data || []), ...(batch2.data || [])];
+            // تطبيق الفلاتر سحابياً
+            if (filters?.search?.trim()) {
+                const term = filters.search.trim();
+                query = query.or(`name.ilike.%${term}%,full_name.ilike.%${term}%,displayName.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%,phoneNumber.ilike.%${term}%`);
+            }
+
+            if (filters?.accountType && filters.accountType !== 'all') {
+                query = query.eq('accountType', filters.accountType);
+            }
+
+            if (filters?.status === 'active') {
+                query = query.or('isActive.eq.true,isActive.is.null').or('isDeleted.eq.false,isDeleted.is.null');
+            } else if (filters?.status === 'suspended') {
+                query = query.eq('isActive', false).or('isDeleted.eq.false,isDeleted.is.null');
+            } else if (filters?.status === 'deleted') {
+                query = query.eq('isDeleted', true);
+            }
+
+            if (filters?.countries && filters.countries.length > 0) {
+                query = query.in('country', filters.countries);
+            }
+
+            const { data, count, error: fetchError } = await query.range(from, to);
+
+            if (fetchError) {
+                throw fetchError;
+            }
+
+            setTotalCount(count ?? 0);
 
             const allUsers: User[] = (data || []).map((row: any) => {
                 const id = row.id || row.uid;
@@ -105,7 +150,6 @@ export function useUsers(initialLimit = 2000) {
                 const isActive = row.isActive !== false;
                 const status: AccountStatus = isDeleted ? 'deleted' : (!isActive ? 'suspended' : 'active');
 
-                // تحسين حجم الذاكرة: تجنب نصوص base64 الطويلة في الـ listings
                 let profileImage = '';
                 if (typeof row.profile_image === 'string' && row.profile_image.length < 1000) {
                     profileImage = row.profile_image;
@@ -146,39 +190,72 @@ export function useUsers(initialLimit = 2000) {
 
             setUsers(allUsers);
 
-            // حساب الإحصائيات بكفاءة
+            // 2. جلب الإحصائيات العامة السحابية المتوازية (0 KB memory overhead عبر HTTP HEAD)
             const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-            const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+            const todayIso = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+            const weekAgoIso = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+            const monthAgoIso = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-            const newStats: UsersStats = {
-                total: allUsers.length,
-                active: allUsers.filter(u => u.status === 'active').length,
-                suspended: allUsers.filter(u => u.status === 'suspended').length,
-                deleted: allUsers.filter(u => u.status === 'deleted').length,
-                byType: {} as Record<AccountType, number>,
+            const [
+                totalRes,
+                activeRes,
+                suspendedRes,
+                deletedRes,
+                newTodayRes,
+                newWeekRes,
+                newMonthRes,
+                playersRes,
+                clubsRes,
+                academiesRes,
+                trainersRes,
+                agentsRes,
+                marketersRes,
+                parentsRes,
+            ] = await Promise.all([
+                supabase.from('users').select('id', { count: 'exact', head: true }).neq('accountType', 'admin'),
+                supabase.from('users').select('id', { count: 'exact', head: true }).neq('accountType', 'admin').or('isActive.eq.true,isActive.is.null').or('isDeleted.eq.false,isDeleted.is.null'),
+                supabase.from('users').select('id', { count: 'exact', head: true }).neq('accountType', 'admin').eq('isActive', false).or('isDeleted.eq.false,isDeleted.is.null'),
+                supabase.from('users').select('id', { count: 'exact', head: true }).neq('accountType', 'admin').eq('isDeleted', true),
+                supabase.from('users').select('id', { count: 'exact', head: true }).neq('accountType', 'admin').gte('created_at', todayIso),
+                supabase.from('users').select('id', { count: 'exact', head: true }).neq('accountType', 'admin').gte('created_at', weekAgoIso),
+                supabase.from('users').select('id', { count: 'exact', head: true }).neq('accountType', 'admin').gte('created_at', monthAgoIso),
+                supabase.from('users').select('id', { count: 'exact', head: true }).eq('accountType', 'player'),
+                supabase.from('users').select('id', { count: 'exact', head: true }).eq('accountType', 'club'),
+                supabase.from('users').select('id', { count: 'exact', head: true }).eq('accountType', 'academy'),
+                supabase.from('users').select('id', { count: 'exact', head: true }).eq('accountType', 'trainer'),
+                supabase.from('users').select('id', { count: 'exact', head: true }).eq('accountType', 'agent'),
+                supabase.from('users').select('id', { count: 'exact', head: true }).eq('accountType', 'marketer'),
+                supabase.from('users').select('id', { count: 'exact', head: true }).eq('accountType', 'parent'),
+            ]);
+
+            setStats({
+                total: totalRes.count ?? 0,
+                active: activeRes.count ?? 0,
+                suspended: suspendedRes.count ?? 0,
+                deleted: deletedRes.count ?? 0,
+                newToday: newTodayRes.count ?? 0,
+                newThisWeek: newWeekRes.count ?? 0,
+                newThisMonth: newMonthRes.count ?? 0,
+                byType: {
+                    player: playersRes.count ?? 0,
+                    club: clubsRes.count ?? 0,
+                    academy: academiesRes.count ?? 0,
+                    trainer: trainersRes.count ?? 0,
+                    agent: agentsRes.count ?? 0,
+                    marketer: marketersRes.count ?? 0,
+                    parent: parentsRes.count ?? 0,
+                    admin: 0,
+                },
                 byCountry: {},
-                newToday: allUsers.filter(u => u.createdAt && u.createdAt >= today).length,
-                newThisWeek: allUsers.filter(u => u.createdAt && u.createdAt >= weekAgo).length,
-                newThisMonth: allUsers.filter(u => u.createdAt && u.createdAt >= monthAgo).length,
-            };
-
-            allUsers.forEach(u => {
-                newStats.byType[u.accountType] = (newStats.byType[u.accountType] || 0) + 1;
-                if (u.country) {
-                    newStats.byCountry[u.country] = (newStats.byCountry[u.country] || 0) + 1;
-                }
             });
 
-            setStats(newStats);
         } catch (e: any) {
             console.error('Error fetching users:', e);
             setError(e.message || 'حدث خطأ في جلب المستخدمين');
         } finally {
             setLoading(false);
         }
-    }, [initialLimit]);
+    }, [page, pageSize, filters]);
 
     useEffect(() => {
         fetchUsers();
@@ -186,80 +263,11 @@ export function useUsers(initialLimit = 2000) {
 
     return {
         users,
+        totalCount,
+        availableCountries,
         loading,
         error,
         stats,
         refetch: fetchUsers,
     };
-}
-
-// فلترة المستخدمين
-export function filterUsers(users: User[], filters: UsersFilters): User[] {
-    return users.filter(user => {
-        // البحث النصي
-        if (filters.search) {
-            const searchLower = filters.search.toLowerCase();
-            const matchesSearch =
-                user.name.toLowerCase().includes(searchLower) ||
-                user.email.toLowerCase().includes(searchLower) ||
-                user.phone.includes(filters.search);
-            if (!matchesSearch) return false;
-        }
-
-        // نوع الحساب
-        if (filters.accountType !== 'all' && user.accountType !== filters.accountType) {
-            return false;
-        }
-
-        // حالة الحساب
-        if (filters.status !== 'all' && user.status !== filters.status) {
-            return false;
-        }
-
-        // حالة التحقق
-        if (filters.verification !== 'all' && user.verificationStatus !== filters.verification) {
-            return false;
-        }
-
-        // البلد (اختيار متعدد)
-        if (filters.countries && filters.countries.length > 0 && !filters.countries.includes(user.country)) {
-            return false;
-        }
-
-        // اكتمال الملف
-        if (filters.profileCompletion !== 'all') {
-            if (filters.profileCompletion === 'complete' && user.profileCompletion < 100) return false;
-            if (filters.profileCompletion === 'incomplete' && user.profileCompletion >= 100) return false;
-        }
-
-        // مصدر التسجيل
-        if (filters.loginSource !== 'all') {
-            if (filters.loginSource === 'google' && !user.isGoogleUser) return false;
-            if (filters.loginSource === 'phone' && !user.isPhoneAuth) return false;
-            if (filters.loginSource === 'email' && (user.isGoogleUser || user.isPhoneAuth)) return false;
-        }
-
-        // حالة المزامنة
-        if (filters.isSynced !== 'all') {
-            if (filters.isSynced === 'yes' && !user.isSynced) return false;
-            if (filters.isSynced === 'no' && user.isSynced) return false;
-        }
-
-        // نطاق التاريخ
-        if (user.createdAt) {
-            const userDate = dayjs(user.createdAt);
-            if (filters.dateRange[0]) {
-                const startDate = dayjs(filters.dateRange[0]).startOf('day');
-                if (userDate.isBefore(startDate)) return false;
-            }
-            if (filters.dateRange[1]) {
-                const endDate = dayjs(filters.dateRange[1]).endOf('day');
-                if (userDate.isAfter(endDate)) return false;
-            }
-        } else if (filters.dateRange[0] || filters.dateRange[1]) {
-            return false;
-        }
-
-        return true;
-    });
 }

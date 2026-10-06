@@ -86,6 +86,10 @@ interface UsersTableProps {
     onMessage: (user: User) => void;
     selectedRowKeys: React.Key[];
     onSelectionChange: (keys: React.Key[]) => void;
+    page?: number;
+    pageSize?: number;
+    total?: number;
+    onPageChange?: (page: number, pageSize: number) => void;
 }
 
 export default function UsersTable({
@@ -101,6 +105,10 @@ export default function UsersTable({
     onMessage,
     selectedRowKeys,
     onSelectionChange,
+    page = 1,
+    pageSize = 20,
+    total,
+    onPageChange,
 }: UsersTableProps) {
     const [suspendModal, setSuspendModal] = useState<{ visible: boolean; user: User | null }>({
         visible: false,
@@ -344,13 +352,20 @@ export default function UsersTable({
         },
     ];
 
-    // إعدادات الصفحات
+    // إعدادات الصفحات المقسمة سحابياً (Server-side Pagination)
     const pagination: TablePaginationConfig = {
-        pageSize: 20,
+        current: page,
+        pageSize: pageSize,
+        total: total ?? users.length,
         showSizeChanger: true,
         pageSizeOptions: ['10', '20', '50', '100'],
-        showTotal: (total, range) => `${range[0]}-${range[1]} من ${total} مستخدم`,
+        showTotal: (totalCount, range) => `${range[0]}-${range[1]} من ${totalCount} مستخدم`,
         showQuickJumper: true,
+        onChange: (newPage, newPageSize) => {
+            if (onPageChange) {
+                onPageChange(newPage, newPageSize);
+            }
+        },
     };
 
     return (
