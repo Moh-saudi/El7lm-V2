@@ -234,7 +234,8 @@ class AuthService {
     }
 
     final returnedType = AccountType.tryFromValue(
-      result['accountType']?.toString(),
+      result['accountType']?.toString() ??
+          (result['user'] is Map ? result['user']['accountType']?.toString() : null),
     );
     final accountType = registration
         ? (returnedType ?? selectedType)
@@ -246,15 +247,18 @@ class AuthService {
         translationKey: 'accountTypeMissing',
       );
     }
+    final resolvedUid = '${result['uid'] ?? (result['user'] is Map ? result['user']['id'] : '')}';
+    final resolvedName = '${result['userName'] ?? (result['user'] is Map ? result['user']['name'] : name)}';
+
     await _storage.write(key: 'account_type', value: accountType.value);
     await _storage.write(
       key: 'legacy_user_id',
-      value: '${result['uid'] ?? ''}',
+      value: resolvedUid,
     );
 
     return AuthResult(
       accountType: accountType,
-      userName: '${result['userName'] ?? name}',
+      userName: resolvedName,
       isNewUser: isNew,
     );
   }
