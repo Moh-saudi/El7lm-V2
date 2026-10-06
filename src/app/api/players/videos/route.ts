@@ -67,14 +67,21 @@ export async function GET(request: NextRequest) {
         profile_image_url: p.profile_image_url || p.profile_image || p.image || null,
       }));
 
-    return NextResponse.json({
-      success: true,
-      count: players.length,
-      limit,
-      offset,
-      hasMore: (data?.length ?? 0) === limit,
-      data: players,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        count: players.length,
+        limit,
+        offset,
+        hasMore: (data?.length ?? 0) === limit,
+        data: players,
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+        },
+      }
+    );
   } catch (err: any) {
     console.error('[/api/players/videos] unexpected error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
