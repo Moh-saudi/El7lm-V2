@@ -106,8 +106,55 @@ function EditOpportunityModal({ opp, onClose, onSaved }: EditModalProps) {
     providesMeals: opp.providesMeals,
     providesTransport: opp.providesTransport,
     targetPositions: opp.targetPositions || [],
+    translations: (opp as any).translations || (opp as any).metadata?.translations || {},
   });
   const [saving, setSaving] = useState(false);
+  const [translating, setTranslating] = useState(false);
+  const [activeLangTab, setActiveLangTab] = useState<'en' | 'fr' | 'es' | 'pt'>('en');
+
+  const setTranslationField = (lang: string, field: 'title' | 'description' | 'requirements', val: string) => {
+    setForm(p => {
+      const currentTrans = p.translations || {};
+      const currentLang = currentTrans[lang] || {};
+      return {
+        ...p,
+        translations: {
+          ...currentTrans,
+          [lang]: {
+            ...currentLang,
+            [field]: val,
+          },
+        },
+      };
+    });
+  };
+
+  const handleAutoTranslate = async () => {
+    if (!form.title.trim()) {
+      toast.error('يرجى إدخال عنوان الفرصة أولاً ليتمكن النظام من ترجمته');
+      return;
+    }
+    setTranslating(true);
+    try {
+      const res = await authenticatedFetch('/api/admin/opportunities/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: form.title,
+          description: form.description,
+          requirements: form.requirements,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'فشلت الترجمة التلقائية');
+      set('translations', data.translations);
+      toast.success('تمت ترجمة الفرصة بنجاح إلى اللغات الـ 4 الإضافية (EN, FR, ES, PT)');
+    } catch (e: any) {
+      toast.error(e.message || 'حدث خطأ أثناء الترجمة التلقائية');
+    } finally {
+      setTranslating(false);
+    }
+  };
 
   const set = (k: string, v: any) => setForm(p => ({ ...p, [k]: v }));
 
@@ -289,6 +336,99 @@ function EditOpportunityModal({ opp, onClose, onSaved }: EditModalProps) {
           <div>
             <label className="text-xs font-semibold text-slate-600 mb-1 block">المتطلبات الإضافية</label>
             <textarea className={`${inputCls} resize-none`} rows={2} value={form.requirements} onChange={e => set('requirements', e.target.value)} />
+          </div>
+
+          {/* 5-Language Translation Section */}
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                  <Globe className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">الترجمة التلقائية (5 لغات)</h3>
+                  <p className="text-[11px] text-slate-500">العربية (الأساسية) + الإنجليزية، الفرنسية، الإسبانية، البرتغالية</p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAutoTranslate}
+                disabled={translating}
+                className="bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs font-semibold h-8 gap-1.5 shadow-sm"
+              >
+                {translating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />}
+                ترجمة تلقائية فورية (4 لغات)
+              </Button>
+            </div>
+
+            {/* Language tabs */}
+            <div className="flex items-center gap-1.5 border-b border-slate-200 pb-2">
+              {[
+                { code: 'en', label: 'English', flag: '🇬🇧' },
+                { code: 'fr', label: 'Français', flag: '🇫🇷' },
+                { code: 'es', label: 'Español', flag: '🇪🇸' },
+                { code: 'pt', label: 'Português', flag: '🇵🇹' },
+              ].map(lang => {
+                const isActive = activeLangTab === lang.code;
+                const hasData = Boolean(form.translations?.[lang.code]?.title);
+                return (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    onClick={() => setActiveLangTab(lang.code as any)}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span>{lang.flag}</span>
+                    <span>{lang.label}</span>
+                    {hasData && (
+                      <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-300' : 'bg-emerald-500'}`} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Selected language preview/inputs */}
+            <div className="space-y-3 pt-1">
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 flex items-center justify-between">
+                  <span>العنوان المترجم ({activeLangTab.toUpperCase()})</span>
+                  {form.translations?.[activeLangTab]?.title && (
+                    <span className="text-[10px] text-emerald-600 font-normal">✓ مترجم</span>
+                  )}
+                </label>
+                <input
+                  dir="ltr"
+                  className={inputCls}
+                  placeholder={`Title in ${activeLangTab.toUpperCase()}...`}
+                  value={form.translations?.[activeLangTab]?.title || ''}
+                  onChange={e => setTranslationField(activeLangTab, 'title', e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 flex items-center justify-between">
+                  <span>الوصف المترجم ({activeLangTab.toUpperCase()})</span>
+                  {form.translations?.[activeLangTab]?.description && (
+                    <span className="text-[10px] text-emerald-600 font-normal">✓ مترجم</span>
+                  )}
+                </label>
+                <textarea
+                  dir="ltr"
+                  className={`${inputCls} resize-none`}
+                  rows={2}
+                  placeholder={`Description in ${activeLangTab.toUpperCase()}...`}
+                  value={form.translations?.[activeLangTab]?.description || ''}
+                  onChange={e => setTranslationField(activeLangTab, 'description', e.target.value)}
+                />
+              </div>
+            </div>
           </div>
         </div>
         <div className="flex justify-end gap-3 p-6 border-t">

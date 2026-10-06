@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeAdmin } from '@/lib/api/admin-auth';
+import { translateOpportunityFields } from '@/lib/services/translation-service';
 
 const DB_COLUMNS = [
   'id', 'organizerId', 'organizerName', 'organizerType', 'organizerAvatar', 
@@ -49,11 +50,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Sort and restore metadata to root for UI compatibility
-    const processed = (opportunities || []).map((opp: any) => ({
-      ...(opp.metadata || {}),
-      ...opp
-    })).sort((a: any, b: any) => {
+    // Sort and restore metadata and translations to root for UI and mobile compatibility
+    const processed = (opportunities || []).map((opp: any) => {
+      const meta = opp.metadata || {};
+      const translations = meta.translations || opp.translations;
+      return {
+        ...meta,
+        ...opp,
+        translations,
+      };
+    }).sort((a: any, b: any) => {
       const dateA = a.createdAt || a.created_at || '';
       const dateB = b.createdAt || b.created_at || '';
       return dateB > dateA ? 1 : -1;
@@ -75,10 +81,27 @@ export async function POST(req: NextRequest) {
     
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
+
+    // Auto-generate translations for 5 languages (ar + en, fr, es, pt)
+    let translations = body.metadata?.translations || body.translations;
+    if (!translations && body.title) {
+      try {
+        translations = await translateOpportunityFields(body.title, body.description, body.requirements);
+      } catch (tErr) {
+        console.warn('[/api/admin/opportunities POST] auto-translate error:', tErr);
+      }
+    }
+    
+    const metadata = {
+      ...(body.metadata || {}),
+      ...(translations ? { translations } : {}),
+    };
     
     const initialPayload = {
       id,
       ...body,
+      metadata,
+      translations,
       currentApplicants: 0,
       viewCount: 0,
       createdAt: now,
@@ -98,7 +121,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const item = { ...(data.metadata || {}), ...data };
+    const item = { ...(data.metadata || {}), ...data, translations };
     return NextResponse.json({ item, id });
   } catch (err: any) {
     console.error('❌ Admin API: create error:', err);
@@ -118,6 +141,28 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'id is required' }, { status: 400 });
     }
 
+    // Auto-generate translations if text fields changed and translations not provided
+    let translations = updates.metadata?.translations || updates.translations;
+    if (!translations && (updates.title || updates.description || updates.requirements)) {
+      try {
+        translations = await translateOpportunityFields(
+          updates.title || '',
+          updates.description,
+          updates.requirements
+        );
+      } catch (tErr) {
+        console.warn('[/api/admin/opportunities PATCH] auto-translate error:', tErr);
+      }
+    }
+
+    if (translations) {
+      updates.translations = translations;
+      updates.metadata = {
+        ...(updates.metadata || {}),
+        translations,
+      };
+    }
+
     const payload = preparePayload({ ...updates, updatedAt: new Date().toISOString() }, true);
 
     const { error } = await admin
@@ -130,7 +175,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, translations });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

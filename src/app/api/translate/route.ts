@@ -11,8 +11,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Target translation languages supported
-    const supportedTargets = ['ar', 'en', 'es', 'pt'];
+    // Target translation languages supported (5 platform languages)
+    const supportedTargets = ['ar', 'en', 'es', 'fr', 'pt'];
     if (!supportedTargets.includes(target)) {
       return NextResponse.json(
         { error: `Unsupported target language: ${target}` },
