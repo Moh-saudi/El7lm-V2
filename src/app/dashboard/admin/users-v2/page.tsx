@@ -342,11 +342,21 @@ function UsersPageContent() {
                                 إدارة المستخدمين
                             </Title>
                             <Text type="secondary" className="!text-slate-500">
-                                {filteredUsers.length} مستخدم {activeFiltersCount > 0 && `(مُفلتر من ${users.length})`}
+                                {stats.total > 0 ? `${stats.total.toLocaleString()} مستخدم مسجل` : 'جاري التحميل...'}
+                                {activeFiltersCount > 0 && ` • نتائج التصفية: ${totalCount.toLocaleString()}`}
                             </Text>
                         </div>
-                        <Space wrap>
-                            {/* زر المزامنة الجديد */}
+                        <Space wrap size="middle">
+                            {/* زر التحديث التلقائي */}
+                            <Button
+                                icon={<SyncOutlined spin={autoRefresh} className={autoRefresh ? 'text-emerald-600' : 'text-slate-500'} />}
+                                onClick={() => setAutoRefresh(prev => !prev)}
+                                className={autoRefresh ? '!border-emerald-500 !bg-emerald-50 !text-emerald-700 font-medium shadow-sm' : 'border-slate-300 hover:border-emerald-500 text-slate-700'}
+                            >
+                                {autoRefresh ? 'تحديث تلقائي: نشط' : 'تحديث تلقائي'}
+                            </Button>
+
+                            {/* زر المزامنة */}
                             <Button
                                 icon={<CloudSyncOutlined spin={isSyncing} />}
                                 onClick={handleSyncUsers}
@@ -357,25 +367,13 @@ function UsersPageContent() {
                                 مزامنة البيانات
                             </Button>
 
-                            {/* التحديث التلقائي */}
-                            <Tooltip title={autoRefresh ? 'إيقاف التحديث التلقائي' : 'تفعيل التحديث التلقائي (كل 30 ثانية)'}>
-                                <div className="flex items-center gap-2 px-3 py-1 bg-white border border-slate-200 rounded-lg shadow-sm">
-                                    <SyncOutlined spin={autoRefresh} className={autoRefresh ? 'text-emerald-500' : 'text-slate-400'} />
-                                    <Switch
-                                        size="small"
-                                        checked={autoRefresh}
-                                        onChange={setAutoRefresh}
-                                    />
-                                </div>
-                            </Tooltip>
-
                             {permissions.export && (
-                                <Button icon={<DownloadOutlined />} onClick={() => handleExport('csv')}>
+                                <Button icon={<DownloadOutlined />} onClick={() => handleExport('csv')} className="border-slate-300 hover:border-emerald-500 text-slate-700">
                                     تصدير
                                 </Button>
                             )}
                             {permissions.edit && (
-                                <Button type="primary" icon={<UserAddOutlined />} onClick={handleAddUser}>
+                                <Button type="primary" icon={<UserAddOutlined />} onClick={handleAddUser} className="!bg-emerald-600 hover:!bg-emerald-700 shadow-sm font-medium">
                                     إضافة مستخدم
                                 </Button>
                             )}
