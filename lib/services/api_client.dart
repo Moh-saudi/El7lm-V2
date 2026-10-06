@@ -99,6 +99,7 @@ class ApiClient {
       HttpHeaders.contentTypeHeader: 'application/json',
       HttpHeaders.acceptHeader: 'application/json',
       'x-app-locale': languageCode,
+      'x-client-platform': 'mobile',
       if (token != null && token.isNotEmpty)
         HttpHeaders.authorizationHeader: 'Bearer $token',
     };
