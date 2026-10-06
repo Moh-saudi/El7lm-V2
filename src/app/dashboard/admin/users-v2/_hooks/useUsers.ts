@@ -100,7 +100,8 @@ export function useUsers(options: UseUsersOptions = {}) {
                     suspensionReason,
                     suspendedAt,
                     academyId,
-                    clubId
+                    clubId,
+                    lastLoginDevice
             `;
 
             const from = (page - 1) * pageSize;
@@ -183,6 +184,14 @@ export function useUsers(options: UseUsersOptions = {}) {
                     isSynced: Boolean(row.isSynced),
                     isGoogleUser: Boolean(row.isGoogleUser),
                     isPhoneAuth: Boolean(row.phone && !row.isGoogleUser),
+                    lastLoginDevice: row.lastLoginDevice || undefined,
+                    loginPlatform: (() => {
+                        const raw = String(row.lastLoginDevice || '').toLowerCase();
+                        if (!raw) return 'unknown';
+                        if (raw.includes('mobile') || raw.includes('dart') || raw.includes('dalvik') || raw.includes('okhttp')) return 'mobile';
+                        if (raw.includes('web') || raw.includes('mozilla') || raw.includes('chrome') || raw.includes('safari') || raw.includes('windows') || raw.includes('macintosh')) return 'web';
+                        return 'unknown';
+                    })(),
                 };
 
                 return userData;

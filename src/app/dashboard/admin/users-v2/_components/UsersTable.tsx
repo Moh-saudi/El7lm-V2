@@ -34,6 +34,8 @@ import {
     ExclamationCircleOutlined,
     GoogleOutlined,
     SyncOutlined,
+    MobileOutlined,
+    LaptopOutlined,
 } from '@ant-design/icons';
 import {
     User,
@@ -267,6 +269,40 @@ export default function UsersTable({
                     )}
                 </div>
             ),
+        },
+        {
+            title: 'المنصة والدخول',
+            key: 'platform',
+            width: 140,
+            align: 'center',
+            render: (_, record) => {
+                const isMobile = record.loginPlatform === 'mobile';
+                const isWeb = record.loginPlatform === 'web';
+                return (
+                    <div className="flex flex-col items-center gap-1">
+                        {isMobile ? (
+                            <Tag color="purple" className="inline-flex items-center gap-1 m-0 text-xs font-semibold px-2 py-0.5">
+                                <MobileOutlined /> تطبيق الموبايل
+                            </Tag>
+                        ) : isWeb ? (
+                            <Tag color="blue" className="inline-flex items-center gap-1 m-0 text-xs font-semibold px-2 py-0.5">
+                                <LaptopOutlined /> متصفح الويب
+                            </Tag>
+                        ) : (
+                            <Tag color="default" className="m-0 text-xs text-slate-400">
+                                غير محدد
+                            </Tag>
+                        )}
+                        {record.lastLogin ? (
+                            <span className="text-[11px] text-slate-400">
+                                {record.lastLogin.toLocaleDateString('ar-EG')}
+                            </span>
+                        ) : (
+                            <span className="text-[10px] text-slate-400">لم يسجل دخول</span>
+                        )}
+                    </div>
+                );
+            },
         },
         {
             title: 'تاريخ التسجيل',

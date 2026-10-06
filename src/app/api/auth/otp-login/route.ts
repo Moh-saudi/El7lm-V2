@@ -169,15 +169,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'فشل إنشاء جلسة المصادقة: ' + updateError.message }, { status: 500 });
     }
 
-    // ربط Supabase Auth UUID بعمود uid وتحديث آخر تسجيل دخول
+    // ربط Supabase Auth UUID بعمود uid وتحديث آخر تسجيل دخول والمنصة
     const collectionMap: Record<string, string> = {
       player: 'players', club: 'clubs', agent: 'agents',
       academy: 'academies', trainer: 'trainers', marketer: 'marketers',
     };
     const tableName = collectionMap[accountType] || 'users';
-    await db.from(tableName).update({ uid: supabaseUserId, lastLogin: new Date().toISOString() } as any).eq('id', userId);
 
-    console.log(`✅ [OTP Login] User ${userId} (${accountType}) logged in`);
+    const userAgent = request.headers.get('user-agent') || '';
+    const clientPlatform = request.headers.get('x-client-platform');
+    const isMobile = clientPlatform === 'mobile' || /okhttp|Dart|CFNetwork|Dalvik|Mobile/i.test(userAgent);
+    const platformDevice = isMobile ? 'mobile' : 'web';
+
+    const loginUpdate = {
+      uid: supabaseUserId,
+      lastLogin: new Date().toISOString(),
+      lastLoginDevice: platformDevice,
+    };
+
+    await db.from(tableName).update(loginUpdate as any).eq('id', userId);
+    if (tableName !== 'users') {
+      await db.from('users').update(loginUpdate as any).eq('id', userId);
+    }
+
+    console.log(`✅ [OTP Login] User ${userId} (${accountType}) logged in via ${platformDevice}`);
 
     return NextResponse.json({
       success: true,

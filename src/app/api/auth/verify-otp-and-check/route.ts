@@ -134,13 +134,28 @@ export async function POST(request: NextRequest) {
       user_metadata: { db_id: userId, accountType, phone: phoneNumber, full_name: userName },
     });
 
-    // ربط uid
+    // ربط uid وتحديث آخر تسجيل دخول والمنصة
     const collectionMap: Record<string, string> = {
       player: 'players', club: 'clubs', agent: 'agents',
       academy: 'academies', trainer: 'trainers', marketer: 'marketers',
     };
     const tableName = collectionMap[accountType] || 'users';
-    await db.from(tableName).update({ uid: supabaseUserId, lastLogin: new Date().toISOString() } as any).eq('id', userId);
+
+    const userAgent = request.headers.get('user-agent') || '';
+    const clientPlatform = request.headers.get('x-client-platform');
+    const isMobile = clientPlatform === 'mobile' || /okhttp|Dart|CFNetwork|Dalvik|Mobile/i.test(userAgent);
+    const platformDevice = isMobile ? 'mobile' : 'web';
+
+    const loginUpdate = {
+      uid: supabaseUserId,
+      lastLogin: new Date().toISOString(),
+      lastLoginDevice: platformDevice,
+    };
+
+    await db.from(tableName).update(loginUpdate as any).eq('id', userId);
+    if (tableName !== 'users') {
+      await db.from('users').update(loginUpdate as any).eq('id', userId);
+    }
 
     return NextResponse.json({
       success: true,

@@ -29,6 +29,8 @@ import {
     MessageOutlined,
     StopOutlined,
     DeleteOutlined,
+    MobileOutlined,
+    LaptopOutlined,
 } from '@ant-design/icons';
 import {
     User,
@@ -211,6 +213,20 @@ export default function UserDetailsModal({
                         })
                     ) : (
                         <span className="text-gray-400">لم يسجل دخول بعد</span>
+                    )}
+                </Descriptions.Item>
+
+                <Descriptions.Item label="منصة الدخول" span={2}>
+                    {user.loginPlatform === 'mobile' ? (
+                        <Tag color="purple" className="inline-flex items-center gap-1 font-medium">
+                            <MobileOutlined /> تطبيق الموبايل (Mobile App)
+                        </Tag>
+                    ) : user.loginPlatform === 'web' ? (
+                        <Tag color="blue" className="inline-flex items-center gap-1 font-medium">
+                            <LaptopOutlined /> متصفح الويب (Web Browser)
+                        </Tag>
+                    ) : (
+                        <span className="text-gray-400">غير محدد</span>
                     )}
                 </Descriptions.Item>
 

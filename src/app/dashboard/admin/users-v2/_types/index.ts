@@ -39,6 +39,8 @@ export interface User {
     isGoogleUser?: boolean;
     isPhoneAuth?: boolean;
     isSynced?: boolean; // هل تم استرجاعه عبر أداة المزامنة
+    lastLoginDevice?: string;
+    loginPlatform?: 'mobile' | 'web' | 'unknown';
 }
 
 // إحصائيات المستخدمين
