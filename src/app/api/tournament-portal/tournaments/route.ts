@@ -72,10 +72,16 @@ export async function GET(req: NextRequest) {
         );
 
         if (tournamentId) {
-            return NextResponse.json({ tournament: all[0] || null });
+            return NextResponse.json(
+                { tournament: all[0] || null },
+                { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' } }
+            );
         }
 
-        return NextResponse.json({ tournaments: all });
+        return NextResponse.json(
+            { tournaments: all },
+            { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' } }
+        );
     } catch (e: any) {
         return NextResponse.json({ error: e.message || 'Failed to fetch tournaments' }, { status: 500 });
     }

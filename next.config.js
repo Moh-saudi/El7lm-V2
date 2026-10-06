@@ -53,6 +53,12 @@ const nextConfig = {
             },
             {
                 protocol: 'https',
+                hostname: 'mjuaefipdzxfqazzbyke.supabase.co',
+                port: '',
+                pathname: '/storage/v1/object/public/**',
+            },
+            {
+                protocol: 'https',
                 hostname: 'assets.el7lm.com',
                 port: '',
                 pathname: '/**',

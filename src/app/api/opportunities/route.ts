@@ -124,7 +124,14 @@ export async function GET(request: NextRequest) {
       return item;
     });
 
-    return NextResponse.json({ data: merged, pagination: { limit, offset, count: merged.length } });
+    const cacheHeaders = explore
+      ? { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
+      : { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30' };
+
+    return NextResponse.json(
+      { data: merged, pagination: { limit, offset, count: merged.length } },
+      { headers: cacheHeaders }
+    );
   } catch (err: any) {
     if (explore) {
       return NextResponse.json({ data: [] });

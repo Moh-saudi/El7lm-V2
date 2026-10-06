@@ -29,7 +29,7 @@ const getMockMessages = (): Message[] => [
     type: "club",
     content: "دعوة لتجربة أداء",
     time: "منذ ساعتين",
-    avatar: "/club-avatar.png",
+    avatar: "/club-avatar.svg",
     unread: true,
     priority: "high"
   },
@@ -39,7 +39,7 @@ const getMockMessages = (): Message[] => [
     type: "agent",
     content: "عرض احتراف جديد",
     time: "منذ 3 ساعات",
-    avatar: "/agent-avatar.png",
+    avatar: "/agent-avatar.svg",
     unread: true,
     priority: "medium"
   },
@@ -49,7 +49,7 @@ const getMockMessages = (): Message[] => [
     type: "academy",
     content: "برنامج تدريبي متقدم",
     time: "منذ يوم",
-    avatar: "/academy-avatar.png",
+    avatar: "/academy-avatar.svg",
     unread: false,
     priority: "low"
   }
