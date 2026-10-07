@@ -6,7 +6,7 @@ const nextConfig = {
         ENABLE_SMS_SIMULATION: process.env.ENABLE_SMS_SIMULATION,
     },
     // تحسين التعامل مع الأخطاء
-    output: process.env.NODE_ENV === 'production' ? 'standalone' : undefined,
+    output: (process.env.NODE_ENV === 'production' && !process.env.VERCEL) ? 'standalone' : undefined,
     eslint: {
         ignoreDuringBuilds: true,
     },
@@ -100,6 +100,17 @@ const nextConfig = {
     experimental: {
         serverActions: {
             bodySizeLimit: '100mb',
+        },
+        outputFileTracingExcludes: {
+            '*': [
+                './mobile/**',
+                './docs/**',
+                './.agent/**',
+                './.agents/**',
+                './scratch/**',
+                './node_modules/@swc/core/**',
+                './node_modules/@esbuild/**',
+            ],
         },
     },
 
