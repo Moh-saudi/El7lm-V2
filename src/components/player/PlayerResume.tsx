@@ -384,6 +384,20 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
               <Globe className="w-4 h-4 text-blue-600" />
               <span>{player?.nationality || player?.country || detail('notSpecified')}</span>
             </div>
+            {player?.instagram_handle && (
+              <div className="flex gap-2 items-center text-gray-700">
+                <span className="text-pink-600 font-bold text-xs">IG</span>
+                <span>@{player.instagram_handle.replace(/^@/, '')}</span>
+              </div>
+            )}
+            {player?.transfermarkt_url && (
+              <div className="flex gap-2 items-center text-gray-700">
+                <span className="text-blue-800 font-bold text-xs">TM</span>
+                <a href={player.transfermarkt_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate">
+                  Transfermarkt
+                </a>
+              </div>
+            )}
           </div>
 
           {/* النبذة المختصرة في قسم الاتصال */}
@@ -499,7 +513,9 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                 <p><strong>{detail('height')}:</strong> {player?.height ? `${player.height} ${detail('cm')}` : detail('notSpecified')}</p>
                 <p><strong>{detail('weight')}:</strong> {player?.weight ? `${player.weight} ${detail('kg')}` : detail('notSpecified')}</p>
                 <p><strong>{detail('bloodType')}:</strong> {player?.blood_type || detail('notSpecified')}</p>
-                <p><strong>{detail('preferredFoot')}:</strong> {player?.preferred_foot || detail('notSpecified')}</p>
+                <p><strong>{detail('preferredFoot')}:</strong> {player?.preferred_foot || (player?.foot === 'right' ? 'يمين' : player?.foot === 'left' ? 'يسار' : player?.foot === 'both' ? 'كلاهما' : player?.foot) || detail('notSpecified')}</p>
+                {player?.shoe_size && <p><strong>مقاس الحذاء:</strong> {player.shoe_size}</p>}
+                {player?.clothing_size && <p><strong>مقاس الملابس:</strong> {player.clothing_size}</p>}
               </div>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
@@ -511,14 +527,22 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                 <p><strong>{detail('currentClub')}:</strong> {player?.current_club || (player?.contract_status === 'free' ? detail('freeAgent') : detail('notSpecified'))}</p>
                 <p><strong>{detail('experienceYears')}:</strong> {player?.experience_years || player?.experience || detail('notSpecified')}</p>
                 <p><strong>{detail('contractStatus')}:</strong> {(player?.contract_status === 'contracted' || player?.currently_contracted === 'yes') ? detail('contracted') : (player?.contract_status === 'loan' ? detail('loan') : detail('freeAgent'))}</p>
+                {(player?.goals !== undefined && player?.goals !== null && Number(player?.goals) > 0) && <p><strong>الأهداف:</strong> {player.goals}</p>}
+                {(player?.assists !== undefined && player?.assists !== null && Number(player?.assists) > 0) && <p><strong>التمريرات الحاسمة:</strong> {player.assists}</p>}
+                {(player?.caps !== undefined && player?.caps !== null && Number(player?.caps) > 0) && <p><strong>المباريات الدولية:</strong> {player.caps}</p>}
               </div>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-semibold text-gray-900 mb-2">{detail('healthStatus')}</h3>
               <div className="space-y-1 text-sm text-gray-700">
-                <p><strong>{detail('healthCondition')}:</strong> {player?.chronic_conditions ? detail('hasNotes') : detail('fullyHealthy')}</p>
-                {player?.chronic_conditions && <p className="text-red-600 font-medium text-xs bg-red-50 p-1 rounded">{player.chronic_details}</p>}
-                <p><strong>{detail('allergies')}:</strong> {player?.allergies || detail('none')}</p>
+                <p><strong>{detail('healthCondition')}:</strong> {(player?.chronic_diseases || player?.chronic_conditions || player?.chronic_details) ? detail('hasNotes') : detail('fullyHealthy')}</p>
+                {(player?.chronic_diseases || player?.chronic_details || player?.chronic_conditions) && (
+                  <p className="text-red-600 font-medium text-xs bg-red-50 p-1 rounded">
+                    {player?.chronic_diseases || player?.chronic_details || player?.chronic_conditions}
+                  </p>
+                )}
+                <p><strong>{detail('allergies')}:</strong> {player?.allergies || (Array.isArray(player?.allergies_list) && player.allergies_list.length > 0 ? player.allergies_list.map((a) => a?.allergen || a).join(', ') : detail('none'))}</p>
+                {player?.last_checkup && <p><strong>آخر فحص طبي:</strong> {player.last_checkup}</p>}
                 {player?.medical_notes && <p className="text-xs text-gray-500 italic mt-1 border-t pt-1">{player.medical_notes}</p>}
               </div>
             </div>
@@ -528,6 +552,9 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
               <h3 className="font-semibold text-gray-900 mb-2">{detail('education')}</h3>
               <div className="space-y-1 text-sm text-gray-700">
                 <p><strong>{detail('level')}:</strong> {player?.education_level || detail('notSpecified')}</p>
+                {(player?.university_name || player?.school_name) && (
+                  <p><strong>المؤسسة التعليمية:</strong> {player?.university_name || player?.school_name}</p>
+                )}
                 {player?.degree && <p><strong>{detail('specialization')}:</strong> {player.degree}</p>}
                 {player?.graduation_year && <p><strong>{detail('graduation')}:</strong> {player.graduation_year}</p>}
               </div>

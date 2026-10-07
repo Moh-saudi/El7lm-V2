@@ -14,8 +14,8 @@ export const usePlayerProfile = () => {
     const [saving, setSaving] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const { user } = useAuth();
-    const { t, locale } = useTranslation();
-    const profileSchema = useMemo(() => createProfileSchema(t), [locale, t]);
+    const { t } = useTranslation();
+    const profileSchema = useMemo(() => createProfileSchema(t), [t]);
 
     const form = useForm<ProfileFormValues>({
         resolver: zodResolver(profileSchema) as any,
@@ -133,12 +133,24 @@ export const usePlayerProfile = () => {
                         name: pData.full_name || uData.displayName || '',
                         email: uData.email || user.email || '',
                         phone: pData.phone || uData.phoneNumber || '',
+                        chronic_diseases: pData.chronic_diseases || pData.chronic_details || pData.chronic_conditions || '',
+                        position: pData.position || pData.primary_position || '',
                         // Ensure arrays are arrays
                         club_history: pData.club_history || [],
                         achievements: pData.achievements || [],
                         videos: pData.videos || [],
                         images: pData.images || [],
                     };
+
+                    if (Array.isArray(pData.social_links)) {
+                        const ig = pData.social_links.find((s: any) => s && s.platform === 'instagram');
+                        if (ig && !mergedData.instagram_handle) mergedData.instagram_handle = ig.handle || ig.url || '';
+                        const tm = pData.social_links.find((s: any) => s && s.platform === 'transfermarkt');
+                        if (tm && !mergedData.transfermarkt_url) mergedData.transfermarkt_url = tm.url || '';
+                    }
+                    if (!mergedData.university_name && pData.school_name && ['bachelors', 'masters', 'phd'].includes(pData.education_level)) {
+                        mergedData.university_name = pData.school_name;
+                    }
 
                     // Reset Form
                     console.log("Fetched Profile Data:", mergedData);
@@ -170,13 +182,54 @@ export const usePlayerProfile = () => {
                 }));
             }
 
-            // Update Player Doc
-            await supabase.from('players').upsert({
+            // Sync aliases
+            dataToSave.full_name = values.name;
+            if (values.position) dataToSave.primary_position = values.position;
+            if (values.chronic_diseases) {
+                dataToSave.chronic_details = values.chronic_diseases;
+                dataToSave.chronic_conditions = values.chronic_diseases;
+                dataToSave.has_chronic_conditions = Boolean(values.chronic_diseases.trim());
+            }
+
+            // Sync social links
+            const currentLinks = Array.isArray(dataToSave.social_links) ? [...dataToSave.social_links] : [];
+            if (values.instagram_handle) {
+                const idx = currentLinks.findIndex((s: any) => s && s.platform === 'instagram');
+                if (idx >= 0) currentLinks[idx].handle = values.instagram_handle;
+                else currentLinks.push({ platform: 'instagram', handle: values.instagram_handle });
+            }
+            if (values.transfermarkt_url) {
+                const idx = currentLinks.findIndex((s: any) => s && s.platform === 'transfermarkt');
+                if (idx >= 0) currentLinks[idx].url = values.transfermarkt_url;
+                else currentLinks.push({ platform: 'transfermarkt', url: values.transfermarkt_url });
+            }
+            dataToSave.social_links = currentLinks;
+
+            // Update Player Doc with resilient missing-column fallback
+            const playerPayload: Record<string, any> = {
                 id: user.id,
                 ...dataToSave,
                 updatedAt: new Date().toISOString(),
-                full_name: values.name, // Maintain legacy field name if needed
-            });
+                full_name: values.name,
+            };
+
+            let saved = false;
+            while (!saved && Object.keys(playerPayload).length > 1) {
+                const { error: upsertErr } = await supabase.from('players').upsert(playerPayload);
+                if (!upsertErr) {
+                    saved = true;
+                    break;
+                }
+                const errStr = upsertErr.message || '';
+                const match = errStr.match(/(?:Could not find the '([a-zA-Z0-9_]+)' column|column (?:public\.)?players\.([a-zA-Z0-9_]+) does not exist)/i);
+                const missingCol = match ? (match[1] || match[2]) : null;
+                if (missingCol && missingCol in playerPayload) {
+                    console.warn(`Column "${missingCol}" not found in players table cache. Retrying without it...`);
+                    delete playerPayload[missingCol];
+                    continue;
+                }
+                throw upsertErr;
+            }
 
             // Update User Doc (Basic Info)
             await supabase.from('users').upsert({
