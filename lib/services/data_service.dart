@@ -84,6 +84,28 @@ class DataService {
     return result;
   }
 
+  Future<int> fetchUnreadNotificationsCount() async {
+    if (!AppConfig.hasSupabaseConfiguration) return 0;
+    final ids = {
+      _auth.authUserId,
+      await _auth.legacyUserId(),
+    }.whereType<String>().where((value) => value.isNotEmpty).toList();
+    if (ids.isEmpty) return 0;
+
+    final client = Supabase.instance.client;
+    try {
+      final res = await client
+          .from('notifications')
+          .count(CountOption.exact)
+          .inFilter('userId', ids)
+          .eq('isRead', false);
+      return res;
+    } catch (_) {
+      final notifs = await fetchNotifications();
+      return notifs.where((n) => !n.isRead).length;
+    }
+  }
+
   Future<void> markNotificationRead(AppNotification notification) async {
     if (notification.sourceTable ==
         InAppNotificationService.profileReminderSource) {
@@ -1946,6 +1968,30 @@ class DataService {
           if (payload.newRecord.isNotEmpty) {
             onMessage(ChatMessageModel.fromJson(payload.newRecord));
           }
+        },
+      )
+      ..subscribe();
+    return channel;
+  }
+
+  RealtimeChannel? subscribeToNotifications(
+    String userId,
+    void Function() onNotificationChange,
+  ) {
+    if (!AppConfig.hasSupabaseConfiguration) return null;
+    final client = Supabase.instance.client;
+    final channel = client.channel('public:notifications:$userId')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'notifications',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'userId',
+          value: userId,
+        ),
+        callback: (payload) {
+          onNotificationChange();
         },
       )
       ..subscribe();

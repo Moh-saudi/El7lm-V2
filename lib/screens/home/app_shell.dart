@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_config.dart';
@@ -50,6 +51,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   bool _fetchingUnreadCounts = false;
   Timer? _unreadTimer;
   Timer? _initialUnreadTimer;
+  RealtimeChannel? _notificationChannel;
 
   late final List<_Destination> _cachedDestinations;
 
@@ -63,8 +65,19 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureProfileCompletionReminder();
+      _setupRealtimeNotifications();
     });
     _startUnreadTimer();
+  }
+
+  void _setupRealtimeNotifications() {
+    final uid = widget.dataService.authService.authUserId;
+    if (uid != null && uid.isNotEmpty) {
+      _notificationChannel?.unsubscribe();
+      _notificationChannel = widget.dataService.subscribeToNotifications(uid, () {
+        if (mounted) _fetchUnreadCounts();
+      });
+    }
   }
 
   void _startUnreadTimer() {
@@ -81,7 +94,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       _unreadTimer?.cancel();
       _unreadTimer = null;
     } else if (state == AppLifecycleState.resumed) {
-      if (mounted) _fetchUnreadCounts();
+      if (mounted) {
+        _fetchUnreadCounts();
+        _setupRealtimeNotifications();
+      }
       _startUnreadTimer();
     }
   }
@@ -91,6 +107,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _unreadTimer?.cancel();
     _initialUnreadTimer?.cancel();
+    _notificationChannel?.unsubscribe();
     super.dispose();
   }
 
@@ -193,15 +210,17 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (_fetchingUnreadCounts) return;
     _fetchingUnreadCounts = true;
     try {
-      final convs = await widget.dataService.fetchConversations();
       final currentUserId = widget.dataService.authService.authUserId ?? '';
+      final convsFuture = widget.dataService.fetchConversations();
+      final notifCountFuture = widget.dataService.fetchUnreadNotificationsCount();
+
+      final convs = await convsFuture;
+      final notifCount = await notifCountFuture;
+
       int msgCount = 0;
       for (final conv in convs) {
         msgCount += (conv.unreadCount[currentUserId] as num? ?? 0).toInt();
       }
-
-      final notifs = await widget.dataService.fetchNotifications();
-      int notifCount = notifs.where((n) => !n.isRead).length;
 
       if (mounted) {
         setState(() {
