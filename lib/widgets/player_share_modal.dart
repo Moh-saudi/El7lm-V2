@@ -7,6 +7,7 @@ import '../core/app_theme.dart';
 import '../l10n/app_localizations.dart';
 import '../models/player.dart';
 import '../screens/profile/player_profile_data.dart';
+import 'player_skills_radar_chart.dart';
 
 void showPlayerShareModal(BuildContext context, {required Player player}) {
   showModalBottomSheet<void>(
@@ -115,7 +116,8 @@ class _PlayerShareModal extends StatelessWidget {
               ),
             ],
           ),
-          child: Column(
+          child: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               // EA Sports Header Badge
@@ -141,10 +143,30 @@ class _PlayerShareModal extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const Icon(
-                    Icons.verified_rounded,
-                    color: AppColors.green,
-                    size: 24,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFD700),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${player.overallRating} OVR',
+                          style: const TextStyle(
+                            color: Color(0xFF0F172A),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.verified_rounded,
+                        color: AppColors.green,
+                        size: 22,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -195,7 +217,43 @@ class _PlayerShareModal extends StatelessWidget {
                   fontSize: 13,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              // 6 FUT Stats row
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStatPill('PAC', player.pace),
+                    _buildStatPill('SHO', player.shooting),
+                    _buildStatPill('PAS', player.passing),
+                    _buildStatPill('DRI', player.dribbling),
+                    _buildStatPill('DEF', player.defending),
+                    _buildStatPill('PHY', player.physical),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // 6-axis Skills Radar Chart
+              PlayerSkillsRadarChart(
+                pace: player.pace,
+                shooting: player.shooting,
+                passing: player.passing,
+                dribbling: player.dribbling,
+                defending: player.defending,
+                physical: player.physical,
+                size: 200,
+                isDark: true,
+              ),
+              const SizedBox(height: 14),
               // QR Code Card
               Container(
                 padding: const EdgeInsets.all(10),
@@ -264,6 +322,34 @@ class _PlayerShareModal extends StatelessWidget {
           ),
         ),
       ),
+    ),
+  );
+  }
+
+  static Widget _buildStatPill(String label, num val) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '${val.toInt()}',
+          style: const TextStyle(
+            color: Color(0xFFFFD700),
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            height: 1,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF94A3B8),
+            fontSize: 8,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ],
     );
   }
 

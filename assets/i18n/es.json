@@ -880,5 +880,7 @@
   "nisrVoiceTooShort": "La grabación es demasiado corta. Habla un poco más y envíala.",
   "nisrHistoryTitle": "Historial de NISR",
   "nisrHistoryComingSoon": "Tus planes y conversaciones guardados aparecerán aquí en la siguiente fase.",
-  "conversationStartFailed": "No se pudo iniciar la conversación. Comprueba tu conexión e inténtalo de nuevo."
+  "conversationStartFailed": "No se pudo iniciar la conversación. Comprueba tu conexión e inténtalo de nuevo.",
+  "showSkillsRadar": "Radar de Habilidades (FUT)",
+  "hideSkillsRadar": "Ocultar Radar"
 }

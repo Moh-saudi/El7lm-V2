@@ -880,5 +880,7 @@
   "nisrVoiceTooShort": "التسجيل قصير جدًا. تحدث قليلًا ثم أرسله.",
   "nisrHistoryTitle": "سجل نسر",
   "nisrHistoryComingSoon": "سنضيف هنا خططك ومحادثاتك المحفوظة في المرحلة التالية.",
-  "conversationStartFailed": "تعذر بدء المحادثة، يرجى التحقق من الاتصال والمحاولة لاحقاً"
+  "conversationStartFailed": "تعذر بدء المحادثة، يرجى التحقق من الاتصال والمحاولة لاحقاً",
+  "showSkillsRadar": "رادار المهارات الفنية (FUT)",
+  "hideSkillsRadar": "إخفاء رادار المهارات"
 }

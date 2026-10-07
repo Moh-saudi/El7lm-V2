@@ -16,6 +16,7 @@ import '../../services/data_service.dart';
 import '../../services/profile_answer_validator.dart';
 import '../../widgets/parental_consent_dialog.dart';
 import '../../widgets/player_share_modal.dart';
+import '../../widgets/player_skills_radar_chart.dart';
 import '../../widgets/smart_profile_chat_modal.dart';
 import 'player_profile_data.dart';
 import 'profile_edit_screen.dart';
@@ -113,6 +114,7 @@ class _ProfileFormState extends State<_ProfileForm> {
   };
   bool saving = false;
   bool editing = false;
+  bool _showSkillsRadar = false;
 
   @override
   void initState() {
@@ -782,7 +784,91 @@ class _ProfileFormState extends State<_ProfileForm> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
+                  // ── Skills Radar Chart Toggle ──
+                  InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () =>
+                        setState(() => _showSkillsRadar = !_showSkillsRadar),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 4,
+                        horizontal: 8,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _showSkillsRadar
+                                ? Icons.radar
+                                : Icons.radar_outlined,
+                            size: 15,
+                            color: const Color(0xFF10B981),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _showSkillsRadar
+                                ? context.tr('hideSkillsRadar')
+                                : context.tr('showSkillsRadar'),
+                            style: const TextStyle(
+                              color: Color(0xFF6EE7B7),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            _showSkillsRadar
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            size: 16,
+                            color: const Color(0xFF6EE7B7),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_showSkillsRadar) ...[
+                    const SizedBox(height: 10),
+                    Center(
+                      child: PlayerSkillsRadarChart(
+                        pace:
+                            num.tryParse(
+                              controllers['stats_pace']?.text ?? '',
+                            ) ??
+                            50,
+                        shooting:
+                            num.tryParse(
+                              controllers['stats_shooting']?.text ?? '',
+                            ) ??
+                            50,
+                        passing:
+                            num.tryParse(
+                              controllers['stats_passing']?.text ?? '',
+                            ) ??
+                            50,
+                        dribbling:
+                            num.tryParse(
+                              controllers['stats_dribbling']?.text ?? '',
+                            ) ??
+                            50,
+                        defending:
+                            num.tryParse(
+                              controllers['stats_defending']?.text ?? '',
+                            ) ??
+                            50,
+                        physical:
+                            num.tryParse(
+                              controllers['stats_physical']?.text ?? '',
+                            ) ??
+                            50,
+                        size: 240,
+                        isDark: true,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  const SizedBox(height: 14),
                   // ── Profile Completion Bar ──
                   Builder(
                     builder: (ctx) {

@@ -57,6 +57,14 @@ class Player {
   ]);
   num? get height => number(['height', 'height_cm']);
   num? get weight => number(['weight', 'weight_kg']);
+  num get pace => number(['stats_pace', 'pace']) ?? 50;
+  num get shooting => number(['stats_shooting', 'shooting']) ?? 50;
+  num get passing => number(['stats_passing', 'passing']) ?? 50;
+  num get dribbling => number(['stats_dribbling', 'dribbling']) ?? 50;
+  num get defending => number(['stats_defending', 'defending']) ?? 50;
+  num get physical => number(['stats_physical', 'physical']) ?? 50;
+  int get overallRating =>
+      ((pace + shooting + passing + dribbling + defending + physical) / 6).round();
   bool get hasVideos => videos.any((video) => video.url.isNotEmpty);
   bool get hasImages {
     if (imageUrl.isNotEmpty) return true;
