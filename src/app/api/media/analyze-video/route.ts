@@ -140,11 +140,28 @@ ${playerInfo ? `معلومات اللاعب: ${playerInfo}` : ''}
             );
         }
 
-        // ── استدعاء Gemini ──
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+        // ── استدعاء Gemini بنماذج احتياطية مرنة ──
+        const candidateModels = ['gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-pro'];
+        let analysis = '';
+        let usedModel = 'gemini-1.5-flash-latest';
+        let lastError: any = null;
 
-        const result = await model.generateContent([prompt, ...imageParts]);
-        const analysis = result.response.text();
+        for (const m of candidateModels) {
+            try {
+                const model = genAI.getGenerativeModel({ model: m });
+                const result = await model.generateContent([prompt, ...imageParts]);
+                analysis = result.response.text();
+                usedModel = m;
+                if (analysis) break;
+            } catch (mErr: any) {
+                lastError = mErr;
+                console.warn(`[analyze-video] Model ${m} failed, trying next fallback...`, mErr?.message || mErr);
+            }
+        }
+
+        if (!analysis) {
+            throw lastError || new Error('تعذر استخراج تحليل الذكاء الاصطناعي');
+        }
 
         // استخراج التقييم من النص (رقم من 10)
         const ratingMatch = analysis.match(/(\d+(?:\.\d+)?)\s*(?:\/\s*10|من\s*10|من10|\s*عشرة)/);
@@ -154,7 +171,7 @@ ${playerInfo ? `معلومات اللاعب: ${playerInfo}` : ''}
             success: true,
             analysis,
             rating,
-            model: 'gemini-1.5-flash-latest',
+            model: usedModel,
         });
 
     } catch (err: any) {

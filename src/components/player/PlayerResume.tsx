@@ -11,6 +11,7 @@ import 'dayjs/locale/ar';
 dayjs.locale('ar');
 import { getSupabaseImageUrl } from '@/lib/supabase/image-utils';
 import { useTranslation } from '@/lib/i18n';
+import { SkillsRadarChart } from '@/components/player/SkillsRadarChart';
 
 interface PlayerResumeProps {
   player: any;
@@ -657,30 +658,68 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
             {detail('skillsAndAbilities')}
           </h2>
 
-          {/* New FIFA Stats */}
+          {/* New FIFA Stats & Skills Radar Chart */}
           {(() => {
+            const statsPayload = {
+              pace: player?.stats_pace !== undefined ? Number(player?.stats_pace) : undefined,
+              shooting: player?.stats_shooting !== undefined ? Number(player?.stats_shooting) : undefined,
+              passing: player?.stats_passing !== undefined ? Number(player?.stats_passing) : undefined,
+              dribbling: player?.stats_dribbling !== undefined ? Number(player?.stats_dribbling) : undefined,
+              defending: player?.stats_defending !== undefined ? Number(player?.stats_defending) : undefined,
+              physical: player?.stats_physical !== undefined ? Number(player?.stats_physical) : undefined,
+            };
+
             const mainStats = [
-              { label: detail('pace'), value: player?.stats_pace },
-              { label: detail('shooting'), value: player?.stats_shooting },
-              { label: detail('passing'), value: player?.stats_passing },
-              { label: detail('dribbling'), value: player?.stats_dribbling },
-              { label: detail('defending'), value: player?.stats_defending },
-              { label: detail('physical'), value: player?.stats_physical },
-            ].filter(s => s.value !== undefined);
+              { label: detail('pace'), value: statsPayload.pace },
+              { label: detail('shooting'), value: statsPayload.shooting },
+              { label: detail('passing'), value: statsPayload.passing },
+              { label: detail('dribbling'), value: statsPayload.dribbling },
+              { label: detail('defending'), value: statsPayload.defending },
+              { label: detail('physical'), value: statsPayload.physical },
+            ].filter((s) => s.value !== undefined);
 
             if (mainStats.length > 0) {
               return (
-                <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">{detail('coreAbilities')} (0-99)</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                    {mainStats.map((stat, i) => (
-                      <div key={i} className="flex flex-col items-center justify-center p-3 bg-white rounded-lg border border-gray-200 shadow-sm">
-                        <div className={`text-2xl font-black mb-1 ${Number(stat.value) >= 80 ? 'text-green-600' : Number(stat.value) >= 60 ? 'text-blue-600' : 'text-gray-800'}`}>
-                          {stat.value}
-                        </div>
-                        <div className="text-xs font-bold text-gray-500">{stat.label}</div>
+                <div className="mb-6 space-y-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    <div className="lg:col-span-7">
+                      <h3 className="font-semibold text-gray-900 mb-3">{detail('coreAbilities')} (0-99)</h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {mainStats.map((stat, i) => (
+                          <div
+                            key={i}
+                            className="flex flex-col items-center justify-center p-3.5 bg-white rounded-xl border border-gray-200/80 shadow-sm hover:border-emerald-300 transition-all"
+                          >
+                            <div
+                              className={`text-2xl font-black mb-1 ${
+                                Number(stat.value) >= 80
+                                  ? 'text-emerald-600'
+                                  : Number(stat.value) >= 60
+                                  ? 'text-blue-600'
+                                  : 'text-slate-800'
+                              }`}
+                            >
+                              {stat.value}
+                            </div>
+                            <div className="text-xs font-bold text-gray-500">{stat.label}</div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                    <div className="lg:col-span-5">
+                      <SkillsRadarChart
+                        stats={statsPayload}
+                        labels={{
+                          pace: detail('pace'),
+                          shooting: detail('shooting'),
+                          passing: detail('passing'),
+                          dribbling: detail('dribbling'),
+                          defending: detail('defending'),
+                          physical: detail('physical'),
+                        }}
+                        compact={true}
+                      />
+                    </div>
                   </div>
                 </div>
               );

@@ -96,47 +96,57 @@ Analyze and return JSON with this exact structure (use null for fields you canno
 Return only valid JSON, no markdown.
     `.trim();
 
-    // ── Call Gemini API ──────────────────────────────────────────────────────
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${this.apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt },
+    // ── Call Gemini API with resilient model fallback ───────────────────────
+    const candidateModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    let lastError: Error | null = null;
+    let parsed: Record<string, unknown> = {};
+
+    for (const model of candidateModels) {
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [
                 {
-                  fileData: {
-                    mimeType: input.metadata?.mimeType ?? 'video/mp4',
-                    fileUri: input.videoUrl,
-                  },
+                  parts: [
+                    { text: prompt },
+                    {
+                      fileData: {
+                        mimeType: input.metadata?.mimeType ?? 'video/mp4',
+                        fileUri: input.videoUrl,
+                      },
+                    },
+                  ],
                 },
               ],
-            },
-          ],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.1,
-          },
-        }),
-      }
-    );
+              generationConfig: {
+                responseMimeType: 'application/json',
+                temperature: 0.1,
+              },
+            }),
+          }
+        );
 
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Gemini API error: ${response.status} — ${err}`);
+        if (!response.ok) {
+          const err = await response.text();
+          throw new Error(`Gemini API error (${model}): ${response.status} — ${err}`);
+        }
+
+        const json = await response.json();
+        const text = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
+        parsed = JSON.parse(text);
+        break; // Successfully obtained and parsed response
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        console.warn(`[GeminiAnalysisProvider] Model ${model} failed, trying next candidate...`, err);
+      }
     }
 
-    const json = await response.json();
-    const text = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
-
-    let parsed: Record<string, unknown> = {};
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      throw new Error(`Gemini returned non-JSON: ${text}`);
+    if (!parsed || Object.keys(parsed).length === 0) {
+      throw lastError ?? new Error('Gemini returned empty or non-JSON response');
     }
 
     return {
@@ -175,9 +185,9 @@ export class AnalysisService {
       this.providers.set('gemini', new GeminiAnalysisProvider(geminiKey));
     }
 
-    // Active provider from env, default to stub
+    // Active provider from env, default to gemini if key is available, else stub
     this.activeProviderName =
-      process.env.NEXT_PUBLIC_VIDEO_ANALYSIS_PROVIDER ?? 'stub';
+      process.env.NEXT_PUBLIC_VIDEO_ANALYSIS_PROVIDER ?? (geminiKey ? 'gemini' : 'stub');
   }
 
   // ── Provider management ────────────────────────────────────────────────────
@@ -243,6 +253,11 @@ export class AnalysisService {
         'completed'
       );
 
+      // Auto-propagate analyzed skill scores to the player's core stats in database
+      if (result.skillScores && video.playerId) {
+        await supabaseUpdatePlayerStats(video.playerId, result.skillScores, result.overallScore);
+      }
+
       return result;
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
@@ -278,7 +293,7 @@ export class AnalysisService {
   }
 }
 
-// ── Supabase helper (avoids circular imports) ──────────────────────────────
+// ── Supabase helpers (avoids circular imports) ──────────────────────────────
 
 async function supabaseUpdateStatus(videoId: string, status: string) {
   const { supabase } = await import('@/lib/supabase/config');
@@ -286,6 +301,41 @@ async function supabaseUpdateStatus(videoId: string, status: string) {
     .from('player_videos')
     .update({ analysisStatus: status, updatedAt: new Date().toISOString() })
     .eq('id', videoId);
+}
+
+async function supabaseUpdatePlayerStats(
+  playerId: string,
+  skills: NonNullable<VideoAnalysisResult['skillScores']>,
+  overallScore?: number
+) {
+  try {
+    const { supabase } = await import('@/lib/supabase/config');
+    const updates: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (typeof skills.pace === 'number') updates.stats_pace = Math.round(skills.pace);
+    if (typeof skills.shooting === 'number') updates.stats_shooting = Math.round(skills.shooting);
+    if (typeof skills.passing === 'number') updates.stats_passing = Math.round(skills.passing);
+    if (typeof skills.dribbling === 'number') updates.stats_dribbling = Math.round(skills.dribbling);
+    if (typeof skills.defending === 'number') updates.stats_defending = Math.round(skills.defending);
+    if (typeof skills.heading === 'number' || typeof overallScore === 'number') {
+      updates.stats_physical = Math.round(skills.heading ?? overallScore ?? 70);
+    }
+
+    updates.skills = {
+      ...skills,
+      overallScore,
+      lastAnalyzedAt: new Date().toISOString(),
+    };
+
+    await supabase
+      .from('players')
+      .update(updates)
+      .or(`id.eq.${playerId},user_id.eq.${playerId}`);
+  } catch (e) {
+    console.warn('[AnalysisService] Could not update player stats:', e);
+  }
 }
 
 // Singleton
