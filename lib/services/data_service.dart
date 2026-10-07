@@ -537,6 +537,28 @@ class DataService {
       }
       merged['phone'] = resolvedPhone ?? merged['phone'];
       if (accountType == AccountType.player) {
+        merged['name'] ??= merged['full_name'] ?? merged['displayName'];
+        merged['chronic_diseases'] ??=
+            merged['chronic_details'] ?? merged['chronic_conditions'];
+        merged['position'] ??= merged['primary_position'];
+        if (merged['social_links'] is List) {
+          for (final link in merged['social_links'] as List) {
+            if (link is Map) {
+              final platform = '${link['platform'] ?? ''}'.toLowerCase();
+              if (platform == 'instagram') {
+                merged['instagram_handle'] ??= link['handle'] ?? link['url'];
+              } else if (platform == 'transfermarkt') {
+                merged['transfermarkt_url'] ??= link['url'];
+              }
+            }
+          }
+        }
+        final edu = '${merged['education_level'] ?? ''}'.trim();
+        if (const {'bachelors', 'masters', 'phd'}.contains(edu) &&
+            (merged['university_name'] == null ||
+                '${merged['university_name']}'.isEmpty)) {
+          merged['university_name'] = merged['school_name'];
+        }
         try {
           await _enrichPlayerOrganization(client, merged);
           await _resolvePlayerMedia(client, merged);
@@ -618,19 +640,83 @@ class DataService {
       }
     });
 
-    if (payload.length > 1) {
-      try {
-        final res = await client
-            .from(table)
-            .update(payload)
-            .eq('id', profile.userId)
-            .select();
-        if (res.isEmpty) {
-          await client.from(table).upsert(payload);
+    if (table == 'players') {
+      if (payload.containsKey('name') && !payload.containsKey('full_name')) {
+        payload['full_name'] = payload['name'];
+      }
+      if (payload.containsKey('position') &&
+          !payload.containsKey('primary_position')) {
+        payload['primary_position'] = payload['position'];
+      }
+      if (payload.containsKey('chronic_diseases')) {
+        final cd = payload['chronic_diseases'];
+        payload['chronic_details'] = cd;
+        payload['chronic_conditions'] = cd;
+        payload['has_chronic_conditions'] =
+            (cd != null && '$cd'.trim().isNotEmpty && '$cd'.trim() != 'لا يوجد');
+      }
+      if (payload.containsKey('instagram_handle') ||
+          payload.containsKey('transfermarkt_url')) {
+        final existingLinks = (profile.values['social_links'] is List)
+            ? List<dynamic>.from(profile.values['social_links'] as List)
+            : <dynamic>[];
+        if (payload.containsKey('instagram_handle')) {
+          final ig = '${payload['instagram_handle'] ?? ''}'.trim();
+          existingLinks.removeWhere((l) =>
+              l is Map &&
+              '${l['platform'] ?? ''}'.toLowerCase() == 'instagram');
+          if (ig.isNotEmpty) {
+            existingLinks.add({'platform': 'instagram', 'handle': ig});
+          }
         }
-      } catch (e) {
-        debugPrint('Error saving to $table: $e');
-        if (strict) rethrow;
+        if (payload.containsKey('transfermarkt_url')) {
+          final tm = '${payload['transfermarkt_url'] ?? ''}'.trim();
+          existingLinks.removeWhere((l) =>
+              l is Map &&
+              '${l['platform'] ?? ''}'.toLowerCase() == 'transfermarkt');
+          if (tm.isNotEmpty) {
+            existingLinks.add({'platform': 'transfermarkt', 'url': tm});
+          }
+        }
+        payload['social_links'] = existingLinks;
+      }
+    }
+
+    if (payload.length > 1) {
+      var currentPayload = Map<String, dynamic>.from(payload);
+      bool saved = false;
+      while (!saved && currentPayload.length > 1) {
+        try {
+          final res = await client
+              .from(table)
+              .update(currentPayload)
+              .eq('id', profile.userId)
+              .select();
+          if (res.isEmpty) {
+            await client.from(table).upsert(currentPayload);
+          }
+          saved = true;
+        } catch (e) {
+          final errStr = e.toString();
+          final missingColMatch = RegExp(
+            r"(?:Could not find the '([a-zA-Z0-9_]+)' column|column (?:\w+\.)?([a-zA-Z0-9_]+) does not exist)",
+            caseSensitive: false,
+          ).firstMatch(errStr);
+
+          final missingCol =
+              missingColMatch?.group(1) ?? missingColMatch?.group(2);
+          if (missingCol != null && currentPayload.containsKey(missingCol)) {
+            debugPrint(
+              'Column "$missingCol" not found in $table table cache. Dropping and retrying...',
+            );
+            currentPayload.remove(missingCol);
+            continue;
+          }
+
+          debugPrint('Error saving to $table: $e');
+          if (strict) rethrow;
+          break;
+        }
       }
     }
 
