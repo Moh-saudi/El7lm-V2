@@ -289,6 +289,83 @@ class _ProfileFormState extends State<_ProfileForm> {
     super.dispose();
   }
 
+  List<String> _extractMediaList(List<String> candidateKeys) {
+    for (final key in candidateKeys) {
+      final raw = widget.profile.values[key];
+      if (raw == null) continue;
+      if (raw is List) {
+        final list = raw
+            .map((item) {
+              if (item is Map) {
+                return (item['url'] ?? item['path'] ?? item['videoUrl'] ?? item['src'] ?? '')
+                    .toString();
+              }
+              return item.toString();
+            })
+            .where((s) => s.trim().isNotEmpty && s != 'null')
+            .toList();
+        if (list.isNotEmpty) return list;
+      } else if (raw is String && raw.trim().isNotEmpty && raw != 'null') {
+        try {
+          final decoded = jsonDecode(raw);
+          if (decoded is List) {
+            final list = decoded
+                .map((item) {
+                  if (item is Map) {
+                    return (item['url'] ?? item['path'] ?? item['videoUrl'] ?? item['src'] ?? '')
+                        .toString();
+                  }
+                  return item.toString();
+                })
+                .where((s) => s.trim().isNotEmpty && s != 'null')
+                .toList();
+            if (list.isNotEmpty) return list;
+          }
+        } catch (_) {
+          final list = raw
+              .split(RegExp(r'[\n,]+'))
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty && s.startsWith('http'))
+              .toList();
+          if (list.isNotEmpty) return list;
+        }
+      }
+    }
+    return <String>[];
+  }
+
+  Future<void> _handleDeleteMedia(String url, String category) async {
+    final updatedValues = Map<String, dynamic>.from(widget.profile.values);
+    final keyToUpdate = switch (category) {
+      'images' => 'additional_images',
+      'videos' => 'video_urls',
+      _ => 'documents',
+    };
+    final currentList = _extractMediaList([keyToUpdate, category]);
+    currentList.removeWhere((item) => item == url);
+
+    final updates = <String, dynamic>{keyToUpdate: currentList};
+    if (category == 'videos') {
+      updates['videos'] = currentList;
+    } else if (category == 'images') {
+      updates['images'] = currentList;
+    }
+    await widget.dataService.savePlayerProfile(widget.profile, updates);
+
+    updatedValues[keyToUpdate] = currentList;
+    if (category == 'videos') {
+      updatedValues['videos'] = currentList;
+    } else if (category == 'images') {
+      updatedValues['images'] = currentList;
+    }
+    final updatedProfile = UserProfile(
+      userId: widget.profile.userId,
+      accountType: widget.profile.accountType,
+      values: updatedValues,
+    );
+    widget.onSaved(updatedProfile);
+  }
+
   void _openEditScreen(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -361,7 +438,18 @@ class _ProfileFormState extends State<_ProfileForm> {
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
+          // ── Media & Videos Section ──
+          _MediaSection(
+            profile: widget.profile,
+            dataService: widget.dataService,
+            images: _extractMediaList(['additional_images', 'images']),
+            documents: _extractMediaList(['documents', 'documents_urls']),
+            videos: _extractMediaList(['video_urls', 'videos', 'uploaded_videos']),
+            onUploaded: widget.onSaved,
+            onDelete: _handleDeleteMedia,
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -1338,9 +1426,17 @@ class _MediaSectionState extends State<_MediaSection> {
       current.add(path);
       await widget.dataService.savePlayerProfile(widget.profile, {
         'additional_images': current,
+        'images': current,
       });
       if (!mounted) return;
-      widget.onUploaded(widget.profile);
+      final updatedVals = Map<String, dynamic>.from(widget.profile.values);
+      updatedVals['additional_images'] = current;
+      updatedVals['images'] = current;
+      widget.onUploaded(UserProfile(
+        userId: widget.profile.userId,
+        accountType: widget.profile.accountType,
+        values: updatedVals,
+      ));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -1398,9 +1494,17 @@ class _MediaSectionState extends State<_MediaSection> {
         current.add(path);
         await widget.dataService.savePlayerProfile(widget.profile, {
           'video_urls': current,
+          'videos': current,
         });
         if (!mounted) return;
-        widget.onUploaded(widget.profile);
+        final updatedVals = Map<String, dynamic>.from(widget.profile.values);
+        updatedVals['video_urls'] = current;
+        updatedVals['videos'] = current;
+        widget.onUploaded(UserProfile(
+          userId: widget.profile.userId,
+          accountType: widget.profile.accountType,
+          values: updatedVals,
+        ));
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(
@@ -1438,8 +1542,16 @@ class _MediaSectionState extends State<_MediaSection> {
         current.add(urlController.text.trim());
         await widget.dataService.savePlayerProfile(widget.profile, {
           'video_urls': current,
+          'videos': current,
         });
-        widget.onUploaded(widget.profile);
+        final updatedVals = Map<String, dynamic>.from(widget.profile.values);
+        updatedVals['video_urls'] = current;
+        updatedVals['videos'] = current;
+        widget.onUploaded(UserProfile(
+          userId: widget.profile.userId,
+          accountType: widget.profile.accountType,
+          values: updatedVals,
+        ));
       }
     }
   }
