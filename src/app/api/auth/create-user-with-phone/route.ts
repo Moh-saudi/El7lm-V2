@@ -97,8 +97,11 @@ export async function POST(request: NextRequest) {
     const userDoc = {
       id: uid,
       uid,
+      name,
       full_name: name,
+      displayName: name,
       phone: e164Phone,
+      phoneNumber: e164Phone,
       email: constructedEmail,
       accountType,
       createdAt: now,

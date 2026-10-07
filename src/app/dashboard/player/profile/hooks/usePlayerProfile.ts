@@ -186,9 +186,14 @@ export const usePlayerProfile = () => {
             dataToSave.full_name = values.name;
             if (values.position) dataToSave.primary_position = values.position;
             if (values.chronic_diseases) {
+                const hasCondition = Boolean(
+                    values.chronic_diseases.trim() &&
+                    values.chronic_diseases.trim() !== 'لا يوجد' &&
+                    values.chronic_diseases.trim().toLowerCase() !== 'none'
+                );
                 dataToSave.chronic_details = values.chronic_diseases;
-                dataToSave.chronic_conditions = values.chronic_diseases;
-                dataToSave.has_chronic_conditions = Boolean(values.chronic_diseases.trim());
+                dataToSave.chronic_conditions = hasCondition;
+                dataToSave.has_chronic_conditions = hasCondition;
             }
 
             // Sync social links
