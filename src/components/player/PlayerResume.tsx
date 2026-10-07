@@ -424,39 +424,68 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
             {/* 1. Affiliation Card */}
-            {/* 1. Affiliation Card */}
-            {playerOrganization && (
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex flex-col justify-between h-full">
-                <div>
-                  <h3 className="font-bold text-blue-900 mb-2 text-sm">{detail('officialNegotiator')}</h3>
-                  <div className="flex bg-white p-3 rounded-lg border border-blue-100 items-center gap-3 shadow-sm">
-                    {playerOrganization.logo || playerOrganization.logoUrl ? (
-                      <img src={playerOrganization.logo || playerOrganization.logoUrl} alt={playerOrganization.name} className="w-10 h-10 rounded-full object-cover border border-gray-100" />
-                    ) : (
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-xl border border-blue-200">{playerOrganization.emoji}</div>
-                    )}
-                    <div>
-                      <div className="font-bold text-sm text-gray-900 line-clamp-1">{playerOrganization.name}</div>
-                      <div className="text-xs text-gray-500">{playerOrganization.typeArabic}</div>
+            {(() => {
+              const effectiveOrg = playerOrganization || player?._organization || player?.organization || (
+                (player?.organizationName || player?.organization_name || player?.club_name || player?.academy_name)
+                  ? {
+                      name: player?.organizationName || player?.organization_name || player?.club_name || player?.academy_name,
+                      typeArabic: player?.organizationType || player?.organization_type || (player?.club_id ? 'نادي' : player?.academy_id ? 'أكاديمية' : player?.trainer_id ? 'مدرب' : player?.agent_id ? 'وكيل لاعبين' : 'جهة رياضية'),
+                      emoji: '🏢',
+                      logo: player?.organizationLogo || player?.organization_logo,
+                    }
+                  : null
+              );
+              if (!effectiveOrg) return null;
+              return (
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex flex-col justify-between h-full">
+                  <div>
+                    <h3 className="font-bold text-blue-900 mb-2 text-sm">{detail('officialNegotiator')}</h3>
+                    <div className="flex bg-white p-3 rounded-lg border border-blue-100 items-center gap-3 shadow-sm">
+                      {effectiveOrg.logo || effectiveOrg.logoUrl ? (
+                        <img src={effectiveOrg.logo || effectiveOrg.logoUrl} alt={effectiveOrg.name} className="w-10 h-10 rounded-full object-cover border border-gray-100" />
+                      ) : (
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-xl border border-blue-200">{effectiveOrg.emoji || '🏢'}</div>
+                      )}
+                      <div>
+                        <div className="font-bold text-sm text-gray-900 line-clamp-1">{effectiveOrg.name}</div>
+                        <div className="text-xs text-gray-500">{effectiveOrg.typeArabic || 'جهة رسمية'}</div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* 2. Guardianship Card (Minors) */}
-            {age < 18 && (() => {
-              const hasConsent = player?.documents?.some((d: any) => d.type === 'guardian_consent');
+            {age !== null && age < 18 && (() => {
+              const consentObj = typeof player?.parental_consent === 'object' ? player?.parental_consent : null;
+              const hasConsent = Boolean(
+                consentObj?.signed === true ||
+                player?.parental_consent_signed === true ||
+                player?.guardian_approved === true ||
+                player?.guardian_approval === true ||
+                player?.guardian_consent === true ||
+                player?.documents?.some((d: any) => d.type === 'guardian_consent') ||
+                (player?.guardian_name && (player?.guardian_phone || consentObj?.guardian_phone))
+              );
+              const guardianDisplayName = consentObj?.guardian_name || player?.guardian_name;
+              const guardianRelation = consentObj?.guardian_relationship || player?.guardian_relation || player?.guardian_relationship;
+
               return (
                 <div className={`p-4 rounded-lg border flex flex-col justify-between h-full ${hasConsent ? 'bg-green-50 border-green-100' : 'bg-amber-50 border-amber-100'}`}>
                   <div>
                     <h3 className={`font-bold mb-2 text-sm ${hasConsent ? 'text-green-900' : 'text-amber-900'}`}>{hasConsent ? detail('legalGuardianship') : detail('guardianshipAlert')}</h3>
                     <div className="flex bg-white/60 p-3 rounded-lg items-center gap-3 shadow-sm border border-white/50">
-                      {hasConsent ? <CheckCircle className="w-8 h-8 text-green-600" /> : <AlertTriangle className="w-8 h-8 text-amber-600" />}
+                      {hasConsent ? <CheckCircle className="w-8 h-8 text-green-600 shrink-0" /> : <AlertTriangle className="w-8 h-8 text-amber-600 shrink-0" />}
                       <div>
                         <div className={`font-bold text-xs ${hasConsent ? 'text-green-800' : 'text-amber-800'}`}>
                           {hasConsent ? detail('guardianConsentComplete') : detail('underGuardianship')}
                         </div>
+                        {guardianDisplayName && (
+                          <div className="text-[11px] font-semibold text-gray-700 mt-0.5">
+                            {guardianDisplayName} {guardianRelation ? `(${guardianRelation})` : ''}
+                          </div>
+                        )}
                         <div className="text-[10px] text-gray-600 mt-1">
                           {hasConsent ? detail('negotiationAllowed') : detail('awaitingGuardianConsent')}
                         </div>
