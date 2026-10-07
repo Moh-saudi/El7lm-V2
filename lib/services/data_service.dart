@@ -688,6 +688,30 @@ class DataService {
     if (payload.length > 1) {
       var currentPayload = Map<String, dynamic>.from(payload);
       bool saved = false;
+
+      // 1. Primary path: Save via dedicated server API (uses Supabase Admin Service Role,
+      // handles id/uid/user_id matching and bypasses client RLS restrictions safely).
+      try {
+        final apiRes = await _api.post(
+          '/api/user/profile/update',
+          body: {
+            'userId': profile.userId,
+            'accountType': accountType.value,
+            'table': table,
+            'updates': currentPayload,
+          },
+          accessToken: _auth.accessToken,
+        );
+        if (apiRes['success'] == true) {
+          saved = true;
+        }
+      } catch (apiErr) {
+        debugPrint(
+          '[DataService] API profile update failed or unreachable, falling back to direct DB: $apiErr',
+        );
+      }
+
+      // 2. Fallback path: Direct Supabase client update if API was unreachable
       while (!saved && currentPayload.length > 1) {
         try {
           final res = await client
