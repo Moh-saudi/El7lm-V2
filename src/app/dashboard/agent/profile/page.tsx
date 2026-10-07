@@ -60,7 +60,7 @@ interface AgentData {
 
 const initialAgentData: AgentData = {
   full_name: '',
-  profile_photo: '/images/agent-avatar.png',
+  profile_photo: '/agent-avatar.svg',
   coverImage: '/images/hero-1.jpg',
   date_of_birth: '',
   nationality: '',
@@ -442,7 +442,7 @@ export default function AgentProfilePage() {
           {/* Photo */}
           <div className="relative flex-shrink-0">
             <img
-              src={agentData.profile_photo || '/images/agent-avatar.png'}
+              src={agentData.profile_photo || '/agent-avatar.svg'}
               alt={copy.photoAlt}
               className="object-cover w-32 h-32 rounded-full border-4 border-purple-500 shadow-lg"
             />

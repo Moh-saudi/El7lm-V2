@@ -22,7 +22,11 @@ const isBrokenImageUrl = (url: string): boolean => {
   // Prevent redirect loops by allowing default images to pass through
   if (url.includes('default-avatar.png') || 
       url.includes('club-avatar.png') || 
-      url.includes('agent-avatar.png')) {
+      url.includes('club-avatar.svg') || 
+      url.includes('agent-avatar.png') ||
+      url.includes('agent-avatar.svg') ||
+      url.includes('academy-avatar.svg') ||
+      url.includes('player-avatar.svg')) {
     return false;
   }
   

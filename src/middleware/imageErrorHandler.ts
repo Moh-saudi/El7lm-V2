@@ -35,7 +35,11 @@ export function imageErrorHandler(request: NextRequest) {
     // Prevent redirect loops by allowing default images
     if (imageUrl.includes('default-avatar.png') || 
         imageUrl.includes('club-avatar.png') || 
-        imageUrl.includes('agent-avatar.png')) {
+        imageUrl.includes('club-avatar.svg') || 
+        imageUrl.includes('agent-avatar.png') ||
+        imageUrl.includes('agent-avatar.svg') ||
+        imageUrl.includes('academy-avatar.svg') ||
+        imageUrl.includes('player-avatar.svg')) {
       return NextResponse.next();
     }
     
@@ -63,7 +67,11 @@ export async function validateImageResponse(imageUrl: string): Promise<boolean> 
     // Skip validation for default images
     if (imageUrl.includes('default-avatar.png') || 
         imageUrl.includes('club-avatar.png') || 
-        imageUrl.includes('agent-avatar.png')) {
+        imageUrl.includes('club-avatar.svg') || 
+        imageUrl.includes('agent-avatar.png') ||
+        imageUrl.includes('agent-avatar.svg') ||
+        imageUrl.includes('academy-avatar.svg') ||
+        imageUrl.includes('player-avatar.svg')) {
       return true;
     }
 
