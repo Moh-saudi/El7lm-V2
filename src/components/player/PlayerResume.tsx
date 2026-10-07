@@ -931,97 +931,142 @@ const PlayerResume: React.FC<PlayerResumeProps> = ({ player, playerOrganization 
                 )}
 
                 {/* الصور الإضافية */}
-                {player?.additional_images && player.additional_images.length > 0 &&
-                  player.additional_images.map((img: any, idx: number) => (
-                    <div key={idx} className="relative">
-                      <img
-                        src={typeof img === 'string' ? img : img.url}
-                        alt={`${detail('additionalPhoto')} ${idx + 1}`}
-                        className="w-full h-32 object-cover rounded-lg border border-gray-200 shadow-sm print:border-gray-600"
-                        style={{
-                          breakInside: 'avoid',
-                          pageBreakInside: 'avoid'
-                        }}
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const parent = target.parentElement;
-                          if (parent) {
-                            parent.innerHTML = `
-                              <div class="w-full h-32 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
-                                <div class="text-center">
-                                  <div class="text-gray-600 text-2xl mb-1">🖼️</div>
-                                  <div class="text-gray-600 text-xs">${detail('photo')} ${idx + 1}</div>
+                {(() => {
+                  const rawImages = Array.isArray(player?.additional_images) && player.additional_images.length > 0
+                    ? player.additional_images
+                    : Array.isArray(player?.images) && player.images.length > 0
+                      ? player.images
+                      : Array.isArray(player?.additional_image_urls) && player.additional_image_urls.length > 0
+                        ? player.additional_image_urls
+                        : [];
+                  return rawImages.map((img: any, idx: number) => {
+                    const imgSrc = typeof img === 'string' ? img : (img?.url || img?.path || img?.src || '');
+                    if (!imgSrc) return null;
+                    return (
+                      <div key={idx} className="relative">
+                        <img
+                          src={imgSrc}
+                          alt={`${detail('additionalPhoto')} ${idx + 1}`}
+                          className="w-full h-32 object-cover rounded-lg border border-gray-200 shadow-sm print:border-gray-600"
+                          style={{
+                            breakInside: 'avoid',
+                            pageBreakInside: 'avoid'
+                          }}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `
+                                <div class="w-full h-32 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
+                                  <div class="text-center">
+                                    <div class="text-gray-600 text-2xl mb-1">🖼️</div>
+                                    <div class="text-gray-600 text-xs">${detail('photo')} ${idx + 1}</div>
+                                  </div>
                                 </div>
-                              </div>
-                            `;
-                          }
-                        }}
-                      />
-                      <div className="absolute top-2 right-2 bg-gray-600 text-white text-xs px-2 py-1 rounded-full">
-                        {idx + 1}
+                              `;
+                            }
+                          }}
+                        />
+                        <div className="absolute top-2 right-2 bg-gray-600 text-white text-xs px-2 py-1 rounded-full">
+                          {idx + 1}
+                        </div>
                       </div>
-                    </div>
-                  ))
-                }
+                    );
+                  });
+                })()}
               </div>
             </div>
           )}
 
           {/* الفيديوهات */}
-          {player?.videos && player.videos.length > 0 && (
-            <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 mb-3">{detail('videos')}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {player.videos.map((video: any, idx: number) => (
-                  <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200 print:border-gray-600 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center print:bg-red-200">
-                        <span className="text-red-600 text-lg font-bold print:text-red-800">▶</span>
+          {(() => {
+            const rawVideos = Array.isArray(player?.videos) && player.videos.length > 0
+              ? player.videos
+              : Array.isArray(player?.video_urls) && player.video_urls.length > 0
+                ? player.video_urls
+                : Array.isArray(player?.uploaded_videos) && player.uploaded_videos.length > 0
+                  ? player.uploaded_videos
+                  : [];
+            
+            const normalizedVideos = rawVideos
+              .map((video: any, idx: number) => {
+                if (typeof video === 'string') {
+                  const isYt = video.includes('youtube') || video.includes('youtu.be');
+                  return {
+                    url: video,
+                    title: `${detail('video')} ${idx + 1}`,
+                    description: '',
+                    type: isYt ? 'YouTube' : 'فيديو مهارات',
+                  };
+                }
+                if (typeof video === 'object' && video !== null) {
+                  const url = video.url || video.videoUrl || video.video_url || video.path || '';
+                  if (!url) return null;
+                  const isYt = url.includes('youtube') || url.includes('youtu.be');
+                  return {
+                    ...video,
+                    url,
+                    title: video.title || `${detail('video')} ${idx + 1}`,
+                    description: video.description || video.desc || '',
+                    type: video.type || (isYt ? 'YouTube' : 'فيديو مهارات'),
+                  };
+                }
+                return null;
+              })
+              .filter((v: any) => v && v.url);
+
+            if (normalizedVideos.length === 0) return null;
+
+            return (
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 mb-3">{detail('videos')}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {normalizedVideos.map((video: any, idx: number) => (
+                    <div key={idx} className="bg-gray-50 p-4 rounded-lg border border-gray-200 print:border-gray-600 shadow-sm">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center print:bg-red-200">
+                          <span className="text-red-600 text-lg font-bold print:text-red-800">▶</span>
+                        </div>
+                        <div>
+                          <span className="font-bold text-gray-900 text-lg print:text-black">{video.title || `${detail('video')} ${idx + 1}`}</span>
+                          {video.description && (
+                            <p className="text-xs text-gray-600 print:text-gray-700 mt-0.5">{video.description}</p>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-bold text-gray-900 text-lg print:text-black">{detail('video')} {idx + 1}</span>
-                        {video.title && (
-                          <p className="text-sm text-gray-600 print:text-gray-700">{video.title}</p>
+                      <div className="space-y-2 text-sm text-gray-600 print:text-gray-700">
+                        <div className="bg-white p-3 rounded border border-gray-200 print:border-gray-400">
+                          <p className="font-semibold text-gray-800 print:text-black mb-1">{detail('watch')}:</p>
+                          <a
+                            href={video.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-2 font-medium"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            <span>{detail('clickToWatch')}</span>
+                          </a>
+                        </div>
+                        {video.type && (
+                          <div className="bg-white p-2 rounded border border-gray-200 print:border-gray-400 text-xs text-gray-600">
+                            <strong>{detail('videoType')}:</strong> {video.type}
+                          </div>
                         )}
                       </div>
                     </div>
-                    <div className="space-y-2 text-sm text-gray-600 print:text-gray-700">
-                      <div className="bg-white p-3 rounded border border-gray-200 print:border-gray-400">
-                        <p className="font-semibold text-gray-800 print:text-black mb-1">{detail('watch')}:</p>
-                        <a
-                          href={video.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-2 font-medium"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          <span>{detail('clickToWatch')}</span>
-                        </a>
-                      </div>
-                      {video.description && (
-                        <div className="bg-white p-3 rounded border border-gray-200 print:border-gray-400">
-                          <p className="font-semibold text-gray-800 print:text-black mb-1">{detail('videoDescription')}:</p>
-                          <p className="text-gray-700 print:text-gray-800">{video.description}</p>
-                        </div>
-                      )}
-                      {video.type && (
-                        <div className="bg-white p-3 rounded border border-gray-200 print:border-gray-400">
-                          <p className="font-semibold text-gray-800 print:text-black mb-1">{detail('videoType')}:</p>
-                          <p className="text-gray-700 print:text-gray-800">{video.type}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* رسالة إذا لم توجد صور أو فيديوهات */}
           {!player?.profile_image &&
             !player?.additional_images?.length &&
-            !player?.videos?.length && (
+            !player?.images?.length &&
+            !player?.videos?.length &&
+            !player?.video_urls?.length && (
               <div className="bg-gray-50 p-4 rounded-lg text-center">
                 <p className="text-gray-500">{detail('noMedia')}</p>
               </div>
