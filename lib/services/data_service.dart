@@ -650,10 +650,13 @@ class DataService {
       }
       if (payload.containsKey('chronic_diseases')) {
         final cd = payload['chronic_diseases'];
+        final hasCondition = (cd != null &&
+            '$cd'.trim().isNotEmpty &&
+            '$cd'.trim() != 'لا يوجد' &&
+            '$cd'.trim().toLowerCase() != 'none');
         payload['chronic_details'] = cd;
-        payload['chronic_conditions'] = cd;
-        payload['has_chronic_conditions'] =
-            (cd != null && '$cd'.trim().isNotEmpty && '$cd'.trim() != 'لا يوجد');
+        payload['chronic_conditions'] = hasCondition;
+        payload['has_chronic_conditions'] = hasCondition;
       }
       if (payload.containsKey('instagram_handle') ||
           payload.containsKey('transfermarkt_url')) {
