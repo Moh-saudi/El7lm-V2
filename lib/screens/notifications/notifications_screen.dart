@@ -40,7 +40,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> refresh({bool silent = false}) async {
     final next = widget.dataService.fetchNotifications();
-    if (mounted) setState(() => future = next);
+    if (mounted) {
+      setState(() {
+        future = next;
+      });
+    }
     if (!silent) await next;
   }
 
@@ -179,57 +183,34 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
                 final item = items[index];
-                return Card(
-                  color: item.isRead
-                      ? Colors.white
-                      : AppColors.green.withValues(alpha: .08),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(14),
-                    leading: CircleAvatar(
-                      backgroundColor: item.isRead
-                          ? const Color(0xFFF0F2F6)
-                          : AppColors.green,
-                      foregroundColor: item.isRead
-                          ? AppColors.muted
-                          : Colors.white,
-                      child: const Icon(Icons.notifications_rounded),
-                    ),
-                    title: Text(
-                      item.title.isEmpty
-                          ? context.tr('notifications')
-                          : item.title,
-                      style: TextStyle(
-                        fontWeight: item.isRead
-                            ? FontWeight.w600
-                            : FontWeight.w900,
-                      ),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (item.message.isNotEmpty) ...[
-                          const SizedBox(height: 5),
-                          Text(item.message),
-                        ],
-                        if (item.createdAt != null) ...[
-                          const SizedBox(height: 7),
-                          Text(
-                            DateFormat.yMd(
-                              Localizations.localeOf(context).languageCode,
-                            ).add_jm().format(item.createdAt!.toLocal()),
-                            style: const TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+
+                // Dynamically translate profile reminder notifications
+                var displayTitle = item.title.isEmpty
+                    ? context.tr('notifications')
+                    : item.title;
+                var displayMessage = item.message;
+
+                final isProfileReminder = item.type == 'profile_completion' ||
+                    item.id == 'profile-completion-reminder' ||
+                    item.title.contains('أكمل ملف') ||
+                    item.title.contains('Complete Your Talent Profile');
+
+                if (isProfileReminder) {
+                  displayTitle = context.tr('profileReminderTitle');
+                  final match = RegExp(r'(\d+)').firstMatch(item.message);
+                  final percent = match?.group(1) ?? '70';
+                  displayMessage = context.tr('profileReminderBody', {'percent': percent});
+                }
+
+                return Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(18),
                     onTap: () async {
                       if (!item.isRead) {
                         await widget.dataService.markNotificationRead(item);
                       }
-                      if (item.type == 'profile_completion' &&
+                      if (isProfileReminder &&
                           widget.onProfileCompletionTap != null) {
                         if (!context.mounted) return;
                         Navigator.pop(context);
@@ -238,6 +219,195 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       }
                       await refresh();
                     },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: item.isRead
+                              ? const Color(0xFFE2E8F0)
+                              : AppColors.green.withValues(alpha: 0.35),
+                          width: item.isRead ? 1.0 : 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: item.isRead
+                                ? const Color(0x060F172A)
+                                : AppColors.green.withValues(alpha: 0.08),
+                            blurRadius: item.isRead ? 10 : 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Leading Icon Badge
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: item.isRead
+                                  ? const Color(0xFFF1F5F9)
+                                  : const Color(0xFFECFDF5),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: item.isRead
+                                    ? const Color(0xFFE2E8F0)
+                                    : const Color(0xFFA7F3D0),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(
+                                  isProfileReminder
+                                      ? Icons.sports_soccer_rounded
+                                      : Icons.notifications_rounded,
+                                  color: item.isRead
+                                      ? const Color(0xFF94A3B8)
+                                      : AppColors.green,
+                                  size: 22,
+                                ),
+                                if (!item.isRead)
+                                  Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: AppColors.green,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          // Content
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        displayTitle,
+                                        style: TextStyle(
+                                          fontWeight: item.isRead
+                                              ? FontWeight.w600
+                                              : FontWeight.w800,
+                                          fontSize: 14.5,
+                                          color: const Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                    ),
+                                    if (!item.isRead) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 7,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFECFDF5),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          context.tr('newStatus') != 'newStatus'
+                                              ? context.tr('newStatus')
+                                              : 'جديد',
+                                          style: const TextStyle(
+                                            color: AppColors.green,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                if (displayMessage.isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    displayMessage,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      height: 1.45,
+                                      color: item.isRead
+                                          ? const Color(0xFF64748B)
+                                          : const Color(0xFF334155),
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    if (item.createdAt != null) ...[
+                                      const Icon(
+                                        Icons.access_time_rounded,
+                                        size: 12,
+                                        color: AppColors.muted,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        DateFormat.yMd(
+                                          Localizations.localeOf(context).languageCode,
+                                        ).add_jm().format(item.createdAt!.toLocal()),
+                                        style: const TextStyle(
+                                          color: AppColors.muted,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
+                                    const Spacer(),
+                                    if (isProfileReminder)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 9,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFF0FDF4),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: const Color(0xFF86EFAC),
+                                            width: 0.8,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              context.tr('editProfile'),
+                                              style: const TextStyle(
+                                                color: AppColors.green,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            const Icon(
+                                              Icons.arrow_forward_ios_rounded,
+                                              size: 10,
+                                              color: AppColors.green,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 );
               },

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:country_picker/country_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -224,15 +225,14 @@ class _ProfileEditScreenState extends State<ProfileEditScreen>
       firstDate: isContractDate ? today : DateTime(1950),
       lastDate: isContractDate ? DateTime(today.year + 50) : today,
       locale: Localizations.localeOf(context),
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: Color(0xFF10B981),
-            onPrimary: Colors.white,
-            surface: Colors.white,
+      builder: (context, child) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: 360,
+            maxHeight: 520,
           ),
+          child: child!,
         ),
-        child: child!,
       ),
     );
     if (picked != null && mounted) {
@@ -379,8 +379,6 @@ class _ProfileEditScreenState extends State<ProfileEditScreen>
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -406,38 +404,61 @@ class _ProfileEditScreenState extends State<ProfileEditScreen>
             }
           },
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: FilledButton(
+              onPressed: saving ? null : save,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.green,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                elevation: 0,
+              ),
+              child: saving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      context.tr('saveAll'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
+                    ),
+            ),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(60),
           child: _buildTabBar(context),
         ),
       ),
+      bottomNavigationBar: _buildAppleBottomBar(context),
       body: Form(
         key: formKey,
-        child: Stack(
-          children: [
-            TabBarView(
-              controller: _tabController,
-              children: _sections.map((s) {
-                return ListView(
-                  key: PageStorageKey<String>('edit_section_${s.key}'),
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: ClampingScrollPhysics(),
-                  ),
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 140),
-                  children: _buildSectionFields(context, s),
-                );
-              }).toList(),
-            ),
-            // Floating Save Bar
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: bottomInset > 0 ? bottomInset + 12 : 20,
-              child: _buildFloatingSaveBar(context),
-            ),
-          ],
+        child: TabBarView(
+          controller: _tabController,
+          children: _sections.map((s) {
+            return ListView(
+              key: PageStorageKey<String>('edit_section_${s.key}'),
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: ClampingScrollPhysics(),
+              ),
+              keyboardDismissBehavior:
+                  ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              children: _buildSectionFields(context, s),
+            );
+          }).toList(),
         ),
       ),
     );
@@ -939,99 +960,60 @@ class _ProfileEditScreenState extends State<ProfileEditScreen>
     );
   }
 
-  Widget _buildFloatingSaveBar(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A).withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.green.withValues(alpha: 0.45),
-          width: 1.5,
+  Widget _buildAppleBottomBar(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.08),
+              width: 1,
+            ),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.45),
-            blurRadius: 20,
-            spreadRadius: 2,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: AppColors.green.withValues(alpha: 0.25),
-            blurRadius: 15,
-            spreadRadius: 1,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: SizedBox(
-              height: 48,
-              child: FilledButton.icon(
-                onPressed: saving ? null : save,
-                icon: saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.check_circle_rounded, size: 20),
-                label: Text(
-                  saving ? context.tr('saving') : context.tr('saveAll'),
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.green,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 4,
-                ),
+        child: SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: FilledButton.icon(
+            onPressed: saving ? null : save,
+            icon: saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(CupertinoIcons.checkmark_alt_circle_fill, size: 20),
+            label: Text(
+              saving ? context.tr('saving') : context.tr('saveAll'),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+              ),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.green,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 1,
-            child: SizedBox(
-              height: 48,
-              child: OutlinedButton.icon(
-                onPressed: saving ? null : () {
-                  if (_hasUnsavedChanges()) {
-                    _showDiscardDialog();
-                  } else {
-                    Navigator.of(context).pop();
-                  }
-                },
-                icon: const Icon(Icons.close_rounded, size: 18),
-                label: Text(
-                  context.tr('cancel'),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white70,
-                  side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

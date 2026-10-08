@@ -862,7 +862,8 @@ class _SmartProfileChatModalState extends State<SmartProfileChatModal> {
         }),
       );
       widget.onProfileUpdated(updatedProfile);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[SmartProfileChat] Save failed: $e');
       if (!mounted) return;
       setState(() {
         _isSaving = false;
@@ -1702,6 +1703,16 @@ class _SmartProfileChatModalState extends State<SmartProfileChatModal> {
                 initialDate: initial,
                 firstDate: firstDate,
                 lastDate: lastDate,
+                locale: Localizations.localeOf(context),
+                builder: (context, child) => Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 360,
+                      maxHeight: 520,
+                    ),
+                    child: child!,
+                  ),
+                ),
               );
               if (!mounted) return;
               if (picked != null) {

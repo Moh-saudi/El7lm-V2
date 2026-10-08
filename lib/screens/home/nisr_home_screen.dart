@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -2163,29 +2164,46 @@ class _ChatComposerState extends State<_ChatComposer> {
   Widget build(BuildContext context) {
     return Container(
       color: _surface,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
       child: Container(
+        constraints: const BoxConstraints(minHeight: 48),
         decoration: BoxDecoration(
-          color: _surfaceWarm,
-          borderRadius: BorderRadius.circular(24),
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(25),
           border: Border.all(
-            color: widget.focusNode.hasFocus ? _borderFocus : _border,
+            color: widget.focusNode.hasFocus ? _borderFocus : const Color(0xFFE2E8F0),
+            width: 1.2,
           ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Voice Mic Button
-            IconButton(
-              onPressed: widget.busy ? null : widget.onVoice,
-              icon: Icon(
-                widget.listening ? Icons.stop_circle_rounded : Icons.mic_rounded,
-                color: widget.listening ? _red : _primary,
-                size: 24,
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: widget.busy ? null : widget.onVoice,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: widget.listening
+                      ? const BoxDecoration(
+                          color: _redLight,
+                          shape: BoxShape.circle,
+                        )
+                      : null,
+                  child: Icon(
+                    widget.listening ? Icons.stop_rounded : Icons.mic_rounded,
+                    color: widget.listening ? _red : _primary,
+                    size: 22,
+                  ),
+                ),
               ),
-              tooltip: widget.listening ? widget.strings.stopUserVoice : widget.strings.listenUserVoice,
             ),
+            const SizedBox(width: 4),
             // Text Input Field
             Expanded(
               child: GestureDetector(
@@ -2201,58 +2219,77 @@ class _ChatComposerState extends State<_ChatComposer> {
                   onSubmitted: (_) {
                     if (_hasText && !widget.busy) widget.onSend();
                   },
-                  style: const TextStyle(
+                  style: GoogleFonts.cairo(
                     color: _textPrimary,
                     fontSize: 14,
-                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
                   ),
                   decoration: InputDecoration(
                     hintText: widget.strings.composerHint,
-                    hintStyle: const TextStyle(
+                    hintStyle: GoogleFonts.cairo(
                       color: _textMuted,
                       fontSize: 13,
+                      fontWeight: FontWeight.w500,
                     ),
-                    border: InputBorder.none,
                     isDense: true,
+                    filled: false,
+                    fillColor: Colors.transparent,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 8,
-                      vertical: 10,
+                      vertical: 8,
                     ),
                   ),
                 ),
               ),
             ),
+            const SizedBox(width: 4),
             // Send Button
-            Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _hasText && !widget.busy
-                      ? _primary
-                      : _textMuted.withValues(alpha: 0.2),
-                ),
-                child: IconButton(
-                  onPressed: (_hasText && !widget.busy) ? widget.onSend : null,
-                  padding: EdgeInsets.zero,
-                  icon: widget.busy
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _hasText && !widget.busy
+                    ? _primary
+                    : const Color(0xFFCBD5E1),
+                boxShadow: (_hasText && !widget.busy)
+                    ? [
+                        BoxShadow(
+                          color: _primary.withValues(alpha: 0.35),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: (_hasText && !widget.busy) ? widget.onSend : null,
+                  borderRadius: BorderRadius.circular(18),
+                  child: Center(
+                    child: widget.busy
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.arrow_upward_rounded,
+                            size: 20,
                             color: Colors.white,
                           ),
-                        )
-                      : Icon(
-                          Icons.arrow_upward_rounded,
-                          size: 20,
-                          color: _hasText ? Colors.white : _textMuted,
-                        ),
-                  tooltip: widget.strings.send,
+                  ),
                 ),
               ),
             ),

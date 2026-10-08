@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_theme.dart';
@@ -10,6 +12,7 @@ import '../../services/data_service.dart';
 import '../messages/chat_detail_screen.dart';
 
 import '../../widgets/player_share_modal.dart';
+import '../../widgets/player_skills_radar_chart.dart';
 import '../profile/player_profile_data.dart';
 
 class PlayerDetailsScreen extends StatefulWidget {
@@ -75,155 +78,330 @@ class _PlayerDetailsScreenState extends State<PlayerDetailsScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(context.tr('playerDetails')),
-      actions: [
-        IconButton(
-          tooltip: context.tr('shareWhatsApp'),
-          onPressed: () {
-            showPlayerShareModal(
-              context,
-              player: _fetchedPlayer ?? widget.initialPlayer,
-            );
-          },
-          icon: const Icon(Icons.share_rounded),
-        ),
-        IconButton(
-          tooltip: context.tr(favorite ? 'removeFavorite' : 'addFavorite'),
-          onPressed: favoriteBusy ? null : toggleFavorite,
-          icon: favoriteBusy
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Icon(
-                  favorite
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                  color: favorite ? const Color(0xFFE5484D) : null,
-                ),
-        ),
-        const SizedBox(width: 8),
-      ],
-    ),
-    body: FutureBuilder<Player>(
+  Widget build(BuildContext context) {
+    return FutureBuilder<Player>(
       future: future,
       initialData: widget.initialPlayer,
       builder: (context, snapshot) {
         final player = snapshot.data ?? widget.initialPlayer;
         _fetchedPlayer = player;
-        return RefreshIndicator(
-          onRefresh: () async {
-            setState(
-              () => future = widget.dataService.fetchPlayerById(player.id),
-            );
-            await future;
-          },
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 32),
-            children: [
-              _PlayerHeader(player: player),
-              if (snapshot.hasError)
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Card(
-                    color: Colors.orange.shade50,
+        return Scaffold(
+          body: RefreshIndicator(
+            onRefresh: () async {
+              setState(
+                () => future = widget.dataService.fetchPlayerById(player.id),
+              );
+              await future;
+            },
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+              slivers: [
+                // ── Collapsible Hero SliverAppBar ──
+                SliverAppBar(
+                  expandedHeight: 280,
+                  collapsedHeight: kToolbarHeight,
+                  pinned: true,
+                  stretch: true,
+                  backgroundColor: AppColors.navy,
+                  foregroundColor: Colors.white,
+                  actions: [
+                    IconButton(
+                      tooltip: context.tr('shareWhatsApp'),
+                      onPressed: () {
+                        showPlayerShareModal(
+                          context,
+                          player: _fetchedPlayer ?? widget.initialPlayer,
+                        );
+                      },
+                      icon: const Icon(Icons.share_rounded),
+                    ),
+                    IconButton(
+                      tooltip: context.tr(favorite ? 'removeFavorite' : 'addFavorite'),
+                      onPressed: favoriteBusy ? null : toggleFavorite,
+                      icon: favoriteBusy
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Icon(
+                              favorite
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              color: favorite ? const Color(0xFFFF6B6B) : Colors.white,
+                            ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  flexibleSpace: FlexibleSpaceBar(
+                    collapseMode: CollapseMode.parallax,
+                    titlePadding: const EdgeInsetsDirectional.only(
+                      start: 48,
+                      bottom: 16,
+                    ),
+                    title: Text(
+                      player.localizedName(context.languageCode).isEmpty
+                          ? context.tr('playerDetails')
+                          : player.localizedName(context.languageCode),
+                      style: GoogleFonts.cairo(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        shadows: [
+                          const Shadow(
+                            color: Colors.black38,
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    background: _PlayerHeroBackground(player: player),
+                  ),
+                ),
+                // ── Error banner ──
+                if (snapshot.hasError)
+                  SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Text(context.errorText(snapshot.error)),
+                      padding: const EdgeInsets.all(16),
+                      child: Card(
+                        color: Colors.orange.shade50,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Text(context.errorText(snapshot.error)),
+                        ),
+                      ),
+                    ),
+                  ),
+                // ── Body content ──
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                  sliver: SliverToBoxAdapter(
+                    child: _PlayerProfile(
+                      player: player,
+                      dataService: widget.dataService,
                     ),
                   ),
                 ),
-              _PlayerProfile(player: player, dataService: widget.dataService),
-            ],
+              ],
+            ),
           ),
         );
       },
-    ),
-  );
+    );
+  }
 }
 
-class _PlayerHeader extends StatelessWidget {
-  const _PlayerHeader({required this.player});
+/// Full-bleed hero background used inside the SliverAppBar's FlexibleSpaceBar.
+class _PlayerHeroBackground extends StatelessWidget {
+  const _PlayerHeroBackground({required this.player});
 
   final Player player;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topRight,
-        end: Alignment.bottomLeft,
-        colors: [AppColors.navy, AppColors.green.withValues(alpha: .9)],
+  Widget build(BuildContext context) {
+    final organization = player.rawPayload['_organization'];
+    final orgMap = organization is Map
+        ? Map<String, dynamic>.from(organization)
+        : const <String, dynamic>{};
+    final orgLogoUrl = _orgLogoUrl(orgMap);
+    final hasOrg = orgMap.isNotEmpty &&
+        '${orgMap['name'] ?? ''}'.trim().isNotEmpty;
+
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [AppColors.navy, Color(0xFF064E3B)],
+        ),
       ),
-    ),
-    child: Column(
-      children: [
-        Container(
-          width: 124,
-          height: 124,
-          padding: const EdgeInsets.all(4),
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // ── Avatar with optional org badge ──
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 110,
+                    height: 110,
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 16,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(child: _PlayerAvatar(player: player)),
+                  ),
+                  // ── Org logo badge (bottom-right of avatar) ──
+                  if (hasOrg)
+                    Positioned(
+                      bottom: -4,
+                      right: -4,
+                      child: _OrgBadge(
+                        logoUrl: orgLogoUrl,
+                        orgName: '${orgMap['name'] ?? ''}',
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                player.localizedName(context.languageCode).isEmpty
+                    ? context.tr('dreamPlayer')
+                    : player.localizedName(context.languageCode),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 22,
+                  shadows: [
+                    Shadow(color: Colors.black38, blurRadius: 6),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  if (player.position.isNotEmpty)
+                    _HeroChip(
+                      icon: Icons.sports_soccer,
+                      label: _localizedStoredText(context, player.position),
+                    ),
+                  if (player.country.isNotEmpty)
+                    _HeroChip(
+                      icon: Icons.public,
+                      label: _localizedStoredText(context, player.country),
+                    ),
+                  if (player.age != null)
+                    _HeroChip(
+                      icon: Icons.cake_outlined,
+                      label: context.tr('playerAgeValue', {'age': player.age}),
+                    ),
+                ],
+              ),
+            ],
           ),
-          child: ClipOval(
-            child: player.imageUrl.isEmpty
-                ? const _PlayerImageFallback()
-                : kIsWeb
+        ),
+      ),
+    );
+  }
+
+  static String _orgLogoUrl(Map<String, dynamic> org) {
+    for (final key in ['logo_url', 'logoUrl', 'logo', 'image_url', 'imageUrl']) {
+      final val = '${org[key] ?? ''}'.trim();
+      if (val.startsWith('http')) return val;
+    }
+    return '';
+  }
+}
+
+/// Smart avatar widget that handles http/data-uri/empty cases.
+class _PlayerAvatar extends StatelessWidget {
+  const _PlayerAvatar({required this.player});
+
+  final Player player;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = player.imageUrl;
+    if (url.isEmpty) return const _PlayerImageFallback();
+    if (url.startsWith('data:image')) {
+      try {
+        return Image.memory(
+          base64Decode(url.split(',').last),
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => const _PlayerImageFallback(),
+        );
+      } catch (_) {
+        return const _PlayerImageFallback();
+      }
+    }
+    if (kIsWeb) {
+      return Image.network(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => const _PlayerImageFallback(),
+      );
+    }
+    return CachedNetworkImage(
+      imageUrl: url,
+      fit: BoxFit.cover,
+      placeholder: (_, _) => const _PlayerImageFallback(),
+      errorWidget: (_, _, _) => const _PlayerImageFallback(),
+    );
+  }
+}
+
+/// Circular badge showing the organization logo (or fallback icon).
+class _OrgBadge extends StatelessWidget {
+  const _OrgBadge({required this.logoUrl, required this.orgName});
+
+  final String logoUrl;
+  final String orgName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+        border: Border.all(color: AppColors.green, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 6,
+          ),
+        ],
+      ),
+      child: ClipOval(
+        child: logoUrl.isNotEmpty
+            ? (kIsWeb
                 ? Image.network(
-                    player.imageUrl,
+                    logoUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const _PlayerImageFallback(),
+                    errorBuilder: (_, _, _) => _orgFallbackIcon(),
                   )
                 : CachedNetworkImage(
-                    imageUrl: player.imageUrl,
+                    imageUrl: logoUrl,
                     fit: BoxFit.cover,
-                    errorWidget: (_, _, _) => const _PlayerImageFallback(),
-                  ),
-          ),
+                    placeholder: (_, _) => _orgFallbackIcon(),
+                    errorWidget: (_, _, _) => _orgFallbackIcon(),
+                  ))
+            : _orgFallbackIcon(),
+      ),
+    );
+  }
+
+  Widget _orgFallbackIcon() => Container(
+        color: AppColors.green.withValues(alpha: 0.15),
+        child: const Icon(
+          Icons.shield_rounded,
+          size: 20,
+          color: AppColors.green,
         ),
-        const SizedBox(height: 14),
-        Text(
-          player.localizedName(context.languageCode).isEmpty
-              ? context.tr('dreamPlayer')
-              : player.localizedName(context.languageCode),
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            fontSize: 24,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            if (player.position.isNotEmpty)
-              _HeroChip(
-                icon: Icons.sports_soccer,
-                label: _localizedStoredText(context, player.position),
-              ),
-            if (player.country.isNotEmpty)
-              _HeroChip(
-                icon: Icons.public,
-                label: _localizedStoredText(context, player.country),
-              ),
-            if (player.age != null)
-              _HeroChip(
-                icon: Icons.cake_outlined,
-                label: context.tr('playerAgeValue', {'age': player.age}),
-              ),
-          ],
-        ),
-      ],
-    ),
-  );
+      );
 }
 
 class _PlayerProfile extends StatelessWidget {
@@ -348,26 +526,39 @@ class _PlayerProfile extends StatelessWidget {
       ('english_level', 'playerEnglishLevel'),
       ('spanish_level', 'playerSpanishLevel'),
     ]);
-    final technical = _ratingEntries(payload['technical_skills']);
-    final physical = _ratingEntries(payload['physical_skills']);
-    final social = _ratingEntries(payload['social_skills']);
+    final technical = _ratingEntries(payload['technical_skills']).isNotEmpty
+        ? _ratingEntries(payload['technical_skills'])
+        : _ratingEntries(payload['skills_technical']);
+    final physical = _ratingEntries(payload['physical_skills']).isNotEmpty
+        ? _ratingEntries(payload['physical_skills'])
+        : _ratingEntries(payload['skills_physical']);
+    final social = _ratingEntries(payload['social_skills']).isNotEmpty
+        ? _ratingEntries(payload['social_skills'])
+        : _ratingEntries(payload['mental_skills']);
     final objectives = _enabledEntries(payload['objectives']);
-    final achievements = _listValues(payload['achievements']);
+    final achievements = _listValues(payload['achievements']).isNotEmpty
+        ? _listValues(payload['achievements'])
+        : _listValues(payload['honors']);
     final clubs = _listValues(payload['club_history']).isNotEmpty
         ? _listValues(payload['club_history'])
-        : _listValues(payload['previous_clubs']);
+        : _listValues(payload['previous_clubs']).isNotEmpty
+            ? _listValues(payload['previous_clubs'])
+            : _listValues(payload['experiences']);
     final courses = _listValues(payload['training_courses']).isNotEmpty
         ? _listValues(payload['training_courses'])
-        : _listValues(payload['courses']);
-    final brief = _text(payload, ['brief', 'sports_notes']);
+        : _listValues(payload['courses']).isNotEmpty
+            ? _listValues(payload['courses'])
+            : _listValues(payload['camps']);
+    final injuries = _listValues(payload['injuries']).isNotEmpty
+        ? _listValues(payload['injuries'])
+        : _listValues(payload['injury_history']);
+    final brief = _text(payload, ['brief', 'sports_notes', 'bio', 'about']);
     final organization = _asMap(payload['_organization']);
     final isEvaluated = '${payload['evaluation_status'] ?? ''}' == 'rated';
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
           _ContactCard(
             contactName: contactName,
             hasRegisteredContact: phone.isNotEmpty || email.isNotEmpty,
@@ -398,6 +589,14 @@ class _PlayerProfile extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          // ── Skills Radar & FUT Card ──
+          const SizedBox(height: 22),
+          _PlayerSkillsRadarSection(
+            player: player,
+            technical: technical,
+            physical: physical,
+            social: social,
           ),
           if (brief.isNotEmpty) ...[
             const SizedBox(height: 22),
@@ -431,34 +630,6 @@ class _PlayerProfile extends StatelessWidget {
               child: _InfoGrid(fields: education),
             ),
           ],
-          if (technical.isNotEmpty ||
-              physical.isNotEmpty ||
-              social.isNotEmpty) ...[
-            const SizedBox(height: 22),
-            _ProfileSection(
-              icon: Icons.insights_rounded,
-              title: context.tr('playerSkills'),
-              child: Column(
-                children: [
-                  if (technical.isNotEmpty)
-                    _SkillGroup(
-                      title: context.tr('technicalSkills'),
-                      entries: technical,
-                    ),
-                  if (physical.isNotEmpty)
-                    _SkillGroup(
-                      title: context.tr('physicalSkills'),
-                      entries: physical,
-                    ),
-                  if (social.isNotEmpty)
-                    _SkillGroup(
-                      title: context.tr('socialSkills'),
-                      entries: social,
-                    ),
-                ],
-              ),
-            ),
-          ],
           if (objectives.isNotEmpty) ...[
             const SizedBox(height: 22),
             _ProfileSection(
@@ -479,27 +650,35 @@ class _PlayerProfile extends StatelessWidget {
           ],
           if (achievements.isNotEmpty ||
               clubs.isNotEmpty ||
-              courses.isNotEmpty) ...[
+              courses.isNotEmpty ||
+              injuries.isNotEmpty) ...[
             const SizedBox(height: 22),
             _ProfileSection(
               icon: Icons.emoji_events_outlined,
               title: context.tr('playerJourney'),
               child: Column(
                 children: [
-                  if (achievements.isNotEmpty)
-                    _BulletGroup(
-                      title: context.tr('playerAchievements'),
-                      values: achievements,
-                    ),
                   if (clubs.isNotEmpty)
                     _BulletGroup(
                       title: context.tr('playerClubHistory'),
                       values: clubs,
                     ),
+                  if (achievements.isNotEmpty)
+                    _BulletGroup(
+                      title: context.tr('playerAchievements'),
+                      values: achievements,
+                    ),
                   if (courses.isNotEmpty)
                     _BulletGroup(
                       title: context.tr('playerCourses'),
                       values: courses,
+                    ),
+                  if (injuries.isNotEmpty)
+                    _BulletGroup(
+                      title: context.tr('playerInjuries') != 'playerInjuries'
+                          ? context.tr('playerInjuries')
+                          : 'السجل الطبي والإصابات',
+                      values: injuries,
                     ),
                 ],
               ),
@@ -578,8 +757,7 @@ class _PlayerProfile extends StatelessWidget {
             ),
           ],
         ],
-      ),
-    );
+      );
   }
 
   static List<_InfoField> _fields(
@@ -640,15 +818,25 @@ class _PlayerProfile extends StatelessWidget {
       : const <String, dynamic>{};
 
   static List<MapEntry<String, double>> _ratingEntries(Object? value) {
-    if (value is! Map) return const [];
-    return value.entries
+    if (value == null) return const [];
+    Map map = const {};
+    if (value is Map) {
+      map = value;
+    } else if (value is String && value.trim().startsWith('{')) {
+      try {
+        final decoded = jsonDecode(value);
+        if (decoded is Map) map = decoded;
+      } catch (_) {}
+    }
+    if (map.isEmpty) return const [];
+    return map.entries
         .map((entry) {
           final number = entry.value is num
               ? (entry.value as num).toDouble()
               : double.tryParse('${entry.value}') ?? 0;
           return MapEntry('${entry.key}', number.clamp(0.0, 5.0).toDouble());
         })
-        .where((entry) => entry.key.trim().isNotEmpty)
+        .where((entry) => entry.key.trim().isNotEmpty && entry.value > 0)
         .toList();
   }
 
@@ -662,41 +850,79 @@ class _PlayerProfile extends StatelessWidget {
   }
 
   static List<String> _listValues(Object? value) {
-    if (value is! List) return const [];
-    return value
+    if (value == null) return const [];
+    List list = const [];
+    if (value is List) {
+      list = value;
+    } else if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.startsWith('[')) {
+        try {
+          final decoded = jsonDecode(trimmed);
+          if (decoded is List) list = decoded;
+        } catch (_) {}
+      }
+      if (list.isEmpty && trimmed.isNotEmpty && trimmed != 'null') {
+        return trimmed
+            .split(RegExp(r'[\r\n,،;]+'))
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty && s != 'null')
+            .toList();
+      }
+    }
+    if (list.isEmpty) return const [];
+    return list
         .map((item) {
           if (item is Map) {
             return _firstText([
               item['title'],
               item['name'],
+              item['club_name'],
               item['club'],
+              item['team'],
+              item['achievement'],
+              item['course'],
+              item['role'],
               item['description'],
+              item['notes'],
+              item['year'],
             ]);
           }
           return '$item'.trim();
         })
-        .where((item) => item.isNotEmpty)
+        .where((item) => item.isNotEmpty && item != 'null')
         .toList();
   }
 
   static List<String> _imageUrls(Map<String, dynamic> payload, String primary) {
     final result = <String>{};
     void collect(Object? value) {
-      if (value is String &&
-          (value.startsWith('http://') || value.startsWith('https://')) &&
-          !_isRetiredStorageUrl(value)) {
-        result.add(value);
+      if (value is String) {
+        final str = value.trim();
+        if ((str.startsWith('http://') || str.startsWith('https://')) &&
+            !_isRetiredStorageUrl(str)) {
+          result.add(str);
+        }
       } else if (value is List) {
         for (final item in value) {
           collect(item);
         }
       } else if (value is Map) {
-        collect(value['url']);
+        collect(value['url'] ?? value['downloadURL'] ?? value['src']);
       }
     }
 
     collect(primary);
-    for (final key in ['images', 'additional_images', 'gallery', 'photos']) {
+    for (final key in [
+      'image',
+      'profile_image',
+      'profile_image_url',
+      'images',
+      'additional_images',
+      'additional_image_urls',
+      'gallery',
+      'photos',
+    ]) {
       collect(payload[key]);
     }
     return result.toList();
@@ -1073,12 +1299,21 @@ class _PlayerAffiliationCard extends StatelessWidget {
   final Map<String, dynamic> organization;
   final Map<String, dynamic> payload;
 
+  static String _orgLogoUrl(Map<String, dynamic> org) {
+    for (final key in ['logo_url', 'logoUrl', 'logo', 'image_url', 'imageUrl']) {
+      final val = '${org[key] ?? ''}'.trim();
+      if (val.startsWith('http')) return val;
+    }
+    return '';
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasOrganization =
         organization.isNotEmpty &&
         '${organization['name'] ?? ''}'.trim().isNotEmpty;
     final orgName = '${organization['name'] ?? ''}'.trim();
+    final orgLogoUrl = _orgLogoUrl(organization);
 
     return Material(
       color: Colors.transparent,
@@ -1107,18 +1342,49 @@ class _PlayerAffiliationCard extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
+              // ── Org logo or fallback icon ──
+              if (hasOrganization && orgLogoUrl.isNotEmpty)
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    border: Border.all(
+                      color: const Color(0xFF86EFAC),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: ClipOval(
+                    child: kIsWeb
+                        ? Image.network(
+                            orgLogoUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _fallbackIcon(),
+                          )
+                        : CachedNetworkImage(
+                            imageUrl: orgLogoUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (_, _) => _fallbackIcon(),
+                            errorWidget: (_, _, _) => _fallbackIcon(),
+                          ),
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                  ),
+                  child: Icon(
+                    hasOrganization
+                        ? Icons.shield_rounded
+                        : Icons.sports_soccer_rounded,
+                    color: const Color(0xFF16A34A),
+                    size: 22,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.sports_soccer_rounded,
-                  color: Color(0xFF16A34A),
-                  size: 22,
-                ),
-              ),
               const SizedBox(height: 6),
               Text(
                 context.tr('playerAffiliationStatus'),
@@ -1132,7 +1398,7 @@ class _PlayerAffiliationCard extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 hasOrganization ? orgName : context.tr('freePlayer'),
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
@@ -1147,6 +1413,15 @@ class _PlayerAffiliationCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _fallbackIcon() => Container(
+        color: const Color(0xFFDCFCE7),
+        child: const Icon(
+          Icons.shield_rounded,
+          size: 24,
+          color: Color(0xFF16A34A),
+        ),
+      );
 }
 
 void _showStatDetailModal(BuildContext context, _StatItem item) {
@@ -1576,6 +1851,176 @@ class _InfoGrid extends StatelessWidget {
   );
 }
 
+class _PlayerSkillsRadarSection extends StatelessWidget {
+  const _PlayerSkillsRadarSection({
+    required this.player,
+    required this.technical,
+    required this.physical,
+    required this.social,
+  });
+
+  final Player player;
+  final List<MapEntry<String, double>> technical;
+  final List<MapEntry<String, double>> physical;
+  final List<MapEntry<String, double>> social;
+
+  @override
+  Widget build(BuildContext context) {
+    final ovr = player.overallRating;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE4E9F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: _SectionTitle(
+                  icon: Icons.radar_rounded,
+                  title: context.tr('playerSkills'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFFD700), Color(0xFFF59E0B)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFFD700).withValues(alpha: 0.4),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$ovr',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text(
+                      'OVR',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // ── 6 FUT Attribute Badges ──
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _futStatBadge('PAC', player.pace, const Color(0xFF3B82F6)),
+              _futStatBadge('SHO', player.shooting, const Color(0xFFEF4444)),
+              _futStatBadge('PAS', player.passing, const Color(0xFF10B981)),
+              _futStatBadge('DRI', player.dribbling, const Color(0xFF8B5CF6)),
+              _futStatBadge('DEF', player.defending, const Color(0xFFF59E0B)),
+              _futStatBadge('PHY', player.physical, const Color(0xFFEC4899)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // ── 6-Axis Interactive Radar Chart ──
+          Center(
+            child: PlayerSkillsRadarChart(
+              pace: player.pace,
+              shooting: player.shooting,
+              passing: player.passing,
+              dribbling: player.dribbling,
+              defending: player.defending,
+              physical: player.physical,
+              isDark: false,
+              size: 240,
+            ),
+          ),
+          // ── Detailed Skills Breakdown ──
+          if (technical.isNotEmpty || physical.isNotEmpty || social.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Divider(color: Color(0xFFF1F5F9), height: 1),
+            const SizedBox(height: 14),
+            if (technical.isNotEmpty)
+              _SkillGroup(
+                title: context.tr('technicalSkills'),
+                entries: technical,
+              ),
+            if (physical.isNotEmpty)
+              _SkillGroup(
+                title: context.tr('physicalSkills'),
+                entries: physical,
+              ),
+            if (social.isNotEmpty)
+              _SkillGroup(
+                title: context.tr('socialSkills'),
+                entries: social,
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _futStatBadge(String label, num val, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            '${val.round()}',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: AppColors.muted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SkillGroup extends StatelessWidget {
   const _SkillGroup({required this.title, required this.entries});
 
@@ -1636,7 +2081,14 @@ class _BulletGroup extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+        Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            color: AppColors.navy,
+          ),
+        ),
         const SizedBox(height: 7),
         ...values.map(
           (value) => Padding(
@@ -1667,22 +2119,25 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
     children: [
       Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(7),
         decoration: BoxDecoration(
           color: AppColors.green.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(9),
         ),
-        child: Icon(icon, color: AppColors.green),
+        child: Icon(icon, color: AppColors.green, size: 18),
       ),
-      const SizedBox(width: 10),
-      Expanded(
+      const SizedBox(width: 9),
+      Flexible(
         child: Text(
           title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: AppColors.navy,
+          ),
         ),
       ),
     ],

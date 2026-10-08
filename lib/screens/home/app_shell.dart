@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -43,7 +46,7 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver, TickerProviderStateMixin {
   int selectedIndex = 0;
   final Set<int> _loadedTabs = {0};
   int _unreadMessagesCount = 0;
@@ -52,6 +55,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   Timer? _unreadTimer;
   Timer? _initialUnreadTimer;
   RealtimeChannel? _notificationChannel;
+  late AnimationController _navBarController;
 
   late final List<_Destination> _cachedDestinations;
 
@@ -60,12 +64,18 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initDestinations();
-    _initialUnreadTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted) _fetchUnreadCounts();
-    });
+    _navBarController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    // Slide nav bar up on launch
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _navBarController.forward();
       _ensureProfileCompletionReminder();
       _setupRealtimeNotifications();
+    });
+    _initialUnreadTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) _fetchUnreadCounts();
     });
     _startUnreadTimer();
   }
@@ -108,11 +118,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     _unreadTimer?.cancel();
     _initialUnreadTimer?.cancel();
     _notificationChannel?.unsubscribe();
+    _navBarController.dispose();
     super.dispose();
   }
 
   void _selectTab(int index) {
     if (!mounted || index < 0 || index >= _cachedDestinations.length) return;
+    if (index == selectedIndex) return;
+    HapticFeedback.lightImpact();
     setState(() {
       selectedIndex = index;
       _loadedTabs.add(index);
@@ -402,141 +415,118 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final items = destinations(context);
-    final isCinema = items[selectedIndex].icon == Icons.smart_display_rounded;
-    final isProfile = items[selectedIndex].icon == Icons.person_rounded;
+    final isProfile = selectedIndex < items.length &&
+        (items[selectedIndex].icon == CupertinoIcons.person_crop_circle_fill);
 
     return Scaffold(
+      backgroundColor: AppColors.canvas,
       drawerEnableOpenDragGesture: false,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: isProfile && widget.accountType.isPlayer
-          ? FloatingActionButton(
-              heroTag: 'camera-upload-fab',
-              backgroundColor: AppColors.green,
-              foregroundColor: Colors.white,
-              onPressed: () => _showUploadOptions(context),
-              child: const Icon(Icons.camera_alt_rounded),
-            )
-          : null,
-      appBar: AppBar(
-        backgroundColor: isCinema ? Colors.black : null,
-        foregroundColor: isCinema ? Colors.white : null,
-        title: Text(
-          context.tr(items[selectedIndex].label),
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          if (!isCinema) LanguageSwitcher(compact: true, isDark: isCinema),
-          if (!isCinema)
-            _IOSActionButton(
-              tooltip: context.tr('settings'),
-              icon: CupertinoIcons.gear_alt,
-              isCinema: isCinema,
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      ManagerSettingsScreen(onSignOut: widget.onSignOut),
-                ),
-              ),
-            ),
-          _IOSActionButton(
-            tooltip: context.trOr('messages', 'Messages'),
-            icon: _unreadMessagesCount > 0
-                ? CupertinoIcons.chat_bubble_2_fill
-                : CupertinoIcons.chat_bubble_2,
-            badgeCount: _unreadMessagesCount,
-            badgeColor: const Color(0xFF10B981),
-            isCinema: isCinema,
-            onTap: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      ConversationsScreen(dataService: widget.dataService),
-                ),
-              );
-              _fetchUnreadCounts();
-            },
-          ),
-          _IOSActionButton(
-            tooltip: context.trOr('notifications', 'Notifications'),
-            icon: _unreadNotificationsCount > 0
-                ? CupertinoIcons.bell_fill
-                : CupertinoIcons.bell,
-            badgeCount: _unreadNotificationsCount,
-            badgeColor: const Color(0xFFEF4444),
-            isCinema: isCinema,
-            onTap: () async {
-              await Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => NotificationsScreen(
-                    dataService: widget.dataService,
-                    onProfileCompletionTap: () {
-                      _selectTab(4);
-                    },
-                  ),
-                ),
-              );
-              _fetchUnreadCounts();
-            },
-          ),
-          Builder(
-            builder: (ctx) => _IOSActionButton(
-              tooltip: context.trOr('menu', 'القائمة'),
-              icon: CupertinoIcons.square_grid_2x2,
-              isCinema: isCinema,
-              onTap: () => Scaffold.of(ctx).openEndDrawer(),
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
       endDrawer: _WebMenuDrawer(
         accountType: widget.accountType,
         onOpen: openWeb,
         onSignOut: widget.onSignOut,
       ),
-      body: IndexedStack(
-        index: selectedIndex,
+      // ─── Minimal top bar ────────────────────────────────────────────────
+      appBar: _MinimalAppBar(
+        label: context.tr(items[selectedIndex].label),
+        isCinema: false,
+        unreadMessages: _unreadMessagesCount,
+        unreadNotifications: _unreadNotificationsCount,
+        onMessages: () async {
+          await Navigator.of(context).push(_appleRoute(
+            ConversationsScreen(dataService: widget.dataService),
+          ));
+          _fetchUnreadCounts();
+        },
+        onNotifications: () async {
+          await Navigator.of(context).push(_appleRoute(
+            NotificationsScreen(
+              dataService: widget.dataService,
+              onProfileCompletionTap: () => _selectTab(
+                widget.accountType.isPlayer ? 4 : 4,
+              ),
+            ),
+          ));
+          _fetchUnreadCounts();
+        },
+        onSettings: () => Navigator.of(context).push(_appleRoute(
+          ManagerSettingsScreen(onSignOut: widget.onSignOut),
+        )),
+        onMenu: () => Scaffold.of(context).openEndDrawer(),
+        showSettings: true,
+        showLanguage: true,
+        languageSwitcher: const LanguageSwitcher(compact: true, isDark: false),
+      ),
+      extendBody: false,
+      bottomNavigationBar: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 1),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: _navBarController,
+          curve: Curves.easeOutCubic,
+        )),
+        child: _FloatingPillNav(
+          items: items,
+          selectedIndex: selectedIndex,
+          onTap: _selectTab,
+          isCinema: false,
+        ),
+      ),
+      // ─── Body: lazy IndexedStack ──────────────────────────────────────
+      body: Stack(
         children: [
-          for (var index = 0; index < items.length; index++)
-            if (!_loadedTabs.contains(index))
-              const SizedBox.shrink()
-            else if (items[index].screen is PlayerCinemaScreen)
-              PlayerCinemaScreen(
-                dataService: widget.dataService,
-                isScreenActive: selectedIndex == index,
-              )
-            else
-              items[index].screen,
+          IndexedStack(
+            index: selectedIndex,
+            children: [
+              for (var i = 0; i < items.length; i++)
+                if (!_loadedTabs.contains(i))
+                  const SizedBox.shrink()
+                else if (items[i].screen is PlayerCinemaScreen)
+                  PlayerCinemaScreen(
+                    dataService: widget.dataService,
+                    isScreenActive: selectedIndex == i,
+                  )
+                else
+                  items[i].screen,
+            ],
+          ),
+          // ─── Floating camera FAB (profile screen only) ───────────────
+          if (isProfile && widget.accountType.isPlayer)
+            Positioned(
+              right: 20,
+              bottom: 16,
+              child: _AppleFAB(
+                onPressed: () => _showUploadOptions(context),
+              ),
+            ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: selectedIndex,
-        onTap: (index) {
-          debugPrint(
-            '=== AppShell: Switching tab from $selectedIndex to $index ===',
-          );
-          _selectTab(index);
-        },
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.green,
-        unselectedItemColor: AppColors.navy,
-        backgroundColor: Colors.white,
-        elevation: 8,
-        selectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 11,
-        ),
-        unselectedLabelStyle: const TextStyle(fontSize: 11),
-        items: items
-            .map(
-              (item) => BottomNavigationBarItem(
-                icon: Icon(item.icon),
-                activeIcon: Icon(item.icon, color: AppColors.green),
-                label: context.tr(item.label),
-              ),
-            )
-            .toList(),
-      ),
+    );
+  }
+
+  // Apple-style page transition (fade + slight slide up)
+  Route<T> _appleRoute<T>(Widget page) {
+    return PageRouteBuilder<T>(
+      pageBuilder: (_, animation, secondaryAnimation) => page,
+      transitionDuration: const Duration(milliseconds: 320),
+      reverseTransitionDuration: const Duration(milliseconds: 280),
+      transitionsBuilder: (_, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.04),
+              end: Offset.zero,
+            ).animate(curved),
+            child: child,
+          ),
+        );
+      },
     );
   }
 
@@ -587,28 +577,14 @@ class _WebMenuDrawer extends StatelessWidget {
     // Player settings are native and are intentionally not duplicated here.
     final links = accountType.isPlayer
         ? [
-            ('messages', Icons.chat_bubble_outline, '$base/messages'),
-            ('notifications', Icons.notifications_none, '$base/notifications'),
-            ('reports', Icons.analytics_outlined, '$base/reports'),
-            ('tournaments', Icons.emoji_events_outlined, '$base/tournaments'),
-            ('store', Icons.storefront_outlined, '$base/store'),
+            ('reports', CupertinoIcons.chart_bar_alt_fill, '$base/reports'),
+            ('tournaments', CupertinoIcons.rosette, '$base/tournaments'),
+            ('store', CupertinoIcons.cart_fill, '$base/store'),
           ]
         : [
-            ('messages', Icons.chat_bubble_outline, '$base/messages'),
-            ('notifications', Icons.notifications_none, '$base/notifications'),
-            ('players', Icons.groups_outlined, '$base/players'),
-            (
-              'searchPlayers',
-              Icons.person_search_outlined,
-              '$base/search-players',
-            ),
-            (
-              'playerVideos',
-              Icons.video_library_outlined,
-              '$base/player-videos',
-            ),
-            ('store', Icons.storefront_outlined, '$base/store'),
-            ('myProfile', Icons.account_circle_outlined, '$base/profile'),
+            ('reports', CupertinoIcons.chart_bar_alt_fill, '$base/reports'),
+            ('tournaments', CupertinoIcons.rosette, '$base/tournaments'),
+            ('store', CupertinoIcons.cart_fill, '$base/store'),
           ];
 
     return Drawer(
@@ -805,6 +781,361 @@ class _IOSActionButton extends StatelessWidget {
                 ],
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// _MinimalAppBar — Clean, Apple-style top bar
+// ═══════════════════════════════════════════════════════════════
+class _MinimalAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _MinimalAppBar({
+    required this.label,
+    required this.isCinema,
+    required this.unreadMessages,
+    required this.unreadNotifications,
+    required this.onMessages,
+    required this.onNotifications,
+    required this.onSettings,
+    required this.onMenu,
+    required this.showSettings,
+    required this.showLanguage,
+    required this.languageSwitcher,
+  });
+
+  final String label;
+  final bool isCinema;
+  final int unreadMessages;
+  final int unreadNotifications;
+  final VoidCallback onMessages;
+  final VoidCallback onNotifications;
+  final VoidCallback onSettings;
+  final VoidCallback onMenu;
+  final bool showSettings;
+  final bool showLanguage;
+  final Widget languageSwitcher;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(56);
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isCinema ? Colors.black : const Color(0xFFF9FBFF);
+    final fg = isCinema ? Colors.white : AppColors.ink;
+
+    return AppBar(
+      backgroundColor: bg,
+      foregroundColor: fg,
+      elevation: 0,
+      scrolledUnderElevation: isCinema ? 0 : 1,
+      title: Text(
+        label,
+        style: GoogleFonts.cairo(
+          fontWeight: FontWeight.w700,
+          fontSize: 16,
+          color: fg,
+        ),
+      ),
+      actions: [
+        if (showLanguage) languageSwitcher,
+        if (showSettings)
+          _IOSActionButton(
+            tooltip: 'settings',
+            icon: CupertinoIcons.gear_alt,
+            isCinema: isCinema,
+            onTap: onSettings,
+          ),
+        // Messages
+        _IOSActionButton(
+          tooltip: 'messages',
+          icon: unreadMessages > 0
+              ? CupertinoIcons.chat_bubble_2_fill
+              : CupertinoIcons.chat_bubble_2,
+          badgeCount: unreadMessages,
+          badgeColor: const Color(0xFF10B981),
+          isCinema: isCinema,
+          onTap: onMessages,
+        ),
+        // Notifications
+        _IOSActionButton(
+          tooltip: 'notifications',
+          icon: unreadNotifications > 0
+              ? CupertinoIcons.bell_fill
+              : CupertinoIcons.bell,
+          badgeCount: unreadNotifications,
+          badgeColor: const Color(0xFFEF4444),
+          isCinema: isCinema,
+          onTap: onNotifications,
+        ),
+        // Web menu
+        Builder(
+          builder: (ctx) => _IOSActionButton(
+            tooltip: 'menu',
+            icon: CupertinoIcons.square_grid_2x2,
+            isCinema: isCinema,
+            onTap: () => Scaffold.of(ctx).openEndDrawer(),
+          ),
+        ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// _FloatingPillNav — Instagram/Apple floating pill navigation
+// ═══════════════════════════════════════════════════════════════
+class _FloatingPillNav extends StatelessWidget {
+  const _FloatingPillNav({
+    required this.items,
+    required this.selectedIndex,
+    required this.onTap,
+    required this.isCinema,
+  });
+
+  final List<_Destination> items;
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+  final bool isCinema;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = isCinema;
+    final pillBg = isDark
+        ? const Color(0xFF141E33)
+        : Colors.white;
+    final shadowColor = isDark
+        ? Colors.black.withValues(alpha: 0.6)
+        : const Color(0xFF111A4B).withValues(alpha: 0.12);
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(32),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+            child: Container(
+              height: 64,
+              decoration: BoxDecoration(
+                color: pillBg.withValues(alpha: isDark ? 0.92 : 0.96),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.12)
+                      : const Color(0xFF111A4B).withValues(alpha: 0.08),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: shadowColor,
+                    blurRadius: 28,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  for (var i = 0; i < items.length; i++)
+                    _PillNavItem(
+                      icon: items[i].icon,
+                      label: items[i].label,
+                      isSelected: i == selectedIndex,
+                      isDark: isDark,
+                      onTap: () => onTap(i),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// _PillNavItem — Single nav icon + label with animated indicator
+// ═══════════════════════════════════════════════════════════════
+class _PillNavItem extends StatefulWidget {
+  const _PillNavItem({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  @override
+  State<_PillNavItem> createState() => _PillNavItemState();
+}
+
+class _PillNavItemState extends State<_PillNavItem>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+      value: widget.isSelected ? 1.0 : 0.0,
+    );
+    _scaleAnim = Tween<double>(begin: 1.0, end: 1.12).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_PillNavItem old) {
+    super.didUpdateWidget(old);
+    if (widget.isSelected != old.isSelected) {
+      if (widget.isSelected) {
+        _ctrl.forward();
+      } else {
+        _ctrl.reverse();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor = widget.isDark ? Colors.white : AppColors.green;
+    final inactiveColor = widget.isDark
+        ? Colors.white.withValues(alpha: 0.40)
+        : const Color(0xFF64748B);
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          height: 64,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Icon with scale animation
+              AnimatedBuilder(
+                animation: _scaleAnim,
+                builder: (_, child) => Transform.scale(
+                  scale: widget.isSelected ? _scaleAnim.value : 1.0,
+                  child: child,
+                ),
+                child: Icon(
+                  widget.icon,
+                  size: 22,
+                  color: widget.isSelected ? activeColor : inactiveColor,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                context.tr(widget.label),
+                style: GoogleFonts.cairo(
+                  fontSize: 10.5,
+                  fontWeight:
+                      widget.isSelected ? FontWeight.w700 : FontWeight.w600,
+                  color: widget.isSelected ? activeColor : inactiveColor,
+                  letterSpacing: -0.2,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// _AppleFAB — Premium camera upload floating action button
+// ═══════════════════════════════════════════════════════════════
+class _AppleFAB extends StatefulWidget {
+  const _AppleFAB({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  State<_AppleFAB> createState() => _AppleFABState();
+}
+
+class _AppleFABState extends State<_AppleFAB>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+      lowerBound: 0.9,
+      upperBound: 1.0,
+      value: 1.0,
+    );
+    _scale = _ctrl;
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _ctrl.reverse(),
+      onTapUp: (_) {
+        _ctrl.forward();
+        widget.onPressed();
+      },
+      onTapCancel: () => _ctrl.forward(),
+      child: AnimatedBuilder(
+        animation: _scale,
+        builder: (_, child) => Transform.scale(scale: _scale.value, child: child),
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF079455), Color(0xFF05713F)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.green.withValues(alpha: 0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const Icon(
+            CupertinoIcons.camera_fill,
+            color: Colors.white,
+            size: 24,
           ),
         ),
       ),

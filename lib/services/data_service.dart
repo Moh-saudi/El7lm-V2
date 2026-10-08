@@ -208,7 +208,9 @@ class DataService {
             .map((row) => Player.fromJson(Map<String, dynamic>.from(row)))
             .toList();
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[DataService] /api/players error: $e');
+    }
 
     if (AppConfig.hasSupabaseConfiguration && _auth.hasSession) {
       try {
@@ -258,18 +260,24 @@ class DataService {
             }),
           );
         }
-      } catch (_) {
+      } catch (e) {
+        debugPrint('[DataService] supabase players error: $e');
         // The public API remains a safe fallback if RLS limits full-table reads.
       }
     }
 
-    final response = await _api.get('/api/players/videos');
-    final data = response['data'];
-    if (data is! List) return const [];
-    return data
-        .whereType<Map>()
-        .map((row) => Player.fromJson(Map<String, dynamic>.from(row)))
-        .toList();
+    try {
+      final response = await _api.get('/api/players/videos');
+      final data = response['data'];
+      if (data is! List) return const [];
+      return data
+          .whereType<Map>()
+          .map((row) => Player.fromJson(Map<String, dynamic>.from(row)))
+          .toList();
+    } catch (e) {
+      debugPrint('[DataService] /api/players/videos error: $e');
+      return const [];
+    }
   }
 
   Future<Player> fetchPlayerById(String playerId) async {
@@ -704,11 +712,41 @@ class DataService {
         );
         if (apiRes['success'] == true) {
           saved = true;
+        } else {
+          debugPrint('[DataService] API profile update returned success=false: ${apiRes['error']}');
         }
       } catch (apiErr) {
         debugPrint(
-          '[DataService] API profile update failed or unreachable, falling back to direct DB: $apiErr',
+          '[DataService] API profile update failed or unreachable: $apiErr',
         );
+        if (!AppConfig.apiBaseUrl.contains('el7lm.com')) {
+          try {
+            final fbRes = await http.post(
+              Uri.parse('https://www.el7lm.com/api/user/profile/update'),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                if (_auth.accessToken != null)
+                  'Authorization': 'Bearer ${_auth.accessToken}',
+              },
+              body: jsonEncode({
+                'userId': profile.userId,
+                'accountType': accountType.value,
+                'table': table,
+                'updates': currentPayload,
+              }),
+            );
+            if (fbRes.statusCode == 200) {
+              final decoded = jsonDecode(fbRes.body);
+              if (decoded['success'] == true) {
+                saved = true;
+                debugPrint('[DataService] Fallback to el7lm.com succeeded');
+              }
+            }
+          } catch (fbErr) {
+            debugPrint('[DataService] Fallback to el7lm.com also failed: $fbErr');
+          }
+        }
       }
 
       // 2. Fallback path: Direct Supabase client update if API was unreachable

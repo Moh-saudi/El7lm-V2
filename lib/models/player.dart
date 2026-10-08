@@ -94,12 +94,7 @@ class Player {
       age:
           explicitAge ??
           _ageFromBirthDate(json['birth_date'] ?? json['birthDate']),
-      imageUrl: _asUrl(
-        json['profile_image_url'] ??
-            json['profile_image'] ??
-            json['image'] ??
-            json['avatar'],
-      ),
+      imageUrl: _extractImageUrl(json),
       videos: rawVideos is List
           ? rawVideos
                 .whereType<Map>()
@@ -115,6 +110,43 @@ class Player {
           : const [],
       rawPayload: Map<String, dynamic>.from(json),
     );
+  }
+
+  static String _extractImageUrl(Map<String, dynamic> json) {
+    for (final key in [
+      'profile_image_url',
+      'profileImageUrl',
+      'profile_image',
+      'profileImage',
+      'image',
+      'imageUrl',
+      'avatar',
+      'avatar_url',
+      'avatarUrl',
+      'photo_url',
+      'photoUrl',
+      'photo',
+    ]) {
+      final val = json[key];
+      final url = _asUrl(val);
+      if (url.isNotEmpty) return url;
+    }
+    for (final key in [
+      'images',
+      'additional_images',
+      'additional_image_urls',
+      'gallery',
+      'photos',
+    ]) {
+      final list = json[key];
+      if (list is List && list.isNotEmpty) {
+        for (final item in list) {
+          final url = _asUrl(item);
+          if (url.isNotEmpty) return url;
+        }
+      }
+    }
+    return '';
   }
 
   static int? _asInt(Object? value) {
@@ -134,7 +166,13 @@ class Player {
 
   static String _usableUrl(String value) {
     var url = value.trim();
-    if (url.isEmpty || url == 'null' || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+    if (url.isEmpty || url == 'null') {
+      return '';
+    }
+    if (url.startsWith('data:image')) {
+      return url;
+    }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
       return '';
     }
     if (url.contains('ekyerljzfokqimbabzxm.supabase.co')) return '';

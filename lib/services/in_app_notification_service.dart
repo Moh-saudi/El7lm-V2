@@ -84,6 +84,7 @@ class InAppNotificationService {
       'id': 'profile-completion-reminder',
       'title': title,
       'message': message,
+      'percent': completionPercent,
       'isRead': false,
       'createdAt': now.toIso8601String(),
       'type': 'profile_completion',

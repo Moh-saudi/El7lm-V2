@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -107,8 +108,8 @@ class _PlayerSearchScreenState extends State<PlayerSearchScreen> {
     if (scrollController.hasClients) {
       scrollController.animateTo(
         0,
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeOut,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
       );
     }
   }
@@ -164,101 +165,112 @@ class _PlayerSearchScreenState extends State<PlayerSearchScreen> {
       final start = (currentPage - 1) * pageSize;
       final pagePlayers = filtered.skip(start).take(pageSize).toList();
 
-      return Stack(
-        children: [
-          Column(
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = constraints.maxWidth >= 850
+              ? 4
+              : constraints.maxWidth >= 600
+              ? 3
+              : 2;
+          return Stack(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: searchController,
-                        onChanged: updateQuery,
-                        decoration: InputDecoration(
-                          hintText: context.tr('searchEveryWay'),
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: searchController.text.isEmpty
-                              ? null
-                              : IconButton(
-                                  onPressed: () {
-                                    searchController.clear();
-                                    updateQuery('');
-                                  },
-                                  icon: const Icon(Icons.close),
-                                ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 9),
-                    Badge(
-                      isLabelVisible: advancedFilterCount > 0,
-                      label: Text('$advancedFilterCount'),
-                      child: IconButton.filledTonal(
-                        tooltip: context.tr('advancedFilters'),
-                        onPressed: () => openFilters(players),
-                        icon: const Icon(Icons.tune),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: FilterChip(
-                    selected: favoritesOnly,
-                    avatar: Icon(
-                      favoritesOnly
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      size: 17,
-                    ),
-                    label: Text(
-                      context.tr('favoritesOnly', {
-                        'count': favoriteIds.length,
-                      }),
-                    ),
-                    onSelected: (value) => setState(() {
-                      favoritesOnly = value;
-                      currentPage = 1;
-                    }),
+              RefreshIndicator(
+                onRefresh: refresh,
+                child: CustomScrollView(
+                  controller: scrollController,
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
                   ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: refresh,
-                  child: pagePlayers.isEmpty
-                      ? ListView(
-                          controller: scrollController,
-                          children: [
-                            const SizedBox(height: 140),
-                            Center(child: Text(context.tr('noSearchResults'))),
-                          ],
-                        )
-                      : LayoutBuilder(
-                          builder: (context, constraints) {
-                            final columns = constraints.maxWidth >= 850
-                                ? 4
-                                : constraints.maxWidth >= 600
-                                ? 3
-                                : 2;
-                            return GridView.builder(
-                              controller: scrollController,
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 94),
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: columns,
-                                    crossAxisSpacing: 12,
-                                    mainAxisSpacing: 12,
-                                    childAspectRatio: .70,
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: searchController,
+                                    onChanged: updateQuery,
+                                    decoration: InputDecoration(
+                                      hintText: context.tr('searchEveryWay'),
+                                      prefixIcon: const Icon(Icons.search),
+                                      suffixIcon: searchController.text.isEmpty
+                                          ? null
+                                          : IconButton(
+                                              onPressed: () {
+                                                searchController.clear();
+                                                updateQuery('');
+                                              },
+                                              icon: const Icon(Icons.close),
+                                            ),
+                                    ),
                                   ),
-                              itemCount: pagePlayers.length,
-                              itemBuilder: (context, index) => _PlayerCard(
+                                ),
+                                const SizedBox(width: 9),
+                                Badge(
+                                  isLabelVisible: advancedFilterCount > 0,
+                                  label: Text('$advancedFilterCount'),
+                                  child: IconButton.filledTonal(
+                                    tooltip: context.tr('advancedFilters'),
+                                    onPressed: () => openFilters(players),
+                                    icon: const Icon(Icons.tune),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: FilterChip(
+                                selected: favoritesOnly,
+                                avatar: Icon(
+                                  favoritesOnly
+                                      ? Icons.favorite_rounded
+                                      : Icons.favorite_border_rounded,
+                                  size: 17,
+                                ),
+                                label: Text(
+                                  context.tr('favoritesOnly', {
+                                    'count': favoriteIds.length,
+                                  }),
+                                ),
+                                onSelected: (value) => setState(() {
+                                  favoritesOnly = value;
+                                  currentPage = 1;
+                                }),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    ),
+                    if (pagePlayers.isEmpty)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(
+                          child: Text(context.tr('noSearchResults')),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 94),
+                        sliver: SliverGrid(
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: columns,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: .70,
+                              ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) => RepaintBoundary(
+                              child: _PlayerCard(
                                 player: pagePlayers[index],
                                 isFavorite: favoriteIds.contains(
                                   pagePlayers[index].id,
@@ -270,25 +282,30 @@ class _PlayerSearchScreenState extends State<PlayerSearchScreen> {
                                     toggleFavorite(pagePlayers[index]),
                                 onTap: () => openPlayer(pagePlayers[index]),
                               ),
-                            );
-                          },
+                            ),
+                            childCount: pagePlayers.length,
+                            addAutomaticKeepAlives: true,
+                            addRepaintBoundaries: false,
+                          ),
                         ),
+                      ),
+                  ],
                 ),
               ),
+              if (totalPages > 1)
+                PositionedDirectional(
+                  start: 18,
+                  end: 18,
+                  bottom: 14,
+                  child: _FloatingPager(
+                    currentPage: currentPage,
+                    totalPages: totalPages,
+                    onChanged: (page) => goToPage(page, totalPages),
+                  ),
+                ),
             ],
-          ),
-          if (totalPages > 1)
-            PositionedDirectional(
-              start: 18,
-              end: 18,
-              bottom: 14,
-              child: _FloatingPager(
-                currentPage: currentPage,
-                totalPages: totalPages,
-                onChanged: (page) => goToPage(page, totalPages),
-              ),
-            ),
-        ],
+          );
+        },
       );
     },
   );
@@ -362,43 +379,84 @@ class _PlayerCard extends StatelessWidget {
   final VoidCallback onFavorite;
   final VoidCallback onTap;
 
+  static final Map<String, Uint8List> _base64Cache = <String, Uint8List>{};
+
+  static Uint8List? _getDecodedBytes(String raw) {
+    if (!raw.startsWith('data:image')) return null;
+    final cached = _base64Cache[raw];
+    if (cached != null) return cached;
+    try {
+      final bytes = base64Decode(raw.split(',').last);
+      _base64Cache[raw] = bytes;
+      return bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Widget _buildImage(BuildContext context) {
+    if (player.imageUrl.isEmpty) {
+      return const Icon(
+        Icons.person,
+        size: 72,
+        color: Color(0xFFB5BCC8),
+      );
+    }
+    if (player.imageUrl.startsWith('data:image')) {
+      final bytes = _getDecodedBytes(player.imageUrl);
+      if (bytes != null) {
+        return Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          cacheWidth: 360,
+          cacheHeight: 480,
+          errorBuilder: (_, _, _) => const Icon(Icons.person, size: 72),
+        );
+      }
+      return const Icon(Icons.person, size: 72);
+    }
+    if (kIsWeb) {
+      return Image.network(
+        player.imageUrl,
+        fit: BoxFit.cover,
+        cacheWidth: 360,
+        cacheHeight: 480,
+        errorBuilder: (_, _, _) => const Icon(Icons.person, size: 72),
+      );
+    }
+    return CachedNetworkImage(
+      imageUrl: player.imageUrl,
+      fit: BoxFit.cover,
+      memCacheWidth: 360,
+      memCacheHeight: 480,
+      placeholder: (_, _) => const Icon(Icons.person, size: 72),
+      errorWidget: (_, _, _) => const Icon(Icons.person, size: 72),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Card(
-    clipBehavior: Clip.antiAlias,
+    elevation: 1,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     child: InkWell(
+      borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ColoredBox(
-                  color: const Color(0xFFE9EDF3),
-                  child: player.imageUrl.isEmpty
-                      ? const Icon(
-                          Icons.person,
-                          size: 72,
-                          color: Color(0xFFB5BCC8),
-                        )
-                      : kIsWeb
-                      ? Image.network(
-                          player.imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) =>
-                              const Icon(Icons.person, size: 72),
-                        )
-                      : CachedNetworkImage(
-                          imageUrl: player.imageUrl,
-                          fit: BoxFit.cover,
-                          errorWidget: (_, _, _) =>
-                              const Icon(Icons.person, size: 72),
-                        ),
-                ),
-                PositionedDirectional(
-                  top: 8,
-                  end: 8,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ColoredBox(
+                    color: const Color(0xFFE9EDF3),
+                    child: _buildImage(context),
+                  ),
+                  PositionedDirectional(
+                    top: 8,
+                    end: 8,
                   child: Material(
                     color: Colors.white.withValues(alpha: .94),
                     shape: const CircleBorder(),
@@ -440,7 +498,8 @@ class _PlayerCard extends StatelessWidget {
               ],
             ),
           ),
-          Padding(
+        ),
+        Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

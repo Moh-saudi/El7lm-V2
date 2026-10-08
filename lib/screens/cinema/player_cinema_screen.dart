@@ -112,7 +112,7 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
         TickerMode.valuesOf(context).enabled;
 
     return Container(
-      color: Colors.black,
+      color: AppColors.canvas,
       child: AsyncStateView<List<Player>>(
         future: future,
         builder: (context, players) {
@@ -132,9 +132,46 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
             children: [
               if (videos.isEmpty)
                 Center(
-                  child: Text(
-                    context.tr('noVideosMatching'),
-                    style: const TextStyle(color: Colors.white),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: AppColors.green.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.play_circle_outline_rounded,
+                            size: 38,
+                            color: AppColors.green,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          context.tr('noVideosMatching'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.ink,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                        if (filter.activeCount > 0) ...[
+                          const SizedBox(height: 12),
+                          FilledButton.tonal(
+                            onPressed: () => setState(() {
+                              filter = const PlayerFilter(hasVideos: true);
+                              activeIndex = 0;
+                            }),
+                            child: const Text('إعادة ضبط الفلاتر'),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 )
               else
@@ -162,17 +199,31 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
                   Flexible(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: const Color(0xFFE2E8F0),
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x0A000000),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: TextButton.icon(
                         onPressed: () => openFilters(players),
-                        icon: const Icon(Icons.tune, color: Colors.white, size: 20),
+                        icon: const Icon(Icons.tune, color: AppColors.green, size: 20),
                         label: Text(
                           filter.activeCount == 0
                               ? context.tr('searchAndFilter')
                               : '${context.tr('searchAndFilter')} (${filter.activeCount})',
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          style: const TextStyle(
+                            color: AppColors.ink,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -182,16 +233,29 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 7,
+                        horizontal: 12,
+                        vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: const Color(0xFFE2E8F0),
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x0A000000),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Text(
                         '${activeIndex + 1} / ${videos.length}',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: AppColors.ink,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],

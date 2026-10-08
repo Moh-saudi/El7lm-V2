@@ -23,18 +23,67 @@ ThemeData buildAppTheme() {
       surface: Colors.white,
     ),
     scaffoldBackgroundColor: AppColors.canvas,
+    dialogTheme: DialogThemeData(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: Colors.white,
+      elevation: 6,
+      titleTextStyle: GoogleFonts.cairo(
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        color: AppColors.navy,
+      ),
+      contentTextStyle: GoogleFonts.cairo(
+        fontSize: 13,
+        color: AppColors.ink,
+      ),
+    ),
+    datePickerTheme: DatePickerThemeData(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      headerBackgroundColor: const Color(0xFFF0FDF4),
+      headerForegroundColor: AppColors.green,
+      headerHeadlineStyle: GoogleFonts.cairo(
+        fontSize: 18,
+        fontWeight: FontWeight.w700,
+        color: AppColors.green,
+      ),
+      headerHelpStyle: GoogleFonts.cairo(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: AppColors.muted,
+      ),
+      weekdayStyle: GoogleFonts.cairo(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: AppColors.muted,
+      ),
+      dayStyle: GoogleFonts.cairo(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+      ),
+      yearStyle: GoogleFonts.cairo(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
   );
 
   return base.copyWith(
     textTheme: GoogleFonts.cairoTextTheme(
       base.textTheme,
     ).apply(bodyColor: AppColors.ink, displayColor: AppColors.ink),
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Color(0xFFF9FBFF),
+    appBarTheme: AppBarTheme(
+      backgroundColor: const Color(0xFFF9FBFF),
       foregroundColor: AppColors.ink,
       elevation: 0,
       scrolledUnderElevation: 1,
       centerTitle: false,
+      titleTextStyle: GoogleFonts.cairo(
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        color: AppColors.ink,
+      ),
     ),
     cardTheme: CardThemeData(
       color: Colors.white,
