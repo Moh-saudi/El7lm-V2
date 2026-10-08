@@ -18,6 +18,7 @@ const SAFE_PUBLIC_PLAYER_COLUMNS = [
   'preferred_foot',
   'profile_image',
   'profile_image_url',
+  'image',
   'current_club',
   'brief',
   'isDeleted',
@@ -104,7 +105,20 @@ export async function GET(request: NextRequest) {
     // Normalize data shape for frontend & mobile consumers
     const formattedPlayers = items.map((p: any) => {
       const displayName = p.full_name || p.name || 'لاعب';
-      const displayAvatar = p.profile_image_url || p.profile_image || null;
+
+      let displayAvatar: string | null = null;
+      for (const candidate of [p.profile_image_url, p.profile_image, p.image, p.avatar]) {
+        if (!candidate) continue;
+        if (typeof candidate === 'string' && candidate.trim().length > 0) {
+          displayAvatar = candidate.trim();
+          break;
+        }
+        if (typeof candidate === 'object' && candidate.url && typeof candidate.url === 'string' && candidate.url.trim().length > 0) {
+          displayAvatar = candidate.url.trim();
+          break;
+        }
+      }
+
       const displayPosition = p.position || p.primary_position || 'لاعب';
       const displayClub = p.current_club || null;
       const displayFoot = p.preferred_foot || null;
@@ -129,6 +143,9 @@ export async function GET(request: NextRequest) {
         preferredFoot: displayFoot,
         avatar: displayAvatar,
         profileImageUrl: displayAvatar,
+        profile_image_url: displayAvatar,
+        profile_image: displayAvatar,
+        image: displayAvatar,
         currentClub: displayClub,
         bio: p.brief || '',
         isActive,

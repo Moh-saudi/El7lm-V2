@@ -6,12 +6,24 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
+function calculateAge(birthDateStr: string | null | undefined): number | null {
+  if (!birthDateStr) return null;
+  const birth = new Date(birthDateStr);
+  if (isNaN(birth.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const m = now.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age >= 0 && age < 100 ? age : null;
+}
+
 const PUBLIC_COLUMNS = [
   'id',
   'full_name',
   'name',
   'videos',
-  'age',
   'birth_date',
   'primary_position',
   'position',
@@ -58,7 +70,7 @@ export async function GET(request: NextRequest) {
         full_name: p.full_name || p.name,
         name: p.name || p.full_name,
         videos: p.videos,
-        age: p.age,
+        age: calculateAge(p.birth_date),
         birth_date: p.birth_date,
         primary_position: p.primary_position || p.position,
         position: p.position || p.primary_position,

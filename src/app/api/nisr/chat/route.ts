@@ -310,19 +310,18 @@ export async function POST(request: NextRequest) {
     const configuredModel = process.env.GEMINI_NISR_MODEL?.trim();
     const candidateModels = Array.from(new Set([
       ...(configuredModel ? [configuredModel] : []),
-      'gemini-3.5-flash',
       'gemini-3.1-flash-lite',
-      'gemini-3.7-flash',
-      'gemini-flash-lite-latest',
+      'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
       'gemini-3.8-flash',
-      'gemini-flash-latest',
+      'gemini-3.7-flash',
     ]));
 
     let answer = '';
 
     for (const candModel of candidateModels) {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 6_000);
+      const timeout = setTimeout(() => controller.abort(), 8_000);
       try {
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${candModel}:generateContent`, {
           method: 'POST',
@@ -334,7 +333,7 @@ export async function POST(request: NextRequest) {
             system_instruction: { parts: [{ text: sysInstruction }] },
             contents: [{ role: 'user', parts }],
             generationConfig: {
-              maxOutputTokens: 600,
+              maxOutputTokens: 2048,
               temperature: 0.7,
             },
           }),
