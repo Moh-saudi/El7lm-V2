@@ -41,6 +41,14 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
     _loadVideos();
   }
 
+  @override
+  void didUpdateWidget(covariant PlayerCinemaScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.isScreenActive && widget.isScreenActive) {
+      _loadVideos();
+    }
+  }
+
   void _loadVideos() {
     future = widget.dataService.fetchCinemaPlayers(limit: 100);
   }
@@ -156,9 +164,12 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
         base.endsWith('.webm') ||
         base.endsWith('.mov') ||
         base.endsWith('.m4v') ||
+        base.endsWith('.3gp') ||
+        base.endsWith('.mkv') ||
         clean.contains('supabase.co/storage') ||
         clean.contains('assets.el7lm.com') ||
         clean.contains('r2.dev') ||
+        clean.contains('r2.cloudflarestorage.com') ||
         clean.contains('firebasestorage.googleapis.com');
   }
 
@@ -373,8 +384,8 @@ class _CinemaVideoState extends State<_CinemaVideo> {
     super.initState();
     if (widget.isActive) {
       _deferredActive = true;
+      if (isDirectVideo) _initializeDirectVideo();
     }
-    if (isDirectVideo) _initializeDirectVideo();
   }
 
   @override
@@ -383,16 +394,27 @@ class _CinemaVideoState extends State<_CinemaVideo> {
     if (oldWidget.isActive != widget.isActive) {
       _activationTimer?.cancel();
       if (widget.isActive) {
-        _activationTimer = Timer(const Duration(milliseconds: 200), () {
-          if (mounted) setState(() => _deferredActive = true);
+        _activationTimer = Timer(const Duration(milliseconds: 150), () {
+          if (mounted) {
+            setState(() => _deferredActive = true);
+            if (isDirectVideo) {
+              if (controller == null) {
+                _initializeDirectVideo();
+              } else {
+                _syncPlayback();
+              }
+            }
+          }
         });
       } else {
         if (_deferredActive) {
           setState(() => _deferredActive = false);
         }
-      }
-      if (isDirectVideo) {
-        _syncPlayback();
+        if (isDirectVideo) {
+          controller?.pause();
+          controller?.dispose();
+          controller = null;
+        }
       }
     }
   }

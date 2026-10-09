@@ -206,6 +206,7 @@ class DataService {
       final query = <String, String>{
         'limit': '$limit',
         'offset': '${(page - 1) * limit}',
+        '_t': '${DateTime.now().millisecondsSinceEpoch}',
       };
       if (position != null && position.isNotEmpty) query['position'] = position;
       if (country != null && country.isNotEmpty) query['country'] = country;

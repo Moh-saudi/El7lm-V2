@@ -320,26 +320,48 @@ class _ProfileFormState extends State<_ProfileForm> {
 
   Future<void> _handleDeleteMedia(String url, String category) async {
     final updatedValues = Map<String, dynamic>.from(widget.profile.values);
+    if (category == 'videos') {
+      final currentList = MediaUploadManager.extractVideoItems(
+        widget.profile.values['videos'] ??
+            widget.profile.values['video_urls'] ??
+            widget.profile.values['uploaded_videos'],
+      );
+      currentList.removeWhere((item) => item.url == url);
+      final jsonList = currentList.map((e) => e.toJson()).toList();
+      final updates = <String, dynamic>{
+        'videos': jsonList,
+        'video_urls': jsonList,
+        'uploaded_videos': jsonList,
+      };
+      await widget.dataService.savePlayerProfile(widget.profile, updates);
+
+      updatedValues['videos'] = jsonList;
+      updatedValues['video_urls'] = jsonList;
+      updatedValues['uploaded_videos'] = jsonList;
+      final updatedProfile = UserProfile(
+        userId: widget.profile.userId,
+        accountType: widget.profile.accountType,
+        values: updatedValues,
+      );
+      widget.onSaved(updatedProfile);
+      return;
+    }
+
     final keyToUpdate = switch (category) {
       'images' => 'additional_images',
-      'videos' => 'video_urls',
       _ => 'documents',
     };
     final currentList = _extractMediaList([keyToUpdate, category]);
     currentList.removeWhere((item) => item == url);
 
     final updates = <String, dynamic>{keyToUpdate: currentList};
-    if (category == 'videos') {
-      updates['videos'] = currentList;
-    } else if (category == 'images') {
+    if (category == 'images') {
       updates['images'] = currentList;
     }
     await widget.dataService.savePlayerProfile(widget.profile, updates);
 
     updatedValues[keyToUpdate] = currentList;
-    if (category == 'videos') {
-      updatedValues['videos'] = currentList;
-    } else if (category == 'images') {
+    if (category == 'images') {
       updatedValues['images'] = currentList;
     }
     final updatedProfile = UserProfile(
@@ -429,7 +451,11 @@ class _ProfileFormState extends State<_ProfileForm> {
             dataService: widget.dataService,
             images: _extractMediaList(['additional_images', 'images']),
             documents: _extractMediaList(['documents', 'documents_urls']),
-            videos: _extractMediaList(['video_urls', 'videos', 'uploaded_videos']),
+            videos: MediaUploadManager.extractVideoItems(
+              widget.profile.values['videos'] ??
+                  widget.profile.values['video_urls'] ??
+                  widget.profile.values['uploaded_videos'],
+            ),
             onUploaded: widget.onSaved,
             onDelete: _handleDeleteMedia,
           ),
@@ -1468,7 +1494,8 @@ class _MediaSection extends StatefulWidget {
   final UserProfile profile;
   final DataService dataService;
   final ValueChanged<UserProfile> onUploaded;
-  final List<String> images, documents, videos;
+  final List<String> images, documents;
+  final List<VideoMediaItem> videos;
   final Future<void> Function(String url, String category) onDelete;
 
   @override
@@ -1611,34 +1638,85 @@ class _MediaSectionState extends State<_MediaSection> {
           ),
           const SizedBox(height: 8),
           ...widget.videos.asMap().entries.map(
-            (e) => Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: const Icon(
-                  Icons.play_circle_fill_rounded,
-                  color: Colors.red,
+            (e) {
+              final video = e.value;
+              final displayTitle = video.title.isNotEmpty
+                  ? video.title
+                  : context.tr('skillVideoAttached', {
+                      'index': (e.key + 1).toString(),
+                    });
+              final isExternal = video.url.contains('youtu') ||
+                  video.url.contains('tiktok') ||
+                  video.url.contains('facebook');
+
+              return Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: Colors.grey.shade200),
                 ),
-                title: Text(
-                  context.tr('skillVideoAttached', {
-                    'index': (e.key + 1).toString(),
-                  }),
-                ),
-                subtitle: Text(
-                  e.value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, color: AppColors.muted),
-                ),
-                trailing: IconButton(
-                  icon: const Icon(
-                    Icons.delete_outline_rounded,
-                    color: Colors.red,
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  leading: Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: isExternal
+                          ? const Color(0xFFF3E8FF)
+                          : const Color(0xFFFEF2F2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isExternal
+                          ? Icons.link_rounded
+                          : Icons.play_arrow_rounded,
+                      color: isExternal
+                          ? const Color(0xFF9333EA)
+                          : const Color(0xFFDC2626),
+                      size: 24,
+                    ),
                   ),
-                  onPressed: () => widget.onDelete(e.value, 'videos'),
+                  title: Text(
+                    displayTitle,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.verified_rounded,
+                          size: 13,
+                          color: AppColors.green,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isExternal ? 'رابط خارجي معتمد' : 'فيديو مهارات معتمد',
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            color: AppColors.muted,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Colors.red,
+                    ),
+                    onPressed: () => widget.onDelete(video.url, 'videos'),
+                  ),
+                  onTap: () => _openMediaUrl(video.url),
                 ),
-                onTap: () => _openMediaUrl(e.value),
-              ),
-            ),
+              );
+            },
           ),
         ],
         if (widget.images.isEmpty &&

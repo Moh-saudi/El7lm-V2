@@ -7,6 +7,21 @@ import '../models/account_type.dart';
 import '../models/user_profile.dart';
 import 'data_service.dart';
 
+class VideoMediaItem {
+  final String url;
+  final String title;
+
+  const VideoMediaItem({
+    required this.url,
+    this.title = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+    'url': url,
+    'title': title,
+  };
+}
+
 /// Centralized, high-reliability manager for picking and uploading media
 /// (Photos, Videos, Camera Captures, Gallery, Links) across the entire application.
 class MediaUploadManager {
@@ -22,7 +37,7 @@ class MediaUploadManager {
     void processItem(dynamic item) {
       if (item == null) return;
       if (item is Map) {
-        final u = (item['url'] ?? item['path'] ?? item['videoUrl'] ?? item['src'] ?? '').toString().trim();
+        final u = (item['url'] ?? item['video_url'] ?? item['path'] ?? item['videoUrl'] ?? item['src'] ?? item['link'] ?? '').toString().trim();
         if (u.isNotEmpty && !u.contains('test.com')) {
           final match = _urlRegex.firstMatch(u);
           if (match != null) {
@@ -34,6 +49,15 @@ class MediaUploadManager {
       } else if (item is String) {
         final s = item.trim();
         if (s.isEmpty || s == 'null' || s.contains('test.com')) return;
+        if (s.startsWith('{') && s.endsWith('}')) {
+          try {
+            final decoded = jsonDecode(s);
+            if (decoded is Map) {
+              processItem(decoded);
+              return;
+            }
+          } catch (_) {}
+        }
         final match = _urlRegex.firstMatch(s);
         if (match != null) {
           results.add(match.group(0)!);
@@ -69,9 +93,77 @@ class MediaUploadManager {
     return results.toList();
   }
 
+  /// Extracts structured video items with their custom user-specified titles.
+  static List<VideoMediaItem> extractVideoItems(dynamic rawList) {
+    final results = <VideoMediaItem>[];
+    final seenUrls = <String>{};
+    if (rawList == null) return const [];
+
+    void processItem(dynamic item) {
+      if (item == null) return;
+      if (item is Map) {
+        final u = (item['url'] ?? item['video_url'] ?? item['videoUrl'] ?? item['path'] ?? item['src'] ?? item['link'] ?? '').toString().trim();
+        final t = (item['title'] ?? item['description'] ?? item['desc'] ?? item['name'] ?? '').toString().trim();
+        if (u.isNotEmpty && !u.contains('test.com')) {
+          final match = _urlRegex.firstMatch(u);
+          final clean = match != null ? match.group(0)! : (u.startsWith('http') ? u : null);
+          if (clean != null && !seenUrls.contains(clean)) {
+            seenUrls.add(clean);
+            results.add(VideoMediaItem(url: clean, title: t));
+          }
+        }
+      } else if (item is String) {
+        final s = item.trim();
+        if (s.isEmpty || s == 'null' || s.contains('test.com')) return;
+        if (s.startsWith('{') && s.endsWith('}')) {
+          try {
+            final decoded = jsonDecode(s);
+            if (decoded is Map) {
+              processItem(decoded);
+              return;
+            }
+          } catch (_) {}
+        }
+        final match = _urlRegex.firstMatch(s);
+        final clean = match != null ? match.group(0)! : (s.startsWith('http') ? s : null);
+        if (clean != null && !seenUrls.contains(clean)) {
+          seenUrls.add(clean);
+          results.add(VideoMediaItem(url: clean, title: ''));
+        }
+      }
+    }
+
+    if (rawList is List) {
+      for (final e in rawList) {
+        processItem(e);
+      }
+    } else if (rawList is String) {
+      try {
+        final decoded = jsonDecode(rawList);
+        if (decoded is List) {
+          for (final e in decoded) {
+            processItem(e);
+          }
+        } else {
+          processItem(decoded);
+        }
+      } catch (_) {
+        final matches = _urlRegex.allMatches(rawList);
+        for (final m in matches) {
+          final u = m.group(0)!;
+          if (!u.contains('test.com') && !seenUrls.contains(u)) {
+            seenUrls.add(u);
+            results.add(VideoMediaItem(url: u, title: ''));
+          }
+        }
+      }
+    }
+
+    return results;
+  }
+
   /// Master action sheet for the global floating camera button.
-  /// Unifies all options: Instant Camera Photo, Gallery Photo, Instant Camera Video,
-  /// Gallery Video, and External Video Link.
+  /// Redesigned with modern, compact action cards matching project standards (icons only, no lengthy outdated subtitles).
   static Future<UserProfile?> showUnifiedMediaActionSheet({
     required BuildContext context,
     required DataService dataService,
@@ -85,123 +177,100 @@ class MediaUploadManager {
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetCtx) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                sheetCtx.tr('uploadSkillsMedia'),
-                style: Theme.of(sheetCtx).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                sheetCtx.tr('mediaSelectChoice'),
-                style: const TextStyle(color: AppColors.muted, fontSize: 13),
-              ),
-              const SizedBox(height: 20),
-              ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                tileColor: const Color(0xFFEFF6FF),
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFDBEAFE),
-                  child: Icon(
-                    Icons.camera_alt_rounded,
-                    color: Color(0xFF2563EB),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    sheetCtx.tr('uploadSkillsMedia'),
+                    style: Theme.of(sheetCtx).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                        ),
                   ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20, color: AppColors.muted),
+                    onPressed: () => Navigator.pop(sheetCtx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              // ── Photos Section ──
+              Text(
+                sheetCtx.tr('photos'),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.muted,
                 ),
-                title: const Text(
-                  'التقاط صورة فورية بالكاميرا',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: const Text('تصوير مباشر بكاميرا الهاتف'),
-                onTap: () => Navigator.pop(sheetCtx, 'camera_photo'),
               ),
               const SizedBox(height: 8),
-              ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                tileColor: const Color(0xFFECFDF5),
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFD1FAE5),
-                  child: Icon(
-                    Icons.photo_library_rounded,
+              Row(
+                children: [
+                  _ModernMediaActionCard(
+                    icon: Icons.camera_alt_rounded,
+                    title: 'التقاط صورة',
+                    color: const Color(0xFF2563EB),
+                    bgColor: const Color(0xFFEFF6FF),
+                    onTap: () => Navigator.pop(sheetCtx, 'camera_photo'),
+                  ),
+                  const SizedBox(width: 12),
+                  _ModernMediaActionCard(
+                    icon: Icons.photo_library_rounded,
+                    title: 'صورة من المعرض',
                     color: AppColors.green,
+                    bgColor: const Color(0xFFECFDF5),
+                    onTap: () => Navigator.pop(sheetCtx, 'gallery_photo'),
                   ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              // ── Videos Section ──
+              Text(
+                sheetCtx.tr('videos'),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.muted,
                 ),
-                title: Text(
-                  sheetCtx.tr('uploadPhoto'),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(sheetCtx.tr('jpgPngDesc')),
-                onTap: () => Navigator.pop(sheetCtx, 'gallery_photo'),
               ),
               const SizedBox(height: 8),
-              ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                tileColor: const Color(0xFFFEF2F2),
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFFEE2E2),
-                  child: Icon(
-                    Icons.videocam_rounded,
-                    color: Colors.red,
+              Row(
+                children: [
+                  _ModernMediaActionCard(
+                    icon: Icons.videocam_rounded,
+                    title: 'تصوير فيديو',
+                    color: const Color(0xFFDC2626),
+                    bgColor: const Color(0xFFFEF2F2),
+                    onTap: () => Navigator.pop(sheetCtx, 'camera_video'),
                   ),
-                ),
-                title: const Text(
-                  'تصوير فيديو فوري بالكاميرا',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: const Text('تسجيل فيديو مباشر لمهارات اللاعب'),
-                onTap: () => Navigator.pop(sheetCtx, 'camera_video'),
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                tileColor: const Color(0xFFF5F3FF),
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFEDE9FE),
-                  child: Icon(
-                    Icons.video_library_rounded,
-                    color: Color(0xFF7C3AED),
+                  const SizedBox(width: 10),
+                  _ModernMediaActionCard(
+                    icon: Icons.video_library_rounded,
+                    title: 'فيديو المعرض',
+                    color: const Color(0xFF7C3AED),
+                    bgColor: const Color(0xFFF5F3FF),
+                    onTap: () => Navigator.pop(sheetCtx, 'gallery_video'),
                   ),
-                ),
-                title: Text(
-                  sheetCtx.tr('uploadVideoClip'),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(sheetCtx.tr('mp4FormatsDesc')),
-                onTap: () => Navigator.pop(sheetCtx, 'gallery_video'),
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                tileColor: const Color(0xFFFAF5FF),
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFF3E8FF),
-                  child: Icon(Icons.link_rounded, color: Color(0xFF9333EA)),
-                ),
-                title: const Text(
-                  'إضافة رابط فيديو خارجي',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: const Text('YouTube / Shorts / TikTok'),
-                onTap: () => Navigator.pop(sheetCtx, 'link_video'),
+                  const SizedBox(width: 10),
+                  _ModernMediaActionCard(
+                    icon: Icons.link_rounded,
+                    title: 'رابط خارجي',
+                    color: const Color(0xFF9333EA),
+                    bgColor: const Color(0xFFFAF5FF),
+                    onTap: () => Navigator.pop(sheetCtx, 'link_video'),
+                  ),
+                ],
               ),
             ],
           ),
@@ -242,91 +311,84 @@ class MediaUploadManager {
     final action = forcedAction ??
         await showModalBottomSheet<String>(
         context: context,
+        showDragHandle: true,
+        backgroundColor: Colors.white,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         builder: (ctx) => SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      isProfilePhoto
+                          ? 'تحديث الصورة الشخصية'
+                          : (isVideo ? 'إضافة مقطع فيديو' : 'إضافة صورة جديدة'),
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  isProfilePhoto
-                      ? 'تحديث الصورة الشخصية'
-                      : (isVideo ? 'رفع فيديو مهارات اللاعب' : 'رفع صورة للاعب'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
-                ),
-                const SizedBox(height: 18),
-                ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  tileColor: isVideo ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF),
-                  leading: CircleAvatar(
-                    backgroundColor: isVideo ? Colors.red[100] : const Color(0xFFDBEAFE),
-                    child: Icon(
-                      isVideo ? Icons.videocam_rounded : Icons.camera_alt_rounded,
-                      color: isVideo ? Colors.red[700] : const Color(0xFF2563EB),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20, color: AppColors.muted),
+                      onPressed: () => Navigator.pop(ctx),
                     ),
-                  ),
-                  title: Text(
-                    isVideo ? 'تصوير فيديو فوري بالكاميرا' : 'التقاط صورة فورية بالكاميرا',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  subtitle: Text(
-                    isVideo ? 'سجل مقطع مهارات مباشرة الآن' : 'التقط صورة جديدة بالهاتف',
-                    style: const TextStyle(fontSize: 12, color: AppColors.muted),
-                  ),
-                  onTap: () => Navigator.pop(ctx, 'camera'),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  tileColor: const Color(0xFFECFDF5),
-                  leading: CircleAvatar(
-                    backgroundColor: const Color(0xFFD1FAE5),
-                    child: Icon(
-                      isVideo ? Icons.video_library_rounded : Icons.photo_library_rounded,
-                      color: AppColors.green,
-                    ),
+                const SizedBox(height: 14),
+                if (!isVideo)
+                  Row(
+                    children: [
+                      _ModernMediaActionCard(
+                        icon: Icons.camera_alt_rounded,
+                        title: 'التقاط صورة',
+                        color: const Color(0xFF2563EB),
+                        bgColor: const Color(0xFFEFF6FF),
+                        onTap: () => Navigator.pop(ctx, 'camera'),
+                      ),
+                      const SizedBox(width: 12),
+                      _ModernMediaActionCard(
+                        icon: Icons.photo_library_rounded,
+                        title: 'صورة من المعرض',
+                        color: AppColors.green,
+                        bgColor: const Color(0xFFECFDF5),
+                        onTap: () => Navigator.pop(ctx, 'gallery'),
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      _ModernMediaActionCard(
+                        icon: Icons.videocam_rounded,
+                        title: 'تصوير فيديو',
+                        color: const Color(0xFFDC2626),
+                        bgColor: const Color(0xFFFEF2F2),
+                        onTap: () => Navigator.pop(ctx, 'camera'),
+                      ),
+                      const SizedBox(width: 10),
+                      _ModernMediaActionCard(
+                        icon: Icons.video_library_rounded,
+                        title: 'فيديو المعرض',
+                        color: const Color(0xFF7C3AED),
+                        bgColor: const Color(0xFFF5F3FF),
+                        onTap: () => Navigator.pop(ctx, 'gallery'),
+                      ),
+                      if (!isProfilePhoto) ...[
+                        const SizedBox(width: 10),
+                        _ModernMediaActionCard(
+                          icon: Icons.link_rounded,
+                          title: 'رابط خارجي',
+                          color: const Color(0xFF9333EA),
+                          bgColor: const Color(0xFFFAF5FF),
+                          onTap: () => Navigator.pop(ctx, 'link'),
+                        ),
+                      ],
+                    ],
                   ),
-                  title: Text(
-                    isVideo ? 'اختيار فيديو من المعرض' : 'اختيار صورة من المعرض',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  subtitle: const Text(
-                    'تصفح الملفات والوسائط المحفوظة',
-                    style: TextStyle(fontSize: 12, color: AppColors.muted),
-                  ),
-                  onTap: () => Navigator.pop(ctx, 'gallery'),
-                ),
-                if (isVideo && !isProfilePhoto) ...[
-                  const SizedBox(height: 8),
-                  ListTile(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    tileColor: const Color(0xFFF5F3FF),
-                    leading: const CircleAvatar(
-                      backgroundColor: Color(0xFFEDE9FE),
-                      child: Icon(Icons.link_rounded, color: Color(0xFF7C3AED)),
-                    ),
-                    title: const Text('إضافة رابط فيديو خارجي', style: TextStyle(fontWeight: FontWeight.w700)),
-                    subtitle: const Text('YouTube / Shorts / TikTok', style: TextStyle(fontSize: 12, color: AppColors.muted)),
-                    onTap: () => Navigator.pop(ctx, 'link'),
-                  ),
-                ],
-                const SizedBox(height: 12),
               ],
             ),
           ),
@@ -338,19 +400,67 @@ class MediaUploadManager {
     // Handle External Video Link
     if (action == 'link') {
       if (!context.mounted) return null;
+      final existingItems = extractVideoItems(profile.values['videos'] ?? profile.values['video_urls'] ?? profile.values['uploaded_videos']);
+      final defaultTitle = 'فيديو مهارات #${existingItems.length + 1}';
       final urlController = TextEditingController();
+      final titleController = TextEditingController(text: defaultTitle);
+
       final confirm = await showDialog<bool>(
         context: context,
         builder: (dialogCtx) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(context.tr('addVideoLinkShort')),
-          content: TextField(
-            controller: urlController,
-            autofocus: true,
-            decoration: const InputDecoration(
-              hintText: 'https://youtube.com/watch?v=... أو Shorts',
-              prefixIcon: Icon(Icons.link_rounded),
-            ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF3E8FF),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.link_rounded, color: Color(0xFF9333EA), size: 22),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                context.tr('addVideoLinkShort'),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'عنوان الفيديو:',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.muted),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(
+                  hintText: 'مثال: مهارات وأهداف اللاعب',
+                  prefixIcon: const Icon(Icons.title_rounded, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'رابط الفيديو:',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.muted),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: urlController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'https://youtube.com/watch?v=... أو TikTok',
+                  prefixIcon: const Icon(Icons.link_rounded, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -361,6 +471,7 @@ class MediaUploadManager {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.green,
                 foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () => Navigator.pop(dialogCtx, true),
               child: Text(context.tr('add')),
@@ -370,16 +481,32 @@ class MediaUploadManager {
       );
 
       final linkUrl = urlController.text.trim();
+      final finalTitle = titleController.text.trim().isNotEmpty
+          ? titleController.text.trim()
+          : defaultTitle;
+
       if (confirm == true && linkUrl.isNotEmpty) {
         onLoadingChanged?.call(true);
         try {
-          final existingVideos = extractCleanUrls(profile.values['video_urls'] ?? profile.values['videos']);
-          if (!existingVideos.contains(linkUrl)) {
-            existingVideos.add(linkUrl);
+          final newVideoMap = {
+            'url': linkUrl,
+            'title': finalTitle,
+            'type': 'external',
+            'created_at': DateTime.now().toIso8601String(),
+          };
+
+          final updatedList = existingItems.map((e) => e.toJson()).toList();
+          final existingIdx = updatedList.indexWhere((m) => m['url'] == linkUrl);
+          if (existingIdx >= 0) {
+            updatedList[existingIdx] = newVideoMap;
+          } else {
+            updatedList.add(newVideoMap);
           }
+
           final updates = <String, dynamic>{
-            'video_urls': existingVideos,
-            'videos': existingVideos,
+            'videos': updatedList,
+            'video_urls': updatedList,
+            'uploaded_videos': updatedList,
           };
           await dataService.savePlayerProfile(profile, updates);
           final updatedVals = profile.mergeUpdates(updates);
@@ -445,6 +572,82 @@ class MediaUploadManager {
       return null;
     }
 
+    String? videoTitle;
+    if (isVideo) {
+      if (!context.mounted) return null;
+      final existingItems = extractVideoItems(profile.values['videos'] ?? profile.values['video_urls'] ?? profile.values['uploaded_videos']);
+      final defaultTitle = 'فيديو المهارات #${existingItems.length + 1}';
+      final titleController = TextEditingController(text: defaultTitle);
+
+      final confirmedTitle = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogCtx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.green.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.movie_creation_rounded, color: AppColors.green, size: 22),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'عنوان مقطع الفيديو',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'اكتب عنواناً يصف هذا المقطع (مثل: مهارات التسديد، أهداف الموسم...):',
+                style: TextStyle(fontSize: 13, color: AppColors.muted),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: titleController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'عنوان الفيديو...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, defaultTitle),
+              child: const Text('استخدام الافتراضي'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.green,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                final txt = titleController.text.trim();
+                Navigator.pop(dialogCtx, txt.isNotEmpty ? txt : defaultTitle);
+              },
+              child: const Text('متابعة والرفع'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmedTitle == null) {
+        return null;
+      }
+      videoTitle = confirmedTitle;
+    }
+
     if (!context.mounted) return null;
     onLoadingChanged?.call(true);
 
@@ -461,7 +664,7 @@ class MediaUploadManager {
             Text(context.tr('uploadingMediaWait')),
           ],
         ),
-        duration: const Duration(seconds: 15),
+        duration: const Duration(seconds: 20),
       ),
     );
 
@@ -501,12 +704,29 @@ class MediaUploadManager {
         updates['profile_image'] = cleanUrl;
         updates['profile_image_url'] = cleanUrl;
       } else if (isVideo) {
-        final existingVideos = extractCleanUrls(profile.values['video_urls'] ?? profile.values['videos']);
-        if (!existingVideos.contains(cleanUrl)) {
-          existingVideos.add(cleanUrl);
+        final existingItems = extractVideoItems(profile.values['videos'] ?? profile.values['video_urls'] ?? profile.values['uploaded_videos']);
+        final finalTitle = videoTitle?.trim().isNotEmpty == true
+            ? videoTitle!.trim()
+            : 'فيديو المهارات #${existingItems.length + 1}';
+
+        final newVideoMap = {
+          'url': cleanUrl,
+          'title': finalTitle,
+          'type': 'uploaded',
+          'created_at': DateTime.now().toIso8601String(),
+        };
+
+        final updatedList = existingItems.map((e) => e.toJson()).toList();
+        final existingIdx = updatedList.indexWhere((m) => m['url'] == cleanUrl);
+        if (existingIdx >= 0) {
+          updatedList[existingIdx] = newVideoMap;
+        } else {
+          updatedList.add(newVideoMap);
         }
-        updates['video_urls'] = existingVideos;
-        updates['videos'] = existingVideos;
+
+        updates['videos'] = updatedList;
+        updates['video_urls'] = updatedList;
+        updates['uploaded_videos'] = updatedList;
       } else {
         final existingImages = extractCleanUrls(profile.values['additional_images'] ?? profile.values['images']);
         if (!existingImages.contains(cleanUrl)) {
@@ -550,5 +770,78 @@ class MediaUploadManager {
     } finally {
       onLoadingChanged?.call(false);
     }
+  }
+}
+
+/// Modern, sleek action card for media selection without redundant subtitles.
+class _ModernMediaActionCard extends StatelessWidget {
+  const _ModernMediaActionCard({
+    required this.icon,
+    required this.title,
+    required this.color,
+    required this.bgColor,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final Color color;
+  final Color bgColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Material(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: color.withValues(alpha: 0.22),
+                width: 1.2,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.16),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(icon, color: color, size: 22),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12.5,
+                    color: Colors.grey.shade900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
