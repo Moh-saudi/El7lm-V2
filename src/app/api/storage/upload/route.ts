@@ -46,7 +46,11 @@ export async function POST(request: NextRequest) {
         if (!user && bodyUserId.length >= 4) {
             const { getSupabaseAdmin } = await import('@/lib/supabase/admin');
             const admin = getSupabaseAdmin();
-            const { data: p } = await admin.from('players').select('id').eq('id', bodyUserId).maybeSingle();
+            const { data: p } = await admin
+                .from('players')
+                .select('id')
+                .or(`id.eq.${bodyUserId},uid.eq.${bodyUserId},user_id.eq.${bodyUserId}`)
+                .maybeSingle();
             if (p) {
                 user = { id: p.id } as any;
             } else {

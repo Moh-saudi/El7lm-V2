@@ -104,23 +104,27 @@ export async function POST(request: NextRequest) {
 
     // 3. Find existing record by id, uid, or user_id
     let existingRow: any = null;
-    const lookupQueries = [
-      admin.from(targetTable).select('*').eq('id', effectiveUserId).maybeSingle(),
-      admin.from(targetTable).select('*').eq('uid', effectiveUserId).maybeSingle(),
-    ];
-    if (targetTable === 'players') {
-      lookupQueries.push(admin.from(targetTable).select('*').eq('user_id', effectiveUserId).maybeSingle());
-    }
+    const candidates = Array.from(new Set([effectiveUserId, userId, authenticatedUserId].filter(Boolean) as string[]));
+    for (const cand of candidates) {
+      if (existingRow) break;
+      const lookupQueries = [
+        admin.from(targetTable).select('*').eq('id', cand).maybeSingle(),
+        admin.from(targetTable).select('*').eq('uid', cand).maybeSingle(),
+      ];
+      if (targetTable === 'players') {
+        lookupQueries.push(admin.from(targetTable).select('*').eq('user_id', cand).maybeSingle());
+      }
 
-    for (const q of lookupQueries) {
-      const { data, error } = await q;
-      if (!error && data) {
-        existingRow = data;
-        break;
+      for (const q of lookupQueries) {
+        const { data, error } = await q;
+        if (!error && data) {
+          existingRow = data;
+          break;
+        }
       }
     }
 
-    const recordId = existingRow?.id || effectiveUserId;
+    const recordId = existingRow?.id || effectiveUserId || userId;
 
     // 4. Update or Upsert resiliently (strip unknown columns if schema cache mismatch)
     const currentPayload = { ...payload };
