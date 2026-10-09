@@ -23,6 +23,7 @@ class DataService {
 
   final ApiClient _api;
   final AuthService _auth;
+  final ValueNotifier<UserProfile?> profileNotifier = ValueNotifier<UserProfile?>(null);
   Future<List<AppNotification>>? _notificationsInFlight;
   Future<List<Player>>? _playersInFlight;
   Future<List<Opportunity>>? _opportunitiesInFlight;
@@ -923,6 +924,11 @@ class DataService {
       }
       await client.from('users').update(userPayload).eq('id', profile.userId);
     } catch (_) {}
+    profileNotifier.value = UserProfile(
+      userId: profile.userId,
+      accountType: profile.accountType,
+      values: merged,
+    );
   }
 
   Future<String> uploadProfileImage({

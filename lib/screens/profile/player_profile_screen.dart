@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:url_launcher/url_launcher.dart';
@@ -13,6 +12,7 @@ import '../../models/account_type.dart';
 import '../../models/player.dart';
 import '../../models/user_profile.dart';
 import '../../services/data_service.dart';
+import '../../services/media_upload_manager.dart';
 import '../../services/profile_answer_validator.dart';
 import '../../widgets/parental_consent_dialog.dart';
 import '../../widgets/player_share_modal.dart';
@@ -37,6 +37,22 @@ class _PlayerProfileScreenState extends State<PlayerProfileScreen> {
   void initState() {
     super.initState();
     future = widget.dataService.fetchProfile(AccountType.player);
+    widget.dataService.profileNotifier.addListener(_onProfileUpdated);
+  }
+
+  void _onProfileUpdated() {
+    final updated = widget.dataService.profileNotifier.value;
+    if (updated != null && mounted) {
+      setState(() {
+        future = Future.value(updated);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.dataService.profileNotifier.removeListener(_onProfileUpdated);
+    super.dispose();
   }
 
   @override
@@ -292,48 +308,14 @@ class _ProfileFormState extends State<_ProfileForm> {
   }
 
   List<String> _extractMediaList(List<String> candidateKeys) {
+    final results = <String>{};
     for (final key in candidateKeys) {
       final raw = widget.profile.values[key];
-      if (raw == null) continue;
-      if (raw is List) {
-        final list = raw
-            .map((item) {
-              if (item is Map) {
-                return (item['url'] ?? item['path'] ?? item['videoUrl'] ?? item['src'] ?? '')
-                    .toString();
-              }
-              return item.toString();
-            })
-            .where((s) => s.trim().isNotEmpty && s != 'null' && !s.contains('test.com'))
-            .toList();
-        if (list.isNotEmpty) return list;
-      } else if (raw is String && raw.trim().isNotEmpty && raw != 'null') {
-        try {
-          final decoded = jsonDecode(raw);
-          if (decoded is List) {
-            final list = decoded
-                .map((item) {
-                  if (item is Map) {
-                    return (item['url'] ?? item['path'] ?? item['videoUrl'] ?? item['src'] ?? '')
-                        .toString();
-                  }
-                  return item.toString();
-                })
-                .where((s) => s.trim().isNotEmpty && s != 'null')
-                .toList();
-            if (list.isNotEmpty) return list;
-          }
-        } catch (_) {
-          final list = raw
-              .split(RegExp(r'[\n,]+'))
-              .map((s) => s.trim())
-              .where((s) => s.isNotEmpty && s.startsWith('http'))
-              .toList();
-          if (list.isNotEmpty) return list;
-        }
+      if (raw != null) {
+        results.addAll(MediaUploadManager.extractCleanUrls(raw));
       }
     }
-    return <String>[];
+    return results.toList();
   }
 
   Future<void> _handleDeleteMedia(String url, String category) async {
@@ -1192,58 +1174,17 @@ class _ProfileFormState extends State<_ProfileForm> {
 
 
   Future<void> _pickProfilePhoto() async {
-    final source = await showModalBottomSheet<ImageSource>(
+    final updated = await MediaUploadManager.pickAndUploadMedia(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'تغيير الصورة الشخصية',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0xFFEFF6FF),
-                child: Icon(Icons.camera_alt_rounded, color: Color(0xFF2563EB)),
-              ),
-              title: const Text('التقاط صورة فورية بالكاميرا', style: TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0xFFECFDF5),
-                child: Icon(Icons.photo_library_rounded, color: AppColors.green),
-              ),
-              title: const Text('اختيار من المعرض', style: TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
+      dataService: widget.dataService,
+      profile: widget.profile,
+      isVideo: false,
+      isProfilePhoto: true,
     );
-    if (source == null) return;
-    final file = await ImagePicker().pickImage(source: source, imageQuality: 85);
-    if (file == null || !mounted) return;
-    final bytes = await file.readAsBytes();
-    final path = await widget.dataService.uploadProfileImage(
-      bytes: bytes,
-      extension: 'jpg',
-      contentType: 'image/jpeg',
-    );
-    await widget.dataService.savePlayerProfile(widget.profile, {
-      'image': path,
-      'profile_image': path,
-      'profile_image_url': path,
-    });
-    if (mounted) widget.onRefresh();
+    if (updated != null && mounted) {
+      widget.onSaved(updated);
+      widget.onRefresh();
+    }
   }
 }
 
@@ -1538,208 +1479,32 @@ class _MediaSectionState extends State<_MediaSection> {
   bool uploading = false;
 
   Future<void> _pickAndUploadImage() async {
-    final source = await showModalBottomSheet<ImageSource>(
+    final updated = await MediaUploadManager.pickAndUploadMedia(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'رفع صورة اللاعب',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0xFFEFF6FF),
-                child: Icon(Icons.camera_alt_rounded, color: Color(0xFF2563EB)),
-              ),
-              title: const Text('التقاط صورة فورية بالكاميرا', style: TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
-            ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0xFFECFDF5),
-                child: Icon(Icons.photo_library_rounded, color: AppColors.green),
-              ),
-              title: const Text('اختيار صورة من المعرض', style: TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
+      dataService: widget.dataService,
+      profile: widget.profile,
+      isVideo: false,
+      onLoadingChanged: (loading) {
+        if (mounted) setState(() => uploading = loading);
+      },
     );
-
-    if (source == null) return;
-    final file = await ImagePicker().pickImage(source: source, imageQuality: 85);
-    if (file == null || !mounted) return;
-    setState(() => uploading = true);
-    try {
-      final bytes = await file.readAsBytes();
-      final ext = file.name.contains('.') ? file.name.split('.').last : 'jpg';
-      final path = await widget.dataService.uploadPlayerMedia(
-        bytes: bytes,
-        extension: ext,
-        contentType: 'image/$ext',
-        isVideo: false,
-      );
-      final current = widget.images.toList();
-      current.add(path);
-      await widget.dataService.savePlayerProfile(widget.profile, {
-        'additional_images': current,
-        'images': current,
-      });
-      if (!mounted) return;
-      final updatedVals = Map<String, dynamic>.from(widget.profile.values);
-      updatedVals['additional_images'] = current;
-      updatedVals['images'] = current;
-      widget.onUploaded(UserProfile(
-        userId: widget.profile.userId,
-        accountType: widget.profile.accountType,
-        values: updatedVals,
-      ));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.errorText(e))));
-    } finally {
-      if (mounted) setState(() => uploading = false);
+    if (updated != null && mounted) {
+      widget.onUploaded(updated);
     }
   }
 
   Future<void> _pickAndUploadVideo() async {
-    final urlController = TextEditingController();
-    final action = await showModalBottomSheet<String>(
+    final updated = await MediaUploadManager.pickAndUploadMedia(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'رفع فيديو مهارات اللاعب',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0xFFFEF2F2),
-                child: Icon(Icons.videocam_rounded, color: Colors.red),
-              ),
-              title: const Text('تصوير فيديو فوري بالكاميرا', style: TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () => Navigator.pop(ctx, 'camera'),
-            ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0xFFECFDF5),
-                child: Icon(Icons.video_library_rounded, color: AppColors.green),
-              ),
-              title: Text(context.tr('chooseFromGallery'), style: const TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () => Navigator.pop(ctx, 'file'),
-            ),
-            ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0xFFEFF6FF),
-                child: Icon(Icons.link_rounded, color: Color(0xFF2563EB)),
-              ),
-              title: Text(context.tr('addVideoLink'), style: const TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () => Navigator.pop(ctx, 'link'),
-            ),
-          ],
-        ),
-      ),
+      dataService: widget.dataService,
+      profile: widget.profile,
+      isVideo: true,
+      onLoadingChanged: (loading) {
+        if (mounted) setState(() => uploading = loading);
+      },
     );
-
-    if (action == 'camera' || action == 'file') {
-      final file = await ImagePicker().pickVideo(
-        source: action == 'camera' ? ImageSource.camera : ImageSource.gallery,
-      );
-      if (file == null || !mounted) return;
-      setState(() => uploading = true);
-      try {
-        final bytes = await file.readAsBytes();
-        final ext = file.name.contains('.') ? file.name.split('.').last : 'mp4';
-        final path = await widget.dataService.uploadPlayerMedia(
-          bytes: bytes,
-          extension: ext,
-          contentType: 'video/$ext',
-          isVideo: true,
-        );
-        final current = widget.videos.toList();
-        current.add(path);
-        await widget.dataService.savePlayerProfile(widget.profile, {
-          'video_urls': current,
-          'videos': current,
-        });
-        if (!mounted) return;
-        final updatedVals = Map<String, dynamic>.from(widget.profile.values);
-        updatedVals['video_urls'] = current;
-        updatedVals['videos'] = current;
-        widget.onUploaded(UserProfile(
-          userId: widget.profile.userId,
-          accountType: widget.profile.accountType,
-          values: updatedVals,
-        ));
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(context.errorText(e))));
-      } finally {
-        if (mounted) setState(() => uploading = false);
-      }
-    } else if (action == 'link') {
-      if (!mounted) return;
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(context.tr('addVideoLinkShort')),
-          content: TextField(
-            controller: urlController,
-            decoration: const InputDecoration(
-              hintText: 'https://youtube.com/watch?v=...',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(context.tr('cancel')),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(context.tr('add')),
-            ),
-          ],
-        ),
-      );
-      if (confirm == true && urlController.text.trim().isNotEmpty) {
-        final current = widget.videos.toList();
-        current.add(urlController.text.trim());
-        await widget.dataService.savePlayerProfile(widget.profile, {
-          'video_urls': current,
-          'videos': current,
-        });
-        final updatedVals = Map<String, dynamic>.from(widget.profile.values);
-        updatedVals['video_urls'] = current;
-        updatedVals['videos'] = current;
-        widget.onUploaded(UserProfile(
-          userId: widget.profile.userId,
-          accountType: widget.profile.accountType,
-          values: updatedVals,
-        ));
-      }
+    if (updated != null && mounted) {
+      widget.onUploaded(updated);
     }
   }
 

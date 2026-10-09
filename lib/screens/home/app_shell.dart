@@ -4,7 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
+import '../../services/media_upload_manager.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -286,184 +286,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver, Ticker
   }
 
   Future<void> _showUploadOptions(BuildContext context) async {
-    await showModalBottomSheet<void>(
+    await MediaUploadManager.showUnifiedMediaActionSheet(
       context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetCtx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  context.tr('uploadSkillsMedia'),
-                  style: Theme.of(
-                    sheetCtx,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  context.tr('mediaSelectChoice'),
-                  style: const TextStyle(color: AppColors.muted, fontSize: 13),
-                ),
-                const SizedBox(height: 20),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFEFF6FF),
-                    child: Icon(
-                      Icons.camera_alt_rounded,
-                      color: Color(0xFF2563EB),
-                    ),
-                  ),
-                  title: const Text(
-                    'التقاط صورة فورية بالكاميرا',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: const Text('تصوير مباشر بكاميرا الهاتف'),
-                  onTap: () {
-                    Navigator.pop(sheetCtx);
-                    _pickAndUpload(ImageSource.camera, isVideo: false);
-                  },
-                ),
-                const SizedBox(height: 8),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFECFDF5),
-                    child: Icon(
-                      Icons.photo_library_rounded,
-                      color: AppColors.green,
-                    ),
-                  ),
-                  title: Text(
-                    context.tr('uploadPhoto'),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(context.tr('jpgPngDesc')),
-                  onTap: () {
-                    Navigator.pop(sheetCtx);
-                    _pickAndUpload(ImageSource.gallery, isVideo: false);
-                  },
-                ),
-                const SizedBox(height: 8),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFFEF2F2),
-                    child: Icon(
-                      Icons.videocam_rounded,
-                      color: Colors.red,
-                    ),
-                  ),
-                  title: const Text(
-                    'تصوير فيديو فوري بالكاميرا',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: const Text('تسجيل فيديو مباشر لمهارات اللاعب'),
-                  onTap: () {
-                    Navigator.pop(sheetCtx);
-                    _pickAndUpload(ImageSource.camera, isVideo: true);
-                  },
-                ),
-                const SizedBox(height: 8),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFF5F3FF),
-                    child: Icon(
-                      Icons.video_library_rounded,
-                      color: Color(0xFF7C3AED),
-                    ),
-                  ),
-                  title: Text(
-                    context.tr('uploadVideoClip'),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(context.tr('mp4FormatsDesc')),
-                  onTap: () {
-                    Navigator.pop(sheetCtx);
-                    _pickAndUpload(ImageSource.gallery, isVideo: true);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+      dataService: widget.dataService,
     );
-  }
-
-  Future<void> _pickAndUpload(
-    ImageSource source, {
-    required bool isVideo,
-  }) async {
-    final picker = ImagePicker();
-    final file = isVideo
-        ? await picker.pickVideo(source: source)
-        : await picker.pickImage(source: source, imageQuality: 85);
-
-    if (file == null) return;
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(context.tr('uploadingMediaWait')),
-        duration: const Duration(seconds: 4),
-      ),
-    );
-
-    try {
-      final bytes = await file.readAsBytes();
-      final ext = file.name.contains('.')
-          ? file.name.split('.').last
-          : (isVideo ? 'mp4' : 'jpg');
-      final contentType = isVideo ? 'video/mp4' : 'image/jpeg';
-      final publicUrl = await widget.dataService.uploadPlayerMedia(
-        bytes: bytes,
-        extension: ext,
-        contentType: contentType,
-        isVideo: isVideo,
-      );
-
-      // Persist to player profile in database
-      try {
-        final profile = await widget.dataService.fetchProfile(AccountType.player);
-        if (isVideo) {
-          final list = (profile.values['video_urls'] as List? ?? profile.values['videos'] as List? ?? []).map((e) => '$e').where((e) => !e.contains('test.com')).toList();
-          if (!list.contains(publicUrl)) list.add(publicUrl);
-          await widget.dataService.savePlayerProfile(profile, {'video_urls': list, 'videos': list});
-        } else {
-          final list = (profile.values['additional_images'] as List? ?? profile.values['images'] as List? ?? []).map((e) => '$e').where((e) => !e.contains('test.com')).toList();
-          if (!list.contains(publicUrl)) list.add(publicUrl);
-          await widget.dataService.savePlayerProfile(profile, {'additional_images': list, 'images': list});
-        }
-      } catch (profileSaveErr) {
-        debugPrint('⚠️ Non-fatal profile media sync warning: $profileSaveErr');
-      }
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.tr('mediaUploadedSuccess')),
-          backgroundColor: AppColors.green,
-        ),
-      );
-
-      setState(() {
-        _initDestinations();
-      });
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.errorText(e)),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 
   @override
@@ -1159,10 +985,10 @@ class _AppleFABState extends State<_AppleFAB>
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      onTap: widget.onPressed,
       onTapDown: (_) => _ctrl.reverse(),
       onTapUp: (_) {
         _ctrl.forward();
-        widget.onPressed();
       },
       onTapCancel: () => _ctrl.forward(),
       child: AnimatedBuilder(
