@@ -258,7 +258,7 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
                   ),
                 ),
             PositionedDirectional(
-              top: 10,
+              top: 54,
               start: 12,
               end: 12,
               child: Row(
@@ -361,6 +361,7 @@ class _CinemaVideoState extends State<_CinemaVideo> {
   bool _deferredActive = false;
   bool failed = false;
   bool manuallyPaused = false;
+  bool isMuted = false;
   bool liked = false;
   bool favorited = false;
 
@@ -635,6 +636,16 @@ class _CinemaVideoState extends State<_CinemaVideo> {
                   }
                 },
               ),
+              if (isDirectVideo)
+                _CinemaAction(
+                  icon: isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                  color: isMuted ? Colors.white60 : Colors.white,
+                  label: isMuted ? 'كتم' : 'صوت',
+                  onTap: () {
+                    setState(() => isMuted = !isMuted);
+                    controller?.setVolume(isMuted ? 0.0 : 1.0);
+                  },
+                ),
             ],
           ),
         ),
