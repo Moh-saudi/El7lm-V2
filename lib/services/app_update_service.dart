@@ -8,7 +8,7 @@ import '../core/app_config.dart';
 class AppUpdateService {
   AppUpdateService._();
 
-  static const int currentBuildCode = 23;
+  static const int currentBuildCode = 24;
   static const String currentVersionName = '1.0.7';
 
   static bool _hasPromptedThisSession = false;
