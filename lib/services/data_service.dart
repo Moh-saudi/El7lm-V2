@@ -153,12 +153,13 @@ class DataService {
 
   Future<List<Player>> fetchPlayers({
     int page = 1,
-    int limit = 25,
+    int limit = 30,
     String? search,
     String? position,
     String? city,
+    String? country,
   }) {
-    if (page == 1 && search == null && position == null && city == null) {
+    if (page == 1 && search == null && position == null && city == null && country == null) {
       final existing = _playersInFlight;
       if (existing != null) return existing;
       late final Future<List<Player>> pending;
@@ -168,6 +169,7 @@ class DataService {
         search: search,
         position: position,
         city: city,
+        country: country,
       ).whenComplete(() {
         if (identical(_playersInFlight, pending)) _playersInFlight = null;
       });
@@ -180,15 +182,17 @@ class DataService {
       search: search,
       position: position,
       city: city,
+      country: country,
     );
   }
 
   Future<List<Player>> _fetchPlayers({
     int page = 1,
-    int limit = 25,
+    int limit = 30,
     String? search,
     String? position,
     String? city,
+    String? country,
   }) async {
     // 1. Try canonical /api/players endpoint first
     try {
@@ -199,6 +203,7 @@ class DataService {
       if (search != null && search.isNotEmpty) query['search'] = search;
       if (position != null && position.isNotEmpty) query['position'] = position;
       if (city != null && city.isNotEmpty) query['city'] = city;
+      if (country != null && country.isNotEmpty) query['country'] = country;
 
       final response = await _api.get('/api/players', query: query);
       final data = response['data'];
@@ -223,6 +228,9 @@ class DataService {
         }
         if (city != null && city.isNotEmpty) {
           playerQuery = playerQuery.ilike('city', '%$city%');
+        }
+        if (country != null && country.isNotEmpty) {
+          playerQuery = playerQuery.ilike('country', '%$country%');
         }
         if (search != null && search.isNotEmpty) {
           playerQuery = playerQuery.ilike('full_name', '%$search%');
@@ -829,47 +837,11 @@ class DataService {
     required String extension,
     required String contentType,
   }) async {
-    _requireSupabase();
-    final ownerId = _auth.authUserId ?? await _auth.legacyUserId() ?? 'user';
-    final safeExtension = extension.toLowerCase().replaceAll(
-      RegExp(r'[^a-z0-9]'),
-      '',
-    );
-    final ext = safeExtension.isEmpty ? 'jpg' : safeExtension;
-    final timeStamp = DateTime.now().microsecondsSinceEpoch;
-    final paths = ['$ownerId.$ext', '${ownerId}_$timeStamp.$ext'];
-    final client = Supabase.instance.client;
-
-    for (final bucket in ['profile-images', 'ads', 'avatars']) {
-      for (final path in paths) {
-        try {
-          await client.storage
-              .from(bucket)
-              .uploadBinary(
-                path,
-                bytes,
-                fileOptions: FileOptions(
-                  contentType: contentType,
-                  upsert: true,
-                ),
-              );
-          // Return the relative path compatible with R2 resolution
-          return '$bucket/$path';
-        } catch (e) {
-          debugPrint('Profile image upload error ($bucket/$path): $e');
-        }
-      }
-    }
-
-    if (bytes.lengthInBytes <= 150 * 1024) {
-      final base64Data = base64Encode(bytes);
-      final mime = contentType.isNotEmpty ? contentType : 'image/jpeg';
-      return 'data:$mime;base64,$base64Data';
-    }
-
-    throw const ApiException(
-      'Failed to upload profile image.',
-      translationKey: 'mediaUploadFailed',
+    return uploadPlayerMedia(
+      bytes: bytes,
+      extension: extension,
+      contentType: contentType,
+      isVideo: false,
     );
   }
 
@@ -890,124 +862,137 @@ class DataService {
         : safeExtension;
     final timeStamp = DateTime.now().microsecondsSinceEpoch;
     final fileName = '${ownerId}_$timeStamp.$ext';
+    final mimeType = contentType.isNotEmpty
+        ? contentType
+        : (isVideo
+            ? 'video/mp4'
+            : (isDocument ? 'application/pdf' : 'image/jpeg'));
 
-    // 1. Direct Cloudflare R2 Presigned Upload for Videos
-    if (isVideo) {
-      final token = _auth.accessToken;
-      if (token != null && token.isNotEmpty) {
-        try {
-          final presignedRes = await _api.post(
-            '/api/media/presigned-url',
-            body: {
-              'fileName': fileName,
-              'fileType': contentType.isNotEmpty ? contentType : 'video/mp4',
-              'fileSize': bytes.lengthInBytes,
-              'userId': ownerId,
-            },
-            accessToken: token,
-          );
+    // 1. Primary: Direct Cloudflare R2 Presigned Upload (for Videos, Images & Documents)
+    final token = await _auth.getFreshAccessToken() ?? _auth.accessToken;
+    try {
+      final presignedRes = await _api.post(
+        '/api/media/presigned-url',
+        body: {
+          'fileName': fileName,
+          'fileType': mimeType,
+          'fileSize': bytes.lengthInBytes,
+          'userId': ownerId,
+          'ownerId': ownerId,
+        },
+        accessToken: token,
+      );
 
-          final presignedUrl = presignedRes['presignedUrl']?.toString();
-          final publicUrl = presignedRes['publicUrl']?.toString();
-          final storagePath = presignedRes['storagePath']?.toString();
-          final videoId = presignedRes['videoId']?.toString();
+      final presignedUrl = presignedRes['presignedUrl']?.toString();
+      final publicUrl = presignedRes['publicUrl']?.toString();
+      final storagePath = presignedRes['storagePath']?.toString();
+      final videoId = presignedRes['videoId']?.toString();
 
-          if (presignedUrl != null && publicUrl != null && storagePath != null) {
-            final uploadHeaders = <String, String>{
-              'Content-Type': contentType.isNotEmpty ? contentType : 'video/mp4',
-            };
-            final r2Upload = await http.put(
-              Uri.parse(presignedUrl),
-              headers: uploadHeaders,
-              body: bytes,
-            );
+      if (presignedUrl != null && publicUrl != null) {
+        final uploadHeaders = <String, String>{
+          'Content-Type': mimeType,
+        };
+        final r2Upload = await http.put(
+          Uri.parse(presignedUrl),
+          headers: uploadHeaders,
+          body: bytes,
+        );
 
-            if (r2Upload.statusCode >= 200 && r2Upload.statusCode < 300) {
-              try {
-                await _api.post(
-                  '/api/media/presigned-url/complete',
-                  body: {
-                    'videoId': videoId,
-                    'storagePath': storagePath,
-                    'publicUrl': publicUrl,
-                    'title': 'Video $timeStamp',
-                    'fileName': fileName,
-                    'fileSize': bytes.lengthInBytes,
-                    'fileType': contentType.isNotEmpty ? contentType : 'video/mp4',
-                    'userId': ownerId,
-                  },
-                  accessToken: token,
-                );
-              } catch (completeErr) {
-                debugPrint('⚠️ Video metadata record warning: $completeErr');
-              }
-              return publicUrl;
-            } else {
-              debugPrint('⚠️ R2 upload failed with HTTP status ${r2Upload.statusCode}');
+        if (r2Upload.statusCode >= 200 && r2Upload.statusCode < 300) {
+          if (isVideo && storagePath != null) {
+            try {
+              await _api.post(
+                '/api/media/presigned-url/complete',
+                body: {
+                  'videoId': videoId,
+                  'storagePath': storagePath,
+                  'publicUrl': publicUrl,
+                  'title': 'Video $timeStamp',
+                  'fileName': fileName,
+                  'fileSize': bytes.lengthInBytes,
+                  'fileType': mimeType,
+                  'userId': ownerId,
+                },
+                accessToken: token,
+              );
+            } catch (completeErr) {
+              debugPrint('⚠️ Video metadata record warning: $completeErr');
             }
           }
-        } catch (r2Err) {
-          debugPrint('⚠️ R2 Presigned upload failed, falling back to Supabase: $r2Err');
+          return publicUrl;
+        } else {
+          debugPrint('⚠️ R2 Presigned upload failed with status ${r2Upload.statusCode}');
         }
       }
-
-      // 2. Supabase Storage fallback for videos
-      if (AppConfig.hasSupabaseConfiguration) {
-        try {
-          final client = Supabase.instance.client;
-          await client.storage
-              .from('videos')
-              .uploadBinary(
-                fileName,
-                bytes,
-                fileOptions: FileOptions(
-                  contentType: contentType.isNotEmpty ? contentType : 'video/mp4',
-                  upsert: true,
-                ),
-              );
-          return client.storage.from('videos').getPublicUrl(fileName);
-        } catch (supaErr) {
-          debugPrint('⚠️ Supabase Storage video upload error: $supaErr');
-        }
-      }
-
-      // STRICT ZERO PATCHWORK RULE: Never store Base64 video payload in Postgres!
-      throw const ApiException(
-        'Failed to upload video to cloud storage.',
-        translationKey: 'videoUploadFailed',
-      );
+    } catch (r2Err) {
+      debugPrint('⚠️ Direct R2 Presigned upload error: $r2Err');
     }
 
-    // 3. Supabase Storage for Images and Documents
-    final primaryBucket = isDocument ||
-            contentType.contains('pdf') ||
-            contentType.contains('document')
-        ? 'documents'
-        : 'profile-images';
+    // 2. Secondary fallback for Images/Documents: Multipart upload via /api/storage/upload
+    if (!isVideo && bytes.lengthInBytes <= 15 * 1024 * 1024) {
+      try {
+        final uri = Uri.parse('${AppConfig.apiBaseUrl}/api/storage/upload');
+        final request = http.MultipartRequest('POST', uri);
+        if (token != null && token.isNotEmpty) {
+          request.headers['Authorization'] = 'Bearer $token';
+        }
+        final bucket = isDocument ? 'documents' : 'profile-images';
+        request.fields['bucket'] = bucket;
+        request.fields['path'] = '$bucket/$fileName';
+        request.fields['contentType'] = mimeType;
+        request.fields['userId'] = ownerId;
+        request.files.add(
+          http.MultipartFile.fromBytes('file', bytes, filename: fileName),
+        );
 
+        final streamedRes = await request.send();
+        final res = await http.Response.fromStream(streamedRes);
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          final decoded = jsonDecode(res.body);
+          final uploadedUrl = decoded['url'] ?? decoded['publicUrl'];
+          if (uploadedUrl != null && '$uploadedUrl'.isNotEmpty) {
+            return '$uploadedUrl';
+          }
+        }
+      } catch (uploadErr) {
+        debugPrint('⚠️ /api/storage/upload multipart fallback error: $uploadErr');
+      }
+    }
+
+    // 3. Fallback: Supabase Storage if configured and available
     if (AppConfig.hasSupabaseConfiguration) {
       try {
         final client = Supabase.instance.client;
+        final targetBucket = isVideo
+            ? 'player-media'
+            : (isDocument ? 'documents' : 'player-media');
         await client.storage
-            .from(primaryBucket)
+            .from(targetBucket)
             .uploadBinary(
               fileName,
               bytes,
-              fileOptions: FileOptions(contentType: contentType, upsert: true),
+              fileOptions: FileOptions(
+                contentType: mimeType,
+                upsert: true,
+              ),
             );
-        return client.storage.from(primaryBucket).getPublicUrl(fileName);
-      } catch (e) {
-        debugPrint('Player media upload error ($primaryBucket/$fileName): $e');
+        return client.storage.from(targetBucket).getPublicUrl(fileName);
+      } catch (supaErr) {
+        debugPrint('⚠️ Supabase Storage fallback error: $supaErr');
       }
     }
 
     // 4. Base64 fallback ONLY for small non-video assets (<= 150 KB, e.g. signatures)
-    if (bytes.lengthInBytes <= 150 * 1024) {
+    if (!isVideo && bytes.lengthInBytes <= 150 * 1024) {
       final base64Data = base64Encode(bytes);
-      final fallbackMime = contentType.isNotEmpty
-          ? contentType
-          : (isDocument ? 'application/pdf' : 'image/jpeg');
-      return 'data:$fallbackMime;base64,$base64Data';
+      return 'data:$mimeType;base64,$base64Data';
+    }
+
+    if (isVideo) {
+      throw const ApiException(
+        'Failed to upload video to cloud storage.',
+        translationKey: 'videoUploadFailed',
+      );
     }
 
     throw const ApiException(

@@ -882,5 +882,6 @@
   "nisrHistoryComingSoon": "Your saved plans and conversations will appear here in the next phase.",
   "conversationStartFailed": "Failed to start conversation. Please check your connection and try again.",
   "showSkillsRadar": "Skills Radar Chart (FUT)",
-  "hideSkillsRadar": "Hide Skills Radar"
+  "hideSkillsRadar": "Hide Skills Radar",
+  "showingAllPlayers": "Showing all players"
 }

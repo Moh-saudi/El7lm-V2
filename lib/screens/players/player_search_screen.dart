@@ -1,5 +1,5 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
@@ -11,7 +11,6 @@ import '../../l10n/app_localizations.dart';
 import '../../models/player.dart';
 import '../../models/player_filter.dart';
 import '../../services/data_service.dart';
-import '../../widgets/async_state_view.dart';
 import '../../widgets/player_filter_sheet.dart';
 import '../profile/player_profile_data.dart';
 import 'player_details_screen.dart';
@@ -26,44 +25,129 @@ class PlayerSearchScreen extends StatefulWidget {
 }
 
 class _PlayerSearchScreenState extends State<PlayerSearchScreen> {
-  static const pageSize = 20;
+  static const int _batchLimit = 30;
 
-  late Future<List<Player>> future;
+  final List<Player> _players = [];
+  bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _currentPage = 1;
+  String? _error;
+  Timer? _debounceTimer;
+
   final searchController = TextEditingController();
   final scrollController = ScrollController();
   PlayerFilter filter = const PlayerFilter();
   Set<String> favoriteIds = <String>{};
   final Set<String> favoriteChanges = <String>{};
   bool favoritesOnly = false;
-  int currentPage = 1;
 
   @override
   void initState() {
     super.initState();
-    future = widget.dataService.fetchPlayers();
+    scrollController.addListener(_onScroll);
+    _loadInitialPlayers();
     _loadFavorites();
   }
 
   @override
   void dispose() {
-    searchController.dispose();
+    _debounceTimer?.cancel();
+    scrollController.removeListener(_onScroll);
     scrollController.dispose();
+    searchController.dispose();
     super.dispose();
   }
 
+  void _onScroll() {
+    if (!scrollController.hasClients) return;
+    final maxScroll = scrollController.position.maxScrollExtent;
+    final currentScroll = scrollController.position.pixels;
+    if (currentScroll >= maxScroll - 350) {
+      if (!_isLoading && !_isLoadingMore && _hasMore) {
+        _loadNextPage();
+      }
+    }
+  }
+
+  Future<void> _loadInitialPlayers() async {
+    setState(() {
+      _isLoading = true;
+      _currentPage = 1;
+      _hasMore = true;
+      _error = null;
+    });
+
+    try {
+      final results = await widget.dataService.fetchPlayers(
+        page: 1,
+        limit: _batchLimit,
+        search: filter.query.isNotEmpty ? filter.query : null,
+        position: filter.position.isNotEmpty ? filter.position : null,
+        country: filter.country.isNotEmpty ? filter.country : null,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _players.clear();
+        _players.addAll(results);
+        _isLoading = false;
+        _hasMore = results.length >= _batchLimit;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  Future<void> _loadNextPage() async {
+    if (_isLoadingMore || !_hasMore) return;
+    setState(() => _isLoadingMore = true);
+
+    final nextPage = _currentPage + 1;
+    try {
+      final results = await widget.dataService.fetchPlayers(
+        page: nextPage,
+        limit: _batchLimit,
+        search: filter.query.isNotEmpty ? filter.query : null,
+        position: filter.position.isNotEmpty ? filter.position : null,
+        country: filter.country.isNotEmpty ? filter.country : null,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _currentPage = nextPage;
+        final existingIds = _players.map((p) => p.id).toSet();
+        for (final p in results) {
+          if (!existingIds.contains(p.id)) {
+            _players.add(p);
+            existingIds.add(p.id);
+          }
+        }
+        _hasMore = results.length >= _batchLimit;
+        _isLoadingMore = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingMore = false);
+    }
+  }
+
   Future<void> refresh() async {
-    final next = widget.dataService.fetchPlayers();
-    setState(() => future = next);
-    await Future.wait([next, _loadFavorites()]);
+    await Future.wait([
+      _loadInitialPlayers(),
+      _loadFavorites(),
+    ]);
   }
 
   Future<void> _loadFavorites() async {
     try {
       final ids = await widget.dataService.fetchFavoritePlayerIds();
       if (mounted) setState(() => favoriteIds = ids);
-    } catch (_) {
-      // Player discovery remains usable if favorites are temporarily offline.
-    }
+    } catch (_) {}
   }
 
   Future<void> toggleFavorite(Player player) async {
@@ -99,32 +183,25 @@ class _PlayerSearchScreenState extends State<PlayerSearchScreen> {
   void updateQuery(String value) {
     setState(() {
       filter = filter.copyWith(query: value.trim());
-      currentPage = 1;
+    });
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      _loadInitialPlayers();
     });
   }
 
-  void goToPage(int page, int totalPages) {
-    setState(() => currentPage = page.clamp(1, totalPages));
-    if (scrollController.hasClients) {
-      scrollController.animateTo(
-        0,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-      );
-    }
-  }
-
-  Future<void> openFilters(List<Player> players) async {
+  Future<void> openFilters() async {
     final result = await showPlayerFilterSheet(
       context: context,
       initial: filter,
-      players: players,
+      players: _players,
     );
     if (result == null || !mounted) return;
     setState(() {
       filter = result.copyWith(query: searchController.text.trim());
-      currentPage = 1;
     });
+    _loadInitialPlayers();
   }
 
   Future<void> openPlayer(Player player) async {
@@ -147,221 +224,199 @@ class _PlayerSearchScreenState extends State<PlayerSearchScreen> {
         ),
       ),
     );
-    // This State, its page number, filters and scroll position remain intact.
   }
 
   @override
-  Widget build(BuildContext context) => AsyncStateView<List<Player>>(
-    future: future,
-    builder: (context, players) {
-      final filtered = players
-          .where(filter.matches)
-          .where((player) => !favoritesOnly || favoriteIds.contains(player.id))
-          .toList();
-      final advancedFilterCount =
-          filter.activeCount - (filter.query.isEmpty ? 0 : 1);
-      final totalPages = math.max(1, (filtered.length / pageSize).ceil());
-      if (currentPage > totalPages) currentPage = totalPages;
-      final start = (currentPage - 1) * pageSize;
-      final pagePlayers = filtered.skip(start).take(pageSize).toList();
+  Widget build(BuildContext context) {
+    final filtered = _players
+        .where(filter.matches)
+        .where((player) => !favoritesOnly || favoriteIds.contains(player.id))
+        .toList();
+    final advancedFilterCount =
+        filter.activeCount - (filter.query.isEmpty ? 0 : 1);
 
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          final columns = constraints.maxWidth >= 850
-              ? 4
-              : constraints.maxWidth >= 600
-              ? 3
-              : 2;
-          return Stack(
-            children: [
-              RefreshIndicator(
-                onRefresh: refresh,
-                child: CustomScrollView(
-                  controller: scrollController,
-                  physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(),
-                  ),
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 850
+            ? 4
+            : constraints.maxWidth >= 600
+                ? 3
+                : 2;
+
+        return RefreshIndicator(
+          onRefresh: refresh,
+          child: CustomScrollView(
+            controller: scrollController,
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                      child: Row(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: searchController,
-                                    onChanged: updateQuery,
-                                    decoration: InputDecoration(
-                                      hintText: context.tr('searchEveryWay'),
-                                      prefixIcon: const Icon(Icons.search),
-                                      suffixIcon: searchController.text.isEmpty
-                                          ? null
-                                          : IconButton(
-                                              onPressed: () {
-                                                searchController.clear();
-                                                updateQuery('');
-                                              },
-                                              icon: const Icon(Icons.close),
-                                            ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 9),
-                                Badge(
-                                  isLabelVisible: advancedFilterCount > 0,
-                                  label: Text('$advancedFilterCount'),
-                                  child: IconButton.filledTonal(
-                                    tooltip: context.tr('advancedFilters'),
-                                    onPressed: () => openFilters(players),
-                                    icon: const Icon(Icons.tune),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Align(
-                              alignment: AlignmentDirectional.centerStart,
-                              child: FilterChip(
-                                selected: favoritesOnly,
-                                avatar: Icon(
-                                  favoritesOnly
-                                      ? Icons.favorite_rounded
-                                      : Icons.favorite_border_rounded,
-                                  size: 17,
-                                ),
-                                label: Text(
-                                  context.tr('favoritesOnly', {
-                                    'count': favoriteIds.length,
-                                  }),
-                                ),
-                                onSelected: (value) => setState(() {
-                                  favoritesOnly = value;
-                                  currentPage = 1;
-                                }),
+                          Expanded(
+                            child: TextField(
+                              controller: searchController,
+                              onChanged: updateQuery,
+                              decoration: InputDecoration(
+                                hintText: context.tr('searchEveryWay'),
+                                prefixIcon: const Icon(Icons.search),
+                                suffixIcon: searchController.text.isEmpty
+                                    ? null
+                                    : IconButton(
+                                        onPressed: () {
+                                          searchController.clear();
+                                          updateQuery('');
+                                        },
+                                        icon: const Icon(Icons.close),
+                                      ),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(width: 9),
+                          Badge(
+                            isLabelVisible: advancedFilterCount > 0,
+                            label: Text('$advancedFilterCount'),
+                            child: IconButton.filledTonal(
+                              tooltip: context.tr('advancedFilters'),
+                              onPressed: openFilters,
+                              icon: const Icon(Icons.tune),
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    if (pagePlayers.isEmpty)
-                      SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: Center(
-                          child: Text(context.tr('noSearchResults')),
-                        ),
-                      )
-                    else
-                      SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 94),
-                        sliver: SliverGrid(
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: columns,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                                childAspectRatio: .70,
-                              ),
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => RepaintBoundary(
-                              child: _PlayerCard(
-                                player: pagePlayers[index],
-                                isFavorite: favoriteIds.contains(
-                                  pagePlayers[index].id,
-                                ),
-                                favoriteBusy: favoriteChanges.contains(
-                                  pagePlayers[index].id,
-                                ),
-                                onFavorite: () =>
-                                    toggleFavorite(pagePlayers[index]),
-                                onTap: () => openPlayer(pagePlayers[index]),
-                              ),
-                            ),
-                            childCount: pagePlayers.length,
-                            addAutomaticKeepAlives: true,
-                            addRepaintBoundaries: false,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: FilterChip(
+                          selected: favoritesOnly,
+                          avatar: Icon(
+                            favoritesOnly
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            size: 17,
                           ),
+                          label: Text(
+                            context.tr('favoritesOnly', {
+                              'count': favoriteIds.length,
+                            }),
+                          ),
+                          onSelected: (value) => setState(() {
+                            favoritesOnly = value;
+                          }),
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 8),
                   ],
                 ),
               ),
-              if (totalPages > 1)
-                PositionedDirectional(
-                  start: 18,
-                  end: 18,
-                  bottom: 14,
-                  child: _FloatingPager(
-                    currentPage: currentPage,
-                    totalPages: totalPages,
-                    onChanged: (page) => goToPage(page, totalPages),
+              if (_isLoading && _players.isEmpty)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_error != null && _players.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.error_outline, size: 48, color: Colors.orange),
+                          const SizedBox(height: 12),
+                          Text(_error!, textAlign: TextAlign.center),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: _loadInitialPlayers,
+                            icon: const Icon(Icons.refresh),
+                            label: Text(context.tr('retry')),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else if (filtered.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Text(context.tr('noSearchResults')),
+                  ),
+                )
+              else ...[
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  sliver: SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: columns,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: .70,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => RepaintBoundary(
+                        child: _PlayerCard(
+                          player: filtered[index],
+                          isFavorite: favoriteIds.contains(filtered[index].id),
+                          favoriteBusy: favoriteChanges.contains(filtered[index].id),
+                          onFavorite: () => toggleFavorite(filtered[index]),
+                          onTap: () => openPlayer(filtered[index]),
+                        ),
+                      ),
+                      childCount: filtered.length,
+                      addAutomaticKeepAlives: true,
+                      addRepaintBoundaries: false,
+                    ),
                   ),
                 ),
+                if (_isLoadingMore)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: SizedBox(
+                          width: 26,
+                          height: 26,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                        ),
+                      ),
+                    ),
+                  )
+                else if (!_hasMore && filtered.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                      child: Center(
+                        child: Text(
+                          '${context.tr('showingAllPlayers')} (${filtered.length})',
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ],
-          );
-        },
-      );
-    },
-  );
-}
-
-class _FloatingPager extends StatelessWidget {
-  const _FloatingPager({
-    required this.currentPage,
-    required this.totalPages,
-    required this.onChanged,
-  });
-
-  final int currentPage;
-  final int totalPages;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Material(
-      elevation: 12,
-      borderRadius: BorderRadius.circular(28),
-      color: AppColors.navy,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextButton.icon(
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-                disabledForegroundColor: Colors.white30,
-              ),
-              onPressed: currentPage > 1
-                  ? () => onChanged(currentPage - 1)
-                  : null,
-              icon: const Icon(Icons.chevron_left),
-              label: Text(context.tr('previous')),
-            ),
-            Container(height: 24, width: 1, color: Colors.white24),
-            TextButton.icon(
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-                disabledForegroundColor: Colors.white30,
-              ),
-              onPressed: currentPage < totalPages
-                  ? () => onChanged(currentPage + 1)
-                  : null,
-              iconAlignment: IconAlignment.end,
-              icon: const Icon(Icons.chevron_right),
-              label: Text(context.tr('next')),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _PlayerCard extends StatelessWidget {
@@ -457,49 +512,49 @@ class _PlayerCard extends StatelessWidget {
                   PositionedDirectional(
                     top: 8,
                     end: 8,
-                  child: Material(
-                    color: Colors.white.withValues(alpha: .94),
-                    shape: const CircleBorder(),
-                    elevation: 2,
-                    child: IconButton(
-                      tooltip: context.tr(
-                        isFavorite ? 'removeFavorite' : 'addFavorite',
+                    child: Material(
+                      color: Colors.white.withValues(alpha: .94),
+                      shape: const CircleBorder(),
+                      elevation: 2,
+                      child: IconButton(
+                        tooltip: context.tr(
+                          isFavorite ? 'removeFavorite' : 'addFavorite',
+                        ),
+                        onPressed: favoriteBusy ? null : onFavorite,
+                        icon: favoriteBusy
+                            ? const SizedBox(
+                                width: 19,
+                                height: 19,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Icon(
+                                isFavorite
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                color: isFavorite
+                                    ? const Color(0xFFE5484D)
+                                    : AppColors.navy,
+                              ),
                       ),
-                      onPressed: favoriteBusy ? null : onFavorite,
-                      icon: favoriteBusy
-                          ? const SizedBox(
-                              width: 19,
-                              height: 19,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(
-                              isFavorite
-                                  ? Icons.favorite_rounded
-                                  : Icons.favorite_border_rounded,
-                              color: isFavorite
-                                  ? const Color(0xFFE5484D)
-                                  : AppColors.navy,
-                            ),
                     ),
                   ),
-                ),
-                PositionedDirectional(
-                  top: 56,
-                  end: 8,
-                  child: Column(
-                    children: [
-                      if (player.hasImages)
-                        const _MediaBadge(icon: Icons.photo_camera),
-                      if (player.hasVideos)
-                        const _MediaBadge(icon: Icons.play_arrow),
-                    ],
+                  PositionedDirectional(
+                    top: 56,
+                    end: 8,
+                    child: Column(
+                      children: [
+                        if (player.hasImages)
+                          const _MediaBadge(icon: Icons.photo_camera),
+                        if (player.hasVideos)
+                          const _MediaBadge(icon: Icons.play_arrow),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-        Padding(
+          Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

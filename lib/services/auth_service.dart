@@ -50,6 +50,21 @@ class AuthService {
       ? Supabase.instance.client.auth.currentSession?.accessToken
       : null;
 
+  Future<String?> getFreshAccessToken() async {
+    if (!AppConfig.hasSupabaseConfiguration) return null;
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session == null) return null;
+    if (session.isExpired) {
+      try {
+        final res = await Supabase.instance.client.auth.refreshSession();
+        return res.session?.accessToken ?? session.accessToken;
+      } catch (_) {
+        return session.accessToken;
+      }
+    }
+    return session.accessToken;
+  }
+
   String? get authUserId => AppConfig.hasSupabaseConfiguration
       ? Supabase.instance.client.auth.currentUser?.id
       : null;

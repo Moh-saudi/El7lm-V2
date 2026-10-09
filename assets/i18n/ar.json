@@ -882,5 +882,6 @@
   "nisrHistoryComingSoon": "سنضيف هنا خططك ومحادثاتك المحفوظة في المرحلة التالية.",
   "conversationStartFailed": "تعذر بدء المحادثة، يرجى التحقق من الاتصال والمحاولة لاحقاً",
   "showSkillsRadar": "رادار المهارات الفنية (FUT)",
-  "hideSkillsRadar": "إخفاء رادار المهارات"
+  "hideSkillsRadar": "إخفاء رادار المهارات",
+  "showingAllPlayers": "تم عرض جميع اللاعبين"
 }
