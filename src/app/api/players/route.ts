@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     // 1. Pagination parameters
-    const rawLimit = parseInt(searchParams.get('limit') || '25', 10);
-    const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 25 : rawLimit), 50);
+    const rawLimit = parseInt(searchParams.get('limit') || '30', 10);
+    const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 30 : rawLimit), 100);
     const page = parseInt(searchParams.get('page') || '1', 10);
 
     // 2. Filter parameters
