@@ -37,7 +37,19 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
   @override
   void initState() {
     super.initState();
-    future = widget.dataService.fetchPlayers();
+    _loadVideos();
+  }
+
+  void _loadVideos() {
+    future = widget.dataService.fetchCinemaPlayers(limit: 100);
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _loadVideos();
+      activeIndex = 0;
+    });
+    await future;
   }
 
   Future<void> openFilters(List<Player> players) async {
@@ -64,7 +76,7 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
 
   static String? cleanVideoUrl(String? raw) {
     if (raw == null) return null;
-    var url = raw.trim();
+    var url = raw.trim().replaceAll('\n', '').replaceAll('\r', '');
     if (url.isEmpty) return null;
 
     final httpIdx = url.indexOf('http');
@@ -74,7 +86,8 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
       if (url.startsWith('www.') ||
           url.contains('tiktok.com') ||
           url.contains('youtube.com') ||
-          url.contains('youtu.be')) {
+          url.contains('youtu.be') ||
+          url.contains('facebook.com')) {
         url = 'https://$url';
       } else {
         return null;
@@ -92,6 +105,48 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
     return url;
   }
 
+  static String? _afterSegment(List<String> segments, String target) {
+    final index = segments.indexOf(target);
+    return index >= 0 && index + 1 < segments.length
+        ? segments[index + 1]
+        : null;
+  }
+
+  static String? extractYouTubeId(String rawUrl) {
+    final clean = cleanVideoUrl(rawUrl) ?? rawUrl.trim();
+    final uri = Uri.tryParse(clean);
+    if (uri == null) return null;
+    final host = uri.host.toLowerCase();
+    if (host.contains('youtube.com') || host == 'youtu.be') {
+      if (host == 'youtu.be') {
+        return uri.pathSegments.isNotEmpty
+            ? uri.pathSegments.first.split('?').first.split('&').first
+            : null;
+      } else if (uri.pathSegments.contains('shorts')) {
+        final id = _afterSegment(uri.pathSegments, 'shorts');
+        return id?.split('?').first.split('&').first;
+      } else if (uri.pathSegments.contains('embed')) {
+        final id = _afterSegment(uri.pathSegments, 'embed');
+        return id?.split('?').first.split('&').first;
+      } else {
+        return uri.queryParameters['v']?.split('?').first.split('&').first;
+      }
+    }
+    return null;
+  }
+
+  static String getEffectiveThumbnail(PlayerVideo video, Player player) {
+    if (video.thumbnailUrl.isNotEmpty) return video.thumbnailUrl;
+    final ytId = extractYouTubeId(video.url);
+    if (ytId != null && ytId.isNotEmpty) {
+      return 'https://img.youtube.com/vi/$ytId/hqdefault.jpg';
+    }
+    if (player.imageUrl.isNotEmpty) {
+      return player.imageUrl;
+    }
+    return '';
+  }
+
   static bool isDirectVideoUrl(String url) {
     final clean = cleanVideoUrl(url);
     if (clean == null) return false;
@@ -99,6 +154,7 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
     return base.endsWith('.mp4') ||
         base.endsWith('.webm') ||
         base.endsWith('.mov') ||
+        base.endsWith('.m4v') ||
         clean.contains('supabase.co/storage') ||
         clean.contains('assets.el7lm.com') ||
         clean.contains('r2.dev') ||
@@ -160,9 +216,15 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
                             fontSize: 15,
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        FilledButton.tonalIcon(
+                          onPressed: _refresh,
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          label: const Text('تحديث الفيديوهات'),
+                        ),
                         if (filter.activeCount > 0) ...[
-                          const SizedBox(height: 12),
-                          FilledButton.tonal(
+                          const SizedBox(height: 8),
+                          TextButton(
                             onPressed: () => setState(() {
                               filter = const PlayerFilter(hasVideos: true);
                               activeIndex = 0;
@@ -385,6 +447,7 @@ class _CinemaVideoState extends State<_CinemaVideo> {
                           )
                         : _VideoPoster(
                             video: widget.video,
+                            player: widget.player,
                             failed: failed,
                             onRetry: () {
                               setState(() {
@@ -395,7 +458,10 @@ class _CinemaVideoState extends State<_CinemaVideo> {
                           )
                 : widget.isActive
                     ? _EmbeddedPlatformVideo(url: widget.video.url)
-                    : _VideoPoster(video: widget.video),
+                    : _VideoPoster(
+                        video: widget.video,
+                        player: widget.player,
+                      ),
           ),
         ),
         const IgnorePointer(
@@ -562,6 +628,7 @@ class _EmbeddedPlatformVideo extends StatefulWidget {
 
 class _EmbeddedPlatformVideoState extends State<_EmbeddedPlatformVideo> {
   late final WebViewController controller;
+  bool hasError = false;
 
   @override
   void initState() {
@@ -573,6 +640,11 @@ class _EmbeddedPlatformVideoState extends State<_EmbeddedPlatformVideo> {
         ..setBackgroundColor(Colors.black)
         ..setNavigationDelegate(
           NavigationDelegate(
+            onWebResourceError: (error) {
+              if (error.isForMainFrame ?? true) {
+                if (mounted) setState(() => hasError = true);
+              }
+            },
             onPageFinished: (_) async {
               await controller.runJavaScript('''
                 document.querySelectorAll('video').forEach(function(video) {
@@ -596,9 +668,36 @@ class _EmbeddedPlatformVideoState extends State<_EmbeddedPlatformVideo> {
   }
 
   @override
-  Widget build(BuildContext context) => WebViewWidget(
-        controller: controller,
+  Widget build(BuildContext context) {
+    if (hasError) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline_rounded, color: Colors.white70, size: 48),
+            const SizedBox(height: 12),
+            Text(
+              context.tr('videoPlaybackFailed'),
+              style: const TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.green,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => _safeLaunchVideoUrl(context, widget.url),
+              icon: const Icon(Icons.open_in_new_rounded, size: 18),
+              label: Text(context.tr('openVideo')),
+            ),
+          ],
+        ),
       );
+    }
+    return WebViewWidget(
+      controller: controller,
+    );
+  }
 
   static Uri _embeddableUri(String source) {
     final clean = _PlayerCinemaScreenState.cleanVideoUrl(source) ?? source;
@@ -688,30 +787,38 @@ Future<void> _safeLaunchVideoUrl(BuildContext context, String rawUrl) async {
 }
 
 class _VideoPoster extends StatelessWidget {
-  const _VideoPoster({required this.video, this.failed = false, this.onRetry});
+  const _VideoPoster({
+    required this.video,
+    required this.player,
+    this.failed = false,
+    this.onRetry,
+  });
 
   final PlayerVideo video;
+  final Player player;
   final bool failed;
   final VoidCallback? onRetry;
 
   @override
-  Widget build(BuildContext context) => Stack(
-        fit: StackFit.expand,
-        children: [
-          if (video.thumbnailUrl.isNotEmpty)
-            kIsWeb
-                ? Image.network(
-                    video.thumbnailUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) =>
-                        const ColoredBox(color: Colors.black),
-                  )
-                : CachedNetworkImage(
-                    imageUrl: video.thumbnailUrl,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, _, _) =>
-                        const ColoredBox(color: Colors.black),
-                  ),
+  Widget build(BuildContext context) {
+    final thumb = _PlayerCinemaScreenState.getEffectiveThumbnail(video, player);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (thumb.isNotEmpty)
+          kIsWeb
+              ? Image.network(
+                  thumb,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) =>
+                      const ColoredBox(color: Colors.black),
+                )
+              : CachedNetworkImage(
+                  imageUrl: thumb,
+                  fit: BoxFit.cover,
+                  errorWidget: (_, _, _) =>
+                      const ColoredBox(color: Colors.black),
+                ),
           if (!failed)
             const Center(
               child:
@@ -769,6 +876,7 @@ class _VideoPoster extends StatelessWidget {
             ),
         ],
       );
+  }
 }
 
 class _CinemaAction extends StatelessWidget {

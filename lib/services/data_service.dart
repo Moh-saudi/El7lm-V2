@@ -158,8 +158,14 @@ class DataService {
     String? position,
     String? city,
     String? country,
+    bool? hasVideos,
   }) {
-    if (page == 1 && search == null && position == null && city == null && country == null) {
+    if (page == 1 &&
+        search == null &&
+        position == null &&
+        city == null &&
+        country == null &&
+        hasVideos == null) {
       final existing = _playersInFlight;
       if (existing != null) return existing;
       late final Future<List<Player>> pending;
@@ -170,6 +176,7 @@ class DataService {
         position: position,
         city: city,
         country: country,
+        hasVideos: hasVideos,
       ).whenComplete(() {
         if (identical(_playersInFlight, pending)) _playersInFlight = null;
       });
@@ -183,7 +190,91 @@ class DataService {
       position: position,
       city: city,
       country: country,
+      hasVideos: hasVideos,
     );
+  }
+
+  Future<List<Player>> fetchCinemaPlayers({
+    int page = 1,
+    int limit = 50,
+    String? position,
+    String? country,
+  }) async {
+    // 1. Try dedicated /api/players/videos endpoint first
+    try {
+      final query = <String, String>{
+        'limit': '$limit',
+        'offset': '${(page - 1) * limit}',
+      };
+      if (position != null && position.isNotEmpty) query['position'] = position;
+      if (country != null && country.isNotEmpty) query['country'] = country;
+
+      final response = await _api.get('/api/players/videos', query: query);
+      final data = response['data'];
+      if (data is List && data.isNotEmpty) {
+        final players = data
+            .whereType<Map>()
+            .map((row) => Player.fromJson(Map<String, dynamic>.from(row)))
+            .where((p) => p.hasVideos)
+            .toList();
+        if (players.isNotEmpty) return players;
+      }
+    } catch (e) {
+      debugPrint('[DataService] /api/players/videos error: $e');
+    }
+
+    // 2. Fallback to /api/players?hasVideos=true
+    try {
+      final query = <String, String>{
+        'limit': '$limit',
+        'page': '$page',
+        'hasVideos': 'true',
+      };
+      if (position != null && position.isNotEmpty) query['position'] = position;
+      if (country != null && country.isNotEmpty) query['country'] = country;
+
+      final response = await _api.get('/api/players', query: query);
+      final data = response['data'];
+      if (data is List && data.isNotEmpty) {
+        final players = data
+            .whereType<Map>()
+            .map((row) => Player.fromJson(Map<String, dynamic>.from(row)))
+            .where((p) => p.hasVideos)
+            .toList();
+        if (players.isNotEmpty) return players;
+      }
+    } catch (e) {
+      debugPrint('[DataService] /api/players?hasVideos=true error: $e');
+    }
+
+    // 3. Direct Supabase fallback if authenticated
+    if (AppConfig.hasSupabaseConfiguration && _auth.hasSession) {
+      try {
+        final client = Supabase.instance.client;
+        final from = (page - 1) * limit;
+        final to = from + limit - 1;
+        var playerQuery = client
+            .from('players')
+            .select()
+            .not('videos', 'is', null)
+            .neq('videos', '[]');
+        if (position != null && position.isNotEmpty) {
+          playerQuery = playerQuery.ilike('position', '%$position%');
+        }
+        if (country != null && country.isNotEmpty) {
+          playerQuery = playerQuery.ilike('country', '%$country%');
+        }
+        final rows = await playerQuery.range(from, to);
+        return rows
+            .map((r) => Player.fromJson(Map<String, dynamic>.from(r)))
+            .where((p) => p.hasVideos)
+            .toList();
+      } catch (e) {
+        debugPrint('[DataService] supabase cinema fallback error: $e');
+      }
+    }
+
+    return const [];
   }
 
   Future<List<Player>> _fetchPlayers({
@@ -193,6 +284,7 @@ class DataService {
     String? position,
     String? city,
     String? country,
+    bool? hasVideos,
   }) async {
     // 1. Try canonical /api/players endpoint first
     try {
@@ -204,6 +296,7 @@ class DataService {
       if (position != null && position.isNotEmpty) query['position'] = position;
       if (city != null && city.isNotEmpty) query['city'] = city;
       if (country != null && country.isNotEmpty) query['country'] = country;
+      if (hasVideos != null) query['hasVideos'] = '$hasVideos';
 
       final response = await _api.get('/api/players', query: query);
       final data = response['data'];

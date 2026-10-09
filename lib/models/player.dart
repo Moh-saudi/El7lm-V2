@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class Player {
   const Player({
     required this.id,
@@ -84,30 +86,59 @@ class Player {
   }
 
   factory Player.fromJson(Map<String, dynamic> json) {
-    final rawVideos = json['videos'];
+    final rawVideos = json['videos'] ?? json['video_urls'] ?? json['uploaded_videos'];
+    List<dynamic> parsedVideoList = const [];
+    if (rawVideos is List) {
+      parsedVideoList = rawVideos;
+    } else if (rawVideos is String && rawVideos.trim().startsWith('[')) {
+      try {
+        final decoded = jsonDecode(rawVideos);
+        if (decoded is List) parsedVideoList = decoded;
+      } catch (_) {}
+    } else if (rawVideos is String && rawVideos.trim().isNotEmpty) {
+      parsedVideoList = [rawVideos.trim()];
+    }
+
+    final playerId = '${json['id'] ?? json['uid'] ?? ''}';
+    final playerName = '${json['full_name'] ?? json['name'] ?? ''}';
+    final parsedVideos = <PlayerVideo>[];
+    for (final item in parsedVideoList) {
+      if (item is Map) {
+        parsedVideos.add(
+          PlayerVideo.fromJson(
+            Map<String, dynamic>.from(item),
+            playerId: playerId,
+            playerName: playerName,
+            playerPayload: json,
+          ),
+        );
+      } else if (item is String && item.trim().isNotEmpty) {
+        parsedVideos.add(
+          PlayerVideo(
+            id: item.trim(),
+            url: item.trim(),
+            thumbnailUrl: '',
+            title: '',
+            playerId: playerId,
+            playerName: playerName,
+            playerPayload: Map<String, dynamic>.from(json),
+            rawPayload: {'url': item.trim()},
+          ),
+        );
+      }
+    }
+
     final explicitAge = _asInt(json['age']);
     return Player(
-      id: '${json['id'] ?? json['uid'] ?? ''}',
-      name: '${json['full_name'] ?? json['name'] ?? ''}',
+      id: playerId,
+      name: playerName,
       position: '${json['primary_position'] ?? json['position'] ?? ''}',
       country: '${json['country'] ?? json['nationality'] ?? ''}',
       age:
           explicitAge ??
           _ageFromBirthDate(json['birth_date'] ?? json['birthDate']),
       imageUrl: _extractImageUrl(json),
-      videos: rawVideos is List
-          ? rawVideos
-                .whereType<Map>()
-                .map(
-                  (item) => PlayerVideo.fromJson(
-                    Map<String, dynamic>.from(item),
-                    playerId: '${json['id'] ?? json['uid'] ?? ''}',
-                    playerName: '${json['full_name'] ?? json['name'] ?? ''}',
-                    playerPayload: json,
-                  ),
-                )
-                .toList()
-          : const [],
+      videos: parsedVideos,
       rawPayload: Map<String, dynamic>.from(json),
     );
   }
@@ -226,10 +257,10 @@ class PlayerVideo {
     required String playerName,
     required Map<String, dynamic> playerPayload,
   }) => PlayerVideo(
-    id: '${json['id'] ?? json['videoId'] ?? json['url'] ?? ''}',
-    url: '${json['url'] ?? json['video_url'] ?? json['videoUrl'] ?? ''}',
+    id: '${json['id'] ?? json['videoId'] ?? json['url'] ?? json['link'] ?? ''}',
+    url: '${json['url'] ?? json['video_url'] ?? json['videoUrl'] ?? json['src'] ?? json['link'] ?? ''}',
     thumbnailUrl:
-        '${json['thumbnail'] ?? json['thumbnailUrl'] ?? json['poster'] ?? ''}',
+        '${json['thumbnail'] ?? json['thumbnailUrl'] ?? json['poster'] ?? json['thumb'] ?? ''}',
     title: '${json['title'] ?? json['description'] ?? json['desc'] ?? ''}',
     playerId: playerId,
     playerName: playerName,
