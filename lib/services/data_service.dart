@@ -981,7 +981,9 @@ class DataService {
       final storagePath = presignedRes['storagePath']?.toString();
       final videoId = presignedRes['videoId']?.toString();
 
-      if (presignedUrl != null && publicUrl != null) {
+      if (presignedUrl != null &&
+          publicUrl != null &&
+          !presignedUrl.contains('.r2.cloudflarestorage.com/assets/')) {
         final uploadHeaders = <String, String>{
           'Content-Type': mimeType,
         };
@@ -1021,17 +1023,17 @@ class DataService {
       debugPrint('⚠️ Direct R2 Presigned upload error: $r2Err');
     }
 
-    // 2. Secondary fallback for Images/Documents: Multipart upload via /api/storage/upload
-    if (!isVideo && bytes.lengthInBytes <= 15 * 1024 * 1024) {
+    // 2. Secondary fallback for Media (Images, Videos, Docs <= 35MB): Multipart upload via /api/storage/upload
+    if (bytes.lengthInBytes <= 35 * 1024 * 1024) {
       try {
         final uri = Uri.parse('${AppConfig.apiBaseUrl}/api/storage/upload');
         final request = http.MultipartRequest('POST', uri);
         if (token != null && token.isNotEmpty) {
           request.headers['Authorization'] = 'Bearer $token';
         }
-        final bucket = isDocument ? 'documents' : 'profile-images';
-        request.fields['bucket'] = bucket;
-        request.fields['path'] = '$bucket/$fileName';
+        final folder = isVideo ? 'videos' : (isDocument ? 'documents' : 'profile-images');
+        request.fields['bucket'] = folder;
+        request.fields['path'] = '$folder/$ownerId/${timeStamp}_$fileName';
         request.fields['contentType'] = mimeType;
         request.fields['userId'] = ownerId;
         request.files.add(
@@ -1046,6 +1048,8 @@ class DataService {
           if (uploadedUrl != null && '$uploadedUrl'.isNotEmpty) {
             return '$uploadedUrl';
           }
+        } else {
+          debugPrint('⚠️ /api/storage/upload multipart fallback error: ${res.statusCode} ${res.body}');
         }
       } catch (uploadErr) {
         debugPrint('⚠️ /api/storage/upload multipart fallback error: $uploadErr');

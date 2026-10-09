@@ -432,11 +432,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver, Ticker
       try {
         final profile = await widget.dataService.fetchProfile(AccountType.player);
         if (isVideo) {
-          final list = (profile.values['video_urls'] as List? ?? profile.values['videos'] as List? ?? []).map((e) => '$e').toList();
+          final list = (profile.values['video_urls'] as List? ?? profile.values['videos'] as List? ?? []).map((e) => '$e').where((e) => !e.contains('test.com')).toList();
           if (!list.contains(publicUrl)) list.add(publicUrl);
           await widget.dataService.savePlayerProfile(profile, {'video_urls': list, 'videos': list});
         } else {
-          final list = (profile.values['additional_images'] as List? ?? profile.values['images'] as List? ?? []).map((e) => '$e').toList();
+          final list = (profile.values['additional_images'] as List? ?? profile.values['images'] as List? ?? []).map((e) => '$e').where((e) => !e.contains('test.com')).toList();
           if (!list.contains(publicUrl)) list.add(publicUrl);
           await widget.dataService.savePlayerProfile(profile, {'additional_images': list, 'images': list});
         }

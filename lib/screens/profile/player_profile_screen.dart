@@ -304,7 +304,7 @@ class _ProfileFormState extends State<_ProfileForm> {
               }
               return item.toString();
             })
-            .where((s) => s.trim().isNotEmpty && s != 'null')
+            .where((s) => s.trim().isNotEmpty && s != 'null' && !s.contains('test.com'))
             .toList();
         if (list.isNotEmpty) return list;
       } else if (raw is String && raw.trim().isNotEmpty && raw != 'null') {
@@ -1238,7 +1238,11 @@ class _ProfileFormState extends State<_ProfileForm> {
       extension: 'jpg',
       contentType: 'image/jpeg',
     );
-    await widget.dataService.savePlayerProfile(widget.profile, {'image': path});
+    await widget.dataService.savePlayerProfile(widget.profile, {
+      'image': path,
+      'profile_image': path,
+      'profile_image_url': path,
+    });
     if (mounted) widget.onRefresh();
   }
 }
