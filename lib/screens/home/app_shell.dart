@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/media_upload_manager.dart';
+import '../../services/app_update_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -73,6 +74,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver, Ticker
       _navBarController.forward();
       _ensureProfileCompletionReminder();
       _setupRealtimeNotifications();
+      AppUpdateService.checkAndPromptUpdate(context);
     });
     _initialUnreadTimer = Timer(const Duration(seconds: 2), () {
       if (mounted) _fetchUnreadCounts();
