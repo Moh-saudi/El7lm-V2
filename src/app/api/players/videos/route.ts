@@ -32,12 +32,14 @@ const PUBLIC_COLUMNS = [
   'profile_image',
   'profile_image_url',
   'image',
+  'isDeleted',
+  'updated_at',
 ].join(',');
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '20', 10)), 50);
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50', 10)), 100);
     const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10));
     const country = searchParams.get('country');
     const position = searchParams.get('position');
@@ -47,14 +49,19 @@ export async function GET(request: NextRequest) {
       .from('players')
       .select(PUBLIC_COLUMNS)
       .not('videos', 'is', null)
-      .range(offset, offset + limit - 1);
+      .neq('videos', '[]')
+      .or('isDeleted.is.null,isDeleted.eq.false');
 
     if (country) {
-      query = query.eq('country', country);
+      query = query.ilike('country', `%${country}%`);
     }
     if (position) {
-      query = query.or(`primary_position.eq.${position},position.eq.${position}`);
+      query = query.or(`primary_position.ilike.%${position}%,position.ilike.%${position}%`);
     }
+
+    query = query
+      .order('updated_at', { ascending: false, nullsFirst: false })
+      .range(offset, offset + limit - 1);
 
     const { data, error } = await query;
 
@@ -64,20 +71,35 @@ export async function GET(request: NextRequest) {
     }
 
     const players = (data ?? [])
-      .filter((p: any) => p.isDeleted !== true && p.is_deleted !== true && (Array.isArray(p.videos) ? p.videos.length > 0 : Boolean(p.videos)))
-      .map((p: any) => ({
-        id: p.id,
-        full_name: p.full_name || p.name,
-        name: p.name || p.full_name,
-        videos: p.videos,
-        age: calculateAge(p.birth_date),
-        birth_date: p.birth_date,
-        primary_position: p.primary_position || p.position,
-        position: p.position || p.primary_position,
-        country: p.country,
-        nationality: p.nationality,
-        profile_image_url: p.profile_image_url || p.profile_image || p.image || null,
-      }));
+      .filter((p: any) => {
+        if (p.isDeleted === true || p.is_deleted === true) return false;
+        if (!p.videos) return false;
+        if (Array.isArray(p.videos) && p.videos.length === 0) return false;
+        return true;
+      })
+      .map((p: any) => {
+        const displayName = p.full_name || p.name || 'لاعب';
+        const displayPosition = p.primary_position || p.position || 'لاعب';
+        const displayImage = p.profile_image_url || p.profile_image || p.image || null;
+
+        return {
+          id: p.id,
+          uid: p.id,
+          full_name: displayName,
+          name: displayName,
+          videos: p.videos,
+          age: calculateAge(p.birth_date),
+          birth_date: p.birth_date,
+          birthDate: p.birth_date,
+          primary_position: displayPosition,
+          position: displayPosition,
+          country: p.country || '',
+          nationality: p.nationality || p.country || '',
+          profile_image_url: displayImage,
+          profileImageUrl: displayImage,
+          avatar: displayImage,
+        };
+      });
 
     return NextResponse.json(
       {

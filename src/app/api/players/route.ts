@@ -25,6 +25,7 @@ const SAFE_PUBLIC_PLAYER_COLUMNS = [
   'isActive',
   'created_at',
   'updated_at',
+  'videos',
 ].join(',');
 
 function calculateAge(birthDateStr: string | null | undefined): number | null {
@@ -54,6 +55,7 @@ export async function GET(request: NextRequest) {
     const city = searchParams.get('city')?.trim();
     const country = searchParams.get('country')?.trim();
     const search = searchParams.get('search')?.trim();
+    const hasVideos = searchParams.get('hasVideos') === 'true';
 
     const admin = getSupabaseAdmin();
 
@@ -63,6 +65,11 @@ export async function GET(request: NextRequest) {
 
     // Exclude deleted records safely (where isDeleted is null or false)
     query = query.or('isDeleted.is.null,isDeleted.eq.false');
+
+    // Filter players with non-empty videos if hasVideos=true
+    if (hasVideos) {
+      query = query.not('videos', 'is', null).neq('videos', '[]');
+    }
 
     // Apply filters on physical columns
     if (position) {
@@ -149,6 +156,7 @@ export async function GET(request: NextRequest) {
         currentClub: displayClub,
         bio: p.brief || '',
         isActive,
+        videos: Array.isArray(p.videos) ? p.videos : (p.videos ? [p.videos] : []),
         createdAt: p.created_at || p.updated_at || null,
         updatedAt: p.updated_at || null,
       };
