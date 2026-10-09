@@ -80,18 +80,13 @@ export async function POST(request: NextRequest) {
 
         const s3Client = buildS3Client(endpoint, accessKeyId, secretAccessKey);
 
-        // اختر البوكت: استخدم requestedBucket إذا كان موجوداً في R2، وإلا FALLBACK_BUCKET
-        const configuredBucket = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || FALLBACK_BUCKET;
-        const targetBucket = KNOWN_R2_BUCKETS.includes(requestedBucket)
-            ? requestedBucket
-            : KNOWN_R2_BUCKETS.includes(configuredBucket)
-                ? configuredBucket
-                : FALLBACK_BUCKET;
+        // All public media served under assets.el7lm.com must be stored in 'el7lmplatform'
+        const targetBucket = 'el7lmplatform';
 
-        // المسار داخل البوكت
-        const targetKey = path.startsWith(requestedBucket + '/')
-            ? path.slice(requestedBucket.length + 1)
-            : path;
+        // المسار داخل البوكت لضمان مطابقته لروابط CDN
+        const cleanPath = path.trim().replace(/^\/+/, '');
+        const folder = (requestedBucket || 'profile-images').trim().replace(/\/+$/, '');
+        const targetKey = cleanPath.startsWith(folder + '/') ? cleanPath : `${folder}/${cleanPath}`;
 
         console.log('📦 [R2 Upload]', { requestedBucket, targetBucket, targetKey, endpoint });
 

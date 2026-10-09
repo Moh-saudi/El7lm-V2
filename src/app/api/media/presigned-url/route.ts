@@ -30,15 +30,22 @@ function getR2Config() {
   const secretAccessKey =
     process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_SECRET_ACCESS_KEY;
 
-  const bucket =
+  let rawBucket = (
     process.env.CLOUDFLARE_R2_BUCKET ||
     process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET ||
-    'el7lmplatform';
+    'el7lmplatform'
+  ).trim();
+
+  // Prevent invalid bucket 'assets' and default securely to 'el7lmplatform'
+  if (!rawBucket || rawBucket === 'assets') {
+    rawBucket = 'el7lmplatform';
+  }
+  const bucket = rawBucket;
 
   const publicUrl = (
     process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL ||
     process.env.CLOUDFLARE_R2_PUBLIC_URL ||
-    'https://pub-d4c7563dad1f41f3adf319c6a25a5f44.r2.dev'
+    'https://assets.el7lm.com'
   ).replace(/\/$/, '');
 
   return { accountId, endpoint, accessKeyId, secretAccessKey, bucket, publicUrl };

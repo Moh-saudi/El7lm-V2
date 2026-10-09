@@ -27,7 +27,8 @@ export class CloudflareStorageProvider implements StorageProvider {
     }) {
         this.accountId = config.accountId;
         this.publicUrl = config.publicUrl || `https://pub-${config.accountId}.r2.dev`;
-        this.mainBucket = config.bucketName || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'assets';
+        const configured = config.bucketName || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET;
+        this.mainBucket = (configured && configured !== 'assets') ? configured : 'el7lmplatform';
 
         // إنشاء S3 Client متوافق مع Cloudflare R2
         this.s3Client = new S3Client({
