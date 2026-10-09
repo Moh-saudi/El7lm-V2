@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -242,13 +243,18 @@ class _PlayerCinemaScreenState extends State<PlayerCinemaScreen> {
                     '${filter.query}-${filter.activeCount}-${videos.length}',
                   ),
                   scrollDirection: Axis.vertical,
+                  physics: const BouncingScrollPhysics(
+                    parent: PageScrollPhysics(),
+                  ),
                   itemCount: videos.length,
                   onPageChanged: (index) => setState(() => activeIndex = index),
-                  itemBuilder: (context, index) => _CinemaVideo(
-                    player: videos[index].player,
-                    video: videos[index].video,
-                    isActive: isTabVisible && index == activeIndex,
-                    onPlayerTap: () => openPlayer(videos[index].player),
+                  itemBuilder: (context, index) => RepaintBoundary(
+                    child: _CinemaVideo(
+                      player: videos[index].player,
+                      video: videos[index].video,
+                      isActive: isTabVisible && index == activeIndex,
+                      onPlayerTap: () => openPlayer(videos[index].player),
+                    ),
                   ),
                 ),
             PositionedDirectional(
@@ -351,6 +357,8 @@ class _CinemaVideo extends StatefulWidget {
 
 class _CinemaVideoState extends State<_CinemaVideo> {
   VideoPlayerController? controller;
+  Timer? _activationTimer;
+  bool _deferredActive = false;
   bool failed = false;
   bool manuallyPaused = false;
   bool liked = false;
@@ -362,14 +370,29 @@ class _CinemaVideoState extends State<_CinemaVideo> {
   @override
   void initState() {
     super.initState();
+    if (widget.isActive) {
+      _deferredActive = true;
+    }
     if (isDirectVideo) _initializeDirectVideo();
   }
 
   @override
   void didUpdateWidget(covariant _CinemaVideo oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (isDirectVideo && oldWidget.isActive != widget.isActive) {
-      _syncPlayback();
+    if (oldWidget.isActive != widget.isActive) {
+      _activationTimer?.cancel();
+      if (widget.isActive) {
+        _activationTimer = Timer(const Duration(milliseconds: 200), () {
+          if (mounted) setState(() => _deferredActive = true);
+        });
+      } else {
+        if (_deferredActive) {
+          setState(() => _deferredActive = false);
+        }
+      }
+      if (isDirectVideo) {
+        _syncPlayback();
+      }
     }
   }
 
@@ -406,6 +429,7 @@ class _CinemaVideoState extends State<_CinemaVideo> {
 
   @override
   void dispose() {
+    _activationTimer?.cancel();
     controller?.dispose();
     super.dispose();
   }
@@ -430,12 +454,14 @@ class _CinemaVideoState extends State<_CinemaVideo> {
             color: Colors.black,
             child: isDirectVideo
                 ? ready
-                    ? FittedBox(
-                        fit: BoxFit.contain,
-                        child: SizedBox(
-                          width: controller!.value.size.width,
-                          height: controller!.value.size.height,
-                          child: VideoPlayer(controller!),
+                    ? RepaintBoundary(
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          child: SizedBox(
+                            width: controller!.value.size.width,
+                            height: controller!.value.size.height,
+                            child: VideoPlayer(controller!),
+                          ),
                         ),
                       )
                     : loading
@@ -456,7 +482,7 @@ class _CinemaVideoState extends State<_CinemaVideo> {
                               });
                             },
                           )
-                : widget.isActive
+                : (widget.isActive && _deferredActive)
                     ? _EmbeddedPlatformVideo(url: widget.video.url)
                     : _VideoPoster(
                         video: widget.video,
@@ -694,8 +720,10 @@ class _EmbeddedPlatformVideoState extends State<_EmbeddedPlatformVideo> {
         ),
       );
     }
-    return WebViewWidget(
-      controller: controller,
+    return RepaintBoundary(
+      child: WebViewWidget(
+        controller: controller,
+      ),
     );
   }
 
@@ -816,6 +844,8 @@ class _VideoPoster extends StatelessWidget {
               : CachedNetworkImage(
                   imageUrl: thumb,
                   fit: BoxFit.cover,
+                  memCacheWidth: 720,
+                  memCacheHeight: 1280,
                   errorWidget: (_, _, _) =>
                       const ColoredBox(color: Colors.black),
                 ),

@@ -317,18 +317,18 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver, Ticker
                   leading: const CircleAvatar(
                     backgroundColor: Color(0xFFEFF6FF),
                     child: Icon(
-                      Icons.videocam_rounded,
+                      Icons.camera_alt_rounded,
                       color: Color(0xFF2563EB),
                     ),
                   ),
-                  title: Text(
-                    context.tr('uploadVideoClip'),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  title: const Text(
+                    'التقاط صورة فورية بالكاميرا',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text(context.tr('mp4FormatsDesc')),
+                  subtitle: const Text('تصوير مباشر بكاميرا الهاتف'),
                   onTap: () {
                     Navigator.pop(sheetCtx);
-                    _pickAndUpload(ImageSource.gallery, isVideo: true);
+                    _pickAndUpload(ImageSource.camera, isVideo: false);
                   },
                 ),
                 const SizedBox(height: 8),
@@ -348,6 +348,44 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver, Ticker
                   onTap: () {
                     Navigator.pop(sheetCtx);
                     _pickAndUpload(ImageSource.gallery, isVideo: false);
+                  },
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFFEF2F2),
+                    child: Icon(
+                      Icons.videocam_rounded,
+                      color: Colors.red,
+                    ),
+                  ),
+                  title: const Text(
+                    'تصوير فيديو فوري بالكاميرا',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: const Text('تسجيل فيديو مباشر لمهارات اللاعب'),
+                  onTap: () {
+                    Navigator.pop(sheetCtx);
+                    _pickAndUpload(ImageSource.camera, isVideo: true);
+                  },
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFF5F3FF),
+                    child: Icon(
+                      Icons.video_library_rounded,
+                      color: Color(0xFF7C3AED),
+                    ),
+                  ),
+                  title: Text(
+                    context.tr('uploadVideoClip'),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(context.tr('mp4FormatsDesc')),
+                  onTap: () {
+                    Navigator.pop(sheetCtx);
+                    _pickAndUpload(ImageSource.gallery, isVideo: true);
                   },
                 ),
               ],
@@ -383,12 +421,28 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver, Ticker
           ? file.name.split('.').last
           : (isVideo ? 'mp4' : 'jpg');
       final contentType = isVideo ? 'video/mp4' : 'image/jpeg';
-      await widget.dataService.uploadPlayerMedia(
+      final publicUrl = await widget.dataService.uploadPlayerMedia(
         bytes: bytes,
         extension: ext,
         contentType: contentType,
         isVideo: isVideo,
       );
+
+      // Persist to player profile in database
+      try {
+        final profile = await widget.dataService.fetchProfile(AccountType.player);
+        if (isVideo) {
+          final list = (profile.values['video_urls'] as List? ?? profile.values['videos'] as List? ?? []).map((e) => '$e').toList();
+          if (!list.contains(publicUrl)) list.add(publicUrl);
+          await widget.dataService.savePlayerProfile(profile, {'video_urls': list, 'videos': list});
+        } else {
+          final list = (profile.values['additional_images'] as List? ?? profile.values['images'] as List? ?? []).map((e) => '$e').toList();
+          if (!list.contains(publicUrl)) list.add(publicUrl);
+          await widget.dataService.savePlayerProfile(profile, {'additional_images': list, 'images': list});
+        }
+      } catch (profileSaveErr) {
+        debugPrint('⚠️ Non-fatal profile media sync warning: $profileSaveErr');
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

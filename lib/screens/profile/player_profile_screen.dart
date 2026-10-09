@@ -1192,8 +1192,46 @@ class _ProfileFormState extends State<_ProfileForm> {
 
 
   Future<void> _pickProfilePhoto() async {
-    final file = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (file == null) return;
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'تغيير الصورة الشخصية',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFEFF6FF),
+                child: Icon(Icons.camera_alt_rounded, color: Color(0xFF2563EB)),
+              ),
+              title: const Text('التقاط صورة فورية بالكاميرا', style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFECFDF5),
+                child: Icon(Icons.photo_library_rounded, color: AppColors.green),
+              ),
+              title: const Text('اختيار من المعرض', style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+    final file = await ImagePicker().pickImage(source: source, imageQuality: 85);
+    if (file == null || !mounted) return;
     final bytes = await file.readAsBytes();
     final path = await widget.dataService.uploadProfileImage(
       bytes: bytes,
@@ -1201,7 +1239,7 @@ class _ProfileFormState extends State<_ProfileForm> {
       contentType: 'image/jpeg',
     );
     await widget.dataService.savePlayerProfile(widget.profile, {'image': path});
-    widget.onRefresh();
+    if (mounted) widget.onRefresh();
   }
 }
 
@@ -1496,8 +1534,47 @@ class _MediaSectionState extends State<_MediaSection> {
   bool uploading = false;
 
   Future<void> _pickAndUploadImage() async {
-    final file = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (file == null) return;
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'رفع صورة اللاعب',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFEFF6FF),
+                child: Icon(Icons.camera_alt_rounded, color: Color(0xFF2563EB)),
+              ),
+              title: const Text('التقاط صورة فورية بالكاميرا', style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFECFDF5),
+                child: Icon(Icons.photo_library_rounded, color: AppColors.green),
+              ),
+              title: const Text('اختيار صورة من المعرض', style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+    final file = await ImagePicker().pickImage(source: source, imageQuality: 85);
+    if (file == null || !mounted) return;
     setState(() => uploading = true);
     try {
       final bytes = await file.readAsBytes();
@@ -1527,7 +1604,7 @@ class _MediaSectionState extends State<_MediaSection> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      ).showSnackBar(SnackBar(content: Text(context.errorText(e))));
     } finally {
       if (mounted) setState(() => uploading = false);
     }
@@ -1540,32 +1617,52 @@ class _MediaSectionState extends State<_MediaSection> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(20),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const Text(
+              'رفع فيديو مهارات اللاعب',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(
-                Icons.video_library_rounded,
-                color: AppColors.green,
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFFEF2F2),
+                child: Icon(Icons.videocam_rounded, color: Colors.red),
               ),
-              title: Text(context.tr('chooseFromGallery')),
-              onTap: () => Navigator.pop(context, 'file'),
+              title: const Text('تصوير فيديو فوري بالكاميرا', style: TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.pop(ctx, 'camera'),
             ),
             ListTile(
-              leading: const Icon(Icons.link_rounded, color: Colors.red),
-              title: Text(context.tr('addVideoLink')),
-              onTap: () => Navigator.pop(context, 'link'),
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFECFDF5),
+                child: Icon(Icons.video_library_rounded, color: AppColors.green),
+              ),
+              title: Text(context.tr('chooseFromGallery'), style: const TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.pop(ctx, 'file'),
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFEFF6FF),
+                child: Icon(Icons.link_rounded, color: Color(0xFF2563EB)),
+              ),
+              title: Text(context.tr('addVideoLink'), style: const TextStyle(fontWeight: FontWeight.w600)),
+              onTap: () => Navigator.pop(ctx, 'link'),
             ),
           ],
         ),
       ),
     );
 
-    if (action == 'file') {
-      final file = await ImagePicker().pickVideo(source: ImageSource.gallery);
-      if (file == null) return;
+    if (action == 'camera' || action == 'file') {
+      final file = await ImagePicker().pickVideo(
+        source: action == 'camera' ? ImageSource.camera : ImageSource.gallery,
+      );
+      if (file == null || !mounted) return;
       setState(() => uploading = true);
       try {
         final bytes = await file.readAsBytes();
@@ -1595,7 +1692,7 @@ class _MediaSectionState extends State<_MediaSection> {
         if (!mounted) return;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        ).showSnackBar(SnackBar(content: Text(context.errorText(e))));
       } finally {
         if (mounted) setState(() => uploading = false);
       }
