@@ -1,841 +1,1025 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { 
-  Sparkles, 
-  BrainCircuit, 
-  Trophy, 
-  Users, 
-  ShieldCheck, 
-  ArrowLeft, 
-  ArrowRight, 
-  Zap, 
-  Activity, 
-  Target, 
-  CheckCircle2, 
-  Bot, 
-  BarChart3,
-  Dna,
-  Sun,
-  Moon,
-  Menu,
-  X,
-  Phone,
-  Mail,
-  Send,
-  Play,
-  Download,
-  Flame,
-  Award
-} from 'lucide-react';
-import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
-import { useTranslation } from '@/lib/i18n';
+import { LANGUAGES, D5, SupportedLang, getTranslation } from '@/lib/website-i18n';
 
-// ─── Direct Contacts ────────────────────────────────────────────────────────
-const CONTACT_NUMBERS = [
-  { country: 'مصر', code: 'EG', flag: '🇪🇬', phone: '+20 10 1779 9580', tel: '+201017799580', whatsapp: '201017799580' },
-  { country: 'قطر', code: 'QA', flag: '🇶🇦', phone: '+974 7054 2458', tel: '+97470542458', whatsapp: '97470542458' },
+// ─── Data Definitions ────────────────────────────────────────────────────────
+interface OfficeCountry {
+  id: string;
+  hq?: number;
+  ll: [number, number];
+  p?: [number, number, number];
+  x?: number;
+  y?: number;
+}
+
+const COUNTRIES: OfficeCountry[] = [
+  { id: 'qa', hq: 1, ll: [51.5, 25.3] },
+  { id: 'eg', ll: [31.3, 30.1] },
+  { id: 'sa', ll: [46.7, 24.7] },
+  { id: 'ma', ll: [-6.85, 34] },
+  { id: 'pt', ll: [-9.1, 38.7] },
+  { id: 'es', ll: [-3.7, 40.4] },
+  { id: 'sn', ll: [-17.45, 14.7] },
 ];
 
-// ─── Social Channels ────────────────────────────────────────────────────────
+const COUNTRY_FLAGS: Record<string, string> = {
+  qa: '/assets/img/flags/qa.png',
+  eg: '/assets/img/flags/eg.png',
+  sa: '/assets/img/flags/sa.png',
+  ma: '/assets/img/flags/ma.png',
+  pt: '/assets/img/flags/pt.png',
+  es: '/assets/img/flags/es.png',
+  sn: '/assets/img/flags/sn.png',
+};
+
+const SERVICES: [string, string, string[]][] = [
+  ['v1', 'opps', ['s11', 's12', 's13']],
+  ['v2', 'clubs', ['s21', 's22', 's23']],
+  ['v3', 'academies', ['s31', 's32', 's33']],
+  ['v4', 'coaches', ['s41', 's42', 's43']],
+  ['v5', 'agents', ['s51', 's52', 's53']],
+  ['v6', '', ['s61', 's62', 's63']],
+  ['v7', '', ['s71', 's72', 'c3']],
+  ['v8', '', ['s81', 's82', 's83']],
+];
+
+const CREST_PALETTES = [
+  ['#161653', '#DB9B2C'],
+  ['#0F723C', '#fff'],
+  ['#DB9B2C', '#161653'],
+  ['#8A1538', '#f3f1ef'],
+  ['#0b6e99', '#f2c94c'],
+  ['#c0392b', '#fff'],
+  ['#2c3e50', '#e67e22'],
+  ['#6c3483', '#f1c40f'],
+];
+
+const CREST_EMBLEMS = [
+  (c: string) => `<polygon points="50,28 56,46 75,46 60,57 66,75 50,64 34,75 40,57 25,46 44,46" fill="${c}"/>`,
+  (c: string) => `<rect x="18" y="52" width="64" height="12" fill="${c}"/><rect x="18" y="72" width="64" height="8" fill="${c}"/>`,
+  (c: string) => `<path d="M20 70L50 34L80 70L68 70L50 48L32 70Z" fill="${c}"/>`,
+  (c: string) => `<circle cx="50" cy="55" r="20" fill="none" stroke="${c}" stroke-width="7"/><circle cx="50" cy="55" r="6" fill="${c}"/>`,
+  (c: string) => `<path d="M30 40L44 62L50 36L56 62L70 40L66 74L34 74Z" fill="${c}"/>`,
+  (c: string) => `<path d="M55 26L34 58H50L44 84L68 50H52Z" fill="${c}"/>`,
+  (c: string) => `<path d="M18 60Q34 40 50 60T82 60" fill="none" stroke="${c}" stroke-width="8"/><path d="M18 76Q34 56 50 76T82 76" fill="none" stroke="${c}" stroke-width="8"/>`,
+];
+
 const SOCIAL_LINKS = [
-  {
-    name: 'Facebook',
-    href: 'https://www.facebook.com/profile.php?id=61577797509887',
-    icon: (
-      <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-      </svg>
-    ),
-  },
-  {
-    name: 'Instagram',
-    href: 'https://www.instagram.com/hagzzel7lm/',
-    icon: (
-      <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-      </svg>
-    ),
-  },
-  {
-    name: 'X (Twitter)',
-    href: 'https://twitter.com/el7lm',
-    icon: (
-      <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-      </svg>
-    ),
-  },
-  {
-    name: 'YouTube',
-    href: 'https://www.youtube.com/@el7lm',
-    icon: (
-      <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-      </svg>
-    ),
-  },
-  {
-    name: 'LinkedIn',
-    href: 'https://www.linkedin.com/company/hagzz',
-    icon: (
-      <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-        <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 10.9v8.37H9.2V10.9H6.46M7.83 6.45c-.9 0-1.63.73-1.63 1.63s.73 1.63 1.63 1.63 1.63-.73 1.63-1.63c0-.9-.73-1.63-1.63-1.63z"/>
-      </svg>
-    ),
-  }
+  { id: 'yt', name: 'YouTube', url: 'https://www.youtube.com/@el7lm25', color: '#FF0000' },
+  { id: 'ig', name: 'Instagram', url: 'https://www.instagram.com/hagzzel7lm/', color: '#E4405F' },
+  { id: 'fb', name: 'Facebook', url: 'https://www.facebook.com/profile.php?id=61577797509887', color: '#0866FF' },
+  { id: 'tt', name: 'TikTok', url: 'https://www.tiktok.com/@meskel7lm', color: '#000000' },
+  { id: 'li', name: 'LinkedIn', url: 'https://www.linkedin.com/showcase/el7lm', color: '#0A66C2' },
 ];
 
-// ─── Nisr AI Quick Demo Prompts ─────────────────────────────────────────────
-const QUICK_PROMPTS = [
-  {
-    id: 1,
-    title: 'تحليل المهارة والتسديد',
-    playerMsg: 'حلل أداء تسديداتي بالقدم اليسرى وسرعة دوران الكرة',
-    nisrReply: 'دقة التسديد 86% وقوة الارتطام 92 كم/ساعة. لديك زاوية تفوق ممتازة في الثلث الأخير. يُوصى بتمارين الاتزان الحركي بالقدم الثابتة.',
-    metric: 'دقة 86% • ممتاز'
-  },
-  {
-    id: 2,
-    title: 'خطة المركز والتطوير',
-    playerMsg: 'ما هو برنامجي لرفع سرعة التحول كجناح مهاجم؟',
-    nisrReply: 'تم إعداد خطة 4 أسابيع للرشاقة والانفجار العضلي في أول 10 أمتار، مع تمارين تمركز في المساحات النصفية لصناعة الفرص.',
-    metric: 'تسارع 1.62 ث • جاهز'
-  },
-  {
-    id: 3,
-    title: 'توصية الكشافين',
-    playerMsg: 'هل مقاطعي تؤهلني لتجارب أداء أندية الدرجة الأولى؟',
-    nisrReply: 'معدل النجاح الفردي 89%. ملفك متوافق مع معايير كشافة أندية الفئة (أ). تم تمييز بصمتك الرياضية الرقمية لظهور مميز.',
-    metric: 'مؤشر الكشافين 9.2/10'
-  }
+const PG_MAP: Record<string, string> = {
+  opps: 'v1',
+  clubs: 'v2',
+  academies: 'v3',
+  coaches: 'v4',
+  agents: 'v5',
+  about: 'pt_about',
+  jobs: 'pt_jobs',
+  privacy: 'pt_priv',
+  terms: 'pt_terms',
+};
+
+// World map coastlines data for 3D Globe
+const PG_DATA = [
+  [[-168,66],[-156,71],[-125,70],[-95,68],[-82,68],[-65,60],[-56,52],[-66,45],[-70,42],[-76,35],[-81,31],[-80,26],[-82,28],[-90,30],[-97,27],[-97,22],[-91,19],[-87,21],[-88,16],[-83,15],[-83,10],[-77,8],[-80,7],[-85,10],[-92,14],[-105,20],[-110,24],[-112,29],[-117,32],[-121,35],[-124,40],[-124,47],[-130,54],[-140,60],[-152,59],[-165,55],[-158,58],[-165,62]],
+  [[-73,78],[-60,82],[-30,83],[-18,78],[-20,70],[-40,65],[-48,61],[-54,67],[-58,75]],
+  [[-77,8],[-72,12],[-62,10],[-52,5],[-50,0],[-44,-2],[-35,-5],[-39,-14],[-41,-22],[-48,-26],[-53,-34],[-58,-38],[-62,-39],[-65,-45],[-68,-52],[-70,-55],[-74,-50],[-73,-40],[-71,-30],[-70,-18],[-76,-14],[-81,-5],[-80,0]],
+  [[-9,37],[-9,43],[-2,44],[-4,48],[2,51],[8,54],[8,57],[5,58],[5,62],[14,67],[25,71],[31,70],[40,67],[44,68],[60,69],[70,73],[80,73],[100,77],[113,74],[130,71],[150,71],[170,70],[180,68],[180,65],[170,62],[160,61],[156,51],[150,59],[140,54],[135,44],[130,42],[129,35],[126,35],[122,40],[118,38],[122,31],[120,24],[110,21],[108,16],[109,11],[105,9],[100,13],[100,7],[103,1],[98,8],[98,16],[94,17],[92,22],[87,21],[80,15],[78,8],[73,18],[72,22],[68,24],[62,25],[57,26],[56,26],[51.5,24.5],[50,26],[48,30],[56,25],[58,23],[55,17],[44,12.5],[43,16],[39,21],[35,28],[34,31],[36,36],[30,36],[27,37],[26,40],[23,40],[22,37],[20,40],[19,42],[13,45],[18,40],[16,38],[12,42],[8,44],[3,43],[-1,38],[-5,36]],
+  [[-17,21],[-17,14],[-12,8],[-8,4],[5,5],[9,4],[9,-1],[13,-6],[12,-17],[15,-27],[18,-34],[26,-34],[32,-28],[35,-22],[40,-15],[40,-10],[39,-5],[41,-2],[51,12],[43,12],[38,18],[33,28],[32,31],[25,32],[20,31],[10,34],[11,37],[0,36],[-6,36],[-10,30]],
+  [[44,-25],[47,-25],[50,-15],[49,-12],[44,-17]],
+  [[114,-22],[122,-18],[130,-12],[137,-12],[142,-11],[146,-19],[153,-26],[150,-37],[141,-38],[135,-35],[130,-32],[115,-34]],
+  [[-5,50],[1,51],[2,53],[-2,56],[-5,58],[-6,56],[-3,54],[-5,52]],
+  [[130,32],[136,34],[141,38],[142,45],[140,41],[135,36]],
+  [[109,1],[117,7],[119,1],[116,-4],[110,-3]]
 ];
+
+function isInsidePolygon(P: number[][], x: number, y: number): boolean {
+  let c = false;
+  for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+    const a = P[i], b = P[j];
+    if (((a[1] > y) !== (b[1] > y)) && (x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0])) {
+      c = !c;
+    }
+  }
+  return c;
+}
+
+const RAD = Math.PI / 180;
+const LAND_POINTS: [number, number][] = [];
+for (let la = -58; la <= 82; la += 2.4) {
+  const st = Math.min(20, 2.4 / Math.max(0.1, Math.cos(la * RAD)));
+  for (let lo = -180; lo < 180; lo += st) {
+    for (let k = 0; k < PG_DATA.length; k++) {
+      if (isInsidePolygon(PG_DATA[k], lo, la)) {
+        LAND_POINTS.push([lo, la]);
+        break;
+      }
+    }
+  }
+}
 
 export default function HomePage() {
-  const { locale } = useTranslation();
-  const isRtl = locale === 'ar';
-  
-  // Default to daylight white mode as requested
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [selectedPromptIndex, setSelectedPromptIndex] = useState(0);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // ─── State Management ───────────────────────────────────────────────────────
+  const [lang, setLang] = useState<SupportedLang>('ar');
+  const [langIndex, setLangIndex] = useState<number>(1);
+  const [view, setView] = useState<'home' | 'offices' | 'page'>('home');
+  const [subPageSlug, setSubPageSlug] = useState<string>('');
+  const [preloaderDone, setPreloaderDone] = useState<boolean>(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [videoPaused, setVideoPaused] = useState<boolean>(false);
+  const [showPopup, setShowPopup] = useState<boolean>(false);
+  const [selectedOffice, setSelectedOffice] = useState<OfficeCountry>(COUNTRIES[0]);
+  const [openServiceIdx, setOpenServiceIdx] = useState<number | null>(null);
+  const [headerDark, setHeaderDark] = useState<boolean>(false);
 
-  const activePrompt = QUICK_PROMPTS[selectedPromptIndex];
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const globeAnimRef = useRef<number | null>(null);
+
+  // Translation helper
+  const t = useCallback((k: string, fb?: string) => getTranslation(k, langIndex, fb), [langIndex]);
+
+  // Initial load: language, hash, preloader timer
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('mk_lang') as SupportedLang;
+      if (saved && ['en', 'ar', 'fr', 'es', 'pt'].includes(saved)) {
+        const idx = LANGUAGES.findIndex(l => l.code === saved);
+        if (idx !== -1) {
+          setLang(saved);
+          setLangIndex(idx);
+          document.documentElement.lang = saved;
+          document.documentElement.dir = LANGUAGES[idx].dir;
+        }
+      } else {
+        // Default Arabic
+        document.documentElement.lang = 'ar';
+        document.documentElement.dir = 'rtl';
+      }
+    } catch {}
+
+    const timer = setTimeout(() => {
+      setPreloaderDone(true);
+    }, 2400);
+
+    // Popup timer
+    const popTimer = setTimeout(() => {
+      try {
+        if (!sessionStorage.getItem('mk_pop')) {
+          setShowPopup(true);
+        }
+      } catch {
+        setShowPopup(true);
+      }
+    }, 7000);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(popTimer);
+    };
+  }, []);
+
+  // Sync document title and html attributes on lang change
+  useEffect(() => {
+    document.title = t('ttl');
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+  }, [lang, t]);
+
+  // Hash Routing
+  const handleHashChange = useCallback(() => {
+    const hash = window.location.hash;
+    if (hash === '#offices') {
+      setView('offices');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (hash.startsWith('#p/')) {
+      const slug = hash.replace('#p/', '');
+      setSubPageSlug(slug);
+      setView('page');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setView('home');
+      if (hash && hash !== '#home') {
+        const el = document.getElementById(hash.slice(1));
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [handleHashChange]);
+
+  // Header background on scroll
+  useEffect(() => {
+    const onScroll = () => {
+      if (view === 'page') {
+        setHeaderDark(true);
+      } else if (view === 'offices') {
+        setHeaderDark(false);
+      } else {
+        setHeaderDark(window.scrollY > window.innerHeight * 0.7);
+      }
+    };
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [view]);
+
+  // Language switch handler
+  const handleLangSelect = (newLang: SupportedLang) => {
+    const idx = LANGUAGES.findIndex(l => l.code === newLang);
+    if (idx !== -1) {
+      setLang(newLang);
+      setLangIndex(idx);
+      try {
+        localStorage.setItem('mk_lang', newLang);
+      } catch {}
+    }
+  };
+
+  // Video play/pause
+  const toggleVideo = () => {
+    if (videoRef.current) {
+      if (videoRef.current.paused) {
+        videoRef.current.play();
+        setVideoPaused(false);
+      } else {
+        videoRef.current.pause();
+        setVideoPaused(true);
+      }
+    }
+  };
+
+  // Dismiss popup
+  const dismissPopup = () => {
+    setShowPopup(false);
+    try {
+      sessionStorage.setItem('mk_pop', '1');
+    } catch {}
+  };
+
+  // ─── 3D Globe Implementation ───────────────────────────────────────────────
+  useEffect(() => {
+    if (view !== 'offices') {
+      if (globeAnimRef.current) cancelAnimationFrame(globeAnimRef.current);
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let l0 = -20;
+    let p0 = 22;
+    let targetL: number | null = null;
+    let targetP = 0;
+    let isAuto = true;
+    let dragData: { x: number; y: number; l: number; p: number } | null = null;
+    let movedDist = 0;
+    let W = 0;
+    let R = 0;
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      W = rect.width;
+      canvas.width = W * dpr;
+      canvas.height = W * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      R = W * 0.44;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    function project(lo: number, la: number): [number, number, number] {
+      const a = (lo - l0) * RAD;
+      const f = la * RAD;
+      const q = p0 * RAD;
+      const cf = Math.cos(f);
+      const ca = Math.cos(a);
+      return [
+        cf * Math.sin(a),
+        Math.cos(q) * Math.sin(f) - Math.sin(q) * cf * ca,
+        Math.sin(q) * Math.sin(f) + Math.cos(q) * cf * ca,
+      ];
+    }
+
+    function draw(ts: number) {
+      if (!dragData) {
+        if (targetL !== null) {
+          const dl = ((targetL - l0 + 540) % 360) - 180;
+          l0 += dl * 0.07;
+          p0 += (targetP - p0) * 0.07;
+          if (Math.abs(dl) < 0.05 && Math.abs(targetP - p0) < 0.05) {
+            targetL = null;
+          }
+        } else if (isAuto) {
+          l0 += 0.12;
+        }
+      }
+
+      ctx.clearRect(0, 0, W, W);
+      const c = W / 2;
+
+      // Base sphere gradient
+      const grad = ctx.createRadialGradient(c - R * 0.3, c - R * 0.35, R * 0.1, c, c, R);
+      grad.addColorStop(0, '#2b2b8a');
+      grad.addColorStop(1, '#0c0c3a');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(c, c, R, 0, 7);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(219,155,44,.4)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Land dots
+      for (let i = 0; i < LAND_POINTS.length; i++) {
+        const pt = project(LAND_POINTS[i][0], LAND_POINTS[i][1]);
+        if (pt[2] > 0) {
+          ctx.fillStyle = `rgba(243,241,239,${(0.15 + 0.6 * pt[2]).toFixed(2)})`;
+          ctx.fillRect(c + R * pt[0] - 1, c - R * pt[1] - 1, 2, 2);
+        }
+      }
+
+      // Office pins
+      COUNTRIES.forEach(country => {
+        const p = project(country.ll[0], country.ll[1]);
+        country.p = p;
+        if (p[2] <= 0.05) return;
+
+        const x = c + R * p[0];
+        const y = c - R * p[1];
+        country.x = x;
+        country.y = y;
+
+        const isSel = selectedOffice.id === country.id;
+        const wave = ((((ts / 1000 + country.ll[0] * 0.1) % 1.6) + 1.6) % 1.6) / 1.6;
+
+        ctx.strokeStyle = `rgba(219,155,44,${((1 - wave) * 0.8).toFixed(2)})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, 5 + wave * 18, 0, 7);
+        ctx.stroke();
+
+        ctx.fillStyle = isSel ? '#fff' : '#DB9B2C';
+        ctx.beginPath();
+        ctx.arc(x, y, isSel ? 7 : 5, 0, 7);
+        ctx.fill();
+
+        if (isSel) {
+          ctx.strokeStyle = '#DB9B2C';
+          ctx.beginPath();
+          ctx.arc(x, y, 12, 0, 7);
+          ctx.stroke();
+        }
+      });
+
+      globeAnimRef.current = requestAnimationFrame(draw);
+    }
+
+    globeAnimRef.current = requestAnimationFrame(draw);
+
+    function hit(e: PointerEvent): OfficeCountry | null {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      let closest: OfficeCountry | null = null;
+      let minD = 24;
+
+      COUNTRIES.forEach(c => {
+        if (c.p && c.p[2] > 0.05 && c.x !== undefined && c.y !== undefined) {
+          const d = Math.hypot(c.x - x, c.y - y);
+          if (d < minD) {
+            minD = d;
+            closest = c;
+          }
+        }
+      });
+      return closest;
+    }
+
+    const onPointerDown = (e: PointerEvent) => {
+      dragData = { x: e.clientX, y: e.clientY, l: l0, p: p0 };
+      movedDist = 0;
+      targetL = null;
+      canvas.setPointerCapture(e.pointerId);
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (dragData) {
+        const dx = e.clientX - dragData.x;
+        const dy = e.clientY - dragData.y;
+        movedDist = Math.max(movedDist, Math.abs(dx) + Math.abs(dy));
+        l0 = dragData.l - dx * 0.4;
+        p0 = Math.max(-60, Math.min(60, dragData.p + dy * 0.3));
+      } else {
+        canvas.style.cursor = hit(e) ? 'pointer' : 'grab';
+      }
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      if (dragData && movedDist < 6) {
+        const clicked = hit(e);
+        if (clicked) {
+          setSelectedOffice(clicked);
+          isAuto = false;
+          targetL = clicked.ll[0];
+          targetP = Math.max(-40, Math.min(50, clicked.ll[1] * 0.8));
+        }
+      }
+      dragData = null;
+    };
+
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerup', onPointerUp);
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerup', onPointerUp);
+      if (globeAnimRef.current) cancelAnimationFrame(globeAnimRef.current);
+    };
+  }, [view, selectedOffice.id]);
+
+  // Pick country from chip button
+  const handlePickCountry = (c: OfficeCountry) => {
+    setSelectedOffice(c);
+  };
+
+  const currentAddress = [t(`ci_${selectedOffice.id}`, ''), t(`ad_${selectedOffice.id}`, '')]
+    .filter(Boolean)
+    .join(lang === 'ar' ? '، ' : ', ') || t('addr_na');
+  const currentPhone = selectedOffice.id === 'eg' ? '201017799580' : '97470542458';
 
   return (
-    <div 
-      className={`min-h-screen transition-colors duration-300 font-sans ${
-        isDarkMode 
-          ? 'bg-[#0B1120] text-slate-100' 
-          : 'bg-[#F9FBF9] text-slate-800'
-      } ${isRtl ? 'rtl' : 'ltr'}`} 
-      dir={isRtl ? 'rtl' : 'ltr'}
-    >
-      {/* ─── 1. TOP ANNOUNCEMENT BAR ─────────────────────────────────────── */}
-      <div className={`${isDarkMode ? 'bg-emerald-950/70 border-b border-emerald-800/40 text-emerald-300' : 'bg-emerald-50 border-b border-emerald-100 text-emerald-800'} py-2 px-4 text-xs font-medium`}>
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span>
-              {isRtl 
-                ? 'تطبيق الحلم متاح الآن على Google Play — مدعوم بمساعد نسر الذكي (Nisr AI)' 
-                : 'El7lm App is now Live on Google Play — Powered by Nisr AI'}
-            </span>
-          </div>
+    <div className={`el7lm-site ${preloaderDone ? 'go' : ''}`}>
+      {/* ─── Inline SVG Sprite ──────────────────────────────────────────────── */}
+      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+        <symbol id="i-wa" viewBox="0 0 24 24">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52s.198-.298.298-.497c.099-.198.05-.371-.025-.52s-.669-1.612-.916-2.207c-.242-.579-.487-.5-.669-.51a13 13 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074s2.096 3.2 5.077 4.487c.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413s.248-1.289.173-1.413c-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.82 9.82 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.82 11.82 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.9 11.9 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.82 11.82 0 0 0-3.48-8.413" />
+        </symbol>
+        <symbol id="i-gp" viewBox="0 0 24 24">
+          <path d="m22.018 13.298-3.919 2.218-3.515-3.493 3.543-3.521 3.891 2.202a1.49 1.49 0 0 1 0 2.594M1.337.924a1.5 1.5 0 0 0-.112.568v21.017c0 .217.045.419.124.6l11.155-11.087zm12.207 10.065 3.258-3.238L3.45.195a1.47 1.47 0 0 0-.946-.179zm0 2.067-11 10.933c.298.036.612-.016.906-.183l13.324-7.54z" />
+        </symbol>
+        <symbol id="i-ap" viewBox="0 0 24 24">
+          <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+        </symbol>
+        <symbol id="i-yt" viewBox="0 0 24 24">
+          <path d="M23.498 6.186a3.02 3.02 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.02 3.02 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.02 3.02 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.02 3.02 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814M9.545 15.568V8.432L15.818 12z" />
+        </symbol>
+        <symbol id="i-ig" viewBox="0 0 24 24">
+          <path d="M7.03.084c-1.277.06-2.149.264-2.91.563a5.9 5.9 0 0 0-2.124 1.388 5.9 5.9 0 0 0-1.38 2.127C.321 4.926.12 5.8.064 7.076s-.069 1.688-.063 4.947.021 3.667.083 4.947c.061 1.277.264 2.149.563 2.911.308.789.72 1.457 1.388 2.123a5.9 5.9 0 0 0 2.129 1.38c.763.295 1.636.496 2.913.552 1.278.056 1.689.069 4.947.063s3.668-.021 4.947-.082c1.28-.06 2.147-.265 2.91-.563a5.9 5.9 0 0 0 2.123-1.388 5.9 5.9 0 0 0 1.38-2.129c.295-.763.496-1.636.551-2.912.056-1.28.07-1.69.063-4.948-.006-3.258-.02-3.667-.081-4.947-.06-1.28-.264-2.148-.564-2.911a5.9 5.9 0 0 0-1.387-2.123 5.86 5.86 0 0 0-2.128-1.38C19.074.322 18.202.12 16.924.066 15.647.009 15.236-.006 11.977 0S8.31.021 7.03.084m.14 21.693c-1.17-.05-1.805-.245-2.228-.408a3.7 3.7 0 0 1-1.382-.895 3.7 3.7 0 0 1-.9-1.378c-.165-.423-.363-1.058-.417-2.228-.06-1.264-.072-1.644-.08-4.848-.006-3.204.006-3.583.061-4.848.05-1.169.246-1.805.408-2.228.216-.561.477-.96.895-1.382a3.7 3.7 0 0 1 1.379-.9c.423-.165 1.057-.361 2.227-.417 1.265-.06 1.644-.072 4.848-.08 3.203-.006 3.583.006 4.85.062 1.168.05 1.804.244 2.227.408.56.216.96.475 1.382.895s.681.817.9 1.378c.165.422.362 1.056.417 2.227.06 1.265.074 1.645.08 4.848.005 3.203-.006 3.583-.061 4.848-.051 1.17-.245 1.805-.408 2.23-.216.56-.477.96-.896 1.38a3.7 3.7 0 0 1-1.378.9c-.422.165-1.058.362-2.226.418-1.266.06-1.645.072-4.85.079s-3.582-.006-4.848-.06m9.783-16.192a1.44 1.44 0 1 0 1.437-1.442 1.44 1.44 0 0 0-1.437 1.442M5.839 12.012a6.161 6.161 0 1 0 12.323-.024 6.162 6.162 0 0 0-12.323.024M8 12.008A4 4 0 1 1 12.008 16 4 4 0 0 1 8 12.008" />
+        </symbol>
+        <symbol id="i-fb" viewBox="0 0 24 24">
+          <path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a9 9 0 0 1 1.141.195v3.325a9 9 0 0 0-.653-.036 27 27 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.7 1.7 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647" />
+        </symbol>
+        <symbol id="i-tt" viewBox="0 0 24 24">
+          <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07" />
+        </symbol>
+        <symbol id="i-li" viewBox="0 0 448 512">
+          <path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z" />
+        </symbol>
+      </svg>
 
-          <div className="hidden sm:flex items-center gap-4 text-xs">
-            <a 
-              href="https://play.google.com/store/apps/details?id=com.el7lm.mobile" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 hover:underline font-semibold"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>{isRtl ? 'تحميل التطبيق' : 'Get Mobile App'}</span>
-            </a>
-            <span className="text-emerald-400/50">|</span>
-            <div className="flex items-center gap-2">
-              <Phone className="w-3.5 h-3.5" />
-              <a href="tel:+201017799580" dir="ltr" className="hover:underline">+20 10 1779 9580</a>
-            </div>
-          </div>
+      {/* ─── Preloader ──────────────────────────────────────────────────────── */}
+      <div id="pre" className={preloaderDone ? 'out' : ''}>
+        <div id="grid">
+          {Array.from({ length: 48 }).map((_, i) => (
+            <div
+              key={i}
+              className="c"
+              style={{
+                ['--k' as any]: ['#fff', '#DB9B2C', '#0F723C', '#fff'][i % 4],
+                ['--o' as any]: (0.15 + (i % 5) * 0.1).toFixed(2),
+                ['--d' as any]: (1.2 + (i % 3) * 0.6).toFixed(1) + 's',
+                animationDelay: `-${(i % 4) * 0.7}s`,
+              }}
+            />
+          ))}
+        </div>
+        <div className="badge">
+          <img src="/assets/img/logo-emblem.png" alt="El7lm Logo" />
         </div>
       </div>
 
-      {/* ─── 2. MAIN HEADER & NAVIGATION ──────────────────────────────────── */}
-      <header className={`sticky top-0 z-50 backdrop-blur-md transition-colors border-b ${
-        isDarkMode 
-          ? 'bg-[#0B1120]/90 border-slate-800 text-white' 
-          : 'bg-white/95 border-slate-100 text-slate-800 shadow-sm'
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
-          
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 p-[2px] shadow-md group-hover:scale-105 transition-transform">
-              <div className="w-full h-full bg-white rounded-[10px] flex items-center justify-center overflow-hidden p-1">
-                <Image 
-                  src="/el7lm-logo.png" 
-                  alt="El7lm Logo" 
-                  width={34} 
-                  height={34} 
-                  priority
-                  className="object-contain"
-                />
-              </div>
-            </div>
-            <div>
-              <span className={`text-xl font-extrabold tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                {isRtl ? 'الحلـم' : 'El7lm'}
-              </span>
-              <span className="block text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
-                AI Sports Platform
-              </span>
-            </div>
+      {/* ─── Header ─────────────────────────────────────────────────────────── */}
+      <header id="hd" className={`${headerDark ? 'dk' : ''} ${mobileMenuOpen ? 'mo' : ''}`}>
+        <a className="logo" href="#home" onClick={() => setView('home')}>
+          <span className="lm">
+            <img src="/assets/img/logo-emblem.png" alt="Logo" />
+          </span>
+          <span>{t('br')}</span>
+        </a>
+
+        <button
+          id="mb"
+          aria-label={t('mn')}
+          aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        >
+          <span />
+          <span />
+        </button>
+
+        <nav id="nv" className={mobileMenuOpen ? 'open' : ''}>
+          <a
+            href="#svc"
+            onClick={() => {
+              setView('home');
+              setMobileMenuOpen(false);
+            }}
+          >
+            {t('n_svc')}
+          </a>
+          <a
+            href="#nasr"
+            onClick={() => {
+              setView('home');
+              setMobileMenuOpen(false);
+            }}
+          >
+            {t('n_nasr')}
+          </a>
+          <a
+            href="#offices"
+            onClick={() => {
+              setView('offices');
+              setMobileMenuOpen(false);
+            }}
+          >
+            {t('n_off')}
+          </a>
+          <a
+            href="#ct"
+            onClick={() => {
+              setView('home');
+              setMobileMenuOpen(false);
+            }}
+          >
+            {t('n_ct')}
+          </a>
+
+          {/* Quick Platform Sign In link */}
+          <Link
+            href="/login"
+            className="pill"
+            style={{ padding: '0.4rem 1.1rem', fontSize: '0.9rem' }}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            {t('n_login')}
           </Link>
 
-          {/* Desktop Nav Links */}
-          <nav className="hidden lg:flex items-center gap-6 text-sm font-semibold">
-            <Link href="/" className="text-emerald-600 font-bold transition-colors">
-              {isRtl ? 'الرئيسية' : 'Home'}
-            </Link>
-            <Link 
-              href="/opportunities" 
-              className={`transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-emerald-600'}`}
-            >
-              {isRtl ? 'الفرص والتجارب' : 'Opportunities'}
-            </Link>
-            <Link 
-              href="/services/clubs" 
-              className={`transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-emerald-600'}`}
-            >
-              {isRtl ? 'الأندية' : 'Clubs'}
-            </Link>
-            <Link 
-              href="/services/academies" 
-              className={`transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-emerald-600'}`}
-            >
-              {isRtl ? 'الأكاديميات' : 'Academies'}
-            </Link>
-            <Link 
-              href="/services/trainers" 
-              className={`transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-emerald-600'}`}
-            >
-              {isRtl ? 'المدربون' : 'Trainers'}
-            </Link>
-            <Link 
-              href="/services/agents" 
-              className={`transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-emerald-600'}`}
-            >
-              {isRtl ? 'الوكلاء' : 'Agents'}
-            </Link>
-            <Link 
-              href="/contact" 
-              className={`transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-emerald-600'}`}
-            >
-              {isRtl ? 'تواصل معنا' : 'Contact'}
-            </Link>
-            <Link 
-              href="/careers" 
-              className={`transition-colors ${isDarkMode ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-emerald-600'}`}
-            >
-              {isRtl ? 'الوظائف' : locale === 'fr' ? 'Carrières' : 'Careers'}
-            </Link>
-          </nav>
-
-          {/* Actions: Theme Toggle, Language, Auth */}
-          <div className="flex items-center gap-3">
-            {/* Theme Toggle (Daylight / Dark) */}
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className={`p-2.5 rounded-xl border transition-all ${
-                isDarkMode 
-                  ? 'bg-slate-800 border-slate-700 text-amber-400 hover:bg-slate-700' 
-                  : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
-              }`}
-              title={isDarkMode ? 'تبديل للوضع النهاري الأبيض' : 'تبديل للوضع الليلي'}
-              aria-label="Toggle Theme"
-            >
-              {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </button>
-
-            {/* Language Switcher */}
-            <LanguageSwitcher />
-
-            {/* Auth Buttons */}
-            <div className="hidden sm:flex items-center gap-2">
-              <Link
-                href="/auth/login"
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
-                  isDarkMode 
-                    ? 'text-slate-300 hover:text-white' 
-                    : 'text-slate-700 hover:text-emerald-600'
-                }`}
-              >
-                {isRtl ? 'دخول' : 'Sign In'}
-              </Link>
-
-              <Link
-                href="/auth/register"
-                className="px-5 py-2 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all hover:scale-105"
-              >
-                {isRtl ? 'انضم الآن' : 'Get Started'}
-              </Link>
-            </div>
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100"
-              aria-label="Open Menu"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Dropdown Menu */}
-        {mobileMenuOpen && (
-          <div className={`lg:hidden px-4 pt-3 pb-6 border-t ${
-            isDarkMode ? 'bg-[#0B1120] border-slate-800' : 'bg-white border-slate-100'
-          }`}>
-            <div className="flex flex-col gap-3 font-semibold text-sm">
-              <Link href="/" onClick={() => setMobileMenuOpen(false)} className="py-2 text-emerald-600">
-                {isRtl ? 'الرئيسية' : 'Home'}
-              </Link>
-              <Link href="/opportunities" onClick={() => setMobileMenuOpen(false)} className="py-2">
-                {isRtl ? 'الفرص والتجارب' : 'Opportunities'}
-              </Link>
-              <Link href="/services/clubs" onClick={() => setMobileMenuOpen(false)} className="py-2">
-                {isRtl ? 'الأندية' : 'Clubs'}
-              </Link>
-              <Link href="/services/academies" onClick={() => setMobileMenuOpen(false)} className="py-2">
-                {isRtl ? 'الأكاديميات' : 'Academies'}
-              </Link>
-              <Link href="/services/trainers" onClick={() => setMobileMenuOpen(false)} className="py-2">
-                {isRtl ? 'المدربون' : 'Trainers'}
-              </Link>
-              <Link href="/services/agents" onClick={() => setMobileMenuOpen(false)} className="py-2">
-                {isRtl ? 'الوكلاء' : 'Agents'}
-              </Link>
-              <Link href="/contact" onClick={() => setMobileMenuOpen(false)} className="py-2">
-                {isRtl ? 'تواصل معنا' : 'Contact'}
-              </Link>
-              <Link href="/careers" onClick={() => setMobileMenuOpen(false)} className="py-2">
-                {isRtl ? 'الوظائف' : locale === 'fr' ? 'Carrières' : 'Careers'}
-              </Link>
-              <div className="pt-3 border-t border-slate-200 flex flex-col gap-2">
-                <Link
-                  href="/auth/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center py-2.5 rounded-xl border border-slate-300 font-bold"
-                >
-                  {isRtl ? 'تسجيل الدخول' : 'Sign In'}
-                </Link>
-                <Link
-                  href="/auth/register"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center py-2.5 rounded-xl bg-emerald-600 text-white font-bold"
-                >
-                  {isRtl ? 'إنشاء حساب جديد' : 'Sign Up Free'}
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
+          {/* Language Switcher */}
+          <select
+            id="lgs"
+            value={lang}
+            onChange={(e) => handleLangSelect(e.target.value as SupportedLang)}
+            aria-label="Language"
+          >
+            {LANGUAGES.map(item => (
+              <option key={item.code} value={item.code}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </nav>
       </header>
 
-      {/* ─── 3. HERO & NISR AI SHOWCASE (CONCISE & VISUAL) ───────────────── */}
-      <section className="relative overflow-hidden pt-10 pb-16 sm:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            
-            {/* Left Col: Concise Value Proposition */}
-            <div className="lg:col-span-6 space-y-6 text-center lg:text-start">
-              
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{isRtl ? 'الجيل الجديد لاكتشاف المواهب الرياضية' : 'Next-Gen Sports Talent Discovery'}</span>
-              </div>
+      {/* ─── View 1: Home ───────────────────────────────────────────────────── */}
+      {view === 'home' && (
+        <main id="home">
+          {/* Hero */}
+          <div className="hero">
+            <video
+              ref={videoRef}
+              className="hv"
+              id="hv"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              poster="/assets/img/hero-poster.jpg"
+              aria-hidden="true"
+            >
+              <source src="/assets/video/hero.mp4" type="video/mp4" />
+            </video>
+            <div className="hs" />
+            <button className="pv" id="pv" onClick={toggleVideo} aria-label={videoPaused ? t('pv_r') : t('pv_p')}>
+              {videoPaused ? '▶' : '❚❚'}
+            </button>
 
-              {/* Main Headline */}
-              <h1 className={`text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.15] ${
-                isDarkMode ? 'text-white' : 'text-slate-900'
-              }`}>
-                {isRtl ? (
-                  <>
-                    احترف كـرة القدم <br />
-                    بذكاء <span className="text-emerald-600">نسـر الرياضي</span>
-                  </>
-                ) : (
-                  <>
-                    Unlock Pro Football <br />
-                    Powered by <span className="text-emerald-600">Nisr AI</span>
-                  </>
-                )}
-              </h1>
+            <h1>
+              <span><i>{t('h1a')}</i></span>
+              <span><i>{t('h1b')}</i></span>
+            </h1>
 
-              {/* Short Tagline (No long verbose text) */}
-              <p className={`text-base sm:text-lg max-w-xl mx-auto lg:mx-0 leading-relaxed ${
-                isDarkMode ? 'text-slate-300' : 'text-slate-600'
-              }`}>
-                {isRtl 
-                  ? 'منصتك المباشرة لتحليل المهارات بالذكاء الاصطناعي، توثيق البصمة الرياضية، والتواصل الرسمي مع الأندية والكشافين دون تعقيد.'
-                  : 'Your direct pathway to AI-powered skill analysis, verified athletic profiling, and direct access to clubs and certified scouts.'}
-              </p>
-
-              {/* Primary Call to Action */}
-              <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-3">
-                <Link
-                  href="/auth/register"
-                  className="px-7 py-3.5 rounded-xl font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/20 transition-all hover:scale-105 inline-flex items-center gap-2"
-                >
-                  <span>{isRtl ? 'ابدأ تجربة نسر الآن' : 'Try Nisr AI Free'}</span>
-                  {isRtl ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
-                </Link>
-
-                <a
-                  href="https://play.google.com/store/apps/details?id=com.el7lm.mobile"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`px-5 py-3.5 rounded-xl font-bold border transition-all inline-flex items-center gap-2 ${
-                    isDarkMode 
-                      ? 'border-slate-700 hover:bg-slate-800 text-slate-200' 
-                      : 'border-slate-200 hover:bg-slate-50 text-slate-800'
-                  }`}
-                >
-                  <Download className="w-4 h-4 text-emerald-600" />
-                  <span>{isRtl ? 'تحميل تطبيق الهاتف' : 'Download Mobile App'}</span>
-                </a>
-              </div>
-
-              {/* Trust stats row */}
-              <div className={`pt-6 border-t grid grid-cols-3 gap-4 max-w-md mx-auto lg:mx-0 ${
-                isDarkMode ? 'border-slate-800 text-slate-300' : 'border-slate-100 text-slate-700'
-              }`}>
-                <div>
-                  <div className="text-2xl font-black text-emerald-600">+1,000</div>
-                  <div className="text-xs text-slate-500">{isRtl ? 'لاعب موثق' : 'Verified Players'}</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-emerald-600">+50</div>
-                  <div className="text-xs text-slate-500">{isRtl ? 'نادي وأكاديمية' : 'Clubs & Academies'}</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-black text-emerald-600">100%</div>
-                  <div className="text-xs text-slate-500">{isRtl ? 'تحليل ذكي فوري' : 'Instant AI Analysis'}</div>
-                </div>
-              </div>
-
+            <div className="row">
+              <a className="pill" href="#nasr">
+                {t('h_cta')}
+              </a>
+              <span className="tag">{t('h_tag')}</span>
             </div>
+          </div>
 
-            {/* Right Col: Mobile App Frame (Nisr AI Interface - Clean & Direct) */}
-            <div className="lg:col-span-6 flex justify-center">
-              <div className="w-full max-w-sm sm:max-w-md">
-                
-                {/* Interactive Prompt Selector Chips */}
-                <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1 scrollbar-none">
-                  {QUICK_PROMPTS.map((p, idx) => (
-                    <button
-                      key={p.id}
-                      onClick={() => setSelectedPromptIndex(idx)}
-                      className={`text-xs px-3 py-1.5 rounded-lg whitespace-nowrap font-bold transition-all ${
-                        selectedPromptIndex === idx
-                          ? 'bg-emerald-600 text-white shadow-sm'
-                          : isDarkMode
-                            ? 'bg-slate-800 text-slate-400 hover:text-white'
-                            : 'bg-white border border-slate-200 text-slate-600 hover:border-emerald-300'
-                      }`}
+          {/* Services Section */}
+          <section id="svc">
+            <div className="lbl">{t('s_lbl')}</div>
+            <h2>{t('s_h')}</h2>
+            <p className="intro">{t('s_p')}</p>
+
+            <div className="svc" id="list">
+              {SERVICES.map(([key, slug, subKeys], idx) => {
+                const title = t(key);
+                const isOpen = openServiceIdx === idx;
+                return (
+                  <div key={key} className={`rw ${isOpen ? 'open' : ''}`}>
+                    <div
+                      className="cap"
+                      onClick={() => setOpenServiceIdx(isOpen ? null : idx)}
                     >
-                      {p.title}
+                      <span>{title}</span>
+                      <div className="bar">
+                        <div className="trk">
+                          {Array.from({ length: 8 }).map((_, i) => (
+                            <b key={i}>{title}</b>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="sub">
+                      <div className="subi">
+                        <ul>
+                          {subKeys.map(k => (
+                            <li key={k}>{t(k)}</li>
+                          ))}
+                        </ul>
+                        {slug && (
+                          <a
+                            className="more"
+                            href={`#p/${slug}`}
+                            onClick={() => {
+                              setSubPageSlug(slug);
+                              setView('page');
+                            }}
+                          >
+                            {t('more')}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Nisr Assistant Section */}
+          <section id="nasr">
+            <div className="two">
+              <div>
+                <div className="lbl">{t('na_lbl')}</div>
+                <h2>{t('na_h')}</h2>
+                <p className="intro">{t('na_p')}</p>
+
+                <div className="chips">
+                  <span>{t('c1')}</span>
+                  <span>{t('c2')}</span>
+                  <span>{t('c3')}</span>
+                </div>
+
+                <div className="lbl" style={{ marginTop: '2rem' }}>
+                  {t('na_l')}
+                </div>
+                <div className="chips">
+                  <span>العربية</span>
+                  <span>English</span>
+                  <span>Français</span>
+                  <span>Español</span>
+                  <span>Português</span>
+                </div>
+
+                <div className="lbl" style={{ marginTop: '2rem' }}>
+                  {t('na_d')}
+                </div>
+                <div className="stores">
+                  <a
+                    className="st"
+                    href="https://play.google.com/store/apps/details?id=com.el7lm.el7lm_mobile&pcampaignid=web_share"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <svg className="ic"><use href="#i-gp" /></svg>
+                    <span>
+                      <small>GET IT ON</small>
+                      <b>Google Play</b>
+                    </span>
+                  </a>
+
+                  <span className="st" role="link" aria-disabled="true">
+                    <svg className="ic"><use href="#i-ap" /></svg>
+                    <span>
+                      <small>Download on the</small>
+                      <b>App Store</b>
+                    </span>
+                    <em className="hq">{t('soon')}</em>
+                  </span>
+                </div>
+              </div>
+
+              <div className="ph">
+                <img src="/assets/img/nisr-app-screen.jpg" alt={t('app_alt')} />
+              </div>
+            </div>
+          </section>
+
+          {/* Partner Clubs */}
+          <section id="partners">
+            <div className="lbl">{t('p_lbl')}</div>
+            <h2>{t('p_h')}</h2>
+            <div className="lg" id="lg">
+              {Array.from({ length: 8 }).map((_, k) => {
+                const pair = CREST_PALETTES[k % CREST_PALETTES.length];
+                const emblemFn = CREST_EMBLEMS[(k * 3) % CREST_EMBLEMS.length];
+                const shape = k % 3 === 2
+                  ? '<circle cx="50" cy="55" r="46"'
+                  : '<path d="M8 8H92V58C92 84 68 98 50 106C32 98 8 84 8 58Z"';
+                const svgMarkup = `<svg viewBox="0 0 100 110" width="96" height="106" role="img" aria-label="${t('crest_alt')}">${shape} fill="${pair[0]}" stroke="${pair[1]}" stroke-width="4"/>${emblemFn(pair[1])}</svg>`;
+                return (
+                  <div
+                    key={k}
+                    className="cr"
+                    style={{ ['--i' as any]: k }}
+                    dangerouslySetInnerHTML={{ __html: svgMarkup }}
+                  />
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Offices Teaser Section */}
+          <section id="off">
+            <div className="lbl">{t('o_lbl')}</div>
+            <h2>{t('o_h')}</h2>
+            <p className="intro">{t('o_p')}</p>
+            <a
+              className="pill"
+              href="#offices"
+              style={{ color: 'var(--ink)', borderColor: 'var(--ink)' }}
+              onClick={() => setView('offices')}
+            >
+              {t('o_btn')}
+            </a>
+          </section>
+
+          {/* FAQ Section */}
+          <section className="faq" id="faq">
+            <div className="lbl">{t('f_lbl')}</div>
+            <h2>{t('f_h')}</h2>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+              <details key={i}>
+                <summary>{t(`q${i}`)}</summary>
+                <p>{t(`a${i}`)}</p>
+              </details>
+            ))}
+          </section>
+        </main>
+      )}
+
+      {/* ─── View 2: Offices (Globe 3D) ─────────────────────────────────────── */}
+      {view === 'offices' && (
+        <main id="offices">
+          <section className="of">
+            <div className="of2">
+              <div>
+                <div className="lbl">{t('o_lbl')}</div>
+                <h2>{t('o_h')}</h2>
+                <p className="intro">{t('of_p')}</p>
+
+                {/* Country Chips */}
+                <div className="chs" id="chs">
+                  {COUNTRIES.map(country => (
+                    <button
+                      key={country.id}
+                      className="ch"
+                      aria-pressed={selectedOffice.id === country.id}
+                      onClick={() => handlePickCountry(country)}
+                    >
+                      <img src={COUNTRY_FLAGS[country.id]} alt="" width={22} style={{ display: 'block', height: 'auto' }} />
+                      {t(`c_${country.id}`)}
                     </button>
                   ))}
                 </div>
 
-                {/* Simulated Mobile Device Frame */}
-                <div className={`rounded-[36px] p-3 shadow-2xl border ${
-                  isDarkMode 
-                    ? 'bg-slate-900 border-slate-700 shadow-emerald-950/30' 
-                    : 'bg-white border-slate-200 shadow-xl'
-                }`}>
-                  {/* Phone Notch & Status Bar */}
-                  <div className={`rounded-[28px] overflow-hidden border ${
-                    isDarkMode ? 'bg-[#090F1D] border-slate-800' : 'bg-[#F9F8F5] border-slate-100'
-                  }`}>
-                    
-                    {/* Header inside Phone */}
-                    <div className="bg-emerald-700 text-white px-5 py-4 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-white/20 p-1 flex items-center justify-center">
-                          <Bot className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-sm leading-tight flex items-center gap-1.5">
-                            <span>نسـر الذكي</span>
-                            <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
-                          </div>
-                          <div className="text-[11px] text-emerald-100">المساعد الفني الذكي لمنصة الحلم</div>
-                        </div>
-                      </div>
-                      <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">LIVE AI</span>
-                    </div>
-
-                    {/* Chat Messages Body inside Phone */}
-                    <div className="p-4 space-y-4 min-h-[310px] flex flex-col justify-end">
-                      
-                      {/* Player Bubble */}
-                      <div className="flex items-start gap-2 justify-end">
-                        <div className="bg-emerald-600 text-white text-xs sm:text-sm p-3.5 rounded-2xl rounded-tr-none max-w-[85%] shadow-sm leading-relaxed">
-                          {activePrompt.playerMsg}
-                        </div>
-                      </div>
-
-                      {/* Nisr AI Response Bubble */}
-                      <div className="flex items-start gap-2">
-                        <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 flex-shrink-0 mt-1">
-                          <Bot className="w-4 h-4" />
-                        </div>
-                        <div className={`p-3.5 rounded-2xl rounded-tl-none max-w-[90%] text-xs sm:text-sm leading-relaxed border shadow-sm ${
-                          isDarkMode 
-                            ? 'bg-slate-800 text-slate-100 border-slate-700' 
-                            : 'bg-white text-slate-800 border-slate-200'
-                        }`}>
-                          <div className="font-bold text-emerald-600 text-xs mb-1.5 flex items-center gap-1">
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>تحليل نسر الفوري:</span>
-                          </div>
-                          <p>{activePrompt.nisrReply}</p>
-                          <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-emerald-700">
-                            <span>{activePrompt.metric}</span>
-                            <span className="text-slate-400 font-normal">تم القياس برؤية الحاسوب</span>
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-
-                    {/* Chat Input Bar inside Phone */}
-                    <div className={`p-3 border-t flex items-center gap-2 ${
-                      isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
-                    }`}>
-                      <div className={`flex-1 text-xs px-3.5 py-2 rounded-xl flex items-center justify-between text-slate-400 ${
-                        isDarkMode ? 'bg-slate-800' : 'bg-slate-100'
-                      }`}>
-                        <span>اسأل نسر عن مركزك أو ارفع مقطعك...</span>
-                      </div>
-                      <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm">
-                        <Send className="w-4 h-4" />
-                      </div>
-                    </div>
-
+                {/* Country Info Panel */}
+                <div id="pn" className="pn" aria-live="polite">
+                  <div>
+                    <img src={COUNTRY_FLAGS[selectedOffice.id]} alt="" width={72} style={{ display: 'block', height: 'auto' }} />
                   </div>
+                  <h3>
+                    {t(`c_${selectedOffice.id}`)}
+                    {selectedOffice.hq === 1 && <em className="hq" style={{ marginInlineStart: '0.6rem' }}>{t('hqtag')}</em>}
+                  </h3>
+                  <p>{currentAddress}</p>
+                  <a className="pill" href={`tel:+${currentPhone}`} style={{ marginInlineEnd: '0.5rem' }}>
+                    {t('call')}
+                  </a>
+                  <a className="pill" href={`https://wa.me/${currentPhone}`} target="_blank" rel="noopener noreferrer">
+                    <svg className="ic"><use href="#i-wa" /></svg>
+                    WhatsApp
+                  </a>
                 </div>
-
               </div>
+
+              {/* 3D Canvas Globe */}
+              <canvas ref={canvasRef} id="gl" role="img" aria-label={t('gl_a')} />
             </div>
+          </section>
+        </main>
+      )}
 
-          </div>
-        </div>
-      </section>
-
-      {/* ─── 4. THREE PILLARS (CLEAN & PRACTICAL) ─────────────────────────── */}
-      <section className={`py-16 border-t ${
-        isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-white border-slate-100'
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className={`text-2xl sm:text-3xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-              {isRtl ? 'منظومة شاملة للنجاح الكروي' : 'Complete Athletic Ecosystem'}
-            </h2>
-            <p className="text-slate-500 text-sm mt-2">
-              {isRtl ? 'كل ما يحتاجه اللاعب والنادي في مكان واحد مدعوماً بالتقنية الحديثة' : 'Everything players and clubs need in one certified platform'}
+      {/* ─── View 3: Sub-page (#p/[slug]) ────────────────────────────────────── */}
+      {view === 'page' && (
+        <main id="page">
+          <section className="pg">
+            <div className="lbl" id="pl1">{t('pg_l')}</div>
+            <h2 id="pt">{t(PG_MAP[subPageSlug] || 'pt_about')}</h2>
+            <p className="intro" id="pb">
+              {t(subPageSlug === 'privacy' || subPageSlug === 'terms' ? 'pb_legal' : `pb_${subPageSlug}`, t('pb_about'))}
             </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            {/* 1. Scouting */}
-            <div className={`p-7 rounded-3xl border transition-all hover:-translate-y-1 shadow-sm ${
-              isDarkMode 
-                ? 'bg-slate-800/80 border-slate-700' 
-                : 'bg-[#FAFDF9] border-emerald-100/80 hover:shadow-md'
-            }`}>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-5 font-bold">
-                <Users className="w-6 h-6" />
-              </div>
-              <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                {isRtl ? 'شبكة الأندية والكشافين' : 'Clubs & Scouting Network'}
-              </h3>
-              <p className="text-sm text-slate-500 leading-relaxed mb-4">
-                {isRtl 
-                  ? 'عرض مباشر للمواهب أمام مسؤولي التعاقدات والأكاديميات المعتمدة دون أي وسطاء مجهولين.' 
-                  : 'Direct access to official club recruiters and academies without unverified intermediaries.'}
-              </p>
-              <Link href="/services/clubs" className="text-xs font-bold text-emerald-600 hover:underline inline-flex items-center gap-1">
-                <span>{isRtl ? 'استعراض خدمات الأندية' : 'View Clubs Services'}</span>
-                {isRtl ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
-              </Link>
+            <div>
+              <a
+                className="pill"
+                href="https://wa.me/97470542458"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ marginInlineEnd: '0.6rem' }}
+              >
+                <svg className="ic"><use href="#i-wa" /></svg>
+                {t('pg_c')}
+              </a>
+              <a
+                className="pill"
+                href="#home"
+                onClick={() => setView('home')}
+              >
+                {t('pg_b')}
+              </a>
             </div>
+          </section>
+        </main>
+      )}
 
-            {/* 2. Analysis */}
-            <div className={`p-7 rounded-3xl border transition-all hover:-translate-y-1 shadow-sm ${
-              isDarkMode 
-                ? 'bg-slate-800/80 border-slate-700' 
-                : 'bg-[#FAFDF9] border-emerald-100/80 hover:shadow-md'
-            }`}>
-              <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center mb-5 font-bold">
-                <BarChart3 className="w-6 h-6" />
-              </div>
-              <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                {isRtl ? 'التحليل الفني الذكي' : 'Smart Performance Profiling'}
-              </h3>
-              <p className="text-sm text-slate-500 leading-relaxed mb-4">
-                {isRtl 
-                  ? 'تحويل مقاطع المهارات والمباريات إلى رادارات أداء رقمية وبصمة كروية موثقة تعكس قدراتك الحقيقية.' 
-                  : 'Transforming skill reels into verified football metrics and performance radars trusted by scouts.'}
-              </p>
-              <Link href="/auth/register" className="text-xs font-bold text-emerald-600 hover:underline inline-flex items-center gap-1">
-                <span>{isRtl ? 'إنشاء بطاقة الأداء' : 'Create Player Card'}</span>
-                {isRtl ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
-              </Link>
-            </div>
+      {/* ─── Footer ─────────────────────────────────────────────────────────── */}
+      <footer id="ct">
+        <span className="big">{t('ft_big')}</span>
 
-            {/* 3. Opportunities */}
-            <div className={`p-7 rounded-3xl border transition-all hover:-translate-y-1 shadow-sm ${
-              isDarkMode 
-                ? 'bg-slate-800/80 border-slate-700' 
-                : 'bg-[#FAFDF9] border-emerald-100/80 hover:shadow-md'
-            }`}>
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mb-5 font-bold">
-                <Trophy className="w-6 h-6" />
-              </div>
-              <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                {isRtl ? 'الفرص والمعسكرات الحصرية' : 'Trials & Elite Tournaments'}
-              </h3>
-              <p className="text-sm text-slate-500 leading-relaxed mb-4">
-                {isRtl 
-                  ? 'التقديم المباشر على فترات المعايشة وتجارب الأداء والبطولات الرسمية المقامة في مصر والخليج.' 
-                  : 'Direct application for trial opportunities, scouting tournaments, and official camps in MENA.'}
-              </p>
-              <Link href="/opportunities" className="text-xs font-bold text-emerald-600 hover:underline inline-flex items-center gap-1">
-                <span>{isRtl ? 'تصفح أحدث الفرص' : 'Explore Opportunities'}</span>
-                {isRtl ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
-              </Link>
-            </div>
+        <div className="fg">
+          <div>
+            <a className="logo flg" href="#home" onClick={() => setView('home')}>
+              <span className="lm">
+                <img src="/assets/img/logo-emblem.png" alt="Logo" />
+              </span>
+              <span>{t('br')}</span>
+            </a>
+            <p className="fd">{t('s_p')}</p>
 
-          </div>
-
-        </div>
-      </section>
-
-      {/* ─── 5. FULL FOOTER (ALL LINKS, SOCIALS & PHONES) ───────────────── */}
-      <footer className={`border-t transition-colors ${
-        isDarkMode 
-          ? 'bg-[#070C18] border-slate-800 text-slate-300' 
-          : 'bg-[#F2F5F2] border-slate-200 text-slate-700'
-      }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
-            
-            {/* Col 1: Brand & App Download */}
-            <div className="lg:col-span-2 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white p-1 border border-slate-200 flex items-center justify-center shadow-sm">
-                  <Image src="/el7lm-logo.png" alt="El7lm Logo" width={32} height={32} className="object-contain" />
-                </div>
-                <span className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                  {isRtl ? 'منصة الحلـم الرياضية' : 'El7lm Sports Platform'}
+            <div className="stores">
+              <a
+                className="st"
+                href="https://play.google.com/store/apps/details?id=com.el7lm.el7lm_mobile&pcampaignid=web_share"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <svg className="ic"><use href="#i-gp" /></svg>
+                <span>
+                  <small>GET IT ON</small>
+                  <b>Google Play</b>
                 </span>
-              </div>
-              <p className="text-sm leading-relaxed max-w-sm text-slate-500">
-                {isRtl 
-                  ? 'المنصة الرقمية المتكاملة لإدارة وتطوير مواهب كرة القدم، ربط اللاعبين بالأندية المعتمدة، وتقديم استشارات ذكية مدعومة بنموذج Nisr AI.'
-                  : 'Comprehensive football talent platform empowering players with verified digital profiling, scouting connections, and AI insights.'}
-              </p>
+              </a>
+              <span className="st" role="link" aria-disabled="true">
+                <svg className="ic"><use href="#i-ap" /></svg>
+                <span>
+                  <small>Download on the</small>
+                  <b>App Store</b>
+                </span>
+                <em className="hq">{t('soon')}</em>
+              </span>
+            </div>
 
-              {/* Google Play Button */}
-              <div className="pt-2">
+            <div className="soc" id="soc">
+              {SOCIAL_LINKS.map(s => (
                 <a
-                  href="https://play.google.com/store/apps/details?id=com.el7lm.mobile"
+                  key={s.id}
+                  href={s.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-3 px-4 py-2.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 transition-colors shadow-sm"
+                  aria-label={s.name}
                 >
-                  <Download className="w-5 h-5 text-emerald-400" />
-                  <div className="text-start">
-                    <div className="text-[10px] uppercase tracking-wider text-slate-300 leading-tight">GET IT ON</div>
-                    <div className="text-xs font-bold leading-tight">Google Play</div>
-                  </div>
+                  <svg className="ic" style={{ color: s.color }}><use href={`#i-${s.id}`} /></svg>
                 </a>
-              </div>
-
-              {/* Social Channels */}
-              <div className="pt-3">
-                <div className="text-xs font-bold mb-2.5 text-slate-400 uppercase tracking-wider">
-                  {isRtl ? 'تابعنا على المنصات' : 'Follow Us'}
-                </div>
-                <div className="flex items-center gap-3">
-                  {SOCIAL_LINKS.map((s) => (
-                    <a
-                      key={s.name}
-                      href={s.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-                        isDarkMode 
-                          ? 'bg-slate-800 text-slate-300 hover:bg-emerald-600 hover:text-white' 
-                          : 'bg-white border border-slate-200 text-slate-600 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 shadow-sm'
-                      }`}
-                      aria-label={s.name}
-                      title={s.name}
-                    >
-                      {s.icon}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Col 2: Services & Opportunities */}
-            <div className="space-y-3">
-              <h4 className={`text-sm font-bold uppercase tracking-wider ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                {isRtl ? 'الخدمات والفرص' : 'Services & Trials'}
-              </h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="/opportunities" className="hover:text-emerald-600 transition-colors">
-                    {isRtl ? 'الفرص والمعايشات' : 'Trials & Opportunities'}
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/services/clubs" className="hover:text-emerald-600 transition-colors">
-                    {isRtl ? 'خدمات الأندية' : 'Club Services'}
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/services/academies" className="hover:text-emerald-600 transition-colors">
-                    {isRtl ? 'خدمات الأكاديميات' : 'Academies Services'}
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/services/trainers" className="hover:text-emerald-600 transition-colors">
-                    {isRtl ? 'المدربون والكوادر' : 'Trainers & Coaches'}
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/services/agents" className="hover:text-emerald-600 transition-colors">
-                    {isRtl ? 'وكلاء اللاعبين' : 'Player Agents'}
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Col 3: Company & Information */}
-            <div className="space-y-3">
-              <h4 className={`text-sm font-bold uppercase tracking-wider ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                {isRtl ? 'المنصة والدعم' : 'Platform & Help'}
-              </h4>
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="/about" className="hover:text-emerald-600 transition-colors">
-                    {isRtl ? 'عن منصة الحلم' : 'About El7lm'}
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/careers" className="hover:text-emerald-600 transition-colors">
-                    {isRtl ? 'الوظائف والفرص الوظيفية' : locale === 'fr' ? 'Carrières' : 'Careers'}
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/contact" className="hover:text-emerald-600 transition-colors">
-                    {isRtl ? 'تواصل معنا' : 'Contact Us'}
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/faq" className="hover:text-emerald-600 transition-colors">
-                    {isRtl ? 'الأسئلة الشائعة' : 'FAQ'}
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/privacy" className="hover:text-emerald-600 transition-colors">
-                    {isRtl ? 'سياسة الخصوصية' : 'Privacy Policy'}
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/terms" className="hover:text-emerald-600 transition-colors">
-                    {isRtl ? 'الشروط والأحكام' : 'Terms & Conditions'}
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Col 4: Direct Phone Contacts */}
-            <div className="space-y-3">
-              <h4 className={`text-sm font-bold uppercase tracking-wider ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                {isRtl ? 'أرقام التواصل المباشر' : 'Direct Phone Lines'}
-              </h4>
-              <div className="space-y-3">
-                {CONTACT_NUMBERS.map((c) => (
-                  <div 
-                    key={c.code} 
-                    className={`p-3 rounded-xl border text-xs leading-relaxed ${
-                      isDarkMode ? 'bg-slate-800/60 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 font-bold mb-1">
-                      <span>{c.flag}</span>
-                      <span>{c.country} (متاح 24/7)</span>
-                    </div>
-                    <a 
-                      href={`tel:${c.tel}`} 
-                      dir="ltr" 
-                      className="block font-mono font-bold text-emerald-600 hover:underline text-sm"
-                    >
-                      {c.phone}
-                    </a>
-                    <a 
-                      href={`https://wa.me/${c.whatsapp}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="text-[11px] text-slate-500 hover:text-emerald-600 inline-block mt-0.5"
-                    >
-                      {isRtl ? 'محادثة واتساب سريعة ←' : 'WhatsApp Chat ←'}
-                    </a>
-                  </div>
-                ))}
-
-                <div className="text-xs pt-1 flex items-center gap-2 text-slate-500">
-                  <Mail className="w-3.5 h-3.5" />
-                  <a href="mailto:contact@el7lm.com" className="hover:underline">contact@el7lm.com</a>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Bottom Bar: Copyright */}
-          <div className={`mt-12 pt-8 border-t flex flex-col sm:flex-row items-center justify-between gap-4 text-xs ${
-            isDarkMode ? 'border-slate-800 text-slate-500' : 'border-slate-200 text-slate-500'
-          }`}>
-            <p>
-              &copy; {new Date().getFullYear()} {isRtl ? 'جميع الحقوق محفوظة لمنصة الحلم الرياضية.' : 'All rights reserved to El7lm Platform.'}
-            </p>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>{isRtl ? 'معتمدة ومرخصة لخدمة قطاع الرياضة والشباب' : 'Licensed Sports Platform'}</span>
+              ))}
             </div>
           </div>
 
+          <div>
+            <h4>{t('ft_h1')}</h4>
+            <a href="#p/opps" onClick={() => { setSubPageSlug('opps'); setView('page'); }}>{t('v1')}</a>
+            <a href="#p/clubs" onClick={() => { setSubPageSlug('clubs'); setView('page'); }}>{t('v2')}</a>
+            <a href="#p/academies" onClick={() => { setSubPageSlug('academies'); setView('page'); }}>{t('v3')}</a>
+            <a href="#p/coaches" onClick={() => { setSubPageSlug('coaches'); setView('page'); }}>{t('v4')}</a>
+            <a href="#p/agents" onClick={() => { setSubPageSlug('agents'); setView('page'); }}>{t('v5')}</a>
+          </div>
+
+          <div>
+            <h4>{t('ft_h2')}</h4>
+            <a href="#p/about" onClick={() => { setSubPageSlug('about'); setView('page'); }}>{t('pt_about')}</a>
+            <a href="#offices" onClick={() => setView('offices')}>{t('n_off')}</a>
+            <a href="#p/jobs" onClick={() => { setSubPageSlug('jobs'); setView('page'); }}>{t('pt_jobs')}</a>
+            <a href="#faq" onClick={() => setView('home')}>{t('ft_faq')}</a>
+            <a href="#p/privacy" onClick={() => { setSubPageSlug('privacy'); setView('page'); }}>{t('pt_priv')}</a>
+            <a href="#p/terms" onClick={() => { setSubPageSlug('terms'); setView('page'); }}>{t('pt_terms')}</a>
+          </div>
+
+          <div>
+            <h4>{t('ft_h3')}</h4>
+            <a className="pill g" href="https://wa.me/97470542458" target="_blank" rel="noopener noreferrer">
+              <svg className="ic"><use href="#i-wa" /></svg>
+              <span>{t('wa_q')}</span>
+            </a>
+            <small>{t('avail')}</small>
+
+            <a className="pill" href="https://wa.me/201017799580" target="_blank" rel="noopener noreferrer">
+              <svg className="ic"><use href="#i-wa" /></svg>
+              <span>{t('wa_e')}</span>
+            </a>
+            <small>{t('avail')}</small>
+
+            <a className="pill" href="tel:+97470542458">
+              {t('sponsor')}
+            </a>
+            <a id="ml" href="mailto:info@el7lm.com" style={{ marginTop: '1rem', display: 'block', color: '#d8d4f5' }}>
+              info@el7lm.com
+            </a>
+          </div>
+        </div>
+
+        <div className="fb">
+          <span>{t('copy')}</span>
+          <span>{t('lic')}</span>
         </div>
       </footer>
 
+      {/* ─── Download Modal Popup ────────────────────────────────────────────── */}
+      <div id="pop" className={showPopup ? 'show' : ''} role="dialog" aria-modal="true" aria-labelledby="pop-t">
+        <div className="pd">
+          <button className="px" id="px" onClick={dismissPopup} aria-label={t('pop_x')}>
+            ×
+          </button>
+          <img className="pl" src="/assets/img/logo-emblem.png" alt="Logo" />
+          <h3 id="pop-t">{t('pop_t')}</h3>
+          <p>{t('pop_p')}</p>
+          <div className="stores">
+            <a
+              className="st"
+              href="https://play.google.com/store/apps/details?id=com.el7lm.el7lm_mobile&pcampaignid=web_share"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <svg className="ic"><use href="#i-gp" /></svg>
+              <span>
+                <small>GET IT ON</small>
+                <b>Google Play</b>
+              </span>
+            </a>
+            <span className="st" role="link" aria-disabled="true">
+              <svg className="ic"><use href="#i-ap" /></svg>
+              <span>
+                <small>Download on the</small>
+                <b>App Store</b>
+              </span>
+              <em className="hq">{t('soon')}</em>
+            </span>
+          </div>
+          <button className="pn2" id="pn2" onClick={dismissPopup}>
+            {t('pop_n')}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

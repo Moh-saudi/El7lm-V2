@@ -12,6 +12,7 @@ import type { Metadata, Viewport } from 'next';
 import { Toaster } from 'react-hot-toast';
 import 'react-toastify/dist/ReactToastify.css';
 import '../styles/analytics.css';
+import '../styles/website.css';
 import './globals.css';
 import { Providers } from './providers';
 import '@/lib/utils/initialize-location-fix';
