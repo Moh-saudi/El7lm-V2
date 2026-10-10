@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { LANGUAGES, D5, SupportedLang, getTranslation } from '@/lib/website-i18n';
+import { LANGUAGES, SupportedLang, getTranslation } from '@/lib/website-i18n';
+import { getPartners, PartnerItem } from '@/lib/content/partners-service';
 
 // ─── Data Definitions ────────────────────────────────────────────────────────
 interface OfficeCountry {
@@ -138,6 +139,7 @@ export default function HomePage() {
   const [selectedOffice, setSelectedOffice] = useState<OfficeCountry>(COUNTRIES[0]);
   const [openServiceIdx, setOpenServiceIdx] = useState<number | null>(null);
   const [headerDark, setHeaderDark] = useState<boolean>(false);
+  const [adminPartners, setAdminPartners] = useState<PartnerItem[]>([]);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -146,7 +148,7 @@ export default function HomePage() {
   // Translation helper
   const t = useCallback((k: string, fb?: string) => getTranslation(k, langIndex, fb), [langIndex]);
 
-  // Initial load: language, hash, preloader timer
+  // Initial load: language, hash, preloader timer, admin partners
   useEffect(() => {
     try {
       const saved = localStorage.getItem('mk_lang') as SupportedLang;
@@ -179,6 +181,17 @@ export default function HomePage() {
         setShowPopup(true);
       }
     }, 7000);
+
+    // Load dynamic partners from Supabase (administered via Admin Dashboard)
+    getPartners()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setAdminPartners(data);
+        }
+      })
+      .catch((err) => {
+        console.warn('Partners fetch info:', err?.message);
+      });
 
     return () => {
       clearTimeout(timer);
@@ -575,12 +588,28 @@ export default function HomePage() {
 
           {/* Quick Platform Sign In link */}
           <Link
-            href="/login"
+            href="/auth/login"
             className="pill"
             style={{ padding: '0.4rem 1.1rem', fontSize: '0.9rem' }}
             onClick={() => setMobileMenuOpen(false)}
           >
             {t('n_login')}
+          </Link>
+
+          {/* Quick Platform Register link */}
+          <Link
+            href="/auth/register"
+            className="pill"
+            style={{
+              padding: '0.4rem 1.1rem',
+              fontSize: '0.9rem',
+              backgroundColor: 'var(--gold)',
+              color: 'var(--navy)',
+              borderColor: 'var(--gold)',
+            }}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            {t('n_register')}
           </Link>
 
           {/* Language Switcher */}
@@ -752,22 +781,59 @@ export default function HomePage() {
             <div className="lbl">{t('p_lbl')}</div>
             <h2>{t('p_h')}</h2>
             <div className="lg" id="lg">
-              {Array.from({ length: 8 }).map((_, k) => {
-                const pair = CREST_PALETTES[k % CREST_PALETTES.length];
-                const emblemFn = CREST_EMBLEMS[(k * 3) % CREST_EMBLEMS.length];
-                const shape = k % 3 === 2
-                  ? '<circle cx="50" cy="55" r="46"'
-                  : '<path d="M8 8H92V58C92 84 68 98 50 106C32 98 8 84 8 58Z"';
-                const svgMarkup = `<svg viewBox="0 0 100 110" width="96" height="106" role="img" aria-label="${t('crest_alt')}">${shape} fill="${pair[0]}" stroke="${pair[1]}" stroke-width="4"/>${emblemFn(pair[1])}</svg>`;
-                return (
+              {adminPartners.length > 0 ? (
+                adminPartners.map((partner, k) => (
                   <div
-                    key={k}
+                    key={partner.id || k}
                     className="cr"
-                    style={{ ['--i' as any]: k }}
-                    dangerouslySetInnerHTML={{ __html: svgMarkup }}
-                  />
-                );
-              })}
+                    style={{
+                      ['--i' as any]: k,
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      borderRadius: '18px',
+                      padding: '10px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                    }}
+                  >
+                    {partner.logoUrl ? (
+                      <img
+                        src={partner.logoUrl}
+                        alt={partner.name}
+                        style={{ maxHeight: '55px', maxWidth: '80px', objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <div
+                        dangerouslySetInnerHTML={{
+                          __html: `<svg viewBox="0 0 100 110" width="60" height="70"><path d="M8 8H92V58C92 84 68 98 50 106C32 98 8 84 8 58Z" fill="#161653" stroke="#DB9B2C" stroke-width="4"/></svg>`,
+                        }}
+                      />
+                    )}
+                    <span style={{ fontSize: '0.75rem', marginTop: '4px', textAlign: 'center', color: '#cfcbea' }}>
+                      {partner.name}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                Array.from({ length: 8 }).map((_, k) => {
+                  const pair = CREST_PALETTES[k % CREST_PALETTES.length];
+                  const emblemFn = CREST_EMBLEMS[(k * 3) % CREST_EMBLEMS.length];
+                  const shape = k % 3 === 2
+                    ? '<circle cx="50" cy="55" r="46"'
+                    : '<path d="M8 8H92V58C92 84 68 98 50 106C32 98 8 84 8 58Z"';
+                  const svgMarkup = `<svg viewBox="0 0 100 110" width="96" height="106" role="img" aria-label="${t('crest_alt')}">${shape} fill="${pair[0]}" stroke="${pair[1]}" stroke-width="4"/>${emblemFn(pair[1])}</svg>`;
+                  return (
+                    <div
+                      key={k}
+                      className="cr"
+                      style={{ ['--i' as any]: k }}
+                      dangerouslySetInnerHTML={{ __html: svgMarkup }}
+                    />
+                  );
+                })
+              )}
             </div>
           </section>
 
@@ -861,13 +927,60 @@ export default function HomePage() {
             <p className="intro" id="pb">
               {t(subPageSlug === 'privacy' || subPageSlug === 'terms' ? 'pb_legal' : `pb_${subPageSlug}`, t('pb_about'))}
             </p>
-            <div>
+
+            <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              {/* Contextual Action Link to Real Platform Features */}
+              {subPageSlug === 'opps' && (
+                <Link href="/auth/register?role=player" className="pill g">
+                  {t('join_now')} ({t('c_qa')})
+                </Link>
+              )}
+              {subPageSlug === 'clubs' && (
+                <Link href="/auth/register?role=club" className="pill g">
+                  {t('join_now')} ({t('v2')})
+                </Link>
+              )}
+              {subPageSlug === 'academies' && (
+                <Link href="/auth/register?role=academy" className="pill g">
+                  {t('join_now')} ({t('v3')})
+                </Link>
+              )}
+              {subPageSlug === 'coaches' && (
+                <Link href="/auth/register?role=trainer" className="pill g">
+                  {t('join_now')} ({t('v4')})
+                </Link>
+              )}
+              {subPageSlug === 'agents' && (
+                <Link href="/auth/register?role=agent" className="pill g">
+                  {t('join_now')} ({t('v5')})
+                </Link>
+              )}
+              {subPageSlug === 'privacy' && (
+                <Link href="/privacy" className="pill" style={{ color: 'var(--ink)', borderColor: 'var(--ink)' }}>
+                  {t('full_details')} →
+                </Link>
+              )}
+              {subPageSlug === 'terms' && (
+                <Link href="/terms" className="pill" style={{ color: 'var(--ink)', borderColor: 'var(--ink)' }}>
+                  {t('full_details')} →
+                </Link>
+              )}
+              {subPageSlug === 'about' && (
+                <Link href="/about" className="pill" style={{ color: 'var(--ink)', borderColor: 'var(--ink)' }}>
+                  {t('full_details')} →
+                </Link>
+              )}
+              {subPageSlug === 'jobs' && (
+                <Link href="/careers" className="pill" style={{ color: 'var(--ink)', borderColor: 'var(--ink)' }}>
+                  {t('full_details')} →
+                </Link>
+              )}
+
               <a
                 className="pill"
                 href="https://wa.me/97470542458"
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ marginInlineEnd: '0.6rem' }}
               >
                 <svg className="ic"><use href="#i-wa" /></svg>
                 {t('pg_c')}
@@ -947,12 +1060,14 @@ export default function HomePage() {
 
           <div>
             <h4>{t('ft_h2')}</h4>
-            <a href="#p/about" onClick={() => { setSubPageSlug('about'); setView('page'); }}>{t('pt_about')}</a>
+            <Link href="/about">{t('pt_about')}</Link>
             <a href="#offices" onClick={() => setView('offices')}>{t('n_off')}</a>
-            <a href="#p/jobs" onClick={() => { setSubPageSlug('jobs'); setView('page'); }}>{t('pt_jobs')}</a>
+            <Link href="/careers">{t('pt_jobs')}</Link>
+            <Link href="/tournaments">{t('tournaments_link')}</Link>
+            <Link href="/success-stories">{t('stories_link')}</Link>
             <a href="#faq" onClick={() => setView('home')}>{t('ft_faq')}</a>
-            <a href="#p/privacy" onClick={() => { setSubPageSlug('privacy'); setView('page'); }}>{t('pt_priv')}</a>
-            <a href="#p/terms" onClick={() => { setSubPageSlug('terms'); setView('page'); }}>{t('pt_terms')}</a>
+            <Link href="/privacy">{t('pt_priv')}</Link>
+            <Link href="/terms">{t('pt_terms')}</Link>
           </div>
 
           <div>

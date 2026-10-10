@@ -225,6 +225,26 @@ const nextConfig = {
                 destination: '/api/status',
                 permanent: false,
             },
+            {
+                source: '/login',
+                destination: '/auth/login',
+                permanent: false,
+            },
+            {
+                source: '/signin',
+                destination: '/auth/login',
+                permanent: false,
+            },
+            {
+                source: '/register',
+                destination: '/auth/register',
+                permanent: false,
+            },
+            {
+                source: '/signup',
+                destination: '/auth/register',
+                permanent: false,
+            },
         ];
     },
 }
