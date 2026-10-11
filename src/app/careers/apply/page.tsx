@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/i18n';
-import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
+import { WebsiteShell } from '@/components/website/WebsiteShell';
 
 const AVAILABLE_ROLES = [
   ['nextjsDevelopers', 'jobNextjs'], ['performanceAnalysts', 'jobPerformanceAnalysts'],
@@ -23,7 +23,6 @@ function ApplyForm() {
   const roleFromQuery = searchParams.get('role') || '';
   
   const [dark, setDark] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
@@ -36,9 +35,6 @@ function ApplyForm() {
     if (roleFromQuery) {
         setSelectedRoles([roleFromQuery]);
     }
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
   }, [roleFromQuery]);
 
   const handleChange = (e: any) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -66,37 +62,14 @@ function ApplyForm() {
     primary: dark ? '#bdc4ef' : '#4f46e5',
     border: dark ? 'rgba(189,196,239,0.1)' : 'rgba(0,0,0,0.06)',
     inputBg: dark ? '#161e3f' : '#f1f5f9',
-    headerBg: dark ? 'rgba(8,13,32,.8)' : 'rgba(255,255,255,.8)',
   };
 
   return (
-    <div style={{ background: theme.bg, color: theme.text, minHeight: '100vh', direction: isRTL ? 'rtl' : 'ltr' }}>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;700&display=swap" />
-      
-      {/* HEADER */}
-      <header style={{
-        position: 'fixed', top: 0, left: 0, width: '100%', zIndex: 200,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '0 2rem', height: scrolled ? '4rem' : '6rem',
-        background: theme.headerBg, backdropFilter: 'blur(24px)',
-        borderBottom: `1px solid ${theme.border}`, transition: 'all 0.4s ease'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '3rem' }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
-             <img src="/el7lm-logo.png" alt="Logo" style={{ height: '64px', width: '64px', objectFit: 'contain' }} />
-             <span className="hl" style={{ fontSize: '1.5rem', fontWeight: 900, color: theme.primary }}>EL7LM</span>
-          </Link>
-          <nav style={{ display: 'flex', gap: '2rem' }}>
-            <Link href="/" style={{ fontWeight: 700, textDecoration: 'none', color: theme.primary }}>🏠 {t('nav.home')}</Link>
-          </nav>
-        </div>
-        <button onClick={() => setDark(!dark)} style={{ background: 'none', border: 'none', color: theme.text, cursor: 'pointer', padding: '0.5rem' }}>
-          {dark ? '🌞' : '🌙'}
-        </button>
-        <LanguageSwitcher compact />
-      </header>
-
-      <main style={{ paddingTop: '8rem', paddingBottom: '5rem' }}>
+    <WebsiteShell title={t('careerApply.formTitle')}>
+      <div style={{ color: theme.text, minHeight: '100%', direction: isRTL ? 'rtl' : 'ltr' }}>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;700&display=swap" />
+        
+        <div style={{ padding: '4rem 0 6rem 0' }}>
         <div className="ct">
           <div style={{ maxWidth: '850px', margin: '0 auto', background: theme.panelBg, borderRadius: '32px', padding: '3rem', border: `1px solid ${theme.border}`, boxShadow: '0 20px 40px rgba(0,0,0,0.05)' }} className="apply-card">
             
@@ -188,20 +161,7 @@ function ApplyForm() {
             )}
           </div>
         </div>
-      </main>
-
-      {/* FOOTER */}
-      <footer style={{ background: dark ? '#080d20' : '#ffffff', padding: '5rem 0', borderTop: `1px solid ${theme.border}` }}>
-        <div className="ct">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '2rem' }}>
-            <div>
-               <p style={{ color: theme.subText, marginBottom: '0.5rem' }}>{t('about.copyright')}</p>
-               <Link href="/" style={{ color: theme.primary, textDecoration: 'none', fontWeight: 700 }}>🏠 {t('careerApply.backHome')}</Link>
-            </div>
-            <div className="hl" style={{ color: theme.primary, fontWeight: 900, fontSize: '1.1rem' }}>Mesk llc Qatar</div>
-          </div>
-        </div>
-      </footer>
+      </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
         .ct { max-width: 1280px; margin: 0 auto; padding: 0 2rem; }
@@ -218,7 +178,8 @@ function ApplyForm() {
             .apply-card { padding: 2rem 1.5rem !important; borderRadius: 24px !important; }
         }
       ` }} />
-    </div>
+      </div>
+    </WebsiteShell>
   );
 }
 

@@ -18,7 +18,7 @@ import {
   UserRound,
   Wrench,
 } from 'lucide-react';
-import { PublicLandingShell } from '@/components/layout/PublicLandingShell';
+import { WebsiteShell } from '@/components/website/WebsiteShell';
 import { useTranslation } from '@/lib/i18n';
 import { SUPPORT_CONTACT, getEmailLink, getWhatsAppLink } from '@/lib/support-contact';
 
@@ -121,7 +121,7 @@ export default function SupportPage() {
   };
 
   return (
-    <PublicLandingShell>
+    <WebsiteShell title={t('support.title')}>
       <main className="bg-[#f7f7f5]" dir={isRTL ? 'rtl' : 'ltr'}>
         <section className="relative overflow-hidden bg-[#101828] text-white">
           <div className="absolute inset-0 opacity-40" aria-hidden="true">
@@ -387,6 +387,6 @@ export default function SupportPage() {
           </div>
         </div>
       </main>
-    </PublicLandingShell>
+    </WebsiteShell>
   );
 }

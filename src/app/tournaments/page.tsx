@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase/config';
 import { Trophy, Search, MapPin, Calendar, Users, ChevronLeft } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
+import { WebsiteShell } from '@/components/website/WebsiteShell';
 
 type Tournament = {
     id: string; slug: string; name: string; status: string; type: string;
@@ -59,7 +60,8 @@ export default function TournamentsListPage() {
     const openCount = tournaments.filter(t => t.status === 'open').length;
 
     return (
-        <div className="min-h-screen bg-slate-50" dir={isRTL ? 'rtl' : 'ltr'}>
+        <WebsiteShell title={t('tournaments.title')}>
+            <div className="min-h-screen bg-slate-50" dir={isRTL ? 'rtl' : 'ltr'}>
 
             {/* Hero */}
             <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white py-14 px-4">
@@ -196,5 +198,6 @@ export default function TournamentsListPage() {
                 })}
             </div>
         </div>
+        </WebsiteShell>
     );
 }

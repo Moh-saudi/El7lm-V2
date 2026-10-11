@@ -2,7 +2,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Phone, Mail, ChevronLeft, ChevronRight } from 'lucide-react';
-import PublicResponsiveLayoutWrapper from '@/components/layout/PublicResponsiveLayout';
+import { WebsiteShell } from '@/components/website/WebsiteShell';
 import { useTranslation } from '@/lib/i18n';
 
 export default function ContactPage() {
@@ -18,7 +18,7 @@ export default function ContactPage() {
   };
 
   return (
-    <PublicResponsiveLayoutWrapper>
+    <WebsiteShell title={t('contact.title')}>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 py-16" dir={isRTL ? 'rtl' : 'ltr'}>
         <div className="container mx-auto px-4">
           {/* Header */}
@@ -312,6 +312,6 @@ export default function ContactPage() {
           </div>
         </div>
       </div>
-    </PublicResponsiveLayoutWrapper>
+    </WebsiteShell>
   );
 }

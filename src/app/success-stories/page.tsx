@@ -3,6 +3,7 @@ import React from 'react';
 import Image from 'next/image';
 import { Trophy } from 'lucide-react';
 import { useTranslation } from '@/lib/i18n';
+import { WebsiteShell } from '@/components/website/WebsiteShell';
 
 const getStories = (t: any) => [
     {
@@ -33,7 +34,8 @@ export default function SuccessStoriesPage() {
     const STORIES = getStories(t);
 
     return (
-        <div className="min-h-screen bg-background" dir={isRTL ? 'rtl' : 'ltr'}>
+        <WebsiteShell title={t('successStories.title')}>
+            <div className="min-h-screen bg-background" dir={isRTL ? 'rtl' : 'ltr'}>
             {/* Header */}
             <div className="bg-gradient-to-br from-slate-900 to-primary/80 text-white py-16 text-center px-4 relative overflow-hidden">
                 <div className="absolute inset-0 bg-[url('/images/pattern.png')] opacity-10"></div>
@@ -92,5 +94,6 @@ export default function SuccessStoriesPage() {
                 </a>
             </div>
         </div>
+        </WebsiteShell>
     );
 }

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/i18n';
+import { WebsiteShell } from '@/components/website/WebsiteShell';
 
 const getJobsData = (t: any) => [
   {
@@ -163,91 +164,17 @@ export default function CareersPage() {
     subText: dark ? '#bdc4ef' : '#64748b',
     primary: dark ? '#bdc4ef' : '#4f46e5',
     border: dark ? 'rgba(189,196,239,0.1)' : 'rgba(0,0,0,0.06)',
-    headerBg: dark ? 'rgba(8,13,32,.8)' : 'rgba(255,255,255,.8)',
   };
 
   const JOBS_DATA = getJobsData(t);
 
-  const footerCols = [
-    {
-      title: t('about.footerQuickLinks'),
-      links: [
-        { l: t('about.footerTalentSearch'), h: '#' },
-        { l: t('about.footerPerformanceReports'), h: '#' },
-        { l: t('about.footerDigitalAcademy'), h: '#' },
-        { l: t('about.footerMatchSchedule'), h: '#' },
-        { l: t('about.footerStarNews'), h: '#' }
-      ]
-    },
-    {
-      title: t('about.footerCompany'),
-      links: [
-        { l: t('about.badge'), h: '/about' },
-        { l: t('careers.pageTitle'), h: '/careers' },
-        { l: t('successStories.title'), h: '/success-stories' },
-        { l: t('contact.title'), h: '/contact' }
-      ]
-    },
-    {
-      title: t('about.footerLegal'),
-      links: [
-        { l: t('privacy.title'), h: '/privacy' },
-        { l: t('terms.title'), h: '/terms' },
-        { l: t('about.footerScoutingStandards'), h: '#' },
-        { l: t('support.title'), h: '/support' }
-      ]
-    }
-  ];
-
   return (
-    <div style={{ background: theme.bg, color: theme.text, minHeight: '100vh', direction: isRTL ? 'rtl' : 'ltr' }}>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;700&display=swap" />
+    <WebsiteShell title={t('careers.pageTitle')}>
+      <div style={{ color: theme.text, direction: isRTL ? 'rtl' : 'ltr' }}>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=IBM+Plex+Sans+Arabic:wght@300;400;500;700&display=swap" />
 
-      {/* HEADER */}
-      <header style={{
-        position: 'fixed', top: 0, left: 0, width: '100%', zIndex: 200,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: scrolled ? '0 2rem' : '0 3rem', height: scrolled ? '4rem' : '6rem',
-        background: theme.headerBg, backdropFilter: 'blur(24px)',
-        borderBottom: scrolled ? `1px solid ${theme.border}` : '1px solid transparent',
-        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '3rem' }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
-             <img src="/el7lm-logo.png" alt="EL7LM Logo" style={{ height: '64px', width: '64px', transition: 'all 0.4s ease', objectFit: 'contain' }} />
-             <span className="hl" style={{ fontSize: '1.5rem', fontWeight: 900, color: dark ? '#bdc4ef' : '#4f46e5', textTransform: 'uppercase', letterSpacing: '-0.05em' }}>EL7LM</span>
-          </Link>
-          <nav style={{ display: 'flex', gap: '2rem' }}>
-            {[
-              { label: t('nav.home'), href: '/' },
-              { label: t('nav.hagzz'), href: '/' },
-              { label: t('nav.academy'), href: '/' },
-              { label: t('nav.clubs'), href: '/' },
-              { label: t('nav.tournaments'), href: '/' }
-            ].map((item, i) => (
-              <Link key={i} href={item.href} style={{
-                fontFamily: "'Space Grotesk', 'IBM Plex Sans Arabic', sans-serif",
-                fontWeight: 700, textTransform: 'uppercase', letterSpacing: '-0.025em',
-                textDecoration: 'none', color: i === 0 ? (dark ? '#bdc4ef' : '#4f46e5') : theme.subText,
-                transition: 'color .2s'
-              }}>{item.label}</Link>
-            ))}
-          </nav>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button onClick={() => setDark(!dark)} style={{ background: 'none', border: 'none', color: theme.text, cursor: 'pointer', display: 'flex', padding: '0.5rem', borderRadius: '8px' }}>
-            {dark ? '🌞' : '🌙'}
-          </button>
-          <Link href="/auth/register" className="hl" style={{
-            padding: '.5rem 1.5rem', borderRadius: '2px',
-            background: 'linear-gradient(135deg,#bdc4ef,#161e3f)', color: '#272e50',
-            fontWeight: 900, fontSize: '.875rem', textDecoration: 'none'
-          }}>{t('about.joinNow')}</Link>
-        </div>
-      </header>
-
-      <main style={{ paddingTop: '8rem' }}>
-        {/* HERO */}
+        <div className="careers-content">
+          {/* HERO */}
         <section style={{ padding: '6rem 0' }}>
           <div className="ct">
             <div className="reveal" style={{ textAlign: 'center', maxWidth: '1000px', margin: '0 auto' }}>
@@ -332,38 +259,9 @@ export default function CareersPage() {
             </div>
           </div>
         </section>
-      </main>
-
-      {/* FOOTER */}
-      <footer style={{ background: dark ? '#080d20' : '#ffffff', padding: '8rem 0', borderTop: `1px solid ${theme.border}` }}>
-        <div className="ct">
-          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4rem' }}>
-            <div style={{ flex: '1 1 300px' }}>
-              <img src="/el7lm-logo.png" alt="Logo" style={{ height: '50px', marginBottom: '1.5rem' }} />
-              <p style={{ color: theme.subText, lineHeight: 1.8 }}>{t('about.footerDescription')}</p>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4rem', flex: '2 1 600px' }}>
-              {footerCols.map((col: any, i: number) => (
-                <div key={i}>
-                  <h4 className="hl" style={{ fontWeight: 900, marginBottom: '1.5rem', fontSize: '0.85rem', letterSpacing: '0.1em' }}>{col.title}</h4>
-                  <nav style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {col.links.map((link: any, j: number) => (
-                      <Link key={j} href={link.h} style={{ color: theme.subText, textDecoration: 'none', fontSize: '0.9rem' }}>{link.l}</Link>
-                    ))}
-                  </nav>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div style={{ borderTop: `1px solid ${theme.border}`, marginTop: '5rem', paddingTop: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            <p style={{ color: theme.subText, fontSize: '0.85rem' }}>{t('about.copyright')}</p>
-            <div className="hl" style={{ fontWeight: 900, color: theme.primary }}>Mesk llc Qatar</div>
-          </div>
-        </div>
-      </footer>
+      </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
-        body { margin: 0; font-family: 'IBM Plex Sans Arabic', sans-serif; overflow-x: hidden; }
         .ct { max-width: 1280px; margin: 0 auto; padding: 0 2rem; }
         .hl { font-family: 'Space Grotesk', sans-serif; }
         .st { font-family: 'Space Grotesk', 'IBM Plex Sans Arabic', sans-serif; font-weight: 900; text-transform: uppercase; letter-spacing: -0.05em; }
@@ -377,5 +275,6 @@ export default function CareersPage() {
         }
       ` }} />
     </div>
+    </WebsiteShell>
   );
 }

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { PublicLandingShell } from '@/components/layout/PublicLandingShell';
+import { WebsiteShell } from '@/components/website/WebsiteShell';
 import { useTranslation, Locale } from '@/lib/i18n';
 import { PRIVACY_POLICY_DATA } from '@/data/privacy-policy-translations';
 import {
@@ -163,7 +163,7 @@ export default function PrivacyPage() {
   }
 
   return (
-    <PublicLandingShell>
+    <WebsiteShell title={privacyData.title || "سياسة الخصوصية"}>
       <div
         className={`min-h-screen font-sans transition-colors duration-300 selection:bg-emerald-500 selection:text-white ${
           isDarkMode
@@ -831,6 +831,6 @@ export default function PrivacyPage() {
         </section>
 
       </div>
-    </PublicLandingShell>
+    </WebsiteShell>
   );
 }

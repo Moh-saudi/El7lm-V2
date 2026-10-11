@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import PublicLayout from '@/components/layout/PublicLayout.jsx';
+import { WebsiteShell } from '@/components/website/WebsiteShell';
 import { useTranslation } from '@/lib/i18n';
 
 type PageContent = {
@@ -171,7 +171,7 @@ export default function AccountDeletionPage() {
   const copy = content[language];
 
   return (
-    <PublicLayout>
+    <WebsiteShell title={copy.title}>
       <main className="min-h-screen bg-gray-50 py-12" dir={isRTL ? 'rtl' : 'ltr'}>
         <article className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <div className="rounded-2xl bg-white p-6 shadow-lg sm:p-10">
@@ -235,6 +235,6 @@ export default function AccountDeletionPage() {
           </div>
         </article>
       </main>
-    </PublicLayout>
+    </WebsiteShell>
   );
 }
