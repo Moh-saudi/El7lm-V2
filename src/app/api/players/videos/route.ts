@@ -41,7 +41,7 @@ const PUBLIC_COLUMNS = [
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '50', 10)), 100);
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '200', 10)), 500);
     const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10));
     const country = searchParams.get('country');
     const position = searchParams.get('position');
@@ -51,18 +51,18 @@ export async function GET(request: NextRequest) {
       .from('players')
       .select(PUBLIC_COLUMNS)
       .or('isDeleted.is.null,isDeleted.eq.false')
-      .not('videos', 'is', null)
-      .neq('videos', '[]');
+      .or('videos.not.is.null,video_urls.not.is.null,uploaded_videos.not.is.null');
 
     if (country) {
       query = query.ilike('country', `%${country}%`);
     }
     if (position) {
-      query = query.or(`primary_position.ilike.%${position}%,position.ilike.%${position}%`);
+      query = query.or(`primary_position.ilike.%${position}%,position.ilike.%${position}%,secondary_position.ilike.%${position}%`);
     }
 
     query = query
       .order('updated_at', { ascending: false, nullsFirst: false })
+      .order('id', { ascending: false })
       .range(offset, offset + limit - 1);
 
     const { data, error } = await query;

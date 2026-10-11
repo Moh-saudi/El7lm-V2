@@ -93,8 +93,10 @@ export async function GET(request: NextRequest) {
     const to = from + limit - 1;
     query = query.range(from, to);
 
-    // Order by updated_at or id
-    query = query.order('updated_at', { ascending: false, nullsFirst: false });
+    // Order deterministically by updated_at then id as tie-breaker
+    query = query
+      .order('updated_at', { ascending: false, nullsFirst: false })
+      .order('id', { ascending: false });
 
     const { data: rows, count: totalCount, error } = await query;
 

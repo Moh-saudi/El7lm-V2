@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       const { data: existingPlayer } = await adminDb
         .from('players')
         .select('id')
-        .eq('id', targetUserId)
+        .or(`id.eq.${targetUserId},uid.eq.${targetUserId},user_id.eq.${targetUserId}`)
         .maybeSingle();
 
       if (existingPlayer) {
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
         const { data: existingUser } = await adminDb
           .from('users')
           .select('id')
-          .eq('id', targetUserId)
+          .or(`id.eq.${targetUserId},uid.eq.${targetUserId}`)
           .maybeSingle();
         if (existingUser) isAuthorized = true;
       }
@@ -191,6 +191,7 @@ export async function POST(request: NextRequest) {
     const command = new PutObjectCommand({
       Bucket: bucket,
       Key: storagePath,
+      ContentType: fileType,   // ← required so R2 signature matches the client's Content-Type header
     });
 
     const expiresInSeconds = 3600; // 1 hour
