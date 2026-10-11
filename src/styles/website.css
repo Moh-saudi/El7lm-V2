@@ -622,6 +622,33 @@ html[dir="ltr"] .el7lm-site .trk {
   filter: drop-shadow(0 8px 10px rgba(22, 22, 83, .28));
 }
 
+.el7lm-site .cr.cr-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  min-width: 100px;
+}
+
+.el7lm-site .cr-logo {
+  max-height: 48px;
+  max-width: 80px;
+  object-fit: contain;
+}
+
+.el7lm-site .cr-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 6px;
+  text-align: center;
+  color: var(--ink);
+}
+
 @keyframes sx {
   from { translate: -34px 0; }
   to { translate: 34px 0; }
@@ -1130,36 +1157,54 @@ html[dir="ltr"] .el7lm-site .trk {
 
   /* Hero Section */
   .el7lm-site .hero {
-    padding: 0 5vw calc(25px + env(safe-area-inset-bottom, 0px));
-    min-height: 92vh;
-    min-height: 92svh;
+    padding: 0 5vw calc(28px + env(safe-area-inset-bottom, 0px));
+    min-height: 94vh;
+    min-height: 94svh;
+    justify-content: flex-end;
   }
   .el7lm-site .hero h1 {
-    font-size: clamp(2rem, 8vw, 2.9rem);
-    line-height: 1.15;
+    font-size: clamp(2.1rem, 8.5vw, 2.9rem);
+    line-height: 1.16;
     max-width: 100%;
+    margin-bottom: 0.25rem;
   }
   .el7lm-site .hero .row {
-    margin-top: 1.5rem;
+    margin-top: 1.4rem;
     gap: 0.8rem;
     flex-direction: column;
     align-items: stretch;
+    position: relative;
+    z-index: 5;
   }
   .el7lm-site .hero .row .pill {
     width: 100%;
     text-align: center;
-    padding: 0.85rem 1.4rem;
+    padding: 0.95rem 1.4rem;
     font-size: 1.05rem;
+    font-weight: 700;
+    background: rgba(22, 22, 83, 0.45);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
   }
   .el7lm-site .hero .tag {
-    font-size: 0.9rem;
+    font-size: 0.92rem;
     text-align: center;
+    color: rgba(255, 255, 255, 0.88);
+    line-height: 1.45;
   }
   .el7lm-site .pv {
-    inset-block-start: auto;
-    inset-block-end: calc(20px + env(safe-area-inset-bottom, 0px));
-    inset-inline-start: auto;
-    inset-inline-end: 4vw;
+    inset-block-start: calc(75px + env(safe-area-inset-top, 0px));
+    inset-inline-start: 5vw;
+    inset-block-end: auto;
+    inset-inline-end: auto;
+    width: 38px;
+    height: 38px;
+    font-size: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: rgba(11, 11, 51, 0.55);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
     z-index: 15;
   }
 
@@ -1178,41 +1223,116 @@ html[dir="ltr"] .el7lm-site .trk {
     max-width: 100%;
   }
 
-  /* Services Rows */
+  /* Services Rows - Collapsible Card Accordion */
+  .el7lm-site .svc {
+    border-top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+  .el7lm-site .rw {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--card);
+    overflow: hidden;
+    transition: border-color .3s, box-shadow .3s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  }
+  .el7lm-site .rw.open {
+    border-color: var(--gold);
+    box-shadow: 0 4px 18px rgba(219, 155, 44, 0.18);
+  }
   .el7lm-site .cap {
-    height: 70px;
-    font-size: 1.2rem;
-    padding: 0 0.3rem;
+    height: 64px;
+    font-size: 1.15rem;
+    padding: 0 1.1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    color: var(--ink);
+    background: transparent;
+    cursor: pointer;
+  }
+  .el7lm-site .rw.open .cap {
+    background: color-mix(in srgb, var(--gold) 10%, transparent);
+    color: var(--navy);
+  }
+  .el7lm-site .cap::after {
+    content: "";
+    width: 9px;
+    height: 9px;
+    border-style: solid;
+    border-width: 0 2.5px 2.5px 0;
+    border-color: var(--gold);
+    transform: rotate(45deg);
+    transition: transform .3s cubic-bezier(.4, 0, .2, 1);
+    flex-shrink: 0;
+    margin-inline-start: 0.75rem;
+  }
+  .el7lm-site .rw.open .cap::after {
+    transform: rotate(-135deg);
+    border-color: var(--navy);
+  }
+  .el7lm-site .bar {
+    display: none;
+  }
+  .el7lm-site .sub {
+    padding: 0 1.1rem;
   }
   .el7lm-site .sub ul {
     padding: 0.8rem 0 0.6rem;
     gap: 0.5rem;
   }
   .el7lm-site .sub li {
-    padding: 0.35rem 0.85rem;
+    background: color-mix(in srgb, var(--bg) 70%, #ffffff);
+    padding: 0.4rem 0.9rem;
     font-size: 0.88rem;
+    font-weight: 600;
+    border: 1px solid var(--line);
+    border-radius: 99px;
   }
   .el7lm-site .sub .more {
     font-size: 0.92rem;
-    margin-bottom: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--navy);
+    background: var(--gold);
+    padding: 0.5rem 1.2rem;
+    border-radius: 99px;
+    box-shadow: 0 2px 8px rgba(219, 155, 44, 0.25);
   }
 
   /* Nisr AI Section */
   .el7lm-site .two {
     grid-template-columns: 1fr;
-    gap: 2rem;
+    gap: 1.8rem;
   }
   .el7lm-site .chips {
     gap: 0.45rem;
     margin-top: 0.9rem;
   }
   .el7lm-site .chips span {
-    padding: 0.3rem 0.75rem;
+    padding: 0.35rem 0.8rem;
     font-size: 0.85rem;
   }
   .el7lm-site .ph {
-    width: min(260px, 72vw);
-    margin-top: 1.5rem;
+    width: min(240px, 68vw);
+    max-height: 460px;
+    margin: 1.5rem auto 0;
+    display: flex;
+    justify-content: center;
+  }
+  .el7lm-site .ph img {
+    max-height: 460px;
+    width: 100%;
+    object-fit: contain;
+    border-radius: 28px;
+    border: 6px solid var(--navy);
+    box-shadow: 0 20px 40px -12px rgba(22, 22, 83, 0.45);
   }
   .el7lm-site .stores {
     display: flex;
@@ -1223,7 +1343,7 @@ html[dir="ltr"] .el7lm-site .trk {
   .el7lm-site .st {
     flex: 1 1 calc(50% - 0.4rem);
     min-width: 135px;
-    padding: 0.5rem 0.75rem;
+    padding: 0.55rem 0.75rem;
     gap: 0.5rem;
   }
   .el7lm-site .st b {
@@ -1238,18 +1358,31 @@ html[dir="ltr"] .el7lm-site .trk {
     overflow: hidden;
   }
   .el7lm-site .lg {
-    gap: 0.9rem;
-    padding: 1.8rem 0 3.5rem;
+    gap: 0.8rem;
+    padding: 1.5rem 0 3rem;
     overflow: hidden;
   }
   .el7lm-site .cr {
-    width: 72px;
-    height: 80px;
+    width: 78px;
+    height: 86px;
     animation: sxMob 5s ease-in-out infinite alternate, sy 3.6s ease-in-out infinite alternate;
   }
   .el7lm-site .cr svg {
     width: 72px;
     height: 80px;
+  }
+  .el7lm-site .cr.cr-card {
+    min-width: 82px;
+    padding: 8px 10px;
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .el7lm-site .cr-logo {
+    max-height: 36px;
+    max-width: 62px;
+  }
+  .el7lm-site .cr-name {
+    font-size: 0.7rem;
   }
 
   /* Offices View & 3D Globe */

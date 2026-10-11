@@ -785,33 +785,25 @@ export default function HomePage() {
                 adminPartners.map((partner, k) => (
                   <div
                     key={partner.id || k}
-                    className="cr"
+                    className="cr cr-card"
                     style={{
                       ['--i' as any]: k,
-                      background: 'rgba(255, 255, 255, 0.08)',
-                      borderRadius: '18px',
-                      padding: '10px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
                     }}
                   >
                     {partner.logoUrl ? (
                       <img
                         src={partner.logoUrl}
                         alt={partner.name}
-                        style={{ maxHeight: '55px', maxWidth: '80px', objectFit: 'contain' }}
+                        className="cr-logo"
                       />
                     ) : (
                       <div
                         dangerouslySetInnerHTML={{
-                          __html: `<svg viewBox="0 0 100 110" width="60" height="70"><path d="M8 8H92V58C92 84 68 98 50 106C32 98 8 84 8 58Z" fill="#161653" stroke="#DB9B2C" stroke-width="4"/></svg>`,
+                          __html: `<svg viewBox="0 0 100 110" width="55" height="65"><path d="M8 8H92V58C92 84 68 98 50 106C32 98 8 84 8 58Z" fill="#161653" stroke="#DB9B2C" stroke-width="4"/></svg>`,
                         }}
                       />
                     )}
-                    <span style={{ fontSize: '0.75rem', marginTop: '4px', textAlign: 'center', color: '#cfcbea' }}>
+                    <span className="cr-name">
                       {partner.name}
                     </span>
                   </div>
