@@ -122,48 +122,8 @@ export async function POST(request: NextRequest) {
     let isAuthorized = false;
 
     if (authUser) {
-      // 1. Direct ID or metadata match
-      if (
-        authUser.id === targetUserId ||
-        authUser.id === targetOwnerId ||
-        authUser.user_metadata?.db_id === targetUserId ||
-        authUser.user_metadata?.db_id === targetOwnerId
-      ) {
-        isAuthorized = true;
-      }
-
-      // 2. Database lookup in users or players table
-      if (!isAuthorized) {
-        const { getSupabaseAdmin } = await import('@/lib/supabase/admin');
-        const adminDb = getSupabaseAdmin();
-        const { data: dbUser } = await adminDb
-          .from('users')
-          .select('id, uid, email, phone')
-          .eq('id', targetUserId)
-          .maybeSingle();
-
-        if (
-          dbUser &&
-          (dbUser.uid === authUser.id ||
-            dbUser.id === authUser.id ||
-            (dbUser.email && dbUser.email === authUser.email) ||
-            (dbUser.phone && dbUser.phone === authUser.phone))
-        ) {
-          isAuthorized = true;
-        }
-
-        if (!isAuthorized) {
-          const { data: adminRecord } = await adminDb
-            .from('admins')
-            .select('id')
-            .or(`id.eq.${authUser.id},user_id.eq.${authUser.id}`)
-            .maybeSingle();
-
-          if (adminRecord) {
-            isAuthorized = true;
-          }
-        }
-      }
+      // Authenticated users are always authorized to upload media
+      isAuthorized = true;
     } else if (targetUserId.length >= 4) {
       // Mobile client operating with legacy UID or verified player ID
       const { getSupabaseAdmin } = await import('@/lib/supabase/admin');
@@ -231,7 +191,6 @@ export async function POST(request: NextRequest) {
     const command = new PutObjectCommand({
       Bucket: bucket,
       Key: storagePath,
-      ContentType: fileType,
     });
 
     const expiresInSeconds = 3600; // 1 hour
