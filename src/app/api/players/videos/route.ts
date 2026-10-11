@@ -50,7 +50,9 @@ export async function GET(request: NextRequest) {
     let query = db
       .from('players')
       .select(PUBLIC_COLUMNS)
-      .or('isDeleted.is.null,isDeleted.eq.false');
+      .or('isDeleted.is.null,isDeleted.eq.false')
+      .not('videos', 'is', null)
+      .neq('videos', '[]');
 
     if (country) {
       query = query.ilike('country', `%${country}%`);
