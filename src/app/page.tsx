@@ -556,7 +556,7 @@ export default function HomePage() {
               setMobileMenuOpen(false);
             }}
           >
-            {t('n_svc')}
+            {t('n_svc', 'ما نقدمه')}
           </a>
           <a
             href="#nasr"
@@ -565,7 +565,7 @@ export default function HomePage() {
               setMobileMenuOpen(false);
             }}
           >
-            {t('n_nasr')}
+            {t('n_nasr', 'نسر')}
           </a>
           <a
             href="#offices"
@@ -574,7 +574,7 @@ export default function HomePage() {
               setMobileMenuOpen(false);
             }}
           >
-            {t('n_off')}
+            {t('n_off', 'مكاتبنا')}
           </a>
           <a
             href="#ct"
@@ -583,7 +583,7 @@ export default function HomePage() {
               setMobileMenuOpen(false);
             }}
           >
-            {t('n_ct')}
+            {t('nav_contact', 'تواصل معنا')}
           </a>
 
           {/* Quick Platform Sign In link */}
@@ -593,7 +593,7 @@ export default function HomePage() {
             style={{ padding: '0.4rem 1.1rem', fontSize: '0.9rem' }}
             onClick={() => setMobileMenuOpen(false)}
           >
-            {t('n_login')}
+            {t('n_login', 'تسجيل الدخول')}
           </Link>
 
           {/* Quick Platform Register link */}
@@ -609,7 +609,7 @@ export default function HomePage() {
             }}
             onClick={() => setMobileMenuOpen(false)}
           >
-            {t('n_register')}
+            {t('n_register', 'إنشاء حساب')}
           </Link>
 
           {/* Language Switcher */}
