@@ -169,9 +169,9 @@ export default function HomePage() {
 
     const timer = setTimeout(() => {
       setPreloaderDone(true);
-    }, 2400);
+    }, 400);
 
-    // Popup timer
+    // Popup timer (delayed to prevent mobile interruption)
     const popTimer = setTimeout(() => {
       try {
         if (!sessionStorage.getItem('mk_pop')) {
@@ -180,7 +180,7 @@ export default function HomePage() {
       } catch {
         setShowPopup(true);
       }
-    }, 7000);
+    }, 25000);
 
     // Load dynamic partners from Supabase (administered via Admin Dashboard)
     getPartners()

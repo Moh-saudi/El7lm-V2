@@ -20,6 +20,7 @@ export const D5: Record<string, [string, string, string, string, string]> = {
   n_svc: ["What we do", "ما نقدمه", "Nos services", "Qué hacemos", "O que fazemos"],
   n_nasr: ["Nisr", "نسر", "Nisr", "Nisr", "Nisr"],
   n_off: ["Offices", "مكاتبنا", "Bureaux", "Oficinas", "Escritórios"],
+  n_ct: ["Contact Us", "تواصل معنا", "Contact", "Contacto", "Contacto"],
   n_login: ["Sign In", "تسجيل الدخول", "Connexion", "Iniciar sesión", "Entrar"],
   n_register: ["Register", "إنشاء حساب", "S'inscrire", "Registrarse", "Registar-se"],
   join_now: ["Join Now", "سجل الآن", "Rejoindre", "Únete ahora", "Junte-se agora"],
