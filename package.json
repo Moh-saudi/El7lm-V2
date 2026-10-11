@@ -8,7 +8,6 @@
     "start": "next start",
     "lint": "next lint --dir src",
     "type-check": "node --max-old-space-size=4096 node_modules/typescript/bin/tsc --noEmit --pretty false",
-    "postinstall": "prisma generate || echo 'Prisma generate failed, continuing...'",
     "vercel-build": "NODE_OPTIONS='--max-old-space-size=4096 --max-semi-space-size=128' next build"
   },
   "dependencies": {

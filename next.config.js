@@ -96,22 +96,21 @@ const nextConfig = {
             exclude: ['error', 'warn']
         } : false,
     },
-    // إعدادات الخادم الخارجية - تم إزالة serverExternalPackages لأنه غير مدعوم في Next.js 14
     experimental: {
         serverActions: {
             bodySizeLimit: '100mb',
         },
-        outputFileTracingExcludes: {
-            '*': [
-                './mobile/**',
-                './docs/**',
-                './.agent/**',
-                './.agents/**',
-                './scratch/**',
-                './node_modules/@swc/core/**',
-                './node_modules/@esbuild/**',
-            ],
-        },
+    },
+    outputFileTracingExcludes: {
+        '*': [
+            './mobile/**',
+            './docs/**',
+            './.agent/**',
+            './.agents/**',
+            './scratch/**',
+            './node_modules/@swc/core/**',
+            './node_modules/@esbuild/**',
+        ],
     },
 
     // تحسين إعدادات الخطوط
