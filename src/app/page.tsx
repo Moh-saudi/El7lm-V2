@@ -559,13 +559,13 @@ export default function HomePage() {
             {t('n_svc', 'ما نقدمه')}
           </a>
           <a
-            href="#nasr"
+            href="#nisr"
             onClick={() => {
               setView('home');
               setMobileMenuOpen(false);
             }}
           >
-            {t('n_nasr', 'نسر')}
+            {t('n_nisr', 'نسر')}
           </a>
           <a
             href="#offices"
@@ -658,7 +658,7 @@ export default function HomePage() {
             </h1>
 
             <div className="row">
-              <a className="pill" href="#nasr">
+              <a className="pill" href="#nisr">
                 {t('h_cta')}
               </a>
               <span className="tag">{t('h_tag')}</span>
@@ -718,7 +718,7 @@ export default function HomePage() {
           </section>
 
           {/* Nisr Assistant Section */}
-          <section id="nasr">
+          <section id="nisr">
             <div className="two">
               <div>
                 <div className="lbl">{t('na_lbl')}</div>

@@ -18,6 +18,7 @@ export const D5: Record<string, [string, string, string, string, string]> = {
   ],
   br: ["El7lm", "الحلم", "El7lm", "El7lm", "El7lm"],
   n_svc: ["What we do", "ما نقدمه", "Nos services", "Qué hacemos", "O que fazemos"],
+  n_nisr: ["Nisr", "نسر", "Nisr", "Nisr", "Nisr"],
   n_nasr: ["Nisr", "نسر", "Nisr", "Nisr", "Nisr"],
   n_off: ["Offices", "مكاتبنا", "Bureaux", "Oficinas", "Escritórios"],
   nav_contact: ["Contact Us", "تواصل معنا", "Contact", "Contacto", "Contacto"],
