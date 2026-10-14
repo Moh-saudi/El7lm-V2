@@ -1,0 +1,678 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../core/app_theme.dart';
+import '../l10n/app_localizations.dart';
+import '../models/player.dart';
+import '../screens/profile/player_profile_data.dart';
+import 'player_skills_radar_chart.dart';
+
+void showPlayerShareModal(BuildContext context, {required Player player}) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (ctx) => _PlayerShareModal(player: player),
+  );
+}
+
+class _PlayerShareModal extends StatelessWidget {
+  const _PlayerShareModal({required this.player});
+
+  final Player player;
+
+  String _buildFormattedWhatsAppMessage(BuildContext context) {
+    final name = player.name.isNotEmpty
+        ? player.name
+        : context.tr('dreamPlayer');
+    final position = player.position.isNotEmpty
+        ? localizePosition(context, player.position)
+        : '-';
+    final country = player.country.isNotEmpty ? player.country : '-';
+    final age = player.age != null ? '${player.age}' : '-';
+    final height = player.height != null
+        ? context.tr('sharePlayerHeight', {'value': player.height})
+        : '-';
+    final profileUrl = 'https://www.el7lm.com/player/${player.id}';
+
+    return context.tr('sharePlayerWhatsAppMessage', {
+      'name': name,
+      'position': position,
+      'age': age,
+      'height': height,
+      'country': country,
+      'url': profileUrl,
+    });
+  }
+
+  Future<void> _shareToWhatsApp(BuildContext context) async {
+    final message = _buildFormattedWhatsAppMessage(context);
+    final url = Uri.parse(
+      'https://wa.me/?text=${Uri.encodeComponent(message)}',
+    );
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      await Clipboard.setData(ClipboardData(text: message));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.tr('copyInviteMessageSuccess')),
+            backgroundColor: AppColors.green,
+          ),
+        );
+      }
+    }
+  }
+
+  void _copySmartWebLink(BuildContext context) async {
+    final profileUrl = 'https://www.el7lm.com/player/${player.id}';
+    await Clipboard.setData(ClipboardData(text: profileUrl));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.tr('profileLinkCopiedSuccess')),
+          backgroundColor: AppColors.green,
+        ),
+      );
+    }
+  }
+
+  void _showDigitalCardDialog(BuildContext context) {
+    final profileUrl = 'https://www.el7lm.com/player/${player.id}';
+    final name = player.name.isNotEmpty
+        ? player.name
+        : context.tr('dreamPlayer');
+    final position = player.position.isNotEmpty
+        ? localizePosition(context, player.position)
+        : '-';
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.navy, Color(0xFF0F172A)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.green, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.green.withValues(alpha: 0.3),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // EA Sports Header Badge
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.green,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'EL7LM PRO',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 11,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFD700),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${player.overallRating} OVR',
+                          style: const TextStyle(
+                            color: Color(0xFF0F172A),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.verified_rounded,
+                        color: AppColors.green,
+                        size: 22,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Player Avatar Circle
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.green, width: 3),
+                  color: Colors.white10,
+                ),
+                child: ClipOval(
+                  child: player.imageUrl.isNotEmpty
+                      ? Image.network(
+                          player.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => const Icon(
+                            Icons.person,
+                            size: 50,
+                            color: Colors.white70,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.person,
+                          size: 50,
+                          color: Colors.white70,
+                        ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                name,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                position,
+                style: const TextStyle(
+                  color: AppColors.green,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 12),
+              // 6 FUT Stats row
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStatPill('PAC', player.pace),
+                    _buildStatPill('SHO', player.shooting),
+                    _buildStatPill('PAS', player.passing),
+                    _buildStatPill('DRI', player.dribbling),
+                    _buildStatPill('DEF', player.defending),
+                    _buildStatPill('PHY', player.physical),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // 6-axis Skills Radar Chart
+              PlayerSkillsRadarChart(
+                pace: player.pace,
+                shooting: player.shooting,
+                passing: player.passing,
+                dribbling: player.dribbling,
+                defending: player.defending,
+                physical: player.physical,
+                size: 200,
+                isDark: true,
+              ),
+              const SizedBox(height: 14),
+              // QR Code Card
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: QrImageView(
+                  data: profileUrl,
+                  version: QrVersions.auto,
+                  size: 130.0,
+                  gapless: true,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                context.tr('scanQrToViewProfile'),
+                style: const TextStyle(color: Colors.white70, fontSize: 11),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white38),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(ctx),
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      label: Text(context.tr('close')),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.green,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: profileUrl));
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              context.tr('profileLinkCopiedSuccess'),
+                            ),
+                            backgroundColor: AppColors.green,
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.copy_rounded, size: 18),
+                      label: Text(context.tr('copyLink')),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+  }
+
+  static Widget _buildStatPill(String label, num val) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '${val.toInt()}',
+          style: const TextStyle(
+            color: Color(0xFFFFD700),
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            height: 1,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF94A3B8),
+            fontSize: 8,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showScoutDossierDialog(BuildContext context) {
+    final name = player.name.isNotEmpty
+        ? player.name
+        : context.tr('dreamPlayer');
+    final position = player.position.isNotEmpty
+        ? localizePosition(context, player.position)
+        : '-';
+    final country = player.country.isNotEmpty ? player.country : '-';
+    final age = player.age != null ? '${player.age}' : '-';
+    final height = player.height != null ? '${player.height} cm' : '-';
+    final weight = player.weight != null ? '${player.weight} kg' : '-';
+    final profileUrl = 'https://www.el7lm.com/player/${player.id}';
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.picture_as_pdf_rounded,
+                      color: Colors.red,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.tr('officialScoutDossier'),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.navy,
+                          ),
+                        ),
+                        Text(
+                          context.tr('certifiedScoutReport'),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              _DossierRow(label: context.tr('playerNameLabel'), value: name),
+              _DossierRow(
+                label: context.tr('primaryPositionLabel'),
+                value: position,
+              ),
+              _DossierRow(
+                label: context.tr('countryNationalityLabel'),
+                value: country,
+              ),
+              _DossierRow(label: context.tr('sportsAgeLabel'), value: age),
+              _DossierRow(
+                label: context.tr('heightWeightLabel'),
+                value: '$height / $weight',
+              ),
+              _DossierRow(
+                label: context.tr('verificationStatusLabel'),
+                value: context.tr('byTechnicalCommittee'),
+              ),
+              const SizedBox(height: 14),
+              Center(
+                child: QrImageView(
+                  data: profileUrl,
+                  version: QrVersions.auto,
+                  size: 90.0,
+                  gapless: true,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Center(
+                child: Text(
+                  context.tr('verifiedTechnicalDossier'),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.navy,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: profileUrl));
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(context.tr('profileLinkCopiedSuccess')),
+                        backgroundColor: AppColors.green,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.share_rounded, size: 18),
+                  label: Text(context.tr('shareReportLink')),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.tr('sharePlayerCvHeader'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: AppColors.navy,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _IOSShareAction(
+                  icon: const FaIcon(
+                    FontAwesomeIcons.whatsapp,
+                    color: Color(0xFF25D366),
+                    size: 26,
+                  ),
+                  iconColor: const Color(0xFF25D366),
+                  bgColor: const Color(0xFFDCFCE7),
+                  title: context.tr('shareViaWhatsApp'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _shareToWhatsApp(context);
+                  },
+                ),
+                _IOSShareAction(
+                  icon: const Icon(
+                    CupertinoIcons.link,
+                    color: Color(0xFF0284C7),
+                    size: 24,
+                  ),
+                  iconColor: const Color(0xFF0284C7),
+                  bgColor: const Color(0xFFE0F2FE),
+                  title: context.tr('copySmartWebLink'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _copySmartWebLink(context);
+                  },
+                ),
+                _IOSShareAction(
+                  icon: const Icon(
+                    CupertinoIcons.qrcode,
+                    color: Color(0xFF7C3AED),
+                    size: 24,
+                  ),
+                  iconColor: const Color(0xFF7C3AED),
+                  bgColor: const Color(0xFFEDE9FE),
+                  title: context.tr('digitalPlayerCard'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showDigitalCardDialog(context);
+                  },
+                ),
+                _IOSShareAction(
+                  icon: const Icon(
+                    CupertinoIcons.doc_text_fill,
+                    color: Color(0xFFE11D48),
+                    size: 24,
+                  ),
+                  iconColor: const Color(0xFFE11D48),
+                  bgColor: const Color(0xFFFFE4E6),
+                  title: context.tr('officialScoutDossier'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showScoutDossierDialog(context);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _IOSShareAction extends StatelessWidget {
+  const _IOSShareAction({
+    required this.icon,
+    required this.iconColor,
+    required this.bgColor,
+    required this.title,
+    required this.onTap,
+  });
+
+  final Widget icon;
+  final Color iconColor;
+  final Color bgColor;
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: iconColor.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: iconColor.withValues(alpha: 0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Center(child: icon),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11.5,
+                    color: AppColors.navy,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DossierRow extends StatelessWidget {
+  const _DossierRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(color: AppColors.muted, fontSize: 12),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              color: AppColors.navy,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

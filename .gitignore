@@ -107,4 +107,23 @@ docs/archive/
 *.aab
 scratch/
 
+# Flutter / Mobile build artifacts
+mobile/.dart_tool/
+mobile/.flutter-plugins-dependencies
+mobile/.pub-cache/
+mobile/.pub/
+mobile/build/
+mobile/.gradle/
+mobile/android/app/build/
+mobile/android/build/
+mobile/android/app/debug/
+mobile/android/app/release/
+mobile/android/app/profile/
+mobile/android/local.properties
+mobile/local.properties
+mobile/*.apk
+mobile/*.aab
+mobile/releases/
+mobile/artifacts/
+
 

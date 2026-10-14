@@ -1,0 +1,598 @@
+import 'package:flutter/material.dart';
+import 'package:country_picker/country_picker.dart';
+
+import '../l10n/app_localizations.dart';
+import '../models/player.dart';
+import '../models/player_filter.dart';
+import '../screens/profile/player_profile_data.dart';
+
+Future<PlayerFilter?> showPlayerFilterSheet({
+  required BuildContext context,
+  required PlayerFilter initial,
+  required List<Player> players,
+}) => showModalBottomSheet<PlayerFilter>(
+  context: context,
+  isScrollControlled: true,
+  useSafeArea: true,
+  builder: (_) => FractionallySizedBox(
+    heightFactor: .78,
+    child: _PlayerFilterSheet(initial: initial, players: players),
+  ),
+);
+
+class _PlayerFilterSheet extends StatefulWidget {
+  const _PlayerFilterSheet({required this.initial, required this.players});
+
+  final PlayerFilter initial;
+  final List<Player> players;
+
+  @override
+  State<_PlayerFilterSheet> createState() => _PlayerFilterSheetState();
+}
+
+class _PlayerFilterSheetState extends State<_PlayerFilterSheet> {
+  late final TextEditingController query;
+  late final TextEditingController minAge;
+  late final TextEditingController maxAge;
+  late final TextEditingController minHeight;
+  late final TextEditingController maxHeight;
+  late final TextEditingController minWeight;
+  late final TextEditingController maxWeight;
+  late String position;
+  late String country;
+  late String education;
+  late bool? hasVideos;
+  late bool? hasImages;
+
+  @override
+  void initState() {
+    super.initState();
+    final filter = widget.initial;
+    query = TextEditingController(text: filter.query);
+    minAge = _numberController(filter.minAge);
+    maxAge = _numberController(filter.maxAge);
+    minHeight = _numberController(filter.minHeight);
+    maxHeight = _numberController(filter.maxHeight);
+    minWeight = _numberController(filter.minWeight);
+    maxWeight = _numberController(filter.maxWeight);
+    position = canonicalProfileOptionValue('position', filter.position);
+    country = canonicalProfileOptionValue('country', filter.country);
+    education = canonicalProfileOptionValue(
+      'education_level',
+      filter.education,
+    );
+    hasVideos = filter.hasVideos;
+    hasImages = filter.hasImages;
+  }
+
+  static TextEditingController _numberController(num? value) =>
+      TextEditingController(text: value == null ? '' : '$value');
+
+  List<_FilterOption> _options({
+    required String fieldKey,
+    required Iterable<String> values,
+  }) {
+    final unique = <String, _FilterOption>{};
+    for (final raw in values) {
+      if (raw.trim().isEmpty) continue;
+      final canonical = canonicalProfileOptionValue(fieldKey, raw);
+      if (fieldKey == 'education_level' &&
+          !kEducationLevels.contains(canonical)) {
+        continue;
+      }
+      final label = fieldKey == 'country'
+          ? (Country.tryParse(canonical)?.getTranslatedName(context) ?? raw)
+          : localizedProfileOptionLabel(context, fieldKey, canonical);
+      unique.putIfAbsent(
+        canonical.toLowerCase(),
+        () => _FilterOption(canonical, label),
+      );
+    }
+    final result = unique.values.toList();
+    result.sort(
+      (a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()),
+    );
+    return result;
+  }
+
+  PlayerFilter get value => PlayerFilter(
+    query: query.text.trim(),
+    position: position,
+    country: country,
+    education: education,
+    minAge: num.tryParse(minAge.text),
+    maxAge: num.tryParse(maxAge.text),
+    minHeight: num.tryParse(minHeight.text),
+    maxHeight: num.tryParse(maxHeight.text),
+    minWeight: num.tryParse(minWeight.text),
+    maxWeight: num.tryParse(maxWeight.text),
+    hasVideos: hasVideos,
+    hasImages: hasImages,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final positions = _options(
+      fieldKey: 'position',
+      values: widget.players.map((player) => player.position),
+    );
+    final countries = _options(
+      fieldKey: 'country',
+      values: widget.players.expand(
+        (player) => [player.country, player.nationality],
+      ),
+    );
+    final educations = _options(
+      fieldKey: 'education_level',
+      values: widget.players.map((player) => player.education),
+    );
+    return Material(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+              child: Column(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.black12,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          context.tr('advancedFilters'),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                        onPressed: () =>
+                            Navigator.pop(context, const PlayerFilter()),
+                        icon: const Icon(Icons.restart_alt_rounded, size: 16),
+                        label: Text(
+                          context.tr('resetFilters'),
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: Scrollbar(
+                thumbVisibility: true,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        height: 38,
+                        child: TextField(
+                          controller: query,
+                          style: const TextStyle(fontSize: 12.5),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            hintText: context.tr('searchAllFields'),
+                            hintStyle: const TextStyle(
+                              fontSize: 11.5,
+                              color: Colors.black45,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.manage_search_rounded,
+                              size: 18,
+                            ),
+                            prefixIconConstraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _ChoiceField(
+                              label: context.tr('position'),
+                              value: position,
+                              values: positions,
+                              onChanged: (value) => setState(() => position = value),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _ChoiceField(
+                              label: context.tr('country'),
+                              value: country,
+                              values: countries,
+                              onChanged: (value) => setState(() => country = value),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      _ChoiceField(
+                        label: context.tr('education'),
+                        value: education,
+                        values: educations,
+                        onChanged: (value) => setState(() => education = value),
+                      ),
+                      const SizedBox(height: 10),
+                      _RangeRow(
+                        label: context.tr('age'),
+                        minimum: minAge,
+                        maximum: maxAge,
+                      ),
+                      _RangeRow(
+                        label: context.tr('heightCm'),
+                        minimum: minHeight,
+                        maximum: maxHeight,
+                      ),
+                      _RangeRow(
+                        label: context.tr('weightKg'),
+                        minimum: minWeight,
+                        maximum: maxWeight,
+                      ),
+                      const SizedBox(height: 8),
+                      _BooleanFilter(
+                        label: context.tr('videoAvailability'),
+                        value: hasVideos,
+                        onChanged: (value) => setState(() => hasVideos = value),
+                      ),
+                      _BooleanFilter(
+                        label: context.tr('imageAvailability'),
+                        value: hasImages,
+                        onChanged: (value) => setState(() => hasImages = value),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    offset: Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(42),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () => Navigator.pop(context, value),
+                icon: const Icon(Icons.filter_alt_rounded, size: 18),
+                label: Text(
+                  context.tr('applyFilters'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.5,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChoiceField extends StatelessWidget {
+  const _ChoiceField({
+    required this.label,
+    required this.value,
+    required this.values,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String value;
+  final List<_FilterOption> values;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = values.where((item) => item.value == value).firstOrNull;
+    final isSelected = value.isNotEmpty;
+    final primary = Theme.of(context).primaryColor;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () async {
+        final result = await _showSearchableOptions(context);
+        if (result != null) onChanged(result);
+      },
+      child: Container(
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? primary : Colors.black26,
+            width: isSelected ? 1.2 : 0.8,
+          ),
+          color: isSelected ? primary.withValues(alpha: 0.05) : null,
+        ),
+        child: Row(
+          children: [
+            Text(
+              '$label: ',
+              style: TextStyle(
+                fontSize: 11,
+                color: isSelected ? primary : Colors.black54,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Expanded(
+              child: Text(
+                selected?.label ?? context.tr('all'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? Colors.black87 : Colors.black45,
+                ),
+              ),
+            ),
+            if (isSelected)
+              GestureDetector(
+                onTap: () => onChanged(''),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 2),
+                  child: Icon(Icons.close_rounded, size: 16, color: Colors.black54),
+                ),
+              )
+            else
+              const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: Colors.black45),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _showSearchableOptions(BuildContext context) {
+    return showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        var query = '';
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final filtered = values
+                .where(
+                  (item) =>
+                      item.label.toLowerCase().contains(query.toLowerCase()),
+                )
+                .toList();
+            return FractionallySizedBox(
+              heightFactor: .68,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                    child: TextField(
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: context.tr('searchOptions'),
+                        prefixIcon: const Icon(Icons.search_rounded),
+                      ),
+                      onChanged: (text) =>
+                          setSheetState(() => query = text.trim()),
+                    ),
+                  ),
+                  Expanded(
+                    child: Scrollbar(
+                      thumbVisibility: true,
+                      child: ListView(
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.filter_alt_off_rounded),
+                            title: Text(context.tr('all')),
+                            selected: value.isEmpty,
+                            onTap: () => Navigator.pop(sheetContext, ''),
+                          ),
+                          ...filtered.map(
+                            (item) => ListTile(
+                              title: Text(item.label),
+                              trailing: item.value == value
+                                  ? const Icon(Icons.check_circle_rounded)
+                                  : null,
+                              selected: item.value == value,
+                              onTap: () =>
+                                  Navigator.pop(sheetContext, item.value),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _FilterOption {
+  const _FilterOption(this.value, this.label);
+  final String value;
+  final String label;
+}
+
+class _RangeRow extends StatelessWidget {
+  const _RangeRow({
+    required this.label,
+    required this.minimum,
+    required this.maximum,
+  });
+
+  final String label;
+  final TextEditingController minimum;
+  final TextEditingController maximum;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 36,
+            child: TextField(
+              controller: minimum,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(fontSize: 12),
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                hintText: '${context.tr('from')} $label',
+                hintStyle: const TextStyle(fontSize: 11, color: Colors.black45),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: SizedBox(
+            height: 36,
+            child: TextField(
+              controller: maximum,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(fontSize: 12),
+              decoration: InputDecoration(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                hintText: '${context.tr('to')} $label',
+                hintStyle: const TextStyle(fontSize: 11, color: Colors.black45),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _BooleanFilter extends StatelessWidget {
+  const _BooleanFilter({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final bool? value;
+  final ValueChanged<bool?> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 105,
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11.5),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: SizedBox(
+            height: 32,
+            child: SegmentedButton<bool?>(
+              style: const ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              segments: [
+                ButtonSegment(
+                  value: null,
+                  label: Text(
+                    context.tr('all'),
+                    style: const TextStyle(fontSize: 10.5),
+                  ),
+                ),
+                ButtonSegment(
+                  value: true,
+                  label: Text(
+                    context.tr('available'),
+                    style: const TextStyle(fontSize: 10.5),
+                  ),
+                ),
+                ButtonSegment(
+                  value: false,
+                  label: Text(
+                    context.tr('notAvailable'),
+                    style: const TextStyle(fontSize: 10.5),
+                  ),
+                ),
+              ],
+              selected: {value},
+              showSelectedIcon: false,
+              onSelectionChanged: (values) => onChanged(values.first),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}

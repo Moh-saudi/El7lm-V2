@@ -1,0 +1,34 @@
+{
+  "project_info": {
+    "project_number": "865241332465",
+    "project_id": "hagzzgo-87884",
+    "storage_bucket": "hagzzgo-87884.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:865241332465:android:76504c85206f21b8cf0750",
+        "android_client_info": {
+          "package_name": "com.el7lm.el7lm_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyABPcKp6MR3G-wUkD1a3w099ejsvDnDiAA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "865241332465-p4tkd2nuvsblmhlm7b1trt5f0jhvehd3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
