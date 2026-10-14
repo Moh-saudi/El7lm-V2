@@ -27,19 +27,15 @@ export async function POST(req: NextRequest) {
     const db = getSupabaseAdmin();
     let recipientIds: string[] = [];
 
-    // ✅ جمع المعرفات: نجمع supabase_uid و id و uid لضمان تطابق سياسة RLS (auth.uid() = userId)
-    // ومطابقة المعرفات القديمة والحديثة لدى كافة المستخدمين وتطبيق الموبايل
+    // ✅ جمع المعرف الأساسي لكل مستخدم لمنع تكرار الإشعار للشخص نفسه
     const collectIds = (rows: Array<{ id?: string | null; uid?: string | null; supabase_uid?: string | null }> | null): string[] => {
       const set = new Set<string>();
       (rows || []).forEach(r => {
-        if (r.supabase_uid && typeof r.supabase_uid === 'string' && r.supabase_uid.trim()) {
-          set.add(r.supabase_uid.trim());
-        }
-        if (r.id && typeof r.id === 'string' && r.id.trim()) {
-          set.add(r.id.trim());
-        }
-        if (r.uid && typeof r.uid === 'string' && r.uid.trim()) {
-          set.add(r.uid.trim());
+        const primaryId = (r.supabase_uid && typeof r.supabase_uid === 'string' && r.supabase_uid.trim()) ||
+                          (r.id && typeof r.id === 'string' && r.id.trim()) ||
+                          (r.uid && typeof r.uid === 'string' && r.uid.trim());
+        if (primaryId) {
+          set.add(primaryId);
         }
       });
       return Array.from(set);
