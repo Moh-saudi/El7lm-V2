@@ -117,6 +117,48 @@ export async function POST(request: NextRequest) {
       console.warn('⚠️ [messages/send] Failed to update conversation summary:', updateErr);
     }
 
+    // 4. Create in-app notification for the receiver across all their IDs (supabase_uid, id, uid)
+    try {
+      const { data: receiverRows } = await db
+        .from('users')
+        .select('id, uid, supabase_uid')
+        .or(`id.eq.${receiverId},uid.eq.${receiverId},supabase_uid.eq.${receiverId}`);
+
+      const targetIds = new Set<string>();
+      targetIds.add(receiverId);
+      (receiverRows || []).forEach(r => {
+        if (r.id) targetIds.add(r.id);
+        if (r.uid) targetIds.add(r.uid);
+        if (r.supabase_uid) targetIds.add(r.supabase_uid);
+      });
+
+      const messagePreview = messageDoc.message.slice(0, 80);
+      const notifRecords = Array.from(targetIds).map(uid => ({
+        id: crypto.randomUUID(),
+        userId: uid,
+        title: `رسالة جديدة من ${senderName} 💬`,
+        message: messagePreview,
+        body: messagePreview,
+        type: 'message_received',
+        priority: 'high',
+        read: false,
+        isRead: false,
+        actionUrl: `/dashboard/messages?conv=${conversationId}`,
+        metadata: {
+          conversationId,
+          senderId: callerUser.id,
+          senderName,
+          senderType,
+        },
+        createdAt: now,
+        updatedAt: now,
+      }));
+
+      await db.from('notifications').insert(notifRecords);
+    } catch (notifErr) {
+      console.warn('⚠️ [messages/send] Failed to create notification for receiver:', notifErr);
+    }
+
     return NextResponse.json({
       success: true,
       messageId,

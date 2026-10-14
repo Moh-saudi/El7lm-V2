@@ -161,7 +161,18 @@ export async function POST(request: NextRequest) {
 
     // Generate custom access token/session or temp credentials
     const tempPassword = `El7lm!${userId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12)}!${phone.slice(-4)}`;
+    let authEmail = constructedEmail;
+
     if (authUid) {
+      try {
+        const { data: authUserData } = await admin.auth.admin.getUserById(authUid);
+        if (authUserData?.user?.email) {
+          authEmail = authUserData.user.email;
+        }
+      } catch (err) {
+        console.warn('[verify-session] Failed to fetch auth user details:', err);
+      }
+
       await admin.auth.admin
         .updateUserById(authUid, {
           password: tempPassword,
@@ -198,7 +209,7 @@ export async function POST(request: NextRequest) {
       uid: userId,
       accountType,
       userName,
-      authEmail: constructedEmail,
+      authEmail: authEmail,
       authPassword: tempPassword,
       tempPassword,
       deviceInfo,

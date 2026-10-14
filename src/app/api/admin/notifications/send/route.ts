@@ -27,64 +27,96 @@ export async function POST(req: NextRequest) {
     const db = getSupabaseAdmin();
     let recipientIds: string[] = [];
 
-    if (target === 'custom' && Array.isArray(targetUserIds) && targetUserIds.length > 0) {
-      recipientIds = Array.from(new Set(targetUserIds));
-    } else if (target === 'players') {
-      const [{ data: uRows }, { data: pRows }] = await Promise.all([
-        db.from('users').select('id').eq('accountType', 'player'),
-        db.from('players').select('id'),
-      ]);
+    // ✅ جمع المعرفات: نجمع supabase_uid و id و uid لضمان تطابق سياسة RLS (auth.uid() = userId)
+    // ومطابقة المعرفات القديمة والحديثة لدى كافة المستخدمين وتطبيق الموبايل
+    const collectIds = (rows: Array<{ id?: string | null; uid?: string | null; supabase_uid?: string | null }> | null): string[] => {
       const set = new Set<string>();
-      (uRows || []).forEach(r => r.id && set.add(r.id));
-      (pRows || []).forEach(r => r.id && set.add(r.id));
-      recipientIds = Array.from(set);
-    } else if (target === 'clubs') {
-      const [{ data: uRows }, { data: cRows }] = await Promise.all([
-        db.from('users').select('id').eq('accountType', 'club'),
-        db.from('clubs').select('id'),
-      ]);
-      const set = new Set<string>();
-      (uRows || []).forEach(r => r.id && set.add(r.id));
-      (cRows || []).forEach(r => r.id && set.add(r.id));
-      recipientIds = Array.from(set);
-    } else if (target === 'academies') {
-      const [{ data: uRows }, { data: aRows }] = await Promise.all([
-        db.from('users').select('id').eq('accountType', 'academy'),
-        db.from('academies').select('id'),
-      ]);
-      const set = new Set<string>();
-      (uRows || []).forEach(r => r.id && set.add(r.id));
-      (aRows || []).forEach(r => r.id && set.add(r.id));
-      recipientIds = Array.from(set);
-    } else if (target === 'trainers') {
-      const [{ data: uRows }, { data: tRows }] = await Promise.all([
-        db.from('users').select('id').in('accountType', ['trainer', 'coach']),
-        db.from('trainers').select('id'),
-      ]);
-      const set = new Set<string>();
-      (uRows || []).forEach(r => r.id && set.add(r.id));
-      (tRows || []).forEach(r => r.id && set.add(r.id));
-      recipientIds = Array.from(set);
-    } else if (target === 'agents') {
-      const [{ data: uRows }, { data: agRows }] = await Promise.all([
-        db.from('users').select('id').in('accountType', ['agent', 'marketer']),
-        db.from('agents').select('id'),
-      ]);
-      const set = new Set<string>();
-      (uRows || []).forEach(r => r.id && set.add(r.id));
-      (agRows || []).forEach(r => r.id && set.add(r.id));
-      recipientIds = Array.from(set);
-    } else {
-      // 'all'
-      const { data } = await db.from('users').select('id');
-      recipientIds = (data || []).map(r => r.id).filter(Boolean);
-    }
+      (rows || []).forEach(r => {
+        if (r.supabase_uid && typeof r.supabase_uid === 'string' && r.supabase_uid.trim()) {
+          set.add(r.supabase_uid.trim());
+        }
+        if (r.id && typeof r.id === 'string' && r.id.trim()) {
+          set.add(r.id.trim());
+        }
+        if (r.uid && typeof r.uid === 'string' && r.uid.trim()) {
+          set.add(r.uid.trim());
+        }
+      });
+      return Array.from(set);
+    };
 
-    if (recipientIds.length === 0) {
-      return NextResponse.json({ success: false, error: 'لم يتم العثور على أي مستخدمين مستهدفين' }, { status: 404 });
+    if (target === 'custom' && Array.isArray(targetUserIds) && targetUserIds.length > 0) {
+      const cleanIds = targetUserIds.filter(id => id && id.trim());
+      const { data } = await db.from('users').select('id, uid, supabase_uid').in('id', cleanIds);
+      const resolved = collectIds(data);
+      recipientIds = resolved.length > 0 ? resolved : cleanIds;
+    } else {
+      // جلب كافة المستخدمين المستهدفين عبر صفحات (Pagination) لضمان تجاوز سقف الـ 1000 مستخدم
+      let allRows: Array<{ id?: string | null; uid?: string | null; supabase_uid?: string | null }> = [];
+      const PAGE_SIZE = 1000;
+      let from = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        let query = db.from('users').select('id, uid, supabase_uid');
+        if (target === 'players') {
+          query = query.eq('accountType', 'player');
+        } else if (target === 'clubs') {
+          query = query.eq('accountType', 'club');
+        } else if (target === 'academies') {
+          query = query.eq('accountType', 'academy');
+        } else if (target === 'trainers') {
+          query = query.in('accountType', ['trainer', 'coach']);
+        } else if (target === 'agents') {
+          query = query.in('accountType', ['agent', 'marketer']);
+        }
+
+        const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
+        if (error || !data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allRows.push(...data);
+          if (data.length < PAGE_SIZE) {
+            hasMore = false;
+          } else {
+            from += PAGE_SIZE;
+          }
+        }
+      }
+      recipientIds = collectIds(allRows);
     }
 
     const now = new Date().toISOString();
+
+    // ✅ إدراج فوري في جدول broadcasts لضمان وصوله لجميع مستخدمي تطبيق الجوال والويب عبر Realtime وقنوات البث العامة
+    if (target !== 'custom') {
+      try {
+        await db.from('broadcasts').insert({
+          id: crypto.randomUUID(),
+          title: title.trim(),
+          message: message.trim(),
+          eventType: type || 'broadcast',
+          targetType: target,
+          actionUrl: actionUrl?.trim() || null,
+          createdAt: now,
+          data: {
+            priority,
+            target,
+            actionUrl: actionUrl?.trim() || null,
+          },
+        });
+      } catch (bcError) {
+        console.error('Error inserting into broadcasts table:', bcError);
+      }
+    }
+
+    if (recipientIds.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'لم يتم العثور على أي مستخدمين مستهدفين' },
+        { status: 404 }
+      );
+    }
+
     const BATCH_SIZE = 500;
     let insertedCount = 0;
 
@@ -92,7 +124,7 @@ export async function POST(req: NextRequest) {
       const batchIds = recipientIds.slice(i, i + BATCH_SIZE);
       const batchRecords = batchIds.map(uid => ({
         id: crypto.randomUUID(),
-        userId: uid,
+        userId: uid,            // ← users.id = Supabase Auth UID = user.id في الواجهة ✅
         title: title.trim(),
         message: message.trim(),
         body: message.trim(),
@@ -100,8 +132,8 @@ export async function POST(req: NextRequest) {
         priority,
         read: false,
         isRead: false,
-        actionUrl: actionUrl?.trim() || undefined,
-        link: actionUrl?.trim() || undefined,
+        actionUrl: actionUrl?.trim() || null,
+        link: actionUrl?.trim() || null,
         metadata: actionUrl?.trim() ? { actionUrl: actionUrl.trim() } : {},
         createdAt: now,
         updatedAt: now,
@@ -117,11 +149,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `تم إرسال الإشعار بنجاح إلى ${insertedCount} مستخدم`,
+      message: `تم إرسال الإشعار بنجاح إلى ${insertedCount} مستخدم وبثه للمنصة بالكامل`,
       count: insertedCount,
     });
   } catch (error: any) {
     console.error('Admin send notification error:', error);
-    return NextResponse.json({ success: false, error: error?.message || 'فشل في إرسال الإشعارات' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: error?.message || 'فشل في إرسال الإشعارات' },
+      { status: 500 }
+    );
   }
 }

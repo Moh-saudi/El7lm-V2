@@ -179,11 +179,24 @@ export async function POST(req: NextRequest) {
     const content = buildInAppContent(body);
     const db = getSupabaseAdmin();
 
-    // 1. Create in-app notification in canonical notifications table
+    // 1. Create in-app notification across all target user IDs (supabase_uid, id, uid)
     const now = new Date().toISOString();
-    await db.from('notifications').insert({
+    const { data: userRows } = await db
+      .from('users')
+      .select('id, uid, supabase_uid')
+      .or(`id.eq.${targetUserId},uid.eq.${targetUserId},supabase_uid.eq.${targetUserId}`);
+
+    const recipientIds = new Set<string>();
+    recipientIds.add(targetUserId);
+    (userRows || []).forEach(r => {
+      if (r.id) recipientIds.add(r.id);
+      if (r.uid) recipientIds.add(r.uid);
+      if (r.supabase_uid) recipientIds.add(r.supabase_uid);
+    });
+
+    const notifBatch = Array.from(recipientIds).map(uid => ({
       id: crypto.randomUUID(),
-      userId: targetUserId,
+      userId: uid,
       title: content.title,
       message: content.message,
       body: content.message,
@@ -200,7 +213,9 @@ export async function POST(req: NextRequest) {
       },
       createdAt: now,
       updatedAt: now,
-    });
+    }));
+
+    await db.from('notifications').insert(notifBatch);
 
     // 2. WhatsApp template
     let whatsappResult: 'sent' | 'skipped' | 'failed' = 'skipped';

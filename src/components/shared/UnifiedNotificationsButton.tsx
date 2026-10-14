@@ -149,10 +149,15 @@ export default function UnifiedNotificationsButton() {
       if (notifIds.length) {
         await supabase.from('notifications').update({ isRead: true, read: true }).in('id', notifIds);
       }
+      // تحديد broadcasts كمقروءة في localStorage
       bcItems.forEach(n => markBroadcastSeen(n.id.slice(3)));
 
+      // تحديث الـ state محلياً فوراً للاستجابة السريعة
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
+
+      // ثم إعادة التحميل من الـ DB لضمان الدقة
+      await loadAndMerge();
     } catch (e) { console.error(e); }
   };
 
@@ -163,6 +168,10 @@ export default function UnifiedNotificationsButton() {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
         setUnreadCount(prev => Math.max(0, prev - 1));
       } else {
+        // تحديث محلي فوري
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+        // ثم تحديث DB
         await supabase.from('notifications').update({ isRead: true, read: true }).eq('id', id);
       }
     } catch (e) { console.error(e); }
