@@ -33,8 +33,8 @@ android {
         // minSdk lowered to 21 temporarily for Nox emulator testing (API 25 x86)
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 24
-        versionName = "1.0.7"
+        versionCode = 25
+        versionName = "1.0.8"
     }
 
     signingConfigs {
@@ -52,9 +52,6 @@ android {
         release {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
-            }
-            ndk {
-                debugSymbolLevel = "SYMBOL_TABLE"
             }
         }
     }
