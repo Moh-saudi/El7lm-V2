@@ -33,7 +33,7 @@ android {
         // minSdk lowered to 21 temporarily for Nox emulator testing (API 25 x86)
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 25
+        versionCode = 26
         versionName = "1.0.8"
     }
 
