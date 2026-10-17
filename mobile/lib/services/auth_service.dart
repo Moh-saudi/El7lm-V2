@@ -69,6 +69,14 @@ class AuthService {
       ? Supabase.instance.client.auth.currentUser?.id
       : null;
 
+  String? get currentUserEmail => AppConfig.hasSupabaseConfiguration
+      ? Supabase.instance.client.auth.currentUser?.email
+      : null;
+
+  String? get currentUserPhone => AppConfig.hasSupabaseConfiguration
+      ? Supabase.instance.client.auth.currentUser?.phone
+      : null;
+
   String get currentDisplayName {
     if (!AppConfig.hasSupabaseConfiguration) return '';
     final metadata = Supabase.instance.client.auth.currentUser?.userMetadata;

@@ -95,6 +95,9 @@ prisma/migrations/
 firebase_full_export.json
 firebase_auth_export.json
 bulk_payments_export.json
+*-firebase-adminsdk-*.json
+firebase-service-account*.json
+service-account*.json
 
 # Local AI-agent and browser QA artifacts
 /.agents/
@@ -125,5 +128,13 @@ mobile/*.apk
 mobile/*.aab
 mobile/releases/
 mobile/artifacts/
+*.xml
+*.png
+mobile/*.xml
+mobile/*.png
+scripts/*.ps1
+scripts/inspect-hpp.js
+scripts/benchmark-nisr.ts
+
 
 

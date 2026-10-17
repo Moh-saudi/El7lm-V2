@@ -20,6 +20,7 @@ android {
     ndkVersion = "28.2.13676358"
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -33,8 +34,8 @@ android {
         // minSdk lowered to 21 temporarily for Nox emulator testing (API 25 x86)
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 26
-        versionName = "1.0.8"
+        versionCode = 28
+        versionName = "1.0.10"
     }
 
     signingConfigs {
@@ -65,4 +66,8 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

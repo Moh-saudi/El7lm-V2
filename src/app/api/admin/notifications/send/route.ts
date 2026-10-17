@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeAdmin } from '@/lib/api/admin-auth';
+import { sendFcmPush } from '@/lib/firebase/admin-fcm';
 
 interface SendNotificationBody {
   target: 'all' | 'players' | 'clubs' | 'academies' | 'trainers' | 'agents' | 'custom';
@@ -142,6 +143,40 @@ export async function POST(req: NextRequest) {
         insertedCount += batchRecords.length;
       }
     }
+
+    // ── FCM Push — non-blocking, fires after response is sent ──
+    const capturedRecipients = [...recipientIds];
+    setImmediate(async () => {
+      try {
+        const FCM_CHUNK = 1000;
+        const fcmTokens: string[] = [];
+
+        for (let i = 0; i < capturedRecipients.length; i += FCM_CHUNK) {
+          const chunk = capturedRecipients.slice(i, i + FCM_CHUNK);
+          const { data: rows } = await db
+            .from('users')
+            .select('fcmToken, pushToken')
+            .in('id', chunk);
+
+          (rows || []).forEach((r: Record<string, unknown>) => {
+            const t = (r.fcmToken ?? r.pushToken) as string | undefined;
+            if (t && t.trim().length > 10) fcmTokens.push(t.trim());
+          });
+        }
+
+        const uniqueTokens = [...new Set(fcmTokens)];
+        if (uniqueTokens.length > 0) {
+          const result = await sendFcmPush(uniqueTokens, {
+            title: title.trim(),
+            body: message.trim(),
+            actionUrl: actionUrl?.trim(),
+          });
+          console.log(`[Admin FCM] sent=${result.sent} failed=${result.failed}`);
+        }
+      } catch (fcmErr) {
+        console.error('[Admin FCM] non-fatal push error:', fcmErr);
+      }
+    });
 
     return NextResponse.json({
       success: true,

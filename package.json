@@ -60,6 +60,7 @@
     "dayjs": "^1.11.10",
     "dotenv": "^17.2.3",
     "exceljs": "^4.4.0",
+    "firebase-admin": "^14.5.0",
     "framer-motion": "^10.16.16",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",

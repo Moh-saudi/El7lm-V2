@@ -27,6 +27,7 @@ import '../profile/manager_profile_screen.dart';
 import '../profile/manager_settings_screen.dart';
 import '../profile/player_profile_screen.dart';
 import '../profile/player_profile_data.dart';
+import '../tournaments/tournaments_screen.dart';
 import 'dashboard_screen.dart';
 import 'nisr_home_screen.dart';
 
@@ -497,6 +498,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver, Ticker
         accountType: widget.accountType,
         onOpen: openWeb,
         onSignOut: widget.onSignOut,
+        dataService: widget.dataService,
       ),
       // ─── Minimal top bar ────────────────────────────────────────────────
       appBar: _MinimalAppBar(
@@ -636,11 +638,13 @@ class _WebMenuDrawer extends StatelessWidget {
     required this.accountType,
     required this.onOpen,
     required this.onSignOut,
+    required this.dataService,
   });
 
   final AccountType accountType;
   final Future<void> Function(String path) onOpen;
   final Future<void> Function() onSignOut;
+  final DataService dataService;
 
   @override
   Widget build(BuildContext context) {
@@ -649,14 +653,14 @@ class _WebMenuDrawer extends StatelessWidget {
     // Player settings are native and are intentionally not duplicated here.
     final links = accountType.isPlayer
         ? [
-            ('reports', CupertinoIcons.chart_bar_alt_fill, '$base/reports'),
-            ('tournaments', CupertinoIcons.rosette, '$base/tournaments'),
-            ('store', CupertinoIcons.cart_fill, '$base/store'),
+            ('reports', CupertinoIcons.chart_bar_alt_fill, '$base/reports', false),
+            ('tournaments', CupertinoIcons.rosette, '$base/tournaments', true /* native */),
+            ('store', CupertinoIcons.cart_fill, '$base/store', false),
           ]
         : [
-            ('reports', CupertinoIcons.chart_bar_alt_fill, '$base/reports'),
-            ('tournaments', CupertinoIcons.rosette, '$base/tournaments'),
-            ('store', CupertinoIcons.cart_fill, '$base/store'),
+            ('reports', CupertinoIcons.chart_bar_alt_fill, '$base/reports', false),
+            ('tournaments', CupertinoIcons.rosette, '$base/tournaments', true /* native */),
+            ('store', CupertinoIcons.cart_fill, '$base/store', false),
           ];
 
     return Drawer(
@@ -701,45 +705,70 @@ class _WebMenuDrawer extends StatelessWidget {
                     (link) => ListTile(
                       leading: Icon(link.$2),
                       title: Text(context.tr(link.$1)),
-                      trailing: const Icon(Icons.open_in_new, size: 17),
+                      // Native screens show a phone icon; web links show open_in_new
+                      trailing: link.$4
+                          ? const Icon(Icons.smartphone_rounded, size: 17, color: AppColors.green)
+                          : const Icon(Icons.open_in_new, size: 17),
                       onTap: () async {
-                        final pageTitle = context.tr(link.$1);
-                        final confirmed = await showDialog<bool>(
-                          context: context,
-                          builder: (dialogContext) => AlertDialog(
-                            icon: const Icon(
-                              Icons.open_in_browser_rounded,
-                              color: AppColors.green,
-                              size: 34,
-                            ),
-                            title: Text(
-                              context.tr('continueToWebTitle'),
-                              textAlign: TextAlign.center,
-                            ),
-                            content: Text(
-                              context.tr('continueToWebMessage', {
-                                'page': pageTitle,
-                              }),
-                              textAlign: TextAlign.center,
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () =>
-                                    Navigator.pop(dialogContext, false),
-                                child: Text(context.tr('cancel')),
+                        if (link.$4) {
+                          // Native route — open inside app without leaving
+                          Navigator.pop(context);
+                          await Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => Scaffold(
+                                appBar: AppBar(
+                                  title: Text(context.tr(link.$1)),
+                                  backgroundColor: Colors.white,
+                                  elevation: 0,
+                                  scrolledUnderElevation: 1,
+                                ),
+                                body: TournamentsScreen(
+                                  dataService: dataService,
+                                  accountType: accountType,
+                                ),
                               ),
-                              FilledButton.icon(
-                                onPressed: () =>
-                                    Navigator.pop(dialogContext, true),
-                                icon: const Icon(Icons.open_in_new_rounded),
-                                label: Text(context.tr('continueToWebAction')),
+                            ),
+                          );
+                        } else {
+                          // Web route
+                          final pageTitle = context.tr(link.$1);
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (dialogContext) => AlertDialog(
+                              icon: const Icon(
+                                Icons.open_in_browser_rounded,
+                                color: AppColors.green,
+                                size: 34,
                               ),
-                            ],
-                          ),
-                        );
-                        if (confirmed != true || !context.mounted) return;
-                        Navigator.pop(context);
-                        await onOpen(link.$3);
+                              title: Text(
+                                context.tr('continueToWebTitle'),
+                                textAlign: TextAlign.center,
+                              ),
+                              content: Text(
+                                context.tr('continueToWebMessage', {
+                                  'page': pageTitle,
+                                }),
+                                textAlign: TextAlign.center,
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(dialogContext, false),
+                                  child: Text(context.tr('cancel')),
+                                ),
+                                FilledButton.icon(
+                                  onPressed: () =>
+                                      Navigator.pop(dialogContext, true),
+                                  icon: const Icon(Icons.open_in_new_rounded),
+                                  label: Text(context.tr('continueToWebAction')),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirmed != true || !context.mounted) return;
+                          Navigator.pop(context);
+                          await onOpen(link.$3);
+                        }
                       },
                     ),
                   ),

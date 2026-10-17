@@ -1,13 +1,17 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/country_helper.dart';
 import '../../l10n/app_localizations.dart';
+import '../../models/account_type.dart';
 import '../../models/opportunity.dart';
 import '../../services/data_service.dart';
 import '../../widgets/async_state_view.dart';
 import '../messages/chat_detail_screen.dart';
+import '../payment/geidea_payment_screen.dart';
+import '../tournaments/tournaments_screen.dart';
 
 class OpportunitiesScreen extends StatefulWidget {
   const OpportunitiesScreen({super.key, required this.dataService});
@@ -21,7 +25,7 @@ class OpportunitiesScreen extends StatefulWidget {
 class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
   late Future<List<Opportunity>> future;
   String? selectedCountryId;
-  int selectedTab = 0; // 0: Available, 1: My Applications
+  int selectedTab = 0; // 0: Available Opportunities, 1: Tournaments, 2: My Applications
   List<Map<String, dynamic>> appliedList = [];
   bool loadingApplied = false;
 
@@ -86,6 +90,154 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
   }
 
   Future<void> _showApplicationModal(Opportunity opportunity) async {
+    if (opportunity.isPaid) {
+      await _handlePaidApplication(opportunity);
+    } else {
+      await _showFreeApplicationSheet(opportunity);
+    }
+  }
+
+  // ── Paid application: Geidea payment then auto-submit ─────────────────────
+  Future<void> _handlePaidApplication(Opportunity opportunity) async {
+    final title = opportunity.localizedTitle(context.languageCode).isEmpty
+        ? context.tr('sportsOpportunity')
+        : opportunity.localizedTitle(context.languageCode);
+
+    final email = widget.dataService.authService.authUserId != null
+        ? '${widget.dataService.authService.authUserId}@el7lm.app'
+        : 'player@el7lm.com';
+    final name = widget.dataService.authService.currentDisplayName.isNotEmpty
+        ? widget.dataService.authService.currentDisplayName
+        : 'لاعب';
+
+    // Show loading while creating payment session
+    if (!mounted) return;
+    Map<String, dynamic> session;
+    var sessionLoadingShowing = true;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppColors.gold),
+      ),
+    ).then((_) => sessionLoadingShowing = false);
+
+    try {
+      session = await widget.dataService.createGeideaSession(
+        amount: opportunity.fee,
+        currency: opportunity.currency,
+        customerEmail: email,
+        customerName: name,
+        metadata: {
+          'type': 'opportunity_application',
+          'opportunityId': opportunity.id,
+          'opportunityTitle': title,
+        },
+      );
+    } catch (e) {
+      if (sessionLoadingShowing && mounted) {
+        sessionLoadingShowing = false;
+        Navigator.of(context).pop();
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.errorText(e))),
+        );
+      }
+      return;
+    }
+
+    if (sessionLoadingShowing && mounted) {
+      sessionLoadingShowing = false;
+      Navigator.of(context).pop(); // dismiss loading
+    }
+
+    final redirectUrl = session['redirectUrl'] as String?;
+    if (redirectUrl == null || redirectUrl.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('paymentSessionFailed'))),
+        );
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    final result = await Navigator.of(context).push<GeideaPaymentResult>(
+      MaterialPageRoute(
+        builder: (_) => GeideaPaymentScreen(
+          paymentUrl: redirectUrl,
+          sessionId: session['sessionId']?.toString() ?? session['id']?.toString(),
+          amount: (session['convertedAmountEgp'] as num?)?.toDouble() ?? opportunity.fee,
+          currency: 'EGP',
+          title: title,
+          originalAmount: opportunity.fee,
+          originalCurrency: opportunity.currency,
+          exchangeRate: (session['exchangeRate'] as num?)?.toDouble(),
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+    final isRealSuccess = result?.success == true &&
+        result?.orderId != null &&
+        result!.orderId!.isNotEmpty &&
+        result.orderId != 'null';
+
+    if (isRealSuccess) {
+      // Payment confirmed → submit application automatically
+      try {
+        await widget.dataService.applyForOpportunity(
+          opportunity.id,
+          notes: 'تم الدفع عبر Geidea. orderId: ${result.orderId ?? ''}',
+        );
+      } catch (e) {
+        debugPrint('⚠️ [OpportunitiesScreen] applyForOpportunity error: $e');
+      }
+      await _loadAppliedList();
+      if (!mounted) return;
+      setState(() => selectedTab = 2);
+      _showPaymentSuccessDialog(title);
+    } else if (result != null && !result.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message ?? context.tr('paymentCancelled')),
+          backgroundColor: Colors.red.shade600,
+        ),
+      );
+    }
+  }
+
+  void _showPaymentSuccessDialog(String opportunityTitle) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const CircleAvatar(
+          radius: 28,
+          backgroundColor: Color(0xFFDCFCE7),
+          foregroundColor: AppColors.green,
+          child: Icon(Icons.check_rounded, size: 30),
+        ),
+        title: Text(ctx.tr('paymentSuccessTitle'), textAlign: TextAlign.center),
+        content: Text(
+          ctx.tr('applicationSubmittedAfterPayment', {'title': opportunityTitle}),
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.muted),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.green),
+            child: Text(ctx.tr('great')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Free application sheet ─────────────────────────────────────────────────
+  Future<void> _showFreeApplicationSheet(Opportunity opportunity) async {
     final notesController = TextEditingController();
     final posController = TextEditingController();
     var submitting = false;
@@ -234,7 +386,7 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
                           Navigator.pop(sheetContext);
                           await _loadAppliedList();
                           if (!mounted) return;
-                          setState(() => selectedTab = 1);
+                          setState(() => selectedTab = 2);
                           messenger.showSnackBar(
                             SnackBar(
                               content: Text(appSentMessage),
@@ -319,601 +471,284 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
     }
   }
 
+  Future<void> _refresh() async {
+    setState(() {
+      future = widget.dataService.fetchOpportunities();
+    });
+    await Future.wait([future, _loadAppliedList()]);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AsyncStateView<List<Opportunity>>(
-      future: future,
-      builder: (context, opportunities) {
-        final activeMatch = selectedCountryId == null
-            ? null
-            : priorityCountries.firstWhere(
-                (c) => c['id'] == selectedCountryId,
-              )['match'];
-
-        final filtered = activeMatch == null
-            ? opportunities
-            : opportunities
-                .where(
-                  (o) => o.country.toLowerCase().contains(
-                    activeMatch.toLowerCase(),
-                  ),
+    return Column(
+      children: [
+        _buildTabBar(),
+        Expanded(
+          child: selectedTab == 1
+              ? TournamentsScreen(
+                  dataService: widget.dataService,
+                  accountType: AccountType.player,
+                  isEmbedded: true,
                 )
-                .toList();
+              : AsyncStateView<List<Opportunity>>(
+                  future: future,
+                  onRetry: _refresh,
+                  builder: (context, opportunities) {
+                    if (selectedTab == 0) {
+                      return _buildOpportunitiesView(opportunities);
+                    } else {
+                      return _buildAppliedView(opportunities);
+                    }
+                  },
+                ),
+        ),
+      ],
+    );
+  }
 
-        return CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            // ─── Header Segmented Tabs ───────────────────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => selectedTab = 0),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
-                              color: selectedTab == 0
-                                  ? Colors.white
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: selectedTab == 0
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: .05),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.explore_rounded,
-                                  size: 18,
-                                  color: selectedTab == 0
-                                      ? AppColors.green
-                                      : AppColors.muted,
-                                ),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      context.tr('availableOpportunities'),
-                                      maxLines: 1,
-                                      style: TextStyle(
-                                        fontSize: 12.5,
-                                        fontWeight: selectedTab == 0
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                        color: selectedTab == 0
-                                            ? AppColors.navy
-                                            : AppColors.muted,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => selectedTab = 1),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
-                              color: selectedTab == 1
-                                  ? Colors.white
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: selectedTab == 1
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: .05),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.assignment_turned_in_rounded,
-                                  size: 18,
-                                  color: selectedTab == 1
-                                      ? AppColors.green
-                                      : AppColors.muted,
-                                ),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      context.tr('myApplicationsHistory'),
-                                      maxLines: 1,
-                                      style: TextStyle(
-                                        fontSize: 12.5,
-                                        fontWeight: selectedTab == 1
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                        color: selectedTab == 1
-                                            ? AppColors.navy
-                                            : AppColors.muted,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                if (appliedList.isNotEmpty) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.green,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      '${appliedList.length}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+  Widget _buildTabBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            _buildTabButton(
+              index: 0,
+              icon: Icons.explore_rounded,
+              label: context.tr('availableOpportunities'),
+            ),
+            _buildTabButton(
+              index: 1,
+              icon: CupertinoIcons.rosette,
+              label: context.tr('tournaments'),
+            ),
+            _buildTabButton(
+              index: 2,
+              icon: Icons.assignment_turned_in_rounded,
+              label: context.trOr('myApplications', context.tr('myApplicationsHistory')),
+              badgeCount: appliedList.isNotEmpty ? appliedList.length : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabButton({
+    required int index,
+    required IconData icon,
+    required String label,
+    int? badgeCount,
+  }) {
+    final isSelected = selectedTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => selectedTab = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: .05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 17,
+                color: isSelected ? AppColors.green : AppColors.muted,
+              ),
+              const SizedBox(width: 5),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected ? AppColors.navy : AppColors.muted,
+                    ),
                   ),
                 ),
               ),
-            ),
+              if (badgeCount != null) ...[
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.green,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$badgeCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-            if (selectedTab == 0) ...[
-              // ─── Territory Explorer ──────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildOpportunitiesView(List<Opportunity> opportunities) {
+    final activeMatch = selectedCountryId == null
+        ? null
+        : priorityCountries.firstWhere(
+            (c) => c['id'] == selectedCountryId,
+          )['match'];
+
+    final filtered = activeMatch == null
+        ? opportunities
+        : opportunities
+            .where(
+              (o) => o.country.toLowerCase().contains(
+                activeMatch.toLowerCase(),
+              ),
+            )
+            .toList();
+
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      color: AppColors.green,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          // ─── Territory Explorer ──────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                          child: Text(
-                            context.tr('exploreByCountry'),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 18,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                      child: Text(
+                        context.tr('exploreByCountry'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              Icons.arrow_back_ios_rounded,
+                              size: 16,
                               color: AppColors.navy,
                             ),
+                            onPressed: () => _scrollCountries(false),
+                            visualDensity: VisualDensity.compact,
                           ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.arrow_back_ios_rounded,
-                                  size: 16,
-                                  color: AppColors.navy,
-                                ),
-                                onPressed: () => _scrollCountries(false),
-                                visualDensity: VisualDensity.compact,
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  size: 16,
-                                  color: AppColors.navy,
-                                ),
-                                onPressed: () => _scrollCountries(true),
-                                visualDensity: VisualDensity.compact,
-                              ),
-                            ],
+                          IconButton(
+                            icon: const Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 16,
+                              color: AppColors.navy,
+                            ),
+                            onPressed: () => _scrollCountries(true),
+                            visualDensity: VisualDensity.compact,
                           ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(
-                      height: 108,
-                      child: ScrollConfiguration(
-                        behavior: ScrollConfiguration.of(context).copyWith(
-                          dragDevices: {
-                            PointerDeviceKind.touch,
-                            PointerDeviceKind.mouse,
-                            PointerDeviceKind.trackpad,
-                            PointerDeviceKind.stylus,
-                          },
-                        ),
-                        child: ListView.builder(
-                          controller: _countryScrollController,
-                          physics: const BouncingScrollPhysics(
-                            parent: AlwaysScrollableScrollPhysics(),
-                          ),
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          itemCount: priorityCountries.length,
-                          itemBuilder: (context, i) {
-                            final c = priorityCountries[i];
-                            final isSelected = selectedCountryId == c['id'];
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  selectedCountryId = isSelected
-                                      ? null
-                                      : c['id'];
-                                });
-                              },
-                              child: Container(
-                                width: 86,
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? AppColors.green.withValues(alpha: .1)
-                                      : Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? AppColors.green
-                                        : Colors.grey.shade200,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      c['flag']!,
-                                      style: const TextStyle(fontSize: 26),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: Text(
-                                        context.tr('country.${c['id']}'),
-                                        maxLines: 2,
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: isSelected
-                                              ? FontWeight.w900
-                                              : FontWeight.bold,
-                                          color: isSelected
-                                              ? AppColors.green
-                                              : AppColors.ink,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-
-              // ─── Section Title ───────────────────────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          selectedCountryId == null
-                              ? context.tr('latestOpportunities')
-                              : context.tr('opportunitiesIn', {
-                                  'country': context.tr(
-                                    'country.$selectedCountryId',
-                                  ),
-                                }),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 18,
-                            color: AppColors.navy,
-                          ),
-                        ),
-                      ),
-                      if (selectedCountryId != null)
-                        TextButton(
-                          onPressed: () =>
-                              setState(() => selectedCountryId = null),
-                          child: Text(context.tr('viewAll')),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // ─── Available Opportunities List ─────────────────────────────
-              if (filtered.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_off_rounded,
-                          size: 64,
-                          color: Colors.grey.shade300,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          context.tr('noOpportunities'),
-                          style: const TextStyle(color: AppColors.muted),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final item = filtered[index];
-                        final applied = _isAlreadyApplied(item.id);
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _OpportunityCard(
-                            opportunity: item,
-                            isApplied: applied,
-                            onApply: () => _showApplicationModal(item),
-                          ),
-                        );
+                SizedBox(
+                  height: 108,
+                  child: ScrollConfiguration(
+                    behavior: ScrollConfiguration.of(context).copyWith(
+                      dragDevices: {
+                        PointerDeviceKind.touch,
+                        PointerDeviceKind.mouse,
+                        PointerDeviceKind.trackpad,
+                        PointerDeviceKind.stylus,
                       },
-                      childCount: filtered.length,
                     ),
-                  ),
-                ),
-            ] else ...[
-              // ─── My Applications History Tab ──────────────────────────────
-              if (appliedList.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.assignment_late_outlined,
-                          size: 64,
-                          color: Colors.grey.shade300,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          context.tr('noOpportunities'),
-                          style: const TextStyle(color: AppColors.muted),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final appItem = appliedList[index];
-                        final oppId = '${appItem['opportunityId']}';
-                        final matchedOpp = opportunities.firstWhere(
-                          (o) => o.id == oppId,
-                          orElse: () => Opportunity(
-                            id: oppId,
-                            title: context.tr('sportsOpportunity'),
-                            organizerName: context.tr('verifiedOrganization'),
-                            description: '',
-                            country: '',
-                            city: '',
-                            type: 'trial',
-                            positions: const [],
-                            deadline: null,
-                            rawPayload: const {},
-                          ),
-                        );
-
-                        final dateFormatted = _formatDate(
-                          '${appItem['appliedAt'] ?? ''}',
-                        );
-                        final notes = '${appItem['notes'] ?? ''}';
-                        final pos = '${appItem['preferredPosition'] ?? ''}';
-
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: BorderSide(
-                              color: AppColors.green.withValues(alpha: 0.3),
+                    child: ListView.builder(
+                      controller: _countryScrollController,
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      itemCount: priorityCountries.length,
+                      itemBuilder: (context, i) {
+                        final c = priorityCountries[i];
+                        final isSelected = selectedCountryId == c['id'];
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedCountryId = isSelected ? null : c['id'];
+                            });
+                          },
+                          child: Container(
+                            width: 86,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppColors.green.withValues(alpha: .1)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.green
+                                    : Colors.grey.shade200,
+                                width: 2,
+                              ),
                             ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.green.withValues(
-                                          alpha: .15,
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                          14,
-                                        ),
-                                      ),
-                                      child: const Icon(
-                                        Icons.check_circle_rounded,
-                                        color: AppColors.green,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            matchedOpp.localizedTitle(context.languageCode).isEmpty
-                                                ? context.tr('sportsOpportunity')
-                                                : matchedOpp.localizedTitle(context.languageCode),
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w900,
-                                              fontSize: 16,
-                                              color: AppColors.navy,
-                                            ),
-                                          ),
-                                          Text(
-                                            matchedOpp.localizedOrganizerName(context.languageCode).isEmpty
-                                                ? context.tr('verifiedOrganization')
-                                                : matchedOpp.localizedOrganizerName(context.languageCode),
-                                            style: const TextStyle(
-                                              color: AppColors.muted,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.amber.shade50,
-                                        borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(
-                                          color: Colors.amber.shade300,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        context.tr('applicationStatusPending'),
-                                        style: TextStyle(
-                                          color: Colors.amber.shade900,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                Text(
+                                  c['flag']!,
+                                  style: const TextStyle(fontSize: 26),
                                 ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.calendar_today_rounded,
-                                      size: 14,
-                                      color: AppColors.muted,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      context.tr('appliedAtDate', {
-                                        'date': dateFormatted,
-                                      }),
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.muted,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                if (pos.isNotEmpty) ...[
-                                  const SizedBox(height: 6),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.sports_soccer_rounded,
-                                        size: 14,
-                                        color: AppColors.green,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        '${context.tr('preferredPositionLabel')}: $pos',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.navy,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                                if (notes.isNotEmpty) ...[
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade50,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      notes,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.ink,
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                                const SizedBox(height: 14),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton.icon(
-                                    style: OutlinedButton.styleFrom(
-                                      side: const BorderSide(
-                                        color: AppColors.green,
-                                      ),
-                                    ),
-                                    onPressed: () =>
-                                        _openChatWithOrganizer(matchedOpp),
-                                    icon: const Icon(
-                                      Icons.chat_bubble_outline_rounded,
-                                      color: AppColors.green,
-                                      size: 18,
-                                    ),
-                                    label: Text(
-                                      context.tr('contactOrganizer'),
-                                      style: const TextStyle(
-                                        color: AppColors.green,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                const SizedBox(height: 4),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    context.tr('country.${c['id']}'),
+                                    maxLines: 2,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w900
+                                          : FontWeight.bold,
+                                      color: isSelected
+                                          ? AppColors.green
+                                          : AppColors.ink,
                                     ),
                                   ),
                                 ),
@@ -922,14 +757,329 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
                           ),
                         );
                       },
-                      childCount: appliedList.length,
                     ),
                   ),
                 ),
-            ],
-          ],
-        );
-      },
+              ],
+            ),
+          ),
+
+          // ─── Section Title ───────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      selectedCountryId == null
+                          ? context.tr('latestOpportunities')
+                          : context.tr('opportunitiesIn', {
+                              'country': context.tr(
+                                'country.$selectedCountryId',
+                              ),
+                            }),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                  ),
+                  if (selectedCountryId != null)
+                    TextButton(
+                      onPressed: () => setState(() => selectedCountryId = null),
+                      child: Text(context.tr('viewAll')),
+                    ),
+                ],
+              ),
+            ),
+          ),
+
+          // ─── Available Opportunities List ─────────────────────────────
+          if (filtered.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.search_off_rounded,
+                      size: 64,
+                      color: Colors.grey.shade300,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      context.tr('noOpportunities'),
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final item = filtered[index];
+                    final applied = _isAlreadyApplied(item.id);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _OpportunityCard(
+                        opportunity: item,
+                        isApplied: applied,
+                        onApply: () => _showApplicationModal(item),
+                      ),
+                    );
+                  },
+                  childCount: filtered.length,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppliedView(List<Opportunity> opportunities) {
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      color: AppColors.green,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          if (appliedList.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.assignment_late_outlined,
+                      size: 64,
+                      color: Colors.grey.shade300,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      context.tr('noOpportunities'),
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final appItem = appliedList[index];
+                    final oppId = '${appItem['opportunityId']}';
+                    final matchedOpp = opportunities.firstWhere(
+                      (o) => o.id == oppId,
+                      orElse: () => Opportunity(
+                        id: oppId,
+                        title: context.tr('sportsOpportunity'),
+                        organizerName: context.tr('verifiedOrganization'),
+                        description: '',
+                        country: '',
+                        city: '',
+                        type: 'trial',
+                        positions: const [],
+                        deadline: null,
+                        rawPayload: const {},
+                      ),
+                    );
+
+                    final dateFormatted = _formatDate(
+                      '${appItem['appliedAt'] ?? ''}',
+                    );
+                    final notes = '${appItem['notes'] ?? ''}';
+                    final pos = '${appItem['preferredPosition'] ?? ''}';
+
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: AppColors.green.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.green.withValues(
+                                      alpha: .15,
+                                    ),
+                                    borderRadius: BorderRadius.circular(
+                                      14,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.check_circle_rounded,
+                                    color: AppColors.green,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        matchedOpp.localizedTitle(context.languageCode).isEmpty
+                                            ? context.tr('sportsOpportunity')
+                                            : matchedOpp.localizedTitle(context.languageCode),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 16,
+                                          color: AppColors.navy,
+                                        ),
+                                      ),
+                                      Text(
+                                        matchedOpp.localizedOrganizerName(context.languageCode).isEmpty
+                                            ? context.tr('verifiedOrganization')
+                                            : matchedOpp.localizedOrganizerName(context.languageCode),
+                                        style: const TextStyle(
+                                          color: AppColors.muted,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.shade50,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Colors.amber.shade300,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    context.tr('applicationStatusPending'),
+                                    style: TextStyle(
+                                      color: Colors.amber.shade900,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.calendar_today_rounded,
+                                  size: 14,
+                                  color: AppColors.muted,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  context.tr('appliedAtDate', {
+                                    'date': dateFormatted,
+                                  }),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.muted,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (pos.isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.sports_soccer_rounded,
+                                    size: 14,
+                                    color: AppColors.green,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '${context.tr('preferredPositionLabel')}: $pos',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.navy,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                            if (notes.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade50,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  notes,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.ink,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 14),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(
+                                    color: AppColors.green,
+                                  ),
+                                ),
+                                onPressed: () =>
+                                    _openChatWithOrganizer(matchedOpp),
+                                icon: const Icon(
+                                  Icons.chat_bubble_outline_rounded,
+                                  color: AppColors.green,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  context.tr('contactOrganizer'),
+                                  style: const TextStyle(
+                                    color: AppColors.green,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  childCount: appliedList.length,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

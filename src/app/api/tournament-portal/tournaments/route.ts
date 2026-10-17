@@ -34,41 +34,99 @@ export async function GET(req: NextRequest) {
         const clientId = searchParams.get('client_id');
         const tournamentId = searchParams.get('id');
 
-        let dbTournaments: any[] = [];
+        const map = new Map<string, any>();
+
         try {
+            const supabase = getSupabaseAdmin();
+
+            // 1. Fetch from primary `tournaments` table (Admin & unified registration source)
+            let mainQuery = supabase.from('tournaments').select('*');
+            if (tournamentId) {
+                mainQuery = mainQuery.eq('id', tournamentId);
+            }
+            const { data: mainData, error: mainErr } = await mainQuery.order('createdAt', { ascending: false });
+            if (!mainErr && mainData) {
+                for (const row of mainData) {
+                    const fee = row.entryFee ?? row.fee ?? row.price ?? 0;
+                    map.set(row.id, {
+                        ...row,
+                        id: row.id,
+                        name: row.title || row.name || 'بطولة',
+                        title: row.title || row.name || 'بطولة',
+                        description: row.description || '',
+                        location: row.location || row.city || row.country || '',
+                        city: row.city || row.location || '',
+                        country: row.country || '',
+                        startDate: row.startDate || row.start_date || '',
+                        endDate: row.endDate || row.end_date || '',
+                        registrationDeadline: row.registrationDeadline || row.registration_deadline || '',
+                        fee: fee,
+                        entryFee: fee,
+                        registrationFee: fee,
+                        currency: row.currency || 'SAR',
+                        isPaid: row.isPaid === true || fee > 0,
+                        isActive: row.isActive === true,
+                        status: row.status || (row.isActive ? 'active' : 'upcoming'),
+                        currentParticipants: row.currentParticipants || 0,
+                        maxParticipants: row.maxParticipants || 0,
+                        logo: row.logo || row.logo_url || '',
+                        logo_url: row.logo || row.logo_url || '',
+                        prizes: row.prizes || '',
+                        rules: row.rules || '',
+                        ageGroups: row.ageGroups || [],
+                        categories: row.categories || [],
+                        createdAt: row.createdAt || row.created_at,
+                    });
+                }
+            }
+
+            // 2. Fetch from `tournament_new` table
             const isUuid = !!tournamentId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tournamentId);
             if (!tournamentId || isUuid) {
-                const supabase = getSupabaseAdmin();
-                let query = supabase.from('tournament_new').select('*');
+                let newQuery = supabase.from('tournament_new').select('*');
                 if (tournamentId && isUuid) {
-                    query = query.eq('id', tournamentId);
+                    newQuery = newQuery.eq('id', tournamentId);
                 } else if (clientId) {
-                    query = query.eq('client_id', clientId);
+                    newQuery = newQuery.eq('client_id', clientId);
                 }
-                const { data } = await query.order('created_at', { ascending: false });
-                if (data) dbTournaments = data;
+                const { data: newData } = await newQuery.order('created_at', { ascending: false });
+                if (newData) {
+                    for (const row of newData) {
+                        if (!map.has(row.id)) {
+                            const fee = row.entry_fee ?? row.fee ?? 0;
+                            map.set(row.id, {
+                                ...row,
+                                id: row.id,
+                                name: row.name || row.title || 'بطولة',
+                                title: row.name || row.title || 'بطولة',
+                                startDate: row.start_date || row.startDate || '',
+                                endDate: row.end_date || row.endDate || '',
+                                fee: fee,
+                                entryFee: fee,
+                                registrationFee: fee,
+                                currency: row.currency || 'SAR',
+                                isPaid: row.is_paid === true || fee > 0,
+                                isActive: row.is_active !== false && row.status !== 'draft',
+                                status: row.status || 'open',
+                            });
+                        }
+                    }
+                }
             }
         } catch (dbErr) {
             console.warn('[tournament-portal/tournaments] Supabase fetch note:', dbErr);
         }
 
-        // Merge with locally created tournaments
+        // 3. Merge with dev/fallback tournaments
         const devTournaments = getDevTournaments();
-        let filteredDev = devTournaments;
-        if (tournamentId) {
-            filteredDev = devTournaments.filter(t => t.id === tournamentId);
-        } else if (clientId) {
-            filteredDev = devTournaments.filter(t => t.client_id === clientId);
-        }
-
-        const map = new Map<string, any>();
-        for (const t of dbTournaments) map.set(t.id, t);
-        for (const t of filteredDev) {
-            if (!map.has(t.id)) map.set(t.id, t);
+        for (const t of devTournaments) {
+            if (!map.has(t.id)) {
+                map.set(t.id, t);
+            }
         }
 
         const all = Array.from(map.values()).sort(
-            (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+            (a, b) => new Date(b.createdAt || b.created_at || 0).getTime() - new Date(a.createdAt || a.created_at || 0).getTime()
         );
 
         if (tournamentId) {

@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeUser } from '@/lib/api/user-auth';
+import { sendFcmPush } from '@/lib/firebase/admin-fcm';
 
 export type NotificationEventType =
   | 'profile_view' | 'video_view' | 'video_like' | 'video_comment'
@@ -217,7 +218,34 @@ export async function POST(req: NextRequest) {
 
     await db.from('notifications').insert(notifBatch);
 
-    // 2. WhatsApp template
+    // 2. FCM Push Notification — send to all devices of the target user
+    try {
+      const { data: tokenRows } = await db
+        .from('users')
+        .select('fcmToken, pushToken')
+        .or(`id.eq.${targetUserId},uid.eq.${targetUserId},supabase_uid.eq.${targetUserId}`);
+
+      const fcmTokens: string[] = [];
+      (tokenRows || []).forEach((r: Record<string, unknown>) => {
+        if (r.fcmToken && typeof r.fcmToken === 'string') fcmTokens.push(r.fcmToken);
+        else if (r.pushToken && typeof r.pushToken === 'string') fcmTokens.push(r.pushToken);
+      });
+
+      const uniqueTokens = [...new Set(fcmTokens)];
+      if (uniqueTokens.length > 0) {
+        await sendFcmPush(uniqueTokens, {
+          title: content.title,
+          body: content.message,
+          actionUrl: metadata?.videoId ? `/videos/${metadata.videoId}` : undefined,
+          data: { eventType, actorId, actorName },
+        });
+      }
+    } catch (fcmErr) {
+      // FCM errors are non-fatal — in-app notification was already saved
+      console.error('[dispatch] FCM push error (non-fatal):', fcmErr);
+    }
+
+    // 3. WhatsApp template
     let whatsappResult: 'sent' | 'skipped' | 'failed' = 'skipped';
     const [chatAmanConfig, templateConfig, phone] = await Promise.all([
       getChatAmanConfig(db), getTemplateConfig(db), getPhoneForUser(targetUserId),

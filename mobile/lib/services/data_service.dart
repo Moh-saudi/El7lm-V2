@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:math' as math;
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -16,6 +18,7 @@ import '../models/user_profile.dart';
 import 'api_client.dart';
 import 'auth_service.dart';
 import 'contact_validator.dart';
+import 'currency_service.dart';
 import 'in_app_notification_service.dart';
 import '../screens/profile/player_profile_data.dart';
 
@@ -846,6 +849,629 @@ class DataService {
       key: 'applied_opportunities_list',
       value: jsonEncode(list),
     );
+  }
+
+  /// إنشاء جلسة دفع Geidea وإرجاع بيانات الجلسة (redirectUrl, sessionId, orderId)
+  Future<Map<String, dynamic>> createGeideaSession({
+    required double amount,
+    required String currency,
+    required String customerEmail,
+    String? customerName,
+    String? merchantReferenceId,
+    Map<String, dynamic>? metadata,
+  }) async {
+    // Geidea live merchant account (3448c010-87b1-41e7-9771-cac444268cfb) is strictly
+    // an Egyptian merchant terminal (EGP). Non-EGP currencies are rejected by Geidea PGW with '005 عملة خاطئة'.
+    const effectiveCurrency = 'EGP';
+
+    // التحويل الصارم إلى الجنيه المصري بالسعر اللحظي المعتمد في حال كانت العملة غير الجنيه
+    final originalCurrency = currency.trim().toUpperCase();
+    double finalEgpAmount = amount;
+    double exchangeRate = 1.0;
+    bool isConverted = false;
+
+    if (originalCurrency.isNotEmpty && originalCurrency != 'EGP') {
+      final conversion = await CurrencyService.instance.convertToEgp(amount, originalCurrency);
+      finalEgpAmount = conversion.convertedAmountEgp;
+      exchangeRate = conversion.exchangeRate;
+      isConverted = true;
+      debugPrint('💱 [DataService.createGeideaSession] Converted $amount $originalCurrency -> $finalEgpAmount EGP (Rate: $exchangeRate)');
+    } else {
+      finalEgpAmount = double.parse(amount.toStringAsFixed(2));
+    }
+
+    final enrichedMetadata = <String, dynamic>{
+      ...?metadata,
+      'originalAmount': amount,
+      'originalCurrency': originalCurrency,
+      'exchangeRate': exchangeRate,
+      'isConverted': isConverted,
+      'chargedAmountEgp': finalEgpAmount,
+      'chargedCurrency': effectiveCurrency,
+    };
+
+    final payload = <String, dynamic>{
+      'amount': finalEgpAmount,
+      'currency': effectiveCurrency,
+      'customerEmail': customerEmail,
+      'returnUrl': 'https://www.el7lm.com/payment/success',
+      'callbackUrl': 'https://www.el7lm.com/api/geidea/callback',
+    };
+    if (customerName != null) payload['customerName'] = customerName;
+    if (merchantReferenceId != null) {
+      payload['merchantReferenceId'] = merchantReferenceId;
+    }
+    payload['metadata'] = enrichedMetadata;
+
+    Map<String, dynamic>? result;
+
+    // 1. محاولة إنشاء الجلسة عبر الـ API الخلفي أولاً
+    try {
+      final response = await _api.post(
+        '/api/geidea/create-session',
+        body: payload,
+        accessToken: _auth.accessToken,
+      );
+      if (response['success'] == true &&
+          (response['redirectUrl'] != null || response['sessionId'] != null)) {
+        result = Map<String, dynamic>.from(response);
+      } else {
+        debugPrint('[DataService] API create-session returned error: ${response['error']} - falling back to direct Geidea');
+      }
+    } catch (e) {
+      debugPrint('[DataService] API create-session network/auth error: $e - falling back to direct Geidea');
+    }
+
+    // 2. الرجوع المباشر لبوابة Geidea الحية بالبيانات المعتمدة
+    result ??= await _createDirectGeideaSession(
+      amount: finalEgpAmount,
+      currency: effectiveCurrency,
+      customerEmail: customerEmail,
+      customerName: customerName,
+      merchantReferenceId: merchantReferenceId,
+      metadata: enrichedMetadata,
+    );
+
+    // تضمين تفاصيل التحويل في النتيجة لضمان اتساق الواجهات
+    result['originalAmount'] = amount;
+    result['originalCurrency'] = originalCurrency;
+    result['convertedAmountEgp'] = finalEgpAmount;
+    result['exchangeRate'] = exchangeRate;
+    result['isConverted'] = isConverted;
+
+    return result;
+  }
+
+  /// إنشاء جلسة الدفع مباشرة عبر API جيديا الرسمي (مضمونة ومباشرة للتطبيق)
+  Future<Map<String, dynamic>> _createDirectGeideaSession({
+    required double amount,
+    required String currency,
+    required String customerEmail,
+    String? customerName,
+    String? merchantReferenceId,
+    Map<String, dynamic>? metadata,
+  }) async {
+    const merchantPublicKey = '3448c010-87b1-41e7-9771-cac444268cfb';
+    const apiPassword = 'ecba1701-4889-4357-ba09-4d8d864f6d64';
+    const baseUrl = 'https://api.merchant.geidea.net';
+
+    final rawRef = (merchantReferenceId != null && merchantReferenceId.isNotEmpty)
+        ? merchantReferenceId.toUpperCase()
+        : 'EL7LM${DateTime.now().millisecondsSinceEpoch}';
+    final prefixedRef = rawRef.startsWith('EL7LM') ? rawRef : 'EL7LM$rawRef';
+    final cleanRefId = prefixedRef.replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    final finalRefId = cleanRefId.substring(0, cleanRefId.length > 30 ? 30 : cleanRefId.length);
+
+    final now = DateTime.now().toUtc();
+    String pad(int n) => n.toString().padLeft(2, '0');
+    final timestamp = '${now.year}/${pad(now.month)}/${pad(now.day)} ${pad(now.hour)}:${pad(now.minute)}:${pad(now.second)}';
+    final amountStr = amount.toStringAsFixed(2);
+    // Egyptian merchant terminal requires EGP:
+    const upperCurrency = 'EGP';
+
+    // Payload: MerchantPublicKey + Amount + Currency + MerchantReferenceId + Timestamp
+    final sigPayload = '$merchantPublicKey$amountStr$upperCurrency$finalRefId$timestamp';
+    final keyBytes = utf8.encode(apiPassword);
+    final dataBytes = utf8.encode(sigPayload);
+    final hmac = Hmac(sha256, keyBytes);
+    final signature = base64.encode(hmac.convert(dataBytes).bytes);
+
+    final basicAuth = base64.encode(utf8.encode('$merchantPublicKey:$apiPassword'));
+
+    final bodyMap = <String, dynamic>{
+      'amount': amount,
+      'currency': upperCurrency,
+      'merchantReferenceId': finalRefId,
+      'timestamp': timestamp,
+      'signature': signature,
+      'callbackUrl': 'https://www.el7lm.com/api/geidea/callback',
+      'returnUrl': 'https://www.el7lm.com/payment/success',
+      'language': 'ar',
+      'showReceipt': true,
+      'showReceiptPage': true,
+      'customer': {
+        'email': customerEmail.trim().isNotEmpty ? customerEmail.trim() : 'support@el7lm.com',
+        'firstName': (customerName != null && customerName.trim().isNotEmpty)
+            ? customerName.trim().split(' ').first
+            : 'Customer',
+        'lastName': (customerName != null && customerName.trim().split(' ').length > 1)
+            ? customerName.trim().split(' ').sublist(1).join(' ')
+            : 'EL7LM',
+      },
+    };
+    if (metadata != null) {
+      bodyMap['metadata'] = metadata;
+    }
+
+    final res = await http.post(
+      Uri.parse('$baseUrl/payment-intent/api/v2/direct/session'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Basic $basicAuth',
+      },
+      body: jsonEncode(bodyMap),
+    );
+
+    final resData = jsonDecode(res.body) as Map<String, dynamic>;
+    final responseCode = resData['responseCode'] ?? resData['code'];
+    if (res.statusCode != 200 || responseCode != '000') {
+      final msg = resData['detailedResponseMessage'] ??
+          resData['responseMessage'] ??
+          resData['message'] ??
+          'فشل إنشاء جلسة الدفع';
+      debugPrint('[DataService] Direct Geidea session failed: $msg (Code: $responseCode)');
+      throw ApiException(msg, translationKey: 'paymentSessionFailed');
+    }
+
+    final dynamic sessionData = resData['session'] ?? resData;
+    final sessionMap = (sessionData is Map) ? Map<String, dynamic>.from(sessionData) : <String, dynamic>{};
+    final sessionId = sessionMap['id'] ?? sessionMap['sessionId'] ?? resData['sessionId'] ?? finalRefId;
+    final redirectUrl = sessionMap['redirectUrl'] ??
+        sessionMap['url'] ??
+        resData['redirectUrl'] ??
+        'https://www.merchant.geidea.net/hpp/checkout/?$sessionId';
+
+    debugPrint('[DataService] ✅ Direct Geidea session created successfully: $sessionId');
+    return {
+      'success': true,
+      'sessionId': sessionId,
+      'orderId': resData['orderId'] ?? finalRefId,
+      'redirectUrl': redirectUrl,
+      'message': 'تم إنشاء جلسة الدفع بنجاح',
+    };
+  }
+
+  /// إنشاء معرف UUID v4 عشوائي مطابق للمواصفات
+  String _generateUuid() {
+    final rnd = math.Random.secure();
+    final bytes = List<int>.generate(16, (_) => rnd.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
+  }
+
+  /// جلب كل البطولات الجارية والنشطة والمتاحة عبر جدولي tournaments و tournament_new في Supabase مع دمج API
+  Future<List<Map<String, dynamic>>> fetchTournaments() async {
+    final Map<String, Map<String, dynamic>> combined = {};
+
+    void addTournament(Map<dynamic, dynamic> raw) {
+      final t = Map<String, dynamic>.from(raw);
+      final id = '${t['id'] ?? ''}'.trim();
+      if (id.isEmpty) return;
+
+      final feeVal = t['entryFee'] ?? t['entry_fee'] ?? t['fee'] ?? t['registrationFee'] ?? t['price'];
+      double fee = 0.0;
+      if (feeVal is num) {
+        fee = feeVal.toDouble();
+      } else if (feeVal != null) {
+        fee = double.tryParse('$feeVal') ?? 0.0;
+      }
+
+      final name = '${t['name'] ?? t['title'] ?? 'بطولة'}'.trim();
+      final status = '${t['status'] ?? ''}'.toLowerCase();
+      final isActive = t['isActive'] == true ||
+          t['is_active'] == true ||
+          status == 'open' ||
+          status == 'active' ||
+          status == 'ongoing' ||
+          t['is_public'] == true;
+
+      final currency = '${t['currency'] ?? 'EGP'}'.toUpperCase();
+      final logoVal = t['logo'] ??
+          t['logo_url'] ??
+          t['logoUrl'] ??
+          t['image'] ??
+          t['image_url'] ??
+          t['imageUrl'] ??
+          t['cover_image'] ??
+          t['coverImage'] ??
+          t['cover_url'] ??
+          t['banner'] ??
+          t['banner_url'] ??
+          t['thumbnail'] ??
+          t['photo'];
+
+      combined[id] = {
+        ...t,
+        'id': id,
+        'name': name,
+        'title': name,
+        'description': '${t['description'] ?? ''}',
+        'location': '${t['location'] ?? t['city'] ?? t['country'] ?? ''}',
+        'city': '${t['city'] ?? t['location'] ?? ''}',
+        'country': '${t['country'] ?? ''}',
+        'startDate': '${t['startDate'] ?? t['start_date'] ?? ''}',
+        'endDate': '${t['endDate'] ?? t['end_date'] ?? ''}',
+        'registrationDeadline': '${t['registrationDeadline'] ?? t['registration_deadline'] ?? ''}',
+        'entryFee': fee,
+        'fee': fee,
+        'registrationFee': fee,
+        'currency': currency.isNotEmpty ? currency : 'EGP',
+        'isPaid': fee > 0 || t['isPaid'] == true || t['is_paid'] == true,
+        'isActive': isActive,
+        'status': status.isNotEmpty ? status : (isActive ? 'active' : 'upcoming'),
+        'logo': logoVal != null ? '$logoVal'.trim() : '',
+        'logo_url': logoVal != null ? '$logoVal'.trim() : '',
+        'prizes': '${t['prizes'] ?? ''}',
+        'rules': '${t['rules'] ?? ''}',
+        'contactInfo': '${t['contactInfo'] ?? t['contact_info'] ?? ''}',
+        'createdAt': '${t['createdAt'] ?? t['created_at'] ?? ''}',
+      };
+    }
+
+    // 1. الاستعلام من جدول tournaments في Supabase
+    if (AppConfig.hasSupabaseConfiguration) {
+      try {
+        final List<dynamic> t1 = await Supabase.instance.client
+            .from('tournaments')
+            .select('*')
+            .order('createdAt', ascending: false);
+        for (final row in t1.whereType<Map>()) {
+          addTournament(row);
+        }
+      } catch (e) {
+        debugPrint('[DataService] tournaments query note: $e');
+      }
+
+      // 2. الاستعلام من جدول tournament_new في Supabase (يشمل كاس العرب والبطولات المفتوحة)
+      try {
+        final List<dynamic> t2 = await Supabase.instance.client
+            .from('tournament_new')
+            .select('*')
+            .order('created_at', ascending: false);
+        for (final row in t2.whereType<Map>()) {
+          addTournament(row);
+        }
+      } catch (e) {
+        debugPrint('[DataService] tournament_new query note: $e');
+      }
+    }
+
+    // 3. الرجوع للـ API endpoint لدمج أي بطولات محلية إضافية
+    if (combined.isEmpty) {
+      try {
+        final response = await _api.get('/api/tournament-portal/tournaments');
+        final data = response['data'] ?? response['tournaments'] ?? response;
+        if (data is List) {
+          for (final row in data.whereType<Map>()) {
+            addTournament(row);
+          }
+        }
+      } catch (e) {
+        debugPrint('[DataService] API fallback note: $e');
+      }
+    }
+
+    final list = combined.values.toList();
+    // ترتيب: البطولات النشطة والجارية في المقدمة، ثم الأحدث تاريخاً
+    list.sort((a, b) {
+      final aActive = a['isActive'] == true ? 1 : 0;
+      final bActive = b['isActive'] == true ? 1 : 0;
+      if (aActive != bActive) return bActive.compareTo(aActive);
+      final aDate = '${a['createdAt'] ?? ''}';
+      final bDate = '${b['createdAt'] ?? ''}';
+      return bDate.compareTo(aDate);
+    });
+
+    return list;
+  }
+
+  /// تسجيل مجاني في بطولة (بدون دفع)
+  Future<void> registerForTournament(String tournamentId) async {
+    if (tournamentId.isEmpty) return;
+    if (!AppConfig.hasSupabaseConfiguration) return;
+    final userId = _auth.authUserId;
+    if (userId == null || userId.isEmpty) {
+      throw const ApiException(
+        'You must be logged in to register.',
+        translationKey: 'mustBeLoggedIn',
+      );
+    }
+    final client = Supabase.instance.client;
+    final now = DateTime.now().toUtc().toIso8601String();
+    final regId = _generateUuid();
+    final displayName = _auth.currentDisplayName.isNotEmpty ? _auth.currentDisplayName : 'لاعب';
+    final email = _auth.currentUserEmail ?? '$userId@el7lm.app';
+    final phone = _auth.currentUserPhone;
+
+    await client.from('tournament_registrations').insert({
+      'id': regId,
+      'tournamentId': tournamentId,
+      'playerId': userId,
+      'userId': userId,
+      'playerName': displayName,
+      'playerEmail': email,
+      'playerPhone': phone,
+      'status': 'pending',
+      'paymentStatus': 'free',
+      'paymentMethod': 'free',
+      'paymentAmount': 0,
+      'totalAmount': 0,
+      'registrationType': 'individual',
+      'createdAt': now,
+      'registrationDate': now,
+    });
+  }
+
+  /// تسجيل دفع ناجح لبطولة بعد السداد عبر جيديا
+  Future<void> recordTournamentPaymentSuccess({
+    required String tournamentId,
+    required double amount,
+    required String currency,
+    String? orderId,
+    String? tournamentName,
+  }) async {
+    if (tournamentId.isEmpty) return;
+    if (!AppConfig.hasSupabaseConfiguration) return;
+    final userId = _auth.authUserId ?? 'anonymous_player';
+    final client = Supabase.instance.client;
+    final now = DateTime.now().toUtc().toIso8601String();
+    final regId = _generateUuid();
+    final displayName = _auth.currentDisplayName.isNotEmpty ? _auth.currentDisplayName : 'لاعب';
+    final email = _auth.currentUserEmail ?? '$userId@el7lm.app';
+    final phone = _auth.currentUserPhone;
+
+    try {
+      await client.from('tournament_registrations').insert({
+        'id': regId,
+        'tournamentId': tournamentId,
+        'playerId': userId,
+        'userId': userId,
+        'organizerId': userId,
+        'playerName': displayName,
+        'teamName': displayName,
+        'playerEmail': email,
+        'accountEmail': email,
+        'playerPhone': phone,
+        'accountPhone': phone,
+        'status': 'paid',
+        'paymentStatus': 'paid',
+        'paymentMethod': 'geidea',
+        'paymentAmount': amount.round(),
+        'totalAmount': amount.round(),
+        'amount': amount.round(),
+        'currency': currency,
+        'geideaOrderId': orderId,
+        'registrationType': 'individual',
+        'players': [
+          {
+            'id': userId,
+            'name': displayName,
+            'email': email,
+            'phone': phone,
+          }
+        ],
+        'createdAt': now,
+        'registeredAt': now,
+        'registrationDate': now,
+        'paymentDate': now,
+      });
+      debugPrint('[DataService] ✅ Recorded tournament payment registration: $regId');
+
+      // 🔔 إنشاء إشعار فوري داخل التطبيق للمستخدم (يظهر في أيقونة الجرس)
+      final notifId = _generateUuid();
+      final titleText = tournamentName != null && tournamentName.isNotEmpty
+          ? 'تم تأكيد اشتراكك في $tournamentName 🏆'
+          : 'تم تأكيد الدفع والاشتراك بنجاح! 🏆';
+      final orderStr = (orderId != null && orderId.isNotEmpty) ? ' (رقم العملية: $orderId)' : '';
+      final msgText = 'تم سداد رسوم الاشتراك ($amount $currency) وتأكيد تسجيلك في البطولة بنجاح$orderStr.';
+
+      await client.from('notifications').insert({
+        'id': notifId,
+        'userId': userId,
+        'title': titleText,
+        'message': msgText,
+        'body': msgText,
+        'type': 'payment_success',
+        'priority': 'high',
+        'isRead': false,
+        'read': false,
+        'actionUrl': '/tournaments',
+        'metadata': {
+          'tournamentId': tournamentId,
+          'tournamentName': tournamentName,
+          'orderId': orderId,
+          'amount': amount,
+          'currency': currency,
+          'paymentMethod': 'geidea',
+        },
+        'createdAt': now,
+        'updatedAt': now,
+      });
+      debugPrint('[DataService] 🔔 Recorded in-app payment success notification: $notifId');
+    } catch (e) {
+      debugPrint('[DataService] ⚠️ Note saving payment registration/notification to Supabase: $e');
+    }
+  }
+
+  /// تسجيل اشتراك لحظي في بطولة (انستاباي / فوراً) بحالة معلقة pending لحين مراجعة وتأكيد الإيصال
+  Future<void> recordInstantTournamentRegistration({
+    required String tournamentId,
+    required double amount,
+    required String currency,
+    required String method, // 'instapay' | 'fawran'
+    String? tournamentName,
+  }) async {
+    if (tournamentId.isEmpty) return;
+    if (!AppConfig.hasSupabaseConfiguration) return;
+    final userId = _auth.authUserId ?? 'anonymous_player';
+    final client = Supabase.instance.client;
+    final now = DateTime.now().toUtc().toIso8601String();
+    final regId = _generateUuid();
+    final displayName = _auth.currentDisplayName.isNotEmpty ? _auth.currentDisplayName : 'لاعب';
+    final email = _auth.currentUserEmail ?? '$userId@el7lm.app';
+    final phone = _auth.currentUserPhone;
+    final methodName = method == 'instapay' ? 'انستاباي (InstaPay)' : 'فوراً (Fawran)';
+
+    try {
+      await client.from('tournament_registrations').insert({
+        'id': regId,
+        'tournamentId': tournamentId,
+        'playerId': userId,
+        'userId': userId,
+        'organizerId': userId,
+        'playerName': displayName,
+        'teamName': displayName,
+        'playerEmail': email,
+        'accountEmail': email,
+        'playerPhone': phone,
+        'accountPhone': phone,
+        'status': 'pending', // معلق لحين تأكيد المنظمين
+        'paymentStatus': 'pending', // الدفع قيد المراجعة
+        'paymentMethod': method,
+        'paymentAmount': amount.round(),
+        'totalAmount': amount.round(),
+        'amount': amount.round(),
+        'currency': currency,
+        'notes': 'طلب اشتراك دفع لحظي عبر $methodName، بانتظار مراجعة وتأكيد إيصال التحويل.',
+        'registrationType': 'individual',
+        'players': [
+          {
+            'id': userId,
+            'name': displayName,
+            'email': email,
+            'phone': phone,
+          }
+        ],
+        'createdAt': now,
+        'registeredAt': now,
+        'registrationDate': now,
+      });
+      debugPrint('[DataService] ✅ Recorded instant tournament registration (pending): $regId');
+
+      // إشعار داخل التطبيق للمستخدم بحالة التعليق
+      final notifId = _generateUuid();
+      final titleText = tournamentName != null && tournamentName.isNotEmpty
+          ? 'طلب اشتراكك في $tournamentName قيد المراجعة ⏳'
+          : 'طلب الاشتراك قيد المراجعة ⏳';
+      final msgText = 'تم استلام طلب اشتراكك عبر $methodName ($amount $currency). حالة الاشتراك الآن (معلق / Pending) لحين مراجعة وتأكيد المنظمين لإيصال التحويل.';
+
+      await client.from('notifications').insert({
+        'id': notifId,
+        'userId': userId,
+        'title': titleText,
+        'message': msgText,
+        'body': msgText,
+        'type': 'payment_pending',
+        'priority': 'normal',
+        'isRead': false,
+        'read': false,
+        'actionUrl': '/tournaments',
+        'metadata': {
+          'tournamentId': tournamentId,
+          'tournamentName': tournamentName,
+          'amount': amount,
+          'currency': currency,
+          'paymentMethod': method,
+          'status': 'pending',
+        },
+        'createdAt': now,
+        'updatedAt': now,
+      });
+      debugPrint('[DataService] 🔔 Recorded in-app pending notification: $notifId');
+    } catch (e) {
+      debugPrint('[DataService] ⚠️ Note saving instant tournament registration: $e');
+    }
+  }
+
+  /// جلب حالات تسجيل المستخدم في البطولات (لتحديد ما إذا كان مسجلاً أو قيد المراجعة)
+  Future<Map<String, String>> fetchUserTournamentRegistrationStatuses() async {
+    if (!AppConfig.hasSupabaseConfiguration) return const {};
+    try {
+      final ids = await _resolveUserIds();
+      if (ids.isEmpty) return const {};
+
+      final rows = await Supabase.instance.client
+          .from('tournament_registrations')
+          .select('tournamentId, status, paymentStatus')
+          .inFilter('userId', ids);
+
+      final map = <String, String>{};
+      for (final r in (rows as List)) {
+        final rMap = Map<String, dynamic>.from(r as Map);
+        final tid = '${rMap['tournamentId'] ?? ''}';
+        if (tid.isEmpty) continue;
+        final status = '${rMap['status'] ?? rMap['paymentStatus'] ?? 'pending'}'.toLowerCase();
+        // Paid / approved takes priority
+        if (map[tid] == 'paid' || map[tid] == 'approved') continue;
+        map[tid] = status;
+      }
+      return map;
+    } catch (e) {
+      debugPrint('[DataService] Error fetching user tournament registration statuses: $e');
+      return const {};
+    }
+  }
+
+  /// تسجيل إشعار إلغاء أو فشل الدفع
+  Future<void> recordTournamentPaymentCancelled({
+    required String tournamentId,
+    required double amount,
+    required String currency,
+    String? tournamentName,
+    String? reason,
+  }) async {
+    if (!AppConfig.hasSupabaseConfiguration) return;
+    final userId = _auth.authUserId;
+    if (userId == null || userId.isEmpty) return;
+    final client = Supabase.instance.client;
+    final now = DateTime.now().toUtc().toIso8601String();
+    final notifId = _generateUuid();
+
+    final titleText = tournamentName != null && tournamentName.isNotEmpty
+        ? 'إلغاء دفع اشتراك $tournamentName ⚠️'
+        : 'إلغاء عملية الدفع ⚠️';
+    final reasonStr = (reason != null && reason.trim().isNotEmpty) ? ': $reason' : '';
+    final msgText = 'تم إلغاء عملية الدفع لاشتراك البطولة بمبلغ ($amount $currency)$reasonStr. يمكنك المحاولة مجدداً في أي وقت.';
+
+    try {
+      await client.from('notifications').insert({
+        'id': notifId,
+        'userId': userId,
+        'title': titleText,
+        'message': msgText,
+        'body': msgText,
+        'type': 'payment_cancelled',
+        'priority': 'normal',
+        'isRead': false,
+        'read': false,
+        'actionUrl': '/tournaments',
+        'metadata': {
+          'tournamentId': tournamentId,
+          'tournamentName': tournamentName,
+          'amount': amount,
+          'currency': currency,
+          'reason': reason,
+        },
+        'createdAt': now,
+        'updatedAt': now,
+      });
+      debugPrint('[DataService] 🔔 Recorded in-app payment cancellation notification: $notifId');
+    } catch (e) {
+      debugPrint('[DataService] ⚠️ Note saving payment cancellation notification: $e');
+    }
   }
 
   Future<List<Map<String, dynamic>>> fetchAppliedOpportunities() async {

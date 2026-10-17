@@ -22,15 +22,25 @@ const resolveEnvConfig = (mode: GeideaMode): GeideaEnvConfig => {
   const prefix = mode === 'live' ? 'GEIDEA_LIVE' : 'GEIDEA_TEST';
   const fallbackPrefix = mode === 'live' ? 'GEIDEA' : 'GEIDEA_SANDBOX';
 
+  const defaultLivePublicKey = '3448c010-87b1-41e7-9771-cac444268cfb';
+  const defaultLivePassword = 'ecba1701-4889-4357-ba09-4d8d864f6d64';
+  const defaultTestPublicKey = 'e510dca3-d113-47bf-b4b0-9b92bac661f6';
+  const defaultTestPassword = '9b794cd5-9b42-4048-8e97-2c162f35710f';
+
+  const defaultPublicKey = mode === 'live' ? defaultLivePublicKey : defaultTestPublicKey;
+  const defaultPassword = mode === 'live' ? defaultLivePassword : defaultTestPassword;
+
   const merchantPublicKey =
     getEnv(`${prefix}_MERCHANT_PUBLIC_KEY`) ||
     getEnv(`${fallbackPrefix}_MERCHANT_PUBLIC_KEY`) ||
-    getEnv('GEIDEA_MERCHANT_PUBLIC_KEY');
+    getEnv('GEIDEA_MERCHANT_PUBLIC_KEY') ||
+    defaultPublicKey;
 
   const apiPassword =
     getEnv(`${prefix}_API_PASSWORD`) ||
     getEnv(`${fallbackPrefix}_API_PASSWORD`) ||
-    getEnv('GEIDEA_API_PASSWORD');
+    getEnv('GEIDEA_API_PASSWORD') ||
+    defaultPassword;
 
   const baseUrl =
     getEnv(`${prefix}_BASE_URL`) ||
@@ -47,8 +57,8 @@ const resolveEnvConfig = (mode: GeideaMode): GeideaEnvConfig => {
     defaultCallbackUrl;
 
   return {
-    merchantPublicKey: merchantPublicKey || '',
-    apiPassword: apiPassword || '',
+    merchantPublicKey: merchantPublicKey || defaultPublicKey,
+    apiPassword: apiPassword || defaultPassword,
     baseUrl,
     callbackUrl,
   };

@@ -3,6 +3,7 @@
  */
 
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { sendFcmPush } from '@/lib/firebase/admin-fcm';
 
 export interface GeideaCallbackPayload {
   [key: string]: unknown;
@@ -82,7 +83,112 @@ export async function processGeideaCallback(
     }
   }
 
+  // إرسال إشعار للمستخدم (قبول / إلغاء / فشل الدفع) في مركز الإشعارات وهاتف المستخدم
+  try {
+    await sendPaymentNotification(processed);
+  } catch (notifError) {
+    console.error('⚠️ [Geidea Callback Handler] Failed to send payment notification:', notifError);
+  }
+
   return processed;
+}
+
+/**
+ * إرسال إشعار فوري وتنبيه Push Notification للمستخدم عند قبول/إلغاء/فشل الدفع
+ */
+async function sendPaymentNotification(processed: ProcessedCallback): Promise<void> {
+  const db = getSupabaseAdmin();
+
+  // استخراج معرف المستخدم userId من merchantReferenceId أو البريد
+  let userId: string | null = null;
+  if (processed.merchantReferenceId) {
+    const parts = processed.merchantReferenceId.split('-');
+    if (parts.length >= 2) userId = parts[1];
+  }
+  if (!userId && processed.customerEmail) {
+    const { data } = await db.from('users').select('id').eq('email', processed.customerEmail).limit(1);
+    if (data?.length) userId = String(data[0].id);
+  }
+  if (!userId) {
+    console.warn('⚠️ [Payment Notification] Cannot find userId for notification');
+    return;
+  }
+
+  const now = new Date().toISOString();
+  let title = '';
+  let message = '';
+  let type = '';
+  let priority = 'normal';
+
+  const amountStr = processed.amount ? `${processed.amount} ${processed.currency}` : '';
+
+  if (processed.status === 'success') {
+    title = 'تم تأكيد الدفع بنجاح! 💳';
+    message = `تم استلام دفعتك بنجاح${amountStr ? ` بمبلغ ${amountStr}` : ''}. رقم العملية: ${processed.orderId}`;
+    type = 'payment_success';
+    priority = 'high';
+  } else if (processed.status === 'cancelled') {
+    title = 'إلغاء عملية الدفع ⚠️';
+    message = `تم إلغاء عملية الدفع${amountStr ? ` بمبلغ ${amountStr}` : ''}. يمكنك إعادة المحاولة في أي وقت.`;
+    type = 'payment_cancelled';
+  } else if (processed.status === 'failed') {
+    title = 'تعذر إتمام الدفع ❌';
+    message = `لم تكتمل عملية الدفع. ${processed.responseMessage || 'يرجى مراجعة بيانات البطاقة أو تجربة وسيلة دفع أخرى.'}`;
+    type = 'payment_failed';
+  } else {
+    return;
+  }
+
+  // 1. تسجيل الإشعار في جدول notifications (مركز الإشعارات / أيقونة الجرس)
+  await db.from('notifications').insert({
+    id: crypto.randomUUID(),
+    userId,
+    title,
+    message,
+    body: message,
+    type,
+    priority,
+    isRead: false,
+    read: false,
+    metadata: {
+      orderId: processed.orderId,
+      amount: processed.amount,
+      currency: processed.currency,
+      status: processed.status,
+    },
+    createdAt: now,
+    updatedAt: now,
+  });
+  console.log(`✅ [Payment Notification] Created in-app notification for user ${userId} (${type})`);
+
+  // 2. إرسال Push Notification للهاتف إذا كان مسجلاً لديه FCM token
+  try {
+    const { data: tokenRows } = await db
+      .from('users')
+      .select('fcmToken, pushToken')
+      .or(`id.eq.${userId},uid.eq.${userId},supabase_uid.eq.${userId}`);
+
+    const fcmTokens: string[] = [];
+    (tokenRows || []).forEach((r: Record<string, unknown>) => {
+      if (r.fcmToken && typeof r.fcmToken === 'string') fcmTokens.push(r.fcmToken);
+      else if (r.pushToken && typeof r.pushToken === 'string') fcmTokens.push(r.pushToken);
+    });
+
+    const uniqueTokens = [...new Set(fcmTokens)];
+    if (uniqueTokens.length > 0) {
+      await sendFcmPush(uniqueTokens, {
+        title,
+        body: message,
+        data: {
+          eventType: type,
+          orderId: processed.orderId,
+        },
+      });
+      console.log(`📱 [Payment Notification] Sent FCM push to ${uniqueTokens.length} devices`);
+    }
+  } catch (fcmErr) {
+    console.error('⚠️ [Payment Notification] FCM push error (non-fatal):', fcmErr);
+  }
 }
 
 /**

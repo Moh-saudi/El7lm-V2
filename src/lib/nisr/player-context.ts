@@ -14,17 +14,36 @@ export interface NisrPlayerContext {
   organization: string;
   profileCompletion: number;
   skills: Record<string, string>;
+  medicalHistory?: string;
+  careerStats?: {
+    goals?: string;
+    assists?: string;
+    matchesPlayed?: string;
+  };
+  dreamClub?: string;
+  careerGoals?: string;
+  bio?: string;
   recentOpportunities: Array<{
     title: string;
     country: string;
     city: string;
     positions: string;
   }>;
+  recentTournaments: Array<{
+    name: string;
+    location: string;
+    country: string;
+    startDate: string;
+    entryFee: number;
+    currency: string;
+  }>;
 }
 
 export class NisrContextError extends Error {
-  constructor(public readonly code: 'NISR_NOT_CONFIGURED' | 'NISR_PROFILE_UNAVAILABLE' | 'NISR_PARENTAL_CONSENT_REQUIRED') {
+  readonly code: 'NISR_NOT_CONFIGURED' | 'NISR_PROFILE_UNAVAILABLE' | 'NISR_PARENTAL_CONSENT_REQUIRED';
+  constructor(code: 'NISR_NOT_CONFIGURED' | 'NISR_PROFILE_UNAVAILABLE' | 'NISR_PARENTAL_CONSENT_REQUIRED') {
     super(code);
+    this.code = code;
   }
 }
 
@@ -205,6 +224,15 @@ export async function loadNisrPlayerContext(authUserId: string, locale: string):
       defending: value(player, 'stats_defending', 'defending'),
       physical: value(player, 'stats_physical', 'physical'),
     },
+    medicalHistory: value(player, 'chronic_diseases', 'medical_conditions', 'injuries'),
+    careerStats: {
+      goals: value(player, 'goals', 'total_goals'),
+      assists: value(player, 'assists', 'total_assists'),
+      matchesPlayed: value(player, 'matches_played', 'matchesPlayed'),
+    },
+    dreamClub: value(player, 'dream_club', 'dreamClub', 'target_club'),
+    careerGoals: value(player, 'career_goals', 'careerGoals', 'ambitions'),
+    bio: value(player, 'bio', 'biography'),
     recentOpportunities: opportunities.slice(0, 5).map((row) => ({
       title: opportunityTitle(row, locale),
       country: value(row, 'country'),
@@ -213,5 +241,26 @@ export async function loadNisrPlayerContext(authUserId: string, locale: string):
         ? row.positions.slice(0, 4).map((item) => String(item).slice(0, 30)).join(', ')
         : '',
     })),
+    recentTournaments: (await (async () => {
+      try {
+        const tournamentResult = await db
+          .from('tournaments')
+          .select('name,location,country,startDate,entryFee,currency,status,isActive')
+          .or('isActive.eq.true,status.eq.upcoming')
+          .order('startDate', { ascending: true })
+          .limit(6);
+        const rows: Row[] = tournamentResult.error ? [] : (tournamentResult.data as Row[] ?? []);
+        return rows.slice(0, 5).map((r) => ({
+          name: value(r, 'name', 'title'),
+          location: value(r, 'location', 'city'),
+          country: value(r, 'country'),
+          startDate: value(r, 'startDate', 'start_date'),
+          entryFee: Number(r.entryFee ?? r.entry_fee ?? 0),
+          currency: value(r, 'currency') || 'EGP',
+        }));
+      } catch {
+        return [];
+      }
+    })()),
   };
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
@@ -1045,6 +1046,7 @@ class _NisrHomeScreenState extends State<NisrHomeScreen>
         await _audioPlayer.stop();
       }
 
+      await _audioPlayer.setVolume(1.0);
       await _audioPlayer.play(BytesSource(wavBytes));
       if (mounted) {
         setState(() {
@@ -1053,6 +1055,7 @@ class _NisrHomeScreenState extends State<NisrHomeScreen>
         });
       }
     } catch (e) {
+      debugPrint('⚠️ [_toggleAudioPlay] Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('تعذر تشغيل الصوت')),
@@ -1150,27 +1153,37 @@ class _NisrHomeScreenState extends State<NisrHomeScreen>
       return;
     }
 
-    _buf.clear();
-    final stream = await _recorder.startStream(
-      const RecordConfig(
-        encoder: AudioEncoder.pcm16bits,
-        sampleRate: 16000,
-        numChannels: 1,
-      ),
-    );
-    _sub = stream.listen(_buf.add);
+    try {
+      _buf.clear();
+      final stream = await _recorder.startStream(
+        const RecordConfig(
+          encoder: AudioEncoder.pcm16bits,
+          sampleRate: 16000,
+          numChannels: 1,
+        ),
+      );
+      _sub = stream.listen(_buf.add);
 
-    if (!mounted) return;
-    setState(() {
-      _phase = NisrPhase.listening;
-      _secs = 0;
-    });
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      setState(() => _secs++);
-      if (_secs >= 25) _stopVoice(send: true);
-    });
+      setState(() {
+        _phase = NisrPhase.listening;
+        _secs = 0;
+      });
+
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        setState(() => _secs++);
+        if (_secs >= 25) _stopVoice(send: true);
+      });
+    } catch (e) {
+      debugPrint('⚠️ [_toggleVoice] startStream error: $e');
+      if (mounted) {
+        setState(() => _phase = NisrPhase.idle);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر بدء التسجيل الصوتي: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _stopVoice({required bool send}) async {
@@ -1842,19 +1855,10 @@ class _MessageItem extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    color: _surfaceWarm,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: _border),
-                  ),
-                  child: Image.asset(
-                    'assets/images/el7lm-logo.png',
-                    fit: BoxFit.contain,
-                  ),
+                _GlowLogoOrb(
+                  size: 28,
+                  glowColor: _primary,
+                  pulseGlow: message.isPlaying,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -1898,22 +1902,35 @@ class _MessageItem extends StatelessWidget {
               InkWell(
                 onTap: () => onPlayAudio(message.audioBytes!),
                 borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _primaryLight,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: _primary.withValues(alpha: 0.2)),
+                    color: message.isPlaying ? _primaryLight : const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: message.isPlaying ? _primary : _primary.withValues(alpha: 0.25),
+                      width: message.isPlaying ? 1.4 : 1.0,
+                    ),
+                    boxShadow: message.isPlaying
+                        ? [
+                            BoxShadow(
+                              color: _primary.withValues(alpha: 0.25),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         message.isPlaying
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
+                            ? Icons.pause_circle_filled_rounded
+                            : Icons.play_circle_fill_rounded,
                         color: _primary,
-                        size: 18,
+                        size: 19,
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -1921,9 +1938,17 @@ class _MessageItem extends StatelessWidget {
                         style: const TextStyle(
                           color: _primary,
                           fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
+                      if (message.isPlaying) ...[
+                        const SizedBox(width: 8),
+                        const _VoiceWaveBars(
+                          color: _primary,
+                          count: 4,
+                          maxHeight: 13,
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -2001,19 +2026,10 @@ class _ThinkingBubble extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 24,
-              height: 24,
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: _surfaceWarm,
-                shape: BoxShape.circle,
-                border: Border.all(color: _border),
-              ),
-              child: Image.asset(
-                'assets/images/el7lm-logo.png',
-                fit: BoxFit.contain,
-              ),
+            const _GlowLogoOrb(
+              size: 26,
+              glowColor: _primary,
+              pulseGlow: true,
             ),
             const SizedBox(width: 10),
             const SizedBox(
@@ -2040,7 +2056,172 @@ class _ThinkingBubble extends StatelessWidget {
   }
 }
 
-// ─── Voice Recording Banner ───────────────────────────────────────────────────
+// ─── Voice Wave Animated Bars (ChatGPT / Gemini style) ────────────────────────
+class _VoiceWaveBars extends StatefulWidget {
+  const _VoiceWaveBars({
+    this.color = _primary,
+    this.count = 4,
+    this.maxHeight = 20.0,
+  });
+
+  final Color color;
+  final int count;
+  final double maxHeight;
+
+  @override
+  State<_VoiceWaveBars> createState() => _VoiceWaveBarsState();
+}
+
+class _VoiceWaveBarsState extends State<_VoiceWaveBars>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: List.generate(widget.count, (i) {
+            final phase = (i * 0.28) % 1.0;
+            final t = (_ctrl.value + phase) % 1.0;
+            final factor = (0.2 + 0.8 * math.sin(t * math.pi)).clamp(0.2, 1.0);
+            final h = widget.maxHeight * factor;
+
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 1.5),
+              width: 3.0,
+              height: h,
+              decoration: BoxDecoration(
+                color: widget.color,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
+// ─── Glowing Logo Orb (Gemini / ChatGPT Glow Halo) ───────────────────────────
+class _GlowLogoOrb extends StatefulWidget {
+  const _GlowLogoOrb({
+    this.size = 38.0,
+    this.glowColor = _primary,
+    this.pulseGlow = true,
+  });
+
+  final double size;
+  final Color glowColor;
+  final bool pulseGlow;
+
+  @override
+  State<_GlowLogoOrb> createState() => _GlowLogoOrbState();
+}
+
+class _GlowLogoOrbState extends State<_GlowLogoOrb>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1300),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.pulseGlow) {
+      return Container(
+        width: widget.size,
+        height: widget.size,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: _surfaceWarm,
+          shape: BoxShape.circle,
+          border: Border.all(color: _border),
+        ),
+        child: Image.asset(
+          'assets/images/el7lm-logo.png',
+          fit: BoxFit.contain,
+        ),
+      );
+    }
+
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, _) {
+        final val = _ctrl.value;
+        return Container(
+          width: widget.size + 10 * val,
+          height: widget.size + 10 * val,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: widget.glowColor.withValues(alpha: 0.35 * (1.0 - val * 0.25)),
+                blurRadius: 14 * val + 6,
+                spreadRadius: 3 * val + 1,
+              ),
+              BoxShadow(
+                color: const Color(0xFF0EA5E9).withValues(alpha: 0.22 * val),
+                blurRadius: 20 * val + 8,
+                spreadRadius: 2 * val,
+              ),
+            ],
+          ),
+          child: Container(
+            width: widget.size,
+            height: widget.size,
+            padding: const EdgeInsets.all(4.5),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: widget.glowColor.withValues(alpha: 0.7),
+                width: 1.6,
+              ),
+            ),
+            child: Image.asset(
+              'assets/images/el7lm-logo.png',
+              fit: BoxFit.contain,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─── Voice Recording Bar (ChatGPT / Gemini style) ───────────────────────────
 class _VoiceRecordingBar extends StatelessWidget {
   const _VoiceRecordingBar({
     required this.secs,
@@ -2060,51 +2241,116 @@ class _VoiceRecordingBar extends StatelessWidget {
     final m = (secs ~/ 60).toString().padLeft(2, '0');
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       decoration: BoxDecoration(
-        color: _redLight,
-        border: Border(top: BorderSide(color: _red.withValues(alpha: 0.3))),
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: _primary.withValues(alpha: 0.18), width: 1.2),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _primary.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, -3),
+          ),
+        ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: _red,
+          // 1. Glowing Logo Halo (Gemini / ChatGPT style)
+          const _GlowLogoOrb(
+            size: 38,
+            glowColor: _primary,
+            pulseGlow: true,
+          ),
+          const SizedBox(width: 12),
+          // 2. Waveform & Active Listening Label
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      strings.listeningBanner,
+                      style: const TextStyle(
+                        color: _textPrimary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Wave Bars
+                    const _VoiceWaveBars(
+                      color: _primary,
+                      count: 5,
+                      maxHeight: 16,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                // Timer badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: _redLight,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: _red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$m:$s',
+                        style: const TextStyle(
+                          color: _red,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            '${strings.listeningBanner} $m:$s',
-            style: const TextStyle(
-              color: _red,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const Spacer(),
-          TextButton(
+          // 3. Cancel Button
+          IconButton(
             onPressed: onCancel,
-            child: Text(
-              strings.cancel,
-              style: const TextStyle(color: _textSecondary, fontSize: 12),
-            ),
+            icon: const Icon(Icons.close_rounded, size: 20, color: _textSecondary),
+            tooltip: strings.cancel,
+            visualDensity: VisualDensity.compact,
           ),
+          const SizedBox(width: 4),
+          // 4. Glowing Send Button
           ElevatedButton.icon(
             onPressed: onStopAndSend,
             style: ElevatedButton.styleFrom(
-              backgroundColor: _red,
+              backgroundColor: _primary,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              elevation: 3,
+              shadowColor: _primary.withValues(alpha: 0.4),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(20),
               ),
             ),
-            icon: const Icon(Icons.send_rounded, size: 14),
-            label: Text(strings.send, style: const TextStyle(fontSize: 12)),
+            icon: const Icon(Icons.send_rounded, size: 15),
+            label: Text(
+              strings.send,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+            ),
           ),
         ],
       ),

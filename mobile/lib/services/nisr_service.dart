@@ -75,6 +75,7 @@ class NisrService {
     required String locale,
     String? message,
     List<int>? audioBytes,
+    bool wantAudio = true,
   }) async {
     try {
       final response = await _api.post(
@@ -90,17 +91,12 @@ class NisrService {
             'audioMimeType': 'audio/l16',
           if (audioBytes != null && audioBytes.isNotEmpty)
             'audioSampleRate': 16000,
+          'wantAudio': wantAudio,
         },
       );
       final reply = NisrReply.fromJson(response);
       final answer = reply.answer.trim();
-      final isTruncated = answer.length < 80 &&
-          !answer.endsWith('.') &&
-          !answer.endsWith('!') &&
-          !answer.endsWith('؟') &&
-          !answer.endsWith('?') &&
-          !answer.endsWith(':');
-      if (answer.isNotEmpty && !isTruncated) {
+      if (answer.isNotEmpty) {
         return reply;
       }
     } catch (_) {}

@@ -31,7 +31,7 @@ https://api.merchant.geidea.net
 
 ### Gateway API Password
 ```
-edfd5eee-fd1b-4932-9ee1-d6d9ba7599f0
+ecba1701-4889-4357-ba09-4d8d864f6d64
 ```
 
 ### Callback URL
@@ -51,7 +51,7 @@ https://api.merchant.geidea.net
 ```bash
 # Live Environment
 GEIDEA_LIVE_MERCHANT_PUBLIC_KEY=3448c010-87b1-41e7-9771-cac444268cfb
-GEIDEA_LIVE_API_PASSWORD=edfd5eee-fd1b-4932-9ee1-d6d9ba7599f0
+GEIDEA_LIVE_API_PASSWORD=ecba1701-4889-4357-ba09-4d8d864f6d64
 GEIDEA_LIVE_CALLBACK_URL=https://www.el7lm.com/api/geidea/callback
 GEIDEA_LIVE_BASE_URL=https://api.merchant.geidea.net
 

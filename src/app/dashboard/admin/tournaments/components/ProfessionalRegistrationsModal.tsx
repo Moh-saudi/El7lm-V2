@@ -56,20 +56,41 @@ export const ProfessionalRegistrationsModal: React.FC<ProfessionalRegistrationsM
                 if (!newError && newData) {
                     const newRegistrations = newData.map(row => {
                         const players = row.players || [];
+                        if (!Array.isArray(players) || players.length === 0) {
+                            return [{
+                                id: row.id,
+                                originalId: row.id,
+                                playerId: row.playerId || row.userId || row.organizerId || row.id,
+                                playerName: row.playerName || row.teamName || row.displayName || 'لاعب',
+                                playerEmail: row.playerEmail || row.accountEmail || '',
+                                playerPhone: row.playerPhone || row.accountPhone || '',
+                                playerClub: row.clubName || row.organizationName || 'تسجيل فردي',
+                                playerAvatar: null,
+                                playerPosition: row.preferredPosition || '',
+                                registrationDate: row.registrationDate || row.registeredAt || row.createdAt || new Date().toISOString(),
+                                paymentStatus: row.paymentStatus || row.status || 'pending',
+                                paymentAmount: row.paymentAmount ?? row.amount ?? row.totalAmount ?? 0,
+                                paymentMethod: row.paymentMethod || 'free',
+                                notes: row.notes,
+                                status: row.status || 'pending',
+                                registrationType: row.registrationType || 'individual',
+                                teamName: row.teamName || row.clubName || row.organizationName || 'تسجيل فردي'
+                            }];
+                        }
                         // Process both individual players and the group registration itself
                         return players.map((player: any, index: number) => ({
                             id: `${row.id}_${index}`,
                             originalId: row.id,
                             playerId: player.id,
-                            playerName: player.name || player.full_name || 'غير محدد',
-                            playerEmail: player.email || row.accountEmail || '',
-                            playerPhone: player.phone || row.accountPhone || '',
+                            playerName: player.name || player.full_name || row.playerName || 'غير محدد',
+                            playerEmail: player.email || row.accountEmail || row.playerEmail || '',
+                            playerPhone: player.phone || row.accountPhone || row.playerPhone || '',
                             playerClub: player.club_id || row.clubName || '',
                             playerAvatar: player.photoURL || player.avatar || null,
                             playerPosition: player.position || '',
                             registrationDate: row.registrationDate || row.registeredAt || new Date().toISOString(),
                             paymentStatus: row.paymentStatus || 'pending',
-                            paymentAmount: row.paymentAmount || 0,
+                            paymentAmount: row.paymentAmount ?? row.amount ?? 0,
                             paymentMethod: row.paymentMethod,
                             notes: row.notes,
                             status: row.status || 'pending', // Registration status (approved/rejected)

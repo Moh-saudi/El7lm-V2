@@ -43,6 +43,27 @@ class Opportunity {
     );
   }
 
+  /// رسوم التقديم (0 = مجاني)
+  double get fee {
+    final v = rawPayload['fee'] ??
+        rawPayload['applicationFee'] ??
+        rawPayload['price'] ??
+        (rawPayload['metadata'] is Map ? (rawPayload['metadata'] as Map)['fee'] : null);
+    if (v == null) return 0;
+    if (v is num) return v.toDouble();
+    return double.tryParse('$v') ?? 0;
+  }
+
+  /// عملة رسوم التقديم
+  String get currency {
+    final v = rawPayload['currency'] ??
+        (rawPayload['metadata'] is Map ? (rawPayload['metadata'] as Map)['currency'] : null);
+    return '${v ?? 'SAR'}';
+  }
+
+  /// هل هي فرصة مدفوعة؟
+  bool get isPaid => fee > 0;
+
   Map<String, dynamic>? get translations {
     final t = rawPayload['translations'];
     if (t is Map<String, dynamic>) return t;

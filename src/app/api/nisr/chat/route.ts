@@ -26,6 +26,24 @@ function cleanText(value: unknown): string {
     : '';
 }
 
+function pcmToWavBuffer(pcmBuf: Buffer, sampleRate = 16000, channels = 1): Buffer {
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36 + pcmBuf.length, 4);
+  header.write('WAVE', 8);
+  header.write('fmt ', 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20); // PCM format
+  header.writeUInt16LE(channels, 22); // Channels (mono)
+  header.writeUInt32LE(sampleRate, 24); // Sample rate (16kHz)
+  header.writeUInt32LE(sampleRate * channels * 2, 28); // Byte rate
+  header.writeUInt16LE(channels * 2, 32); // Block align
+  header.writeUInt16LE(16, 34); // Bits per sample
+  header.write('data', 36);
+  header.writeUInt32LE(pcmBuf.length, 40);
+  return Buffer.concat([header, pcmBuf]);
+}
+
 function buildSystemInstruction(locale: Locale): string {
   const languageRules: Record<Locale, { greeting: string; langName: string; audioUnclear: string; dietMissing: string; trainMissing: string }> = {
     ar: {
@@ -67,7 +85,8 @@ function buildSystemInstruction(locale: Locale): string {
 
   const current = languageRules[locale] || languageRules.ar;
 
-  return `You are "NISR" (نسر), an elite, motivating personal football coach on the EL7LM (الحلم) sports platform.
+  return `You are "NISR" (نسر), an elite AI Football Mentor, Tactical Analyst, and Comprehensive Football Encyclopedia on the EL7LM (الحلم) sports platform.
+You are the player's personal companion, technical scout, and dedicated mentor on their journey toward their ultimate dream of global professional stardom (الاحتراف العالمي).
 
 Strict Rules:
 1. Target Language: You MUST reply strictly in ${current.langName}. Under NO circumstances reply in any other language unless explicitly requested by the player.
@@ -78,12 +97,26 @@ Strict Rules:
      DO NOT GUESS or make up a random training or diet plan!
      Instead, immediately reply stating that the audio was not clear:
      "${current.audioUnclear}"
-4. Short & Direct Responses: Keep your answers CONCISE and focused (3 to 5 sentences or 3 brief practical bullet points). Do not write lengthy generic essays.
-5. Profile Facts Verification:
-   - When asked for Nutrition: If height or weight is missing, ask: "${current.dietMissing}"
-   - When asked for Training: If physical facts are missing, ask: "${current.trainMissing}"
-   - If facts ARE available in the profile, refer directly to them and give specific advice.
-6. Professional Football Passion: Speak like a real elite European/Arab football coach. NEVER mention JSON, databases, code variables, or system IDs.`;
+4. Deep Player Profile Integration:
+   - You have intimate access to the player's full athletic profile: primary/secondary position, preferred foot, physical stats, match goals, assists, matches played, medical conditions/injuries, and career ambitions/target clubs.
+   - Tailor your coaching, drills, tactical tips, and words of encouragement directly to their specific stats, career goals, and medical conditions (protecting them from injury flare-ups).
+5. Comprehensive Football & Match Fixtures Knowledge:
+   - You are a passionate football expert and encyclopedic authority on world and Arab football (Egyptian Premier League الدوري المصري الممتاز, Saudi Pro League دوري روشن, European leagues, UEFA Champions League, CAF Champions League, international tournaments).
+   - When the player asks about football matches, upcoming rounds, Egyptian League clashes, derbies, or football schedules:
+     * NEVER dodge, deflect, or say "my only focus is your personal fitness" or "check daily TV guides".
+     * Provide direct, enthusiastic, and knowledgeable answers immediately! Share major team clashes (Al Ahly, Zamalek, Pyramids, Al Hilal, Al Nassr, etc.), current season gameweek details, and major broadcasting channels (OnTime Sports أون تايم سبورتس, SSC, beIN Sports).
+     * Connect the match to their development (e.g., recommend observing how top fullbacks/wingers position themselves).
+6. Platform Tournaments & Scouting Opportunities:
+   - When the player asks about tournaments (البطولات), scouting trials (الاختبارات), or opportunities (الفرص):
+     * Directly recommend the active tournaments and opportunities available on the platform from the list below.
+     * Highlight key details: tournament name, city/venue, start date, whether it is free or paid, and direct them to visit the "البطولات" or "الفرص" screen in the app to register.
+7. Administration & Customer Support Inquiries:
+   - If the player asks about contacting administration, management, technical support, or making an inquiry/complaint (التواصل مع الإدارة / الدعم الفني):
+     * Inform them that the El7lm administration is always available to help.
+     * Direct contact email: support@el7lm.com
+     * In-App: From the side menu ☰, choose "تواصل معنا" (Contact Us) or WhatsApp support.
+8. Short & Direct Responses: Keep your answers CONCISE, energetic, and focused (3 to 5 sentences or 3 brief practical bullet points). Do not write lengthy generic essays.
+9. Professional Football Passion: Speak like a real elite European/Arab football coach and scout. NEVER mention JSON, databases, code variables, or system IDs.`;
 }
 
 function formatPlayerSummary(ctx: import('@/lib/nisr/player-context').NisrPlayerContext): string {
@@ -100,11 +133,34 @@ function formatPlayerSummary(ctx: import('@/lib/nisr/player-context').NisrPlayer
   if (ctx.profileCompletion) lines.push(`- Profile Completion: ${ctx.profileCompletion}%`);
   if (ctx.skills && Object.keys(ctx.skills).length > 0) {
     const skillsList = Object.entries(ctx.skills).filter(([, v]) => Boolean(v)).map(([k, v]) => `${k}: ${v}`).join(', ');
-    if (skillsList) lines.push(`- Known Attributes: ${skillsList}`);
+    if (skillsList) lines.push(`- Physical & Technical Attributes: ${skillsList}`);
+  }
+  if (ctx.careerStats && (ctx.careerStats.goals || ctx.careerStats.assists || ctx.careerStats.matchesPlayed)) {
+    const stats: string[] = [];
+    if (ctx.careerStats.matchesPlayed) stats.push(`Matches: ${ctx.careerStats.matchesPlayed}`);
+    if (ctx.careerStats.goals) stats.push(`Goals: ${ctx.careerStats.goals}`);
+    if (ctx.careerStats.assists) stats.push(`Assists: ${ctx.careerStats.assists}`);
+    if (stats.length) lines.push(`- Match Record & Performance: ${stats.join(' | ')}`);
+  }
+  if (ctx.medicalHistory) {
+    lines.push(`- Medical History & Health Conditions: ${ctx.medicalHistory} (CRITICAL: Guide drills to prevent re-injury)`);
+  }
+  if (ctx.dreamClub) {
+    lines.push(`- Target / Dream Club: ${ctx.dreamClub}`);
+  }
+  if (ctx.careerGoals) {
+    lines.push(`- Ambitions & Professional Aspirations: ${ctx.careerGoals}`);
+  }
+  if (ctx.bio) {
+    lines.push(`- Player Biography: ${ctx.bio}`);
   }
   if (ctx.recentOpportunities?.length) {
     const opps = ctx.recentOpportunities.map((o) => `* ${o.title} (${[o.city, o.country].filter(Boolean).join(', ')})`).join('\n');
-    lines.push(`- Available Platform Opportunities:\n${opps}`);
+    lines.push(`- Available Platform Opportunities (فرص المنصة الحالية):\n${opps}`);
+  }
+  if (ctx.recentTournaments?.length) {
+    const tourneys = ctx.recentTournaments.map((t) => `* ${t.name} (${t.location || t.country || 'مصر'}) - Starts: ${t.startDate || 'قريباً'} - Fee: ${t.entryFee === 0 ? 'مجانية (Free)' : `${t.entryFee} ${t.currency}`}`).join('\n');
+    lines.push(`- Available Platform Tournaments (بطولات المنصة الحالية):\n${tourneys}`);
   }
   return lines.length > 0 ? lines.join('\n') : 'No specific profile facts recorded yet.';
 }
@@ -130,6 +186,30 @@ function generateCoachFallback(
         `1. تدريبات البليومتريكس (Plyometrics): قفز الحواجز المنخفضة والقفز الانفجاري على الصندوق (Box Jumps) مرتين أسبوعياً.\n` +
         `2. سبرنتات متدرجة: 6 انطلاقات لمسافة 25 متراً بأقصى سرعة مع راحة 60 ثانية بين كل تكرار.\n` +
         `3. سلم الرشاقة (Agility Ladder): لتحسين توافق القدمين وسرعة رد الفعل وتغيير الاتجاه.`;
+    }
+    if (lowerMsg.includes('بطول') || lowerMsg.includes('مسابق')) {
+      if (ctx.recentTournaments?.length) {
+        const list = ctx.recentTournaments.map((t) => `• ${t.name} (${t.location || 'مصر'}) - تبدأ: ${t.startDate || 'قريباً'} [${t.entryFee === 0 ? 'مجانية' : `${t.entryFee} ${t.currency}`}]`).join('\n');
+        return `أهلاً كابتن ${pName}، لدينا حالياً بطولات كروية قوية على منصة الحلم:\n${list}\n\nيمكنك الانتقال إلى شاشة "البطولات" في التطبيق لاستعراض التفاصيل والتسجيل فوراً!`;
+      }
+      return `أهلاً كابتن ${pName}، تقام على منصة الحلم بطولات دورية واختبارات لاكتشاف المواهب. يمكنك متابعة جدول البطولات المتاحة والتسجيل مباشرة من شاشة "البطولات" في القائمة الرئيسية!`;
+    }
+    if (lowerMsg.includes('فرص') || lowerMsg.includes('اختبار') || lowerMsg.includes('كشاف')) {
+      if (ctx.recentOpportunities?.length) {
+        const list = ctx.recentOpportunities.map((o) => `• ${o.title} (${[o.city, o.country].filter(Boolean).join(', ')})`).join('\n');
+        return `أهلاً كابتن ${pName}، هذه أبرز الفرص الاستكشافية المتاحة حالياً على المنصة:\n${list}\n\nتفضل بزيارة شاشة "الفرص" للتقديم وعرض ملفك الرياضي على الكشافين!`;
+      }
+      return `أهلاً كابتن ${pName}، شاشة "الفرص" تضم أحدث معايشات الأندية واختبارات الكشافين. احرص على إكمال بيانات ملفك الشخصي لزيادة فرص ترشيحك للأندية والكشافين!`;
+    }
+    if (lowerMsg.includes('تواصل') || lowerMsg.includes('إدار') || lowerMsg.includes('دعم') || lowerMsg.includes('مساعد') || lowerMsg.includes('شكو')) {
+      return `أهلاً كابتن ${pName}، يسعد فريق إدارة منصة "الحلم" دائماً بخدمتك:\n` +
+        `• البريد الرسمي للإدارة والدعم الفني: support@el7lm.com\n` +
+        `• عبر التطبيق: افتح القائمة الجانبية (☰) ثم اضغط على "تواصل معنا" أو زر الدعم المباشر عبر واتساب.\n` +
+        `فريق الإدارة يتابع جميع طلبات اللاعبين ويجيبك في أسرع وقت!`;
+    }
+    if (lowerMsg.includes('مبار') || lowerMsg.includes('ماتش') || lowerMsg.includes('دوري') || lowerMsg.includes('جدول')) {
+      return `أهلاً كابتن ${pName}، مباريات الدوري المصري الممتاز والبطولات الكبرى تُنقل مباشرة عبر قنوات أون تايم سبورتس (OnTime Sports) وSSC.\n` +
+        `أنصحك دائماً بمتابعة مواجهات الفرق الكبرى والتركيز على تحركات وتحولات اللاعبين في مركزك كـ ${pos} للتعلم من قراراتهم التكتيكية في التمركز والتغطية!`;
     }
     if (lowerMsg.includes('مهار') || lowerMsg.includes('مراوغ') || lowerMsg.includes('كنترول') || lowerMsg.includes('تمرير')) {
       return `أهلاً كابتن ${pName}، صقل المهارة الفردية لـ ${pos} يتطلب تركيزاً وتكراراً يومياً:\n` +
@@ -193,7 +273,11 @@ function failure(code: string, status: number) {
 }
 
 export async function POST(request: NextRequest) {
+  const totalStartTime = performance.now();
+
+  const authStartTime = performance.now();
   const authorization = await authorizeUser(request);
+  const authDurationMs = Math.round(performance.now() - authStartTime);
   const userId = authorization.ok ? authorization.user.id : null;
 
   let body: Record<string, unknown>;
@@ -210,7 +294,8 @@ export async function POST(request: NextRequest) {
     ? body.locale as Locale
     : 'ar';
   const message = cleanText(body.message);
-  const audioBase64 = typeof body.audioBase64 === 'string' ? body.audioBase64 : '';
+  const rawAudioBase64 = typeof body.audioBase64 === 'string' ? body.audioBase64 : '';
+  const audioBase64 = rawAudioBase64.replace(/\s+/g, '');
   const hasAudio = audioBase64.length > 0;
   if ((!message && !hasAudio) || message.length > MAX_MESSAGE_LENGTH) {
     return failure('NISR_EMPTY_REQUEST', 400);
@@ -219,7 +304,7 @@ export async function POST(request: NextRequest) {
     return failure('NISR_AUDIO_TOO_LARGE', 413);
   }
   if (hasAudio && (
-    body.audioMimeType !== 'audio/l16' || body.audioSampleRate !== 16000 ||
+    (body.audioMimeType !== 'audio/l16' && body.audioMimeType !== 'audio/wav') ||
     !/^[A-Za-z0-9+/]+={0,2}$/.test(audioBase64)
   )) {
     return failure('NISR_INVALID_AUDIO', 400);
@@ -244,6 +329,7 @@ export async function POST(request: NextRequest) {
 
   try {
     let playerContext: import('@/lib/nisr/player-context').NisrPlayerContext;
+    const contextStartTime = performance.now();
     if (userId) {
       try {
         playerContext = await loadNisrPlayerContext(userId, locale);
@@ -262,6 +348,7 @@ export async function POST(request: NextRequest) {
           profileCompletion: 40,
           skills: {},
           recentOpportunities: [],
+          recentTournaments: [],
         };
       }
     } else {
@@ -279,8 +366,10 @@ export async function POST(request: NextRequest) {
         profileCompletion: 40,
         skills: {},
         recentOpportunities: [],
+        recentTournaments: [],
       };
     }
+    const contextDurationMs = Math.round(performance.now() - contextStartTime);
 
     if (playerContext.name) {
       playerContext.name = playerContext.name.replace(/^(كابتن|captain)\s+/i, '').trim() || 'الحلم';
@@ -288,21 +377,37 @@ export async function POST(request: NextRequest) {
 
     const sysInstruction = buildSystemInstruction(locale);
 
+    const now = new Date();
+    const currentDateContext = `[Current Real-Time Context]:\nToday's Date: ${now.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} (${now.toISOString().split('T')[0]}). Football Season: 2026/2027.\n`;
+
     let promptText = '';
     if (hasAudio && !message) {
-      promptText = `[Voice Note from Player]:\nThe player sent an audio recording. Listen to the audio and respond according to your instructions. If the audio is unclear, background noise, or unintelligible, politely inform the player that the audio wasn't clear and ask them to repeat or type their question in ${locale.toUpperCase()}.\n\n[Player Profile & Tactical Facts]:\n${formatPlayerSummary(playerContext)}`;
+      promptText = `${currentDateContext}[Voice Note from Player]:\nThe player sent an audio recording. Listen to the audio and respond according to your instructions. If the audio is unclear, background noise, or unintelligible, politely inform the player that the audio wasn't clear and ask them to repeat or type their question in ${locale.toUpperCase()}.\n\n[Player Profile & Tactical Facts]:\n${formatPlayerSummary(playerContext)}`;
     } else if (hasAudio && message) {
-      promptText = `[Voice Note and Text]:\nThe player attached an audio note with the following text: "${message}". Respond in ${locale.toUpperCase()}.\n\n[Player Profile & Tactical Facts]:\n${formatPlayerSummary(playerContext)}`;
+      promptText = `${currentDateContext}[Voice Note and Text]:\nThe player attached an audio note with the following text: "${message}". Respond in ${locale.toUpperCase()}.\n\n[Player Profile & Tactical Facts]:\n${formatPlayerSummary(playerContext)}`;
     } else {
-      promptText = `[Player Question/Request]:\n${message}\n\n[Player Profile & Tactical Facts]:\n${formatPlayerSummary(playerContext)}`;
+      promptText = `${currentDateContext}[Player Question/Request]:\n${message}\n\n[Player Profile & Tactical Facts]:\n${formatPlayerSummary(playerContext)}`;
     }
 
     const parts: Array<Record<string, unknown>> = [{ text: promptText }];
     if (hasAudio) {
+      let finalAudioBase64 = audioBase64;
+      let mimeType = 'audio/wav';
+
+      if (body.audioMimeType === 'audio/l16') {
+        const pcmBuf = Buffer.from(audioBase64, 'base64');
+        const wavBuf = pcmToWavBuffer(pcmBuf, 16000, 1);
+        finalAudioBase64 = wavBuf.toString('base64');
+      } else if (typeof body.audioMimeType === 'string' && body.audioMimeType.includes('wav')) {
+        mimeType = 'audio/wav';
+      } else {
+        mimeType = (body.audioMimeType as string) || 'audio/wav';
+      }
+
       parts.push({
-        inline_data: {
-          mime_type: 'audio/l16',
-          data: audioBase64,
+        inlineData: {
+          mimeType,
+          data: finalAudioBase64,
         },
       });
     }
@@ -311,15 +416,56 @@ export async function POST(request: NextRequest) {
     const candidateModels = Array.from(new Set([
       ...(configuredModel ? [configuredModel] : []),
       'gemini-3.1-flash-lite',
-      'gemini-3.5-flash-lite',
-      'gemini-3.5-flash',
       'gemini-3.8-flash',
-      'gemini-3.7-flash',
+      'gemini-3.5-flash',
     ]));
 
     let answer = '';
+    let successfulModel: string | null = null;
+    let failedAttempts = 0;
+    const geminiStartTime = performance.now();
 
     for (const candModel of candidateModels) {
+      // 1. Google Search Grounding is strictly opt-in (requires a paid billing account)
+      // When false/unset, Nisr runs 100% free with lightning-fast native football intelligence
+      if (!hasAudio && process.env.GEMINI_ENABLE_SEARCH === 'true') {
+        const searchController = new AbortController();
+        const searchTimeout = setTimeout(() => searchController.abort(), 4_000);
+        try {
+          const searchRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${candModel}:generateContent`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': apiKey,
+            },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: sysInstruction }] },
+              contents: [{ role: 'user', parts }],
+              tools: [{ googleSearch: {} }],
+              generationConfig: {
+                maxOutputTokens: 2048,
+                temperature: 0.7,
+              },
+            }),
+            signal: searchController.signal,
+          });
+
+          if (searchRes.ok) {
+            const searchJson = await searchRes.json();
+            answer = extractAnswer(searchJson);
+            if (answer) {
+              successfulModel = `${candModel}+search`;
+              break;
+            }
+          }
+        } catch {
+          // search grounding quota or network issue, proceed to standard generation
+        } finally {
+          clearTimeout(searchTimeout);
+        }
+      }
+
+      // 2. Direct standard generation (fast path for voice & fallback)
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8_000);
       try {
@@ -343,26 +489,37 @@ export async function POST(request: NextRequest) {
         if (res.ok) {
           const json = await res.json();
           answer = extractAnswer(json);
-          if (answer) break;
+          if (answer) {
+            successfulModel = candModel;
+            break;
+          } else {
+            failedAttempts++;
+          }
         } else {
+          failedAttempts++;
           console.warn(`[nisr] Model ${candModel} returned ${res.status}, trying next fallback...`);
         }
       } catch (err) {
+        failedAttempts++;
         console.warn(`[nisr] Model ${candModel} error:`, err instanceof Error ? err.message : err);
       } finally {
         clearTimeout(timeout);
       }
     }
+    const geminiDurationMs = Math.round(performance.now() - geminiStartTime);
 
+    const usedLocalFallback = !answer;
     if (!answer) {
       answer = generateCoachFallback(message, playerContext, locale);
     }
 
     let audioBase64Reply: string | undefined;
+    let ttsDurationMs = 0;
     // Generate voice speech whenever user sends voice OR explicitly requests audio
     if (hasAudio || body.wantAudio === true) {
+      const ttsStartTime = performance.now();
       try {
-        const ttsModels = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts'];
+        const ttsModels = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts'];
         for (const ttsModel of ttsModels) {
           const ttsController = new AbortController();
           const ttsTimeout = setTimeout(() => ttsController.abort(), 6_000);
@@ -419,7 +576,15 @@ export async function POST(request: NextRequest) {
       } catch (e) {
         console.warn('[nisr] TTS generation non-critical error:', e instanceof Error ? e.message : e);
       }
+      ttsDurationMs = Math.round(performance.now() - ttsStartTime);
     }
+
+    const totalDurationMs = Math.round(performance.now() - totalStartTime);
+
+    // Logging timing metrics to console without affecting behavior or response
+    console.log(
+      `[nisr-timing] total=${totalDurationMs}ms | auth=${authDurationMs}ms | playerContext=${contextDurationMs}ms | gemini=${geminiDurationMs}ms (model=${successfulModel ?? 'none'}, failedAttempts=${failedAttempts}, localFallback=${usedLocalFallback}) | tts=${ttsDurationMs}ms`
+    );
 
     return NextResponse.json(
       { title: titles[locale], answer, audioBase64: audioBase64Reply, mode: 'ai' },
