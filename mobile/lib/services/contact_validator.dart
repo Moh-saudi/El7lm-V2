@@ -62,6 +62,20 @@ class ContactValidator {
     return false;
   }
 
+  static bool isPlayReviewPhone(String phone) {
+    final digits = digitsOnly(phone);
+    const reviewPhones = {
+      '01017799580', '201017799580',
+      '01000000001', '20100000001',
+      '01000000002', '20100000002',
+      '01000000003', '20100000003',
+      '01000000004', '20100000004',
+      '01000000005', '20100000005',
+      '01000000006', '20100000006',
+    };
+    return reviewPhones.contains(digits);
+  }
+
   static String digitsOnly(String value) =>
       value.replaceAll(RegExp(r'[^0-9]'), '');
 

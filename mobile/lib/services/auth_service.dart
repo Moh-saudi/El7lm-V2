@@ -167,6 +167,28 @@ class AuthService {
     required AccountType expectedAccountType,
     String? name,
   }) async {
+    if (ContactValidator.isPlayReviewPhone(phone)) {
+      try {
+        await _api.post(
+          '/api/otp/send',
+          body: {
+            'phoneNumber': phone,
+            'name': name,
+            'purpose': registration ? 'registration' : 'login',
+            'channel': 'auto',
+            'expectedAccountType': expectedAccountType.value,
+          },
+          timeout: const Duration(seconds: 4),
+        );
+      } catch (_) {
+        // Review accounts use permanent fixed credentials and do not require SMS
+      }
+      return PhoneAccountStatus(
+        found: true,
+        accountType: expectedAccountType,
+      );
+    }
+
     final response = await _api.post(
       '/api/otp/send',
       body: {
