@@ -465,9 +465,10 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // 2. Direct standard generation (fast path for voice & fallback)
+      const maxOutputTokens = hasAudio ? 320 : 1024;
+      const modelTimeoutMs = hasAudio ? 5_000 : 7_000;
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8_000);
+      const timeout = setTimeout(() => controller.abort(), modelTimeoutMs);
       try {
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${candModel}:generateContent`, {
           method: 'POST',
@@ -479,7 +480,7 @@ export async function POST(request: NextRequest) {
             system_instruction: { parts: [{ text: sysInstruction }] },
             contents: [{ role: 'user', parts }],
             generationConfig: {
-              maxOutputTokens: 2048,
+              maxOutputTokens,
               temperature: 0.7,
             },
           }),
@@ -542,7 +543,7 @@ export async function POST(request: NextRequest) {
 
         for (const ttsModel of ttsModels) {
           const ttsController = new AbortController();
-          const ttsTimeout = setTimeout(() => ttsController.abort(), 9_000);
+          const ttsTimeout = setTimeout(() => ttsController.abort(), 3_500);
           try {
             const ttsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${ttsModel}:generateContent?key=${apiKey}`, {
               method: 'POST',
