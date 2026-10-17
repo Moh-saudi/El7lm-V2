@@ -173,6 +173,7 @@ export async function POST(request: NextRequest) {
       code: 'SERVICE_UNAVAILABLE',
       error: text,
       message: text,
+      details: error?.message || String(error),
     }, { status: 500 });
   }
 }
