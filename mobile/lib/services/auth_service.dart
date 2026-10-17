@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/app_config.dart';
 import '../models/account_type.dart';
 import 'api_client.dart';
+import 'contact_validator.dart';
 
 class AuthResult {
   const AuthResult({
