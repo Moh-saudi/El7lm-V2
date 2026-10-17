@@ -540,6 +540,35 @@
 * **التزامن البرمجي مع GitHub:**
   - تم ترقية أرقام الإصدار في [`mobile/pubspec.yaml`](file:///d:/El7lm-V2/mobile/pubspec.yaml) و [`mobile/android/local.properties`](file:///d:/El7lm-V2/mobile/android/local.properties).
   - تم دفع الـ Commit الرسمي برقم [`7722bbbec`](https://github.com/Moh-saudi/El7lm-V2/commit/7722bbbec) إلى فرع الإنتاج `main` بنجاح.
+* **ملاحظات الإصدار الرسمية المعتمدة لمتجر Google Play (Release Notes XML):**
+  - **قاعدة وسوم اللغات في Google Play:** كود اللغة العربية المعتمد في متجر جوجل بلاي هو `<ar>` فقط (وليس `<ar-SA>` لتجنب أخطاء التحقق).
+  - تم تجهيز وتوثيق ملاحظات الإصدار بـ 6 لغات معتمدة (`ar`, `en-US`, `en-GB`, `fr-FR`, `es-ES`, `pt-BR`):
+```xml
+<ar>
+• ترقية مساعد نسر الصوتي بالذكاء الاصطناعي لمحادثات صوتية فورية ومعلومات كروية لحظية.
+• تسريع تسجيل الدخول ورمز التحقق (OTP) وتحسينات عامة على استقرار وسلاسة التطبيق.
+</ar>
+<en-US>
+• Upgraded Nisr Voice AI for instant real-time football conversations and tactical guidance.
+• Faster login & OTP verification with overall performance and stability improvements.
+</en-US>
+<en-GB>
+• Upgraded Nisr Voice AI for instant real-time football conversations and tactical guidance.
+• Faster login & OTP verification with overall performance and stability improvements.
+</en-GB>
+<fr-FR>
+• Amélioration de l'IA vocale Nisr pour des conversations sportives instantanées et tactiques.
+• Connexion et vérification OTP plus rapides avec des améliorations globales de performance.
+</fr-FR>
+<es-ES>
+• Actualización del asistente de voz Nisr con IA para charlas de fútbol tácticas e instantáneas.
+• Inicio de sesión y verificación OTP más rápidos con mejoras generales de rendimiento.
+</es-ES>
+<pt-BR>
+• Atualização do assistente de voz Nisr com IA para conversas esportivas instantâneas.
+• Login e verificação OTP mais rápidos com melhorias gerais de desempenho e estabilidade.
+</pt-BR>
+```
 
 ---
 
