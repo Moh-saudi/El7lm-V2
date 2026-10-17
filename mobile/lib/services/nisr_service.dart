@@ -99,7 +99,10 @@ class NisrService {
       if (answer.isNotEmpty) {
         return reply;
       }
-    } catch (_) {}
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('[NisrService] API request failed: $e\n$st');
+    }
 
     // Resilient fallback to direct Gemini API with generous 2048 token allowance
     if (message != null && message.trim().isNotEmpty) {

@@ -519,16 +519,36 @@ export async function POST(request: NextRequest) {
     if (hasAudio || body.wantAudio === true) {
       const ttsStartTime = performance.now();
       try {
-        const ttsModels = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts'];
+        // Extract natural, punchy speech: first complete thought/sentence(s) (up to ~260 chars)
+        let spokenText = answer.replace(/[*_#`"\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+        const sliceZone = spokenText.slice(0, 260);
+        const bestCut = Math.max(
+          sliceZone.lastIndexOf('.'),
+          sliceZone.lastIndexOf('!'),
+          sliceZone.lastIndexOf('؟')
+        );
+        if (bestCut > 60) {
+          spokenText = spokenText.slice(0, bestCut + 1).trim();
+        } else {
+          spokenText = spokenText.slice(0, 220).trim();
+        }
+
+        const ttsModels = [
+          'gemini-3.8-flash-lite-tts',
+          'gemini-3.1-flash-tts-preview',
+          'gemini-2.5-flash-preview-tts',
+          'gemini-3.8-flash-tts',
+        ];
+
         for (const ttsModel of ttsModels) {
           const ttsController = new AbortController();
-          const ttsTimeout = setTimeout(() => ttsController.abort(), 6_000);
+          const ttsTimeout = setTimeout(() => ttsController.abort(), 9_000);
           try {
-            const ttsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${ttsModel}:generateContent`, {
+            const ttsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${ttsModel}:generateContent?key=${apiKey}`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                contents: [{ parts: [{ text: answer.slice(0, 450) }] }],
+                contents: [{ parts: [{ text: spokenText }] }],
                 generationConfig: {
                   responseModalities: ['AUDIO'],
                   speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Puck' } } },
