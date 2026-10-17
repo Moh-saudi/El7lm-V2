@@ -8,6 +8,15 @@ export interface DateFilter {
     to:   string; // YYYY-MM-DD
 }
 
+export interface FootballSkills {
+    pace: number;
+    shooting: number;
+    passing: number;
+    dribbling: number;
+    defending: number;
+    physical: number;
+}
+
 export interface MediaItem {
     id: string;
     r2Key: string;          // مسار الملف في R2 (للتحديثات)
@@ -38,10 +47,16 @@ export interface MediaItem {
     category?: string;
     // ملاحظات الإشراف
     notes?: string;
-    // تحليل AI
+    // تحليل الأداء الرياضي (AI + Human Scout)
     aiAnalysis?: string;
     aiRating?: number;
     aiAnalyzedAt?: Date;
+    skills?: FootballSkills;
+    overallScore?: number;
+    dominantFoot?: string;
+    tacticalStrengths?: string[];
+    developmentAreas?: string[];
+    scoutRecommendation?: string;
 }
 
 export interface MediaStats {

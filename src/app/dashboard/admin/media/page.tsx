@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/firebase/auth-provider';
 import { usePermissions } from '../employees-v2/_hooks/usePermissions';
 import AccessDenied from '@/components/admin/AccessDenied';
 import { useMediaData } from './hooks/useMediaData';
-import { MediaItem, MediaStatus, MediaType, MediaSortKey, DateFilter } from './types';
+import { MediaItem, MediaStatus, MediaType, MediaSortKey, DateFilter, FootballSkills } from './types';
 
 import { MediaHeader }  from './components/MediaHeader';
 import { MediaKPIBar }  from './components/MediaKPIBar';
@@ -37,7 +37,18 @@ function sortItems(items: MediaItem[], key: MediaSortKey): MediaItem[] {
 export default function MediaPage() {
     const { user } = useAuth();
     const { can } = usePermissions();
-    const { items, loading, error, lastFetched, fetchAll, updateItemStatus, bulkUpdateStatus, updateItemAI, deleteItem } = useMediaData();
+    const {
+        items,
+        loading,
+        error,
+        lastFetched,
+        fetchAll,
+        updateItemStatus,
+        approveAndSyncSkills,
+        bulkUpdateStatus,
+        updateItemAI,
+        deleteItem
+    } = useMediaData();
 
     // ─── Filters ──────────────────────────────────────────────
     const [typeFilter,    setTypeFilter]    = useState<MediaType | 'all'>('all');
@@ -110,7 +121,7 @@ export default function MediaPage() {
                     eventType:        eventMap[status],
                     targetUserId:     item.userId,
                     actorId:          user?.id || '',
-                    actorName:        'مسؤول المنصة',
+                    actorName:        'مسؤول ومحلل أداء المنصة',
                     actorAccountType: 'admin',
                     metadata:         { mediaTitle: item.title, mediaType: item.type },
                 }),
@@ -131,6 +142,27 @@ export default function MediaPage() {
             setSelected(next);
         } catch (e: any) {
             toast.error('فشل تحديث الحالة: ' + e.message);
+        }
+    };
+
+    // ─── اعتماد تقييم المهارات والمزامنة المباشرة ─────────────
+    const handleApproveAndSync = async (
+        item: MediaItem,
+        skills: FootballSkills,
+        overallScore: number,
+        dominantFoot: string,
+        analystNotes: string,
+        analysisText: string
+    ) => {
+        try {
+            await approveAndSyncSkills(item, skills, overallScore, dominantFoot, analystNotes, analysisText);
+            toast.success(`🌟 تم اعتماد مهارات "${item.userName}" (${overallScore} OVR) وتحديث بروفايله بنجاح!`);
+            // انتقال تلقائي للعنصر التالي
+            const idx  = filtered.findIndex(i => i.id === item.id);
+            const next = filtered[idx + 1] || filtered[idx - 1] || null;
+            setSelected(next);
+        } catch (e: any) {
+            toast.error('فشل اعتماد ومزامنة المهارات: ' + e.message);
         }
     };
 
@@ -176,7 +208,7 @@ export default function MediaPage() {
             <div className="bg-white rounded-2xl shadow p-8 max-w-lg text-center space-y-3">
                 <p className="text-rose-600 font-bold text-lg">فشل تحميل الوسائط</p>
                 <p className="text-slate-500 text-sm font-mono">{error}</p>
-                <button onClick={fetchAll} className="mt-2 px-4 py-2 bg-amber-600 text-white rounded-xl text-sm hover:bg-amber-500">إعادة المحاولة</button>
+                <button onClick={fetchAll} className="mt-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-500 cursor-pointer">إعادة المحاولة</button>
             </div>
         </div>
     );
@@ -230,6 +262,7 @@ export default function MediaPage() {
                 item={selected}
                 onClose={() => setSelected(null)}
                 onUpdateStatus={handleUpdateStatus}
+                onApproveAndSync={handleApproveAndSync}
                 onAIResult={(id, analysis, rating) => updateItemAI(id, analysis, rating)}
                 onDelete={async (item) => { await deleteItem(item); setSelected(null); }}
                 userId={user?.id || ''}
@@ -248,7 +281,7 @@ export default function MediaPage() {
                     <button
                         onClick={() => handleBulkUpdate('approved')}
                         disabled={bulkLoading}
-                        className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors"
+                        className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer"
                     >
                         <CheckCircle className="w-4 h-4" /> اعتماد الكل
                     </button>
@@ -256,7 +289,7 @@ export default function MediaPage() {
                     <button
                         onClick={() => handleBulkUpdate('rejected')}
                         disabled={bulkLoading}
-                        className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors"
+                        className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer"
                     >
                         <XCircle className="w-4 h-4" /> رفض الكل
                     </button>
@@ -264,14 +297,14 @@ export default function MediaPage() {
                     <button
                         onClick={() => handleBulkUpdate('flagged')}
                         disabled={bulkLoading}
-                        className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors"
+                        className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer"
                     >
                         <Flag className="w-4 h-4" /> تنبيه الكل
                     </button>
 
                     <button
                         onClick={() => setSelectedIds(new Set())}
-                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl transition-colors"
+                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
                         title="إلغاء التحديد"
                     >
                         <X className="w-4 h-4" />

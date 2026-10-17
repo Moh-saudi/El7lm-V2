@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { MediaItem } from '../types';
+import { MediaItem, FootballSkills } from '../types';
 import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 // ── مساعدات YouTube ────────────────────────────────────────────
@@ -37,12 +37,12 @@ const sanitizeMediaUrl = (value: unknown): string | undefined => {
 };
 
 export function useMediaData() {
-    const [items, setItems]           = useState<MediaItem[]>([]);
-    const [loading, setLoading]       = useState(false);
-    const [error, setError]           = useState<string | null>(null);
+    const [items, setItems]             = useState<MediaItem[]>([]);
+    const [loading, setLoading]         = useState(false);
+    const [error, setError]             = useState<string | null>(null);
     const [lastFetched, setLastFetched] = useState<Date | null>(null);
 
-    // ── جلب كل الميديا من R2 ──────────────────────────────────
+    // ── جلب كل الميديا من R2 و Supabase ──────────────────────
     const fetchAll = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -95,6 +95,49 @@ export function useMediaData() {
         ));
     }, []);
 
+    // ── اعتماد ومزامنة تقييم المهارات مع ملف اللاعب ──────────
+    const approveAndSyncSkills = useCallback(async (
+        item: MediaItem,
+        skills: FootballSkills,
+        overallScore: number,
+        dominantFoot: string,
+        analystNotes: string,
+        analysisText: string
+    ) => {
+        const res = await authenticatedFetch('/api/admin/media/approve-skills', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                r2Key:        item.r2Key,
+                userId:       item.userId,
+                skills,
+                overallScore,
+                dominantFoot,
+                analystNotes,
+                analysisText,
+                mediaTitle:   item.title,
+            }),
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'فشل اعتماد ومزامنة المهارات');
+
+        // تحديث محلي فوري
+        setItems(prev => prev.map(i =>
+            i.id === item.id ? {
+                ...i,
+                status: 'approved',
+                skills,
+                overallScore,
+                dominantFoot,
+                notes: analystNotes || i.notes,
+                aiAnalysis: analysisText || i.aiAnalysis,
+                aiRating: Number((overallScore / 10).toFixed(1)),
+                aiAnalyzedAt: new Date(),
+            } : i
+        ));
+        return data;
+    }, []);
+
     // ── تحديث حالة عناصر متعددة دفعة واحدة ──────────────────
     const bulkUpdateStatus = useCallback(async (
         bulkItems: MediaItem[],
@@ -124,14 +167,12 @@ export function useMediaData() {
         analysis: string,
         rating: number | null
     ) => {
-        // 1. تحديث محلي فوري
         setItems(prev => prev.map(i =>
             i.id === itemId
                 ? { ...i, aiAnalysis: analysis, aiRating: rating ?? undefined, aiAnalyzedAt: new Date() }
                 : i
         ));
 
-        // 2. حفظ في Supabase عبر update-status API
         setItems(prev => {
             const item = prev.find(i => i.id === itemId);
             if (item?.r2Key) {
@@ -162,5 +203,16 @@ export function useMediaData() {
         setItems(prev => prev.filter(i => i.id !== item.id));
     }, []);
 
-    return { items, loading, error, lastFetched, fetchAll, updateItemStatus, bulkUpdateStatus, updateItemAI, deleteItem };
+    return {
+        items,
+        loading,
+        error,
+        lastFetched,
+        fetchAll,
+        updateItemStatus,
+        approveAndSyncSkills,
+        bulkUpdateStatus,
+        updateItemAI,
+        deleteItem
+    };
 }
