@@ -91,9 +91,144 @@ export function invalidatePhoneAccountCache(phoneNumber?: string) {
   }
 }
 
+// Static demo and review accounts for instantaneous response
+const STATIC_DEMO_ACCOUNTS: Record<string, PhoneAccountRecord> = {
+  '01000000004': {
+    found: true,
+    table: 'users',
+    id: 'test_player_01000000004',
+    uid: '87427166-ed4f-431c-883a-1da0327429d2',
+    email: '201000000004@el7lm.com',
+    name: 'سفيان الجزائري',
+    accountType: 'player',
+  },
+  '20100000004': {
+    found: true,
+    table: 'users',
+    id: 'test_player_01000000004',
+    uid: '87427166-ed4f-431c-883a-1da0327429d2',
+    email: '201000000004@el7lm.com',
+    name: 'سفيان الجزائري',
+    accountType: 'player',
+  },
+  '01000000001': {
+    found: true,
+    table: 'clubs',
+    id: 'test_club_01000000001',
+    uid: 'test_club_01000000001',
+    email: '201000000001@el7lm.com',
+    name: 'Demo Club Account',
+    accountType: 'club',
+  },
+  '20100000001': {
+    found: true,
+    table: 'clubs',
+    id: 'test_club_01000000001',
+    uid: 'test_club_01000000001',
+    email: '201000000001@el7lm.com',
+    name: 'Demo Club Account',
+    accountType: 'club',
+  },
+  '01000000002': {
+    found: true,
+    table: 'academies',
+    id: 'test_academy_01000000002',
+    uid: 'test_academy_01000000002',
+    email: '201000000002@el7lm.com',
+    name: 'Demo Academy Account',
+    accountType: 'academy',
+  },
+  '20100000002': {
+    found: true,
+    table: 'academies',
+    id: 'test_academy_01000000002',
+    uid: 'test_academy_01000000002',
+    email: '201000000002@el7lm.com',
+    name: 'Demo Academy Account',
+    accountType: 'academy',
+  },
+  '01000000003': {
+    found: true,
+    table: 'trainers',
+    id: 'test_trainer_01000000003',
+    uid: 'test_trainer_01000000003',
+    email: '201000000003@el7lm.com',
+    name: 'Demo Trainer Account',
+    accountType: 'trainer',
+  },
+  '20100000003': {
+    found: true,
+    table: 'trainers',
+    id: 'test_trainer_01000000003',
+    uid: 'test_trainer_01000000003',
+    email: '201000000003@el7lm.com',
+    name: 'Demo Trainer Account',
+    accountType: 'trainer',
+  },
+  '01000000005': {
+    found: true,
+    table: 'agents',
+    id: 'test_agent_01000000005',
+    uid: 'test_agent_01000000005',
+    email: '201000000005@el7lm.com',
+    name: 'Demo Agent Account',
+    accountType: 'agent',
+  },
+  '20100000005': {
+    found: true,
+    table: 'agents',
+    id: 'test_agent_01000000005',
+    uid: 'test_agent_01000000005',
+    email: '201000000005@el7lm.com',
+    name: 'Demo Agent Account',
+    accountType: 'agent',
+  },
+  '01000000006': {
+    found: true,
+    table: 'marketers',
+    id: 'test_marketer_01000000006',
+    uid: 'test_marketer_01000000006',
+    email: '201000000006@el7lm.com',
+    name: 'Demo Marketer Account',
+    accountType: 'marketer',
+  },
+  '20100000006': {
+    found: true,
+    table: 'marketers',
+    id: 'test_marketer_01000000006',
+    uid: 'test_marketer_01000000006',
+    email: '201000000006@el7lm.com',
+    name: 'Demo Marketer Account',
+    accountType: 'marketer',
+  },
+  '01017799580': {
+    found: true,
+    table: 'players',
+    id: 'google_play_review_player',
+    uid: 'google_play_review_player',
+    email: '201017799580@el7lm.com',
+    name: 'Google Play Review Player',
+    accountType: 'player',
+  },
+  '201017799580': {
+    found: true,
+    table: 'players',
+    id: 'google_play_review_player',
+    uid: 'google_play_review_player',
+    email: '201017799580@el7lm.com',
+    name: 'Google Play Review Player',
+    accountType: 'player',
+  },
+};
+
 export async function findAccountByPhone(
   phoneNumber: string,
 ): Promise<PhoneAccountLookup> {
+  const cleanDigits = phoneNumber.replace(/\D/g, '');
+  if (STATIC_DEMO_ACCOUNTS[cleanDigits]) {
+    return STATIC_DEMO_ACCOUNTS[cleanDigits];
+  }
+
   const variants = generatePhoneVariants(phoneNumber);
   if (variants.length === 0) return { found: false };
 
@@ -126,35 +261,44 @@ export async function findAccountByPhone(
     }
   };
 
-  // Query all valid phone columns across all tables in parallel
-  const queries: Promise<{
-    table: (typeof ACCOUNT_TABLES)[number];
-    data: any[] | null;
-    error: any;
-  }>[] = [];
+  // Helper to execute table queries with a timeout
+  const runTableQueries = async (tables: readonly (typeof ACCOUNT_TABLES)[number][], timeoutMs = 3500) => {
+    const queries: Promise<{
+      table: (typeof ACCOUNT_TABLES)[number];
+      data: any[] | null;
+      error: any;
+    }>[] = [];
 
-  for (const table of ACCOUNT_TABLES) {
-    const fields = TABLE_PHONE_FIELDS[table] ?? ['phone'];
-    for (const field of fields) {
-      queries.push(
-        (async () => {
-          const { data, error } = await db
-            .from(table)
-            .select('id, uid, email, name, full_name, displayName, accountType, isDeleted, isActive, deletedAt, deletedBy')
-            .in(field, variants)
-            .limit(3);
-          return { table, data, error };
-        })()
-      );
+    for (const table of tables) {
+      const fields = TABLE_PHONE_FIELDS[table] ?? ['phone'];
+      for (const field of fields) {
+        queries.push(
+          (async () => {
+            const { data, error } = await db
+              .from(table)
+              .select('id, uid, email, name, full_name, displayName, accountType, isDeleted, isActive, deletedAt, deletedBy')
+              .in(field, variants)
+              .limit(3);
+            return { table, data, error };
+          })()
+        );
+      }
     }
-  }
 
-  const results = await Promise.all(queries);
+    const timeoutPromise = new Promise<{
+      table: (typeof ACCOUNT_TABLES)[number];
+      data: any[] | null;
+      error: any;
+    }[]>((resolve) => setTimeout(() => resolve([]), timeoutMs));
 
-  for (const { table, data, error } of results) {
-    if (error) {
-      continue;
-    }
+    return Promise.race([Promise.all(queries), timeoutPromise]);
+  };
+
+  // Phase 1: Query primary tables ('users' and 'players') first
+  const primaryResults = await runTableQueries(['users', 'players'] as const, 3500);
+
+  for (const { table, data, error } of primaryResults) {
+    if (error) continue;
     successfulLookups += 1;
 
     for (const rawRow of data ?? []) {
@@ -162,7 +306,38 @@ export async function findAccountByPhone(
       if (isUnavailable(row)) continue;
       const id = String(row.id ?? '').trim();
       if (!id) continue;
-      const foundResult: PhoneAccountLookup = {
+      const foundResult: PhoneAccountRecord = {
+        found: true,
+        table,
+        id,
+        uid: String(row.uid ?? '').trim() || null,
+        email: String(row.email ?? '').trim(),
+        name: String(
+          row.full_name ?? row.displayName ?? row.name ?? '',
+        ).trim(),
+        accountType: normalizedAccountType(row, table),
+      };
+      setInCache(foundResult);
+      return foundResult;
+    }
+  }
+
+  // Phase 2: Only if not found in primary tables, query other tables
+  const secondaryResults = await runTableQueries(
+    ['clubs', 'academies', 'agents', 'trainers', 'marketers'] as const,
+    3000
+  );
+
+  for (const { table, data, error } of secondaryResults) {
+    if (error) continue;
+    successfulLookups += 1;
+
+    for (const rawRow of data ?? []) {
+      const row = rawRow as Record<string, unknown>;
+      if (isUnavailable(row)) continue;
+      const id = String(row.id ?? '').trim();
+      if (!id) continue;
+      const foundResult: PhoneAccountRecord = {
         found: true,
         table,
         id,

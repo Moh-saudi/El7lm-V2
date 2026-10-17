@@ -57,7 +57,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. تقييد المعدل على مستوى رقم الهاتف (حماية من استنزاف رصيد WhatsApp/SMS)
+    // 2. حسابات مراجعة Google Play والحسابات التجريبية (Demo Accounts) - استجابة فورية بدون إرسال SMS
+    if (await isPlayReviewPhone(phoneNumber)) {
+      return NextResponse.json({
+        success: true,
+        found: true,
+        accountType: expectedAccountType || 'player',
+        message: 'Use the permanent review code supplied in Google Play Console.',
+        channel: 'review',
+      });
+    }
+
+    // 3. تقييد المعدل على مستوى رقم الهاتف (حماية من استنزاف رصيد WhatsApp/SMS)
     const cleanPhone = String(phoneNumber).replace(/[^0-9]/g, '');
     const phoneRate = rateLimiter.check(`otp_phone:${cleanPhone}`, {
       windowMs: 10 * 60 * 1000, // 10 دقائق
@@ -117,14 +128,6 @@ export async function POST(request: NextRequest) {
         error: text,
         message: text,
       }, { status: 409 });
-    }
-
-    if (await isPlayReviewPhone(phoneNumber)) {
-      return NextResponse.json({
-        success: true,
-        message: 'Use the permanent review code supplied in Google Play Console.',
-        channel: 'review',
-      });
     }
 
     const options: SendOTPOptions = {
