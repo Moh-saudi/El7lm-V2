@@ -76,7 +76,7 @@ export const MAIN_GROUP: MenuGroup = {
         },
         {
             id: 'public-tournaments',
-            label: '\u0627\u0644\u0628\u0637\u0648\u0644\u0627\u062a',
+            label: 'البطولات',
             icon: Trophy,
             href: '/tournaments',
             color: 'text-yellow-600',
@@ -86,9 +86,27 @@ export const MAIN_GROUP: MenuGroup = {
     ]
 };
 
+export const SCOUTING_GROUP: MenuGroup = {
+    id: 'scouting-mgmt',
+    title: 'الكشافة وتحليل الأداء',
+    icon: Target,
+    items: [
+        {
+            id: 'admin-performance-studio',
+            label: 'استوديو تحليل أداء اللاعبين (AI)',
+            icon: Video,
+            href: '/dashboard/admin/media',
+            color: 'text-emerald-600',
+            bgColor: 'bg-emerald-50',
+            permission: { action: 'read', resource: 'dashboard' },
+            isHighlighted: true
+        },
+    ]
+};
+
 export const IDENTITY_GROUP: MenuGroup = {
     id: 'identity-mgmt',
-    title: '\u0625\u062f\u0627\u0631\u0629 \u0627\u0644\u0647\u0648\u064a\u0629',
+    title: 'إدارة الهوية',
     icon: Users,
     items: [
         {
@@ -419,16 +437,16 @@ export const CONTENT_GROUP: MenuGroup = {
         },
         {
             id: 'admin-media',
-            label: '\u0645\u0643\u062a\u0628\u0629 \u0627\u0644\u0648\u0633\u0627\u0626\u0637',
+            label: 'استوديو تحليل أداء اللاعبين (AI)',
             icon: Video,
             href: '/dashboard/admin/media',
-            color: 'text-purple-600',
-            bgColor: 'bg-purple-50',
-            permission: { action: 'read', resource: 'media' }
+            color: 'text-emerald-600',
+            bgColor: 'bg-emerald-50',
+            permission: { action: 'read', resource: 'dashboard' }
         },
         {
             id: 'admin-ads',
-            label: '\u0627\u0644\u0625\u0639\u0644\u0627\u0646\u0627\u062a',
+            label: 'الإعلانات',
             icon: Megaphone,
             href: '/dashboard/admin/ads',
             color: 'text-purple-600',
@@ -440,12 +458,12 @@ export const CONTENT_GROUP: MenuGroup = {
 
 export const INTEGRATIONS_GROUP: MenuGroup = {
     id: 'integrations-mgmt',
-    title: '\u0627\u0644\u0631\u0628\u0637 \u0648\u0627\u0644\u062a\u0643\u0627\u0645\u0644',
+    title: 'الربط والتكامل',
     icon: Link,
     items: [
         {
             id: 'admin-whatsapp',
-            label: '\u0631\u0628\u0637 \u0648\u0627\u062a\u0633\u0627\u0628',
+            label: 'ربط واتساب',
             icon: MessageCircle,
             href: '/dashboard/admin/whatsapp',
             color: 'text-green-600',
@@ -454,7 +472,7 @@ export const INTEGRATIONS_GROUP: MenuGroup = {
         },
         {
             id: 'admin-clarity',
-            label: '\u062a\u062d\u0644\u064a\u0644\u0627\u062a Clarity',
+            label: 'تحليلات Clarity',
             icon: Activity,
             href: '/dashboard/admin/clarity',
             color: 'text-orange-600',
@@ -466,6 +484,7 @@ export const INTEGRATIONS_GROUP: MenuGroup = {
 
 export const ADMIN_DASHBOARD_MENU: MenuGroup[] = [
     MAIN_GROUP,
+    SCOUTING_GROUP,
     IDENTITY_GROUP,
     COMMUNICATION_GROUP,
     SUBSCRIPTIONS_GROUP,
