@@ -93,6 +93,7 @@ class NisrService {
             'audioSampleRate': 16000,
           'wantAudio': wantAudio,
         },
+        timeout: const Duration(seconds: 45),
       );
       final reply = NisrReply.fromJson(response);
       final answer = reply.answer.trim();

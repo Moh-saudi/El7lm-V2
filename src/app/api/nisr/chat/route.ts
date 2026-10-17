@@ -415,9 +415,9 @@ export async function POST(request: NextRequest) {
     const configuredModel = process.env.GEMINI_NISR_MODEL?.trim();
     const candidateModels = Array.from(new Set([
       ...(configuredModel ? [configuredModel] : []),
-      'gemini-3.1-flash-lite',
-      'gemini-3.8-flash',
-      'gemini-3.5-flash',
+      ...(hasAudio
+        ? ['gemini-3.5-flash', 'gemini-3.8-flash']
+        : ['gemini-3.1-flash-lite', 'gemini-3.5-flash', 'gemini-3.8-flash']),
     ]));
 
     let answer = '';

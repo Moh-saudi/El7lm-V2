@@ -51,6 +51,7 @@ class ApiClient {
     String path, {
     Map<String, dynamic>? body,
     String? accessToken,
+    Duration? timeout,
   }) async {
     return _request(
       () => _http.post(
@@ -58,7 +59,7 @@ class ApiClient {
         headers: _headers(accessToken),
         body: jsonEncode(body ?? const <String, dynamic>{}),
       ),
-      const Duration(seconds: 30),
+      timeout ?? const Duration(seconds: 45),
     );
   }
 
