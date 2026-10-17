@@ -34,8 +34,8 @@ android {
         // minSdk lowered to 21 temporarily for Nox emulator testing (API 25 x86)
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 28
-        versionName = "1.0.10"
+        versionCode = 29
+        versionName = "1.0.11"
     }
 
     signingConfigs {
