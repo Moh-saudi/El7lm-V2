@@ -68,7 +68,7 @@ export default function AdminLoginPage() {
         event,
         details: {
           ...details,
-          userAgent: navigator.userAgent || 'Unknown',
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown',
           ipAddress: securityInfo?.ipAddress || 'Unknown',
           location: securityInfo?.timezone || 'Unknown',
         },
@@ -76,9 +76,13 @@ export default function AdminLoginPage() {
         environment: process.env.NODE_ENV || 'development',
       };
 
-      await supabase.from('security_logs').insert(eventData);
+      await Promise.race([
+        supabase.from('security_logs').insert(eventData),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Log timeout')), 2000))
+      ]);
     } catch (logError) {
-      console.error('Error logging security event:', logError);
+      // Non-fatal logging failure
+      console.warn('Non-fatal security log:', logError);
     }
   };
 
@@ -115,21 +119,86 @@ export default function AdminLoginPage() {
     setSuccess('');
     setLoading(true);
 
-    try {
-      await logSecurityEvent('login_attempt', { email, timestamp: new Date().toISOString() });
+    const normalizedEmail = email.trim().toLowerCase();
+    const isSuperAdmin = normalizedEmail === 'admin@el7lm.com' || normalizedEmail === 'admin@elhilm.com';
 
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email,
+    // Non-blocking security logging
+    logSecurityEvent('login_attempt', { email: normalizedEmail, timestamp: new Date().toISOString() });
+
+    try {
+      // 1. التوثيق بكلمة المرور مع مهلة أمان قصوى لمنع تجمد الزر
+      const authPromise = supabase.auth.signInWithPassword({
+        email: normalizedEmail,
         password,
       });
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('استغرق الاتصال بخادم المصادقة وقتاً طويلاً. يرجى التحقق من اتصال الإنترنت وإعادة المحاولة.')),
+          8000
+        )
+      );
+
+      const { data: authData, error: authError } = await Promise.race([authPromise, timeoutPromise]);
       if (authError) throw authError;
 
-      const user = authData.user;
-      const { data: userData } = await supabase
+      const user = authData?.user;
+      if (!user) throw new Error('تعذر العثور على بيانات المستخدم');
+
+      // ─── المسار الفوري للسوبر أدمن (Super Admin Fast-Path) ───────────
+      if (isSuperAdmin) {
+        setSuccess('تم تسجيل الدخول بنجاح كمدير عام، جاري التحويل...');
+
+        try {
+          if (rememberMe) {
+            localStorage.setItem('adminRememberMe', 'true');
+            localStorage.setItem('adminEmail', normalizedEmail);
+          } else {
+            localStorage.removeItem('adminRememberMe');
+            localStorage.removeItem('adminEmail');
+          }
+          sessionStorage.setItem('adminLoginSuccess', 'true');
+          sessionStorage.setItem('adminLoginTime', Date.now().toString());
+        } catch (storageError) {
+          console.warn('Storage warning:', storageError);
+        }
+
+        // تحديث إحصائيات الدخول في الخلفية دون تعطيل التحويل
+        supabase
+          .from('users')
+          .update({
+            lastLogin: new Date().toISOString(),
+            lastLoginIP: securityInfo?.ipAddress || 'Unknown',
+            lastLoginDevice: securityInfo?.userAgent || 'Unknown',
+            lastLoginLocation: securityInfo?.timezone || 'Unknown',
+          })
+          .eq('id', user.id)
+          .then(() => {}, () => {});
+
+        logSecurityEvent('admin_login_success', {
+          email: normalizedEmail,
+          timestamp: new Date().toISOString(),
+          isSuperAdmin: true,
+        });
+
+        setTimeout(() => {
+          window.location.href = '/dashboard/admin';
+        }, 300);
+        return;
+      }
+
+      // ─── التحقق من صلاحيات الموظفين والمشرفين العاديين ─────────────
+      const userLookupPromise = supabase
         .from('users')
         .select('*')
         .eq('id', user.id)
         .maybeSingle();
+
+      const userLookupTimeout = new Promise<{ data: any; error: any }>((resolve) =>
+        setTimeout(() => resolve({ data: null, error: new Error('User lookup timeout') }), 5000)
+      );
+
+      const { data: userData } = await Promise.race([userLookupPromise, userLookupTimeout]);
 
       let userDataFinal: any = userData;
       let isEmployee = false;
@@ -261,7 +330,7 @@ export default function AdminLoginPage() {
       }
 
       if (!userDataFinal) {
-        throw new Error('User data not found in database');
+        throw new Error('لم يتم العثور على صلاحيات كافية لهذا الحساب في قاعدة البيانات');
       }
 
       if (userDataFinal.accountType !== 'admin' && !isEmployee) {
@@ -272,29 +341,29 @@ export default function AdminLoginPage() {
           .maybeSingle();
 
         if (!adminData) {
-          await logSecurityEvent('unauthorized_access_attempt', {
-            email,
+          logSecurityEvent('unauthorized_access_attempt', {
+            email: normalizedEmail,
             userRole: userDataFinal.accountType,
             timestamp: new Date().toISOString(),
           });
-          throw new Error('You do not have admin permissions to access this panel');
+          throw new Error('ليس لديك صلاحية مدير للدخول إلى هذه اللوحة');
         }
 
         if (!adminData.isActive) {
-          await logSecurityEvent('inactive_admin_login_attempt', {
-            email,
+          logSecurityEvent('inactive_admin_login_attempt', {
+            email: normalizedEmail,
             timestamp: new Date().toISOString(),
           });
-          throw new Error('Your admin account is deactivated. Please contact administration');
+          throw new Error('حسابك الإداري معطل. يرجى التواصل مع الإدارة العليا');
         }
       }
 
       if (isEmployee && userDataFinal.isActive === false) {
-        await logSecurityEvent('inactive_employee_login_attempt', {
-          email,
+        logSecurityEvent('inactive_employee_login_attempt', {
+          email: normalizedEmail,
           timestamp: new Date().toISOString(),
         });
-        throw new Error('Your employee account is deactivated. Please contact administration');
+        throw new Error('حسابك الوظيفي معطل. يرجى التواصل مع الإدارة');
       }
 
       const loginData = {
@@ -305,10 +374,10 @@ export default function AdminLoginPage() {
         loginCount: (userDataFinal.loginCount || 0) + 1,
       };
 
-      await supabase.from('users').update(loginData).eq('id', user.id);
+      supabase.from('users').update(loginData).eq('id', user.id).then(() => {}, () => {});
 
-      await logSecurityEvent('admin_login_success', {
-        email,
+      logSecurityEvent('admin_login_success', {
+        email: normalizedEmail,
         timestamp: new Date().toISOString(),
         sessionInfo: loginData,
       });
@@ -316,7 +385,7 @@ export default function AdminLoginPage() {
       try {
         if (rememberMe) {
           localStorage.setItem('adminRememberMe', 'true');
-          localStorage.setItem('adminEmail', email);
+          localStorage.setItem('adminEmail', normalizedEmail);
         } else {
           localStorage.removeItem('adminRememberMe');
           localStorage.removeItem('adminEmail');
@@ -336,24 +405,24 @@ export default function AdminLoginPage() {
 
       setTimeout(() => {
         window.location.href = '/dashboard/admin';
-      }, 3000);
+      }, 400);
     } catch (loginError: any) {
       console.error('Login error:', loginError);
 
-      await logSecurityEvent('admin_login_failed', {
-        email,
+      logSecurityEvent('admin_login_failed', {
+        email: normalizedEmail,
         error: loginError.message,
         timestamp: new Date().toISOString(),
       });
 
-      let errorMessage = 'An error occurred during login';
+      let errorMessage = 'حدث خطأ أثناء تسجيل الدخول';
 
       if (
         loginError.message?.includes('Failed to fetch') ||
         loginError.name === 'AuthRetryableFetchError'
       ) {
         errorMessage =
-          'خطأ في الاتصال بالخادم. يرجى التأكد من اتصال الإنترنت والتحقق من إعدادات Supabase.';
+          'خطأ في الاتصال بخادم المصادقة. يرجى التأكد من اتصال الإنترنت وإعادة المحاولة.';
       } else if (loginError.message?.includes('Invalid login credentials')) {
         errorMessage = 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
       } else if (loginError.message?.includes('Email not confirmed')) {
