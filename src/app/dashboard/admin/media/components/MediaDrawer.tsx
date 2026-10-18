@@ -12,7 +12,7 @@ import {
     Minimize2, ZoomIn, ZoomOut, Volume2, VolumeX, ChevronRight,
     ChevronLeft, ChevronDown, ChevronUp, MessageSquare, Info,
     Trash2, AlertCircle, Send, User, Film, Copy, Check, Share2,
-    Gauge, BarChart3, FileText, CheckCheck
+    Gauge, FileText, CheckCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
@@ -41,10 +41,10 @@ interface Props {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-    pending:  'bg-amber-500/15 text-amber-400 border-amber-500/30',
-    approved: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-    rejected: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
-    flagged:  'bg-orange-500/15 text-orange-400 border-orange-500/30',
+    pending:  'bg-amber-50 text-amber-700 border-amber-200',
+    approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    rejected: 'bg-rose-50 text-rose-700 border-rose-200',
+    flagged:  'bg-orange-50 text-orange-700 border-orange-200',
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -54,20 +54,28 @@ const STATUS_LABEL: Record<string, string> = {
     flagged: 'تنبيه / إعادة',
 };
 
-// حساب لون شريط المهارة بحسب الدرجة
-function getSkillColor(val: number) {
-    if (val >= 85) return 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30';
-    if (val >= 75) return 'text-teal-400 bg-teal-500/15 border-teal-500/30';
-    if (val >= 65) return 'text-amber-400 bg-amber-500/15 border-amber-500/30';
-    return 'text-rose-400 bg-rose-500/15 border-rose-500/30';
+function getSkillBadgeColor(val: number) {
+    if (val >= 85) return 'text-emerald-700 bg-emerald-50 border-emerald-200';
+    if (val >= 75) return 'text-teal-700 bg-teal-50 border-teal-200';
+    if (val >= 65) return 'text-amber-700 bg-amber-50 border-amber-200';
+    return 'text-rose-700 bg-rose-50 border-rose-200';
 }
 
 function getScoreTier(ovr: number) {
-    if (ovr >= 85) return { label: 'نخبة ELITE', textCls: 'text-amber-300', bgCls: 'bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/20 border-amber-400/40 text-amber-300' };
-    if (ovr >= 75) return { label: 'محترف PRO', textCls: 'text-emerald-300', bgCls: 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300' };
-    if (ovr >= 65) return { label: 'واعد PROMISING', textCls: 'text-sky-300', bgCls: 'bg-sky-500/20 border-sky-400/40 text-sky-300' };
-    return { label: 'تحت التطوير', textCls: 'text-slate-300', bgCls: 'bg-slate-700/30 border-slate-600 text-slate-300' };
+    if (ovr >= 85) return { label: 'نخبة ELITE', textCls: 'text-amber-800', bgCls: 'bg-amber-50 border-amber-200 text-amber-800' };
+    if (ovr >= 75) return { label: 'محترف PRO', textCls: 'text-emerald-800', bgCls: 'bg-emerald-50 border-emerald-200 text-emerald-800' };
+    if (ovr >= 65) return { label: 'واعد PROMISING', textCls: 'text-sky-800', bgCls: 'bg-sky-50 border-sky-200 text-sky-800' };
+    return { label: 'تحت التطوير', textCls: 'text-slate-600', bgCls: 'bg-slate-100 border-slate-200 text-slate-700' };
 }
+
+const SKILL_DEFS: { key: keyof FootballSkills; label: string; short: string; icon: string; desc: string }[] = [
+    { key: 'pace',      label: 'السرعة والتسارع',         short: 'PAC', icon: '⚡', desc: 'الانطلاق وسرعة الجري بالكرة' },
+    { key: 'shooting',  label: 'التسديد وإنهاء الهجمات', short: 'SHO', icon: '⚽', desc: 'قوة وإنهاء الكرات في المرمى' },
+    { key: 'passing',   label: 'التمرير وصناعة اللعب',   short: 'PAS', icon: '🎯', desc: 'صناعة اللعب ودقة التمريرات' },
+    { key: 'dribbling', label: 'المراوغة والتحكم',       short: 'DRI', icon: '👟', desc: 'الرشاقة وحفظ الكرة تحت الضغط' },
+    { key: 'defending', label: 'التمركز والواجب الدفاعي', short: 'DEF', icon: '🛡️', desc: 'التمركز السليم وافتكاك الكرة' },
+    { key: 'physical',  label: 'القوة البدنية والالتحام', short: 'PHY', icon: '💪', desc: 'الالتحامات القوية والارتقاء' },
+];
 
 // ── توليد التقرير الكشفي المعتمد لمنصة الحلم (El7lm Pro Scouting Dossier) ──
 function generateEl7lmDossier(
@@ -188,16 +196,16 @@ export function MediaDrawer({
     const [deleting, setDeleting] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
 
-    // ── Clean 3-Tab Segmented Workspace (Zero Bloat, Zero Crowding) ──
+    // ── Segmented Tabs ──
     const [activeTab, setActiveTab] = useState<'matrix' | 'dossier' | 'contact'>('matrix');
     const [showFullAiReport, setShowFullAiReport] = useState(false);
     const [copiedReport, setCopiedReport] = useState(false);
 
     // Free Tier Usage State (1,500 analyses / day)
     const [usage, setUsage] = useState({
-        todayCount: 8,
+        todayCount: 9,
         dailyLimit: 1500,
-        remaining: 1492,
+        remaining: 1491,
         isFreeTier: true,
         model: 'Gemini 1.5 Flash (Free Tier)'
     });
@@ -217,146 +225,160 @@ export function MediaDrawer({
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [playbackRate, setPlaybackRate] = useState(1.0);
-    const [zoomLevel, setZoomLevel] = useState(1.0);
+    const [zoomLevel, setZoomLevel] = useState(1);
     const [isMuted, setIsMuted] = useState(false);
 
-    // ── Human Performance Analyst State (المهارات الست) ──
+    // ── Fetch Free Tier Usage on mount ──
+    useEffect(() => {
+        let isMounted = true;
+        const fetchUsage = async () => {
+            try {
+                const res = await fetch('/api/media/analyze-video');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data?.success && data?.usage && isMounted) {
+                    setUsage(data.usage);
+                }
+            } catch {
+                // Silently keep default
+            }
+        };
+        fetchUsage();
+        return () => { isMounted = false; };
+    }, []);
+
+    // ── Interactive Football Skills State ──
     const [skills, setSkills] = useState<FootballSkills>({
         pace: 75,
-        shooting: 72,
-        passing: 74,
+        shooting: 70,
+        passing: 72,
         dribbling: 78,
-        defending: 60,
-        physical: 70,
+        defending: 65,
+        physical: 74,
     });
-    const [dominantFoot, setDominantFoot] = useState<string>('يمين');
-    const [analystNotes, setAnalystNotes] = useState<string>('');
+    const [dominantFoot, setDominantFoot] = useState('يمين');
+    const [analystNotes, setAnalystNotes] = useState('');
     const [tacticalStrengths, setTacticalStrengths] = useState<string[]>([]);
     const [developmentAreas, setDevelopmentAreas] = useState<string[]>([]);
 
-    // حساب التقييم الإجمالي العام
-    const calculatedOverall = useMemo(() => {
-        const sum = skills.pace + skills.shooting + skills.passing + skills.dribbling + skills.defending + skills.physical;
-        return Math.round(sum / 6);
-    }, [skills]);
-
-    // جلب عداد الاستهلاك المجاني لـ Gemini عند التحميل
-    const fetchUsage = useCallback(async () => {
-        try {
-            const res = await authenticatedFetch('/api/media/analyze-video');
-            if (res.ok) {
-                const data = await res.json();
-                if (data.usage) {
-                    setUsage(data.usage);
-                }
-            }
-        } catch {
-            // صامت
-        }
-    }, []);
-
+    // Sync on item change
     useEffect(() => {
-        fetchUsage();
-    }, [fetchUsage]);
+        if (!item) return;
 
-    // Reset and sync state when item changes
-    useEffect(() => {
-        setMessage('');
+        setAiText(item.aiAnalysis || null);
         setAiError(null);
+        setAnalystNotes(item.notes || '');
         setConfirmDelete(false);
-        setIsPlaying(false);
+        setMessage('');
+        setActiveTab('matrix');
         setCurrentTime(0);
+        setIsPlaying(false);
         setPlaybackRate(1.0);
-        setZoomLevel(1.0);
-        setCopiedReport(false);
+        setZoomLevel(1);
 
-        if (item) {
-            setAiText(item.aiAnalysis || null);
-            setAnalystNotes(item.notes || '');
-            setDominantFoot(item.dominantFoot || 'يمين');
-            setTacticalStrengths(item.tacticalStrengths || []);
-            setDevelopmentAreas(item.developmentAreas || []);
+        const pos = (item.position || '').toLowerCase();
+        let defaultSkills: FootballSkills = {
+            pace: 75,
+            shooting: 70,
+            passing: 72,
+            dribbling: 78,
+            defending: 65,
+            physical: 74,
+        };
 
-            if (item.skills) {
-                setSkills(item.skills);
-            } else if (item.aiRating) {
-                const base = Math.round(item.aiRating * 10);
-                setSkills({
-                    pace: Math.min(95, base + 2),
-                    shooting: Math.max(50, base - 3),
-                    passing: base,
-                    dribbling: Math.min(95, base + 4),
-                    defending: Math.max(45, base - 12),
-                    physical: Math.max(55, base - 4),
-                });
-            } else {
-                setSkills({
-                    pace: 75,
-                    shooting: 72,
-                    passing: 74,
-                    dribbling: 78,
-                    defending: 60,
-                    physical: 70,
-                });
-            }
+        if (pos.includes('مهاجم') || pos.includes('st') || pos.includes('cf') || pos.includes('forward')) {
+            defaultSkills = { pace: 84, shooting: 82, passing: 72, dribbling: 80, defending: 48, physical: 76 };
+        } else if (pos.includes('جناح') || pos.includes('rw') || pos.includes('lw') || pos.includes('wing')) {
+            defaultSkills = { pace: 88, shooting: 76, passing: 78, dribbling: 85, defending: 52, physical: 68 };
+        } else if (pos.includes('وسط') || pos.includes('cm') || pos.includes('cam') || pos.includes('midfield')) {
+            defaultSkills = { pace: 77, shooting: 72, passing: 83, dribbling: 81, defending: 68, physical: 74 };
+        } else if (pos.includes('مدافع') || pos.includes('cb') || pos.includes('defense')) {
+            defaultSkills = { pace: 72, shooting: 45, passing: 68, dribbling: 62, defending: 85, physical: 84 };
+        } else if (pos.includes('ظهير') || pos.includes('rb') || pos.includes('lb') || pos.includes('fullback')) {
+            defaultSkills = { pace: 85, shooting: 60, passing: 75, dribbling: 76, defending: 79, physical: 78 };
+        } else if (pos.includes('حارس') || pos.includes('gk') || pos.includes('keeper')) {
+            defaultSkills = { pace: 65, shooting: 30, passing: 65, dribbling: 50, defending: 86, physical: 82 };
         }
+
+        setSkills(defaultSkills);
+        setTacticalStrengths([]);
+        setDevelopmentAreas([]);
     }, [item?.id]);
 
-    const handleSkillChange = (key: keyof FootballSkills, val: number) => {
+    const handleSkillChange = (key: keyof FootballSkills, value: number) => {
         setSkills(prev => ({
             ...prev,
-            [key]: Math.min(99, Math.max(30, val)),
+            [key]: Math.min(99, Math.max(30, value))
         }));
     };
 
-    // ── Video Controls Handlers ────────────────────────────────
-    const togglePlay = useCallback(() => {
-        if (!videoRef.current) return;
-        if (videoRef.current.paused) {
-            videoRef.current.play();
-            setIsPlaying(true);
+    // Calculate OVR with position weights
+    const calculatedOverall = useMemo(() => {
+        if (!item) return 75;
+        const pos = (item.position || '').toLowerCase();
+        let ovr = 0;
+
+        if (pos.includes('مهاجم') || pos.includes('st') || pos.includes('forward')) {
+            ovr = skills.shooting * 0.35 + skills.pace * 0.25 + skills.dribbling * 0.20 + skills.physical * 0.10 + skills.passing * 0.10;
+        } else if (pos.includes('جناح') || pos.includes('rw') || pos.includes('lw')) {
+            ovr = skills.pace * 0.35 + skills.dribbling * 0.30 + skills.shooting * 0.15 + skills.passing * 0.15 + skills.physical * 0.05;
+        } else if (pos.includes('وسط') || pos.includes('cm') || pos.includes('midfield')) {
+            ovr = skills.passing * 0.30 + skills.dribbling * 0.25 + skills.defending * 0.15 + skills.pace * 0.15 + skills.physical * 0.15;
+        } else if (pos.includes('مدافع') || pos.includes('cb')) {
+            ovr = skills.defending * 0.40 + skills.physical * 0.30 + skills.pace * 0.15 + skills.passing * 0.15;
+        } else if (pos.includes('ظهير') || pos.includes('rb') || pos.includes('lb')) {
+            ovr = skills.pace * 0.30 + skills.defending * 0.30 + skills.physical * 0.20 + skills.passing * 0.20;
         } else {
+            ovr = (skills.pace + skills.shooting + skills.passing + skills.dribbling + skills.defending + skills.physical) / 6;
+        }
+
+        return Math.round(ovr);
+    }, [skills, item?.position]);
+
+    // ── Video Controls Handlers ──
+    const togglePlay = () => {
+        if (!videoRef.current) return;
+        if (isPlaying) {
             videoRef.current.pause();
             setIsPlaying(false);
+        } else {
+            videoRef.current.play();
+            setIsPlaying(true);
         }
-    }, []);
-
-    const handleSeek = (time: number) => {
-        if (!videoRef.current) return;
-        videoRef.current.currentTime = Math.max(0, Math.min(duration, time));
-        setCurrentTime(videoRef.current.currentTime);
     };
 
     const handleSpeedChange = (rate: number) => {
-        if (!videoRef.current) return;
-        videoRef.current.playbackRate = rate;
         setPlaybackRate(rate);
-        toast.info(`سرعة التشغيل: ${rate}x`);
+        if (videoRef.current) {
+            videoRef.current.playbackRate = rate;
+        }
+    };
+
+    const handleSeek = (newTime: number) => {
+        if (!videoRef.current) return;
+        const target = Math.max(0, Math.min(duration, newTime));
+        videoRef.current.currentTime = target;
+        setCurrentTime(target);
     };
 
     const handleStepFrame = (frames: number) => {
         if (!videoRef.current) return;
-        videoRef.current.pause();
-        setIsPlaying(false);
-        videoRef.current.currentTime = Math.max(0, Math.min(duration, videoRef.current.currentTime + frames * 0.033));
-        setCurrentTime(videoRef.current.currentTime);
+        const frameTime = 1 / 30;
+        handleSeek(videoRef.current.currentTime + frames * frameTime);
+    };
+
+    const toggleZoom = () => {
+        setZoomLevel(prev => (prev === 1 ? 1.5 : prev === 1.5 ? 2.0 : 1));
     };
 
     const toggleMute = () => {
         if (!videoRef.current) return;
-        videoRef.current.muted = !videoRef.current.muted;
-        setIsMuted(videoRef.current.muted);
+        const newMute = !isMuted;
+        videoRef.current.muted = newMute;
+        setIsMuted(newMute);
     };
 
-    const toggleZoom = () => {
-        setZoomLevel(prev => {
-            if (prev === 1.0) return 1.5;
-            if (prev === 1.5) return 2.0;
-            return 1.0;
-        });
-    };
-
-    // ── نسخ التقرير الكشفي المعتمد إلى الحافظة بنقرة واحدة ─────────
+    // ── Copy Dossier ──
     const handleCopyDossier = async () => {
         if (!item) return;
         const text = generateEl7lmDossier(
@@ -380,7 +402,7 @@ export function MediaDrawer({
         }
     };
 
-    // ── مشاركة التقرير الكشفي المعتمد عبر واتساب مباشرة للأندية ────
+    // ── Share WhatsApp ──
     const handleShareWhatsApp = () => {
         if (!item) return;
         const text = generateEl7lmDossier(
@@ -397,7 +419,7 @@ export function MediaDrawer({
         window.open(`https://wa.me/?text=${encoded}`, '_blank');
     };
 
-    // ── Keyboard Shortcuts for Sports Scout ────────────────────
+    // ── Keyboard Shortcuts ──
     useEffect(() => {
         if (!item) return;
 
@@ -408,95 +430,90 @@ export function MediaDrawer({
             if (e.code === 'Space') {
                 e.preventDefault();
                 togglePlay();
-            } else if (e.key === 'ArrowRight') {
+            } else if (e.code === 'KeyF') {
                 e.preventDefault();
-                handleSeek(currentTime + 5);
-            } else if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                handleSeek(currentTime - 5);
-            } else if (e.key === 'j' || e.key === 'J') {
-                if (hasPrev && onPrev) {
-                    e.preventDefault();
-                    onPrev();
-                }
-            } else if (e.key === 'k' || e.key === 'K') {
-                if (hasNext && onNext) {
-                    e.preventDefault();
-                    onNext();
-                }
-            } else if (e.key === 'f' || e.key === 'F') {
                 setIsFullscreen(prev => !prev);
+            } else if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                handleSeek(currentTime + (e.shiftKey ? 10 : 5));
+            } else if (e.code === 'ArrowLeft') {
+                e.preventDefault();
+                handleSeek(currentTime - (e.shiftKey ? 10 : 5));
+            } else if (e.code === 'Period') {
+                e.preventDefault();
+                handleStepFrame(1);
+            } else if (e.code === 'Comma') {
+                e.preventDefault();
+                handleStepFrame(-1);
+            } else if (e.code === 'KeyK' && hasNext && onNext) {
+                e.preventDefault();
+                onNext();
+            } else if (e.code === 'KeyJ' && hasPrev && onPrev) {
+                e.preventDefault();
+                onPrev();
+            } else if (e.code === 'Escape') {
+                onClose();
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [item, togglePlay, currentTime, duration, hasNext, hasPrev, onNext, onPrev]);
+    }, [item, isPlaying, currentTime, duration, hasNext, hasPrev, onNext, onPrev, onClose]);
 
-    // ── تشغيل تحليل Gemini AI ──────────────────────────────────
+    // ── Run AI Video & Skills Analysis ──
     const handleAnalyze = async () => {
-        if (!item) return;
+        if (!item || analyzing) return;
         setAnalyzing(true);
         setAiError(null);
 
         try {
-            let frameUrls: string[] = [];
-
-            if (item.type === 'image') {
-                frameUrls = [item.url];
-                toast.info('جاري إرسال الصورة للتحليل...');
-            } else if (item.url.match(/\.(mp4|mov|webm|avi)/i)) {
-                toast.info('جاري استخراج لقطات من الفيديو...');
-                const captureUrl = `/api/media/proxy-video?url=${encodeURIComponent(item.url)}`;
-                try {
-                    frameUrls = await captureFrames(captureUrl);
-                } catch {
-                    frameUrls = [];
-                }
+            let frames: string[] = [];
+            if (item.type === 'video' && (item.sourceType === 'r2' || /\.(mp4|mov|webm)(\?|$)/i.test(item.url))) {
+                frames = await captureFrames(item.url);
             }
 
             const res = await authenticatedFetch('/api/media/analyze-video', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    videoUrl:       item.url,
-                    thumbnailUrl:   item.thumbnailUrl,
-                    frameUrls,
-                    mediaType:      item.type,
-                    playerName:     item.userName,
-                    playerPosition: item.position,
-                    playerAge:      item.age,
-                    playerCountry:  item.country,
-                    category:       item.category,
+                    mediaId: item.id,
+                    url: item.url,
+                    title: item.title,
+                    type: item.type,
+                    sourceType: item.sourceType,
+                    category: item.category,
+                    userId: item.userId,
+                    userName: item.userName,
+                    playerPosition: item.position || '',
+                    playerAge: item.age || null,
+                    playerCountry: item.country || '',
+                    frames
                 }),
             });
 
             const data = await res.json();
             if (!res.ok || !data.success) {
-                throw new Error(data.error || 'فشل التحليل الذكي');
+                throw new Error(data.error || 'فشل تحليل الفيديو');
             }
 
-            // تحديث عداد الاستهلاك
-            if (data.usage) {
-                setUsage(data.usage);
-            }
-
-            // تحديث الواجهة بالمخرجات المهيكلة
             if (data.skills) {
-                setSkills(data.skills);
+                setSkills({
+                    pace: data.skills.pace ?? 75,
+                    shooting: data.skills.shooting ?? 70,
+                    passing: data.skills.passing ?? 72,
+                    dribbling: data.skills.dribbling ?? 78,
+                    defending: data.skills.defending ?? 65,
+                    physical: data.skills.physical ?? 74,
+                });
             }
-            if (data.dominantFoot) {
-                setDominantFoot(data.dominantFoot);
-            }
-            if (data.tacticalStrengths) {
-                setTacticalStrengths(data.tacticalStrengths);
-            }
-            if (data.developmentAreas) {
-                setDevelopmentAreas(data.developmentAreas);
-            }
-            if (data.analysis) {
-                setAiText(data.analysis);
-            }
+
+            if (data.dominantFoot) setDominantFoot(data.dominantFoot);
+            if (Array.isArray(data.tacticalStrengths)) setTacticalStrengths(data.tacticalStrengths);
+            if (Array.isArray(data.developmentAreas)) setDevelopmentAreas(data.developmentAreas);
+
+            if (data.usage) setUsage(data.usage);
+
+            if (data.analysis) setAiText(data.analysis);
             if (data.scoutRecommendation && !analystNotes) {
                 setAnalystNotes(data.scoutRecommendation);
             }
@@ -512,7 +529,7 @@ export function MediaDrawer({
         }
     };
 
-    // ── اعتماد التقييم ومزامنة بروفايل اللاعب ────────────────
+    // ── Approve and Sync ──
     const handleApproveAndSync = async () => {
         if (!item || syncing) return;
         setSyncing(true);
@@ -615,17 +632,18 @@ export function MediaDrawer({
         developmentAreas
     );
 
-    const usagePercent = Math.min(100, Math.round((usage.todayCount / usage.dailyLimit) * 100));
-
     return (
         <DialogPrimitive.Root open={!!item} onOpenChange={open => !open && onClose()}>
             <DialogPrimitive.Portal>
-                <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md transition-opacity animate-in fade-in duration-200" />
+                {/* Clean, Subtle Executive Modal Backdrop */}
+                <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200" />
+                
+                {/* Executive White Container matching the El7lm Dashboard */}
                 <DialogPrimitive.Content
-                    className={`fixed z-50 outline-none flex flex-col bg-slate-950 text-white border border-slate-800 shadow-2xl overflow-hidden duration-200 animate-in fade-in zoom-in-95 ${
+                    className={`fixed z-50 outline-none flex flex-col bg-white text-slate-900 border border-slate-200 shadow-2xl overflow-hidden duration-200 animate-in fade-in zoom-in-95 ${
                         isFullscreen
                             ? 'inset-0 rounded-none'
-                            : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[98vw] max-w-[1600px] h-[95vh] rounded-2xl md:rounded-3xl'
+                            : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[98vw] max-w-[1550px] h-[94vh] rounded-2xl md:rounded-3xl'
                     }`}
                     dir="rtl"
                 >
@@ -637,37 +655,37 @@ export function MediaDrawer({
                     </DialogPrimitive.Description>
 
                     {/* ═══════════════════════════════════════════════════════════════
-                        TOP BAR: STUDIO HEADER & SCOUT NAVIGATOR
+                        TOP BAR: EXECUTIVE STUDIO HEADER & SCOUT NAVIGATOR
                     ═══════════════════════════════════════════════════════════════ */}
-                    <div className="bg-slate-900/90 border-b border-slate-800 px-4 py-3 flex items-center justify-between gap-3 flex-shrink-0 z-30">
+                    <div className="bg-white border-b border-slate-200 px-5 py-3.5 flex items-center justify-between gap-3 flex-shrink-0 z-30">
                         {/* Player Profile & Identity */}
                         <div className="flex items-center gap-3 min-w-0">
                             <div className="relative flex-shrink-0">
-                                <div className="w-11 h-11 rounded-full p-0.5 bg-gradient-to-tr from-amber-500 via-emerald-500 to-indigo-500 shadow-md">
+                                <div className="w-11 h-11 rounded-full p-0.5 bg-slate-100 border border-slate-300 shadow-xs">
                                     {item.userImage ? (
-                                        <img src={item.userImage} alt={item.userName} className="w-full h-full rounded-full object-cover bg-slate-900" />
+                                        <img src={item.userImage} alt={item.userName} className="w-full h-full rounded-full object-cover bg-slate-100" />
                                     ) : (
-                                        <div className="w-full h-full rounded-full bg-slate-800 flex items-center justify-center font-black text-amber-400 text-sm">
+                                        <div className="w-full h-full rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-700 text-sm">
                                             {item.userName.charAt(0) || 'ل'}
                                         </div>
                                     )}
                                 </div>
-                                <span className="absolute -bottom-1 -right-1 bg-slate-900 border border-slate-700 text-[10px] font-black text-amber-400 px-1 rounded-sm">
+                                <span className="absolute -bottom-1 -right-1 bg-emerald-600 border border-white text-[10px] font-black text-white px-1.5 py-0.2 rounded-full shadow-xs">
                                     {calculatedOverall}
                                 </span>
                             </div>
 
                             <div className="min-w-0">
                                 <div className="flex items-center gap-2">
-                                    <h2 className="font-black text-white text-sm md:text-base truncate">{item.userName}</h2>
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${STATUS_COLOR[item.status]}`}>
+                                    <h2 className="font-black text-slate-900 text-sm md:text-base truncate">{item.userName}</h2>
+                                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${STATUS_COLOR[item.status]}`}>
                                         {STATUS_LABEL[item.status]}
                                     </span>
-                                    <span className="hidden sm:inline-flex text-[10px] font-black px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+                                    <span className="hidden sm:inline-flex text-[11px] font-bold px-2 py-0.5 rounded-md border bg-slate-100 text-slate-700 border-slate-200">
                                         {item.position || 'لاعب كرة قدم'}
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 truncate">
+                                <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5 truncate">
                                     {item.age && <span>{item.age} سنة</span>}
                                     {item.country && <span>• {item.country}</span>}
                                     {item.organization && <span>• {item.organization}</span>}
@@ -676,13 +694,13 @@ export function MediaDrawer({
                         </div>
 
                         {/* Center: Review Queue Navigator */}
-                        <div className="hidden md:flex items-center gap-2 bg-slate-950/80 border border-slate-800 rounded-xl px-2.5 py-1">
+                        <div className="hidden md:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1">
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={onPrev}
                                 disabled={!hasPrev}
-                                className="h-7 px-2 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-30 gap-1 cursor-pointer"
+                                className="h-7 px-2 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 disabled:opacity-30 gap-1 cursor-pointer"
                                 title="الفيديو السابق (مفتاح J)"
                             >
                                 <ChevronRight className="w-3.5 h-3.5" />
@@ -690,7 +708,7 @@ export function MediaDrawer({
                             </Button>
 
                             {totalCount > 0 && (
-                                <span className="text-[11px] font-mono font-bold text-amber-400/90 px-1 border-x border-slate-800">
+                                <span className="text-xs font-mono font-bold text-slate-800 px-2 border-x border-slate-200">
                                     {currentIndex} / {totalCount}
                                 </span>
                             )}
@@ -700,7 +718,7 @@ export function MediaDrawer({
                                 size="sm"
                                 onClick={onNext}
                                 disabled={!hasNext}
-                                className="h-7 px-2 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-30 gap-1 cursor-pointer"
+                                className="h-7 px-2 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 disabled:opacity-30 gap-1 cursor-pointer"
                                 title="الفيديو التالي (مفتاح K)"
                             >
                                 <span>التالي</span>
@@ -714,7 +732,7 @@ export function MediaDrawer({
                                 href={`/profile/${item.userId}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="hidden sm:flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg transition-colors"
+                                className="hidden sm:flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg transition-colors"
                             >
                                 <ExternalLink className="w-3.5 h-3.5" />
                                 <span>البروفايل</span>
@@ -724,7 +742,7 @@ export function MediaDrawer({
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => setIsFullscreen(prev => !prev)}
-                                className="w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                                className="w-8 h-8 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
                                 title={isFullscreen ? 'تصغير النافذة' : 'ملء الشاشة (مفتاح F)'}
                             >
                                 {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -734,7 +752,7 @@ export function MediaDrawer({
                                 variant="ghost"
                                 size="icon"
                                 onClick={onClose}
-                                className="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
+                                className="w-8 h-8 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
                                 title="إغلاق الاستوديو (Esc)"
                             >
                                 <X className="w-4 h-4" />
@@ -745,12 +763,12 @@ export function MediaDrawer({
                     {/* ═══════════════════════════════════════════════════════════════
                         CANVAS: SPLIT-SCREEN SCOUTING ARENA (60% VIDEO | 40% CONSOLE)
                     ═══════════════════════════════════════════════════════════════ */}
-                    <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 overflow-hidden bg-slate-950">
+                    <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 overflow-hidden bg-slate-100">
 
                         {/* ─────────────────────────────────────────────────────────────
                             COLUMN 1: THE SPORTS CINEMA VIDEO ARENA (7 Cols = ~60%)
                         ───────────────────────────────────────────────────────────── */}
-                        <div className="lg:col-span-7 xl:col-span-7 flex flex-col min-h-0 border-b lg:border-b-0 lg:border-l border-slate-800/80 bg-black/80 relative">
+                        <div className="lg:col-span-7 xl:col-span-7 flex flex-col min-h-0 border-b lg:border-b-0 lg:border-l border-slate-200 bg-slate-950 relative">
                             {/* Video Viewport */}
                             <div className="flex-1 relative flex items-center justify-center bg-black overflow-hidden group select-none">
                                 {item.type === 'video' ? (
@@ -794,15 +812,15 @@ export function MediaDrawer({
                                                             onClick={togglePlay}
                                                             className="absolute inset-0 flex items-center justify-center bg-black/30 cursor-pointer"
                                                         >
-                                                            <div className="w-16 h-16 rounded-full bg-emerald-500/90 text-slate-950 flex items-center justify-center shadow-xl shadow-emerald-500/30 hover:scale-105 transition-all">
-                                                                <Play className="w-8 h-8 fill-slate-950 ml-1" />
+                                                            <div className="w-16 h-16 rounded-full bg-emerald-600/90 text-white flex items-center justify-center shadow-xl shadow-emerald-600/30 hover:scale-105 transition-all">
+                                                                <Play className="w-8 h-8 fill-white ml-1" />
                                                             </div>
                                                         </div>
                                                     )}
 
                                                     {/* Zoom Indicator Badge */}
                                                     {zoomLevel > 1 && (
-                                                        <div className="absolute top-3 left-3 bg-slate-900/80 border border-slate-700 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-md pointer-events-none">
+                                                        <div className="absolute top-3 left-3 bg-slate-900/90 border border-slate-700 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-md pointer-events-none">
                                                             تكبير {zoomLevel}x
                                                         </div>
                                                     )}
@@ -975,15 +993,15 @@ export function MediaDrawer({
                             )}
 
                             {/* Video Metadata Ribbon */}
-                            <div className="bg-slate-950 px-4 py-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 flex-shrink-0">
+                            <div className="bg-slate-900 px-4 py-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 flex-shrink-0">
                                 <div className="flex items-center gap-2 truncate">
                                     <Film className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
                                     <span className="font-bold text-white truncate">{item.title}</span>
-                                    <span className="text-[10px] text-slate-500">• {item.category || 'فيديو مهارات'}</span>
+                                    <span className="text-[10px] text-slate-400">• {item.category || 'فيديو مهارات'}</span>
                                 </div>
                                 <div className="flex items-center gap-3 text-[10px] text-slate-400 flex-shrink-0">
                                     {item.sourceType === 'r2' && (
-                                        <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-bold">
+                                        <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-bold">
                                             📱 رفع مباشر Cloudflare R2
                                         </span>
                                     )}
@@ -998,17 +1016,18 @@ export function MediaDrawer({
                         {/* ─────────────────────────────────────────────────────────────
                             COLUMN 2: SCOUTING & PERFORMANCE CONSOLE (5 Cols = ~40%)
                         ───────────────────────────────────────────────────────────── */}
-                        <div className="lg:col-span-5 xl:col-span-5 flex flex-col min-h-0 bg-slate-900/60 border-r border-slate-800">
-                            {/* ── TOP SEGMENTED TAB SWITCHER (3 TABS) ── */}
-                            <div className="p-3 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between gap-2 flex-shrink-0">
-                                <div className="grid grid-cols-3 gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800 w-full">
+                        <div className="lg:col-span-5 xl:col-span-5 flex flex-col min-h-0 bg-white border-r border-slate-200">
+                            
+                            {/* ── TOP SEGMENTED TAB SWITCHER (3 ELEGANT TABS) ── */}
+                            <div className="p-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-2 flex-shrink-0">
+                                <div className="grid grid-cols-3 gap-1 bg-slate-200/70 p-1 rounded-xl w-full">
                                     <button
                                         type="button"
                                         onClick={() => setActiveTab('matrix')}
-                                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                        className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                                             activeTab === 'matrix'
-                                                ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
-                                                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                                                ? 'bg-emerald-600 text-white shadow-xs font-black'
+                                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                                         }`}
                                     >
                                         <Sliders className="w-3.5 h-3.5" />
@@ -1018,26 +1037,26 @@ export function MediaDrawer({
                                     <button
                                         type="button"
                                         onClick={() => setActiveTab('dossier')}
-                                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer relative ${
+                                        className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer relative ${
                                             activeTab === 'dossier'
-                                                ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
-                                                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                                                ? 'bg-emerald-600 text-white shadow-xs font-black'
+                                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                                         }`}
                                     >
                                         <FileText className="w-3.5 h-3.5" />
-                                        <span>الملف الكشفي المعتمد</span>
+                                        <span>التقرير الكشفي</span>
                                         {aiText && (
-                                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-0.5" />
+                                            <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse mr-0.5" />
                                         )}
                                     </button>
 
                                     <button
                                         type="button"
                                         onClick={() => setActiveTab('contact')}
-                                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                        className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                                             activeTab === 'contact'
-                                                ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
-                                                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                                                ? 'bg-emerald-600 text-white shadow-xs font-black'
+                                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                                         }`}
                                     >
                                         <User className="w-3.5 h-3.5" />
@@ -1046,240 +1065,174 @@ export function MediaDrawer({
                                 </div>
                             </div>
 
-                            {/* Scrollable Evaluation Body */}
-                            <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4">
+                            {/* ── TAB CONTENT BODY ── */}
+                            <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 bg-slate-50/50">
 
+                                {/* ==============================================================
+                                    TAB 1: MATRIX & SKILLS (مصفوفة المهارات والتقييم)
+                                ============================================================== */}
                                 {activeTab === 'matrix' && (
                                     <>
-
-                                {/* 1. AI Gemini Assistant Header with Real-Time Free Tier Gauge */}
-                                <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-emerald-950 border border-indigo-500/30 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-                                    
-                                    <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <Sparkles className="w-4 h-4 text-emerald-400" />
-                                                <span className="text-xs font-black tracking-wide text-emerald-400 uppercase">
-                                                    مساعد الكشاف الذكي — Gemini AI Suite
-                                                </span>
+                                        {/* AI Quick Assistant Bar */}
+                                        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                                                    <Sparkles className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-black text-slate-900">مساعد الكشاف الذكي</span>
+                                                        <span className="text-[10px] font-bold text-emerald-800 bg-white border border-emerald-200 px-2 py-0.5 rounded shadow-xs">
+                                                            متبقي {usage.remaining} مجاناً اليوم
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[11px] text-slate-600 mt-0.5">فحص لقطات الفيديو وتوزيع درجات المهارات تلقائياً</p>
+                                                </div>
                                             </div>
-                                            <p className="text-[11px] text-slate-300 mt-1 max-w-sm">
-                                                استخراج فوري لمصفوفة المهارات الكروية وتوصيات التمركز لتدقيقها واعتمادها.
-                                            </p>
+                                            <Button
+                                                onClick={handleAnalyze}
+                                                disabled={analyzing}
+                                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8.5 px-3.5 text-xs gap-1.5 shadow-xs active:scale-95 transition-all cursor-pointer flex-shrink-0"
+                                            >
+                                                <Sparkles className={`w-3.5 h-3.5 ${analyzing ? 'animate-spin' : ''}`} />
+                                                <span>{analyzing ? 'جاري الفحص التكتيكي...' : 'تشغيل الفحص الفني ⚡'}</span>
+                                            </Button>
                                         </div>
-                                        <Button
-                                            onClick={handleAnalyze}
-                                            disabled={analyzing}
-                                            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black h-9 px-3.5 text-xs gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer flex-shrink-0"
-                                        >
-                                            <Sparkles className={`w-3.5 h-3.5 ${analyzing ? 'animate-spin' : ''}`} />
-                                            <span>{analyzing ? 'جاري الفحص التكتيكي...' : 'تشغيل تحليل AI ⚡'}</span>
-                                        </Button>
-                                    </div>
 
-                                    {/* ── Real-time Free Tier Consumption Tracker ── */}
-                                    <div className="relative z-10 mt-3 pt-2.5 border-t border-slate-800/80 flex flex-col gap-1.5 text-[10px]">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-1.5 text-emerald-300 font-bold">
-                                                <Gauge className="w-3 h-3 text-emerald-400" />
-                                                <span>الباقة المجانية الرسمية (Google AI Studio)</span>
+                                        {aiError && (
+                                            <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 flex items-start gap-2.5 text-xs text-rose-800">
+                                                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                                                <div className="flex-1">
+                                                    <p className="font-bold">تنبيه أثناء التحليل:</p>
+                                                    <p className="mt-0.5 text-rose-700">{aiError}</p>
+                                                </div>
                                             </div>
-                                            <span className="font-mono font-bold text-amber-300">
-                                                {usage.todayCount} / {usage.dailyLimit} تحليل اليوم (متبقي {usage.remaining})
-                                            </span>
-                                        </div>
-                                        {/* Progress bar */}
-                                        <div className="w-full bg-slate-950/80 rounded-full h-1.5 overflow-hidden border border-slate-800">
-                                            <div
-                                                className={`h-full transition-all duration-500 ${
-                                                    usagePercent > 80
-                                                        ? 'bg-rose-500'
-                                                        : usagePercent > 50
-                                                        ? 'bg-amber-500'
-                                                        : 'bg-emerald-500'
-                                                }`}
-                                                style={{ width: `${Math.max(2, usagePercent)}%` }}
-                                            />
-                                        </div>
-                                        <div className="flex items-center justify-between text-[9px] text-slate-400 font-medium">
-                                            <span>🛡️ باقة مجانية 100% — لا توجد أي تكاليف أو اشتراكات</span>
-                                            <span>15 طلب/دقيقة كحد أقصى</span>
-                                        </div>
-                                    </div>
-                                </div>
+                                        )}
 
-                                {aiError && (
-                                    <div className="bg-rose-950/40 border border-rose-500/30 rounded-xl p-3 flex items-start gap-2.5 text-xs text-rose-300">
-                                        <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
-                                        <div className="flex-1">
-                                            <p className="font-bold">تنبيه أثناء التحليل:</p>
-                                            <p className="mt-0.5 text-rose-300/80">{aiError}</p>
-                                        </div>
-                                    </div>
-                                )}
+                                        {/* Executive Player Assessment Card */}
+                                        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3">
+                                            <div className="flex items-center justify-between gap-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-14 h-14 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center flex-shrink-0">
+                                                        {item.userImage ? (
+                                                            <img src={item.userImage} alt={item.userName} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <User className="w-7 h-7 text-slate-400" />
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-black text-slate-900 text-sm">{item.userName}</h3>
+                                                        <p className="text-xs text-slate-500">{item.position || 'لاعب كرة قدم'} • {item.age ? `${item.age} سنة` : 'موهبة صاعدة'}</p>
+                                                        <p className="text-[11px] text-slate-400 mt-0.5">{item.organization || item.country || 'لاعب حر'}</p>
+                                                    </div>
+                                                </div>
 
-                                {/* 2. 3D FUT FIFA/FC STYLE PLAYER CARD (Gold / Elite Card) */}
-                                <div className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl relative overflow-hidden">
-                                    <div className="flex items-center justify-between gap-4">
-                                        {/* Card Visual Left */}
-                                        <div className="relative w-28 h-40 bg-gradient-to-br from-amber-400 via-yellow-600 to-amber-700 rounded-xl p-0.5 shadow-2xl flex-shrink-0">
-                                            <div className="w-full h-full bg-slate-950 rounded-[10px] p-2 flex flex-col justify-between relative overflow-hidden">
-                                                {/* Card Background Pattern */}
-                                                <div className="absolute inset-0 bg-radial from-amber-500/10 via-transparent to-transparent pointer-events-none" />
-
-                                                {/* Top Row: OVR & Position */}
-                                                <div className="relative z-10 flex flex-col items-center">
-                                                    <span className="text-2xl font-black text-amber-400 leading-none tracking-tight">
-                                                        {calculatedOverall}
-                                                    </span>
-                                                    <span className="text-[10px] font-black text-white/80 uppercase">
-                                                        {item.position || 'ST'}
+                                                {/* Score Metric Display */}
+                                                <div className="flex flex-col items-center bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl">
+                                                    <div className="flex items-baseline gap-1">
+                                                        <span className="text-2xl font-black text-emerald-600">{calculatedOverall}</span>
+                                                        <span className="text-[10px] font-bold text-slate-400">/ 99</span>
+                                                    </div>
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border mt-1 ${tier.bgCls}`}>
+                                                        {tier.label}
                                                     </span>
                                                 </div>
-
-                                                {/* Center Avatar Cutout */}
-                                                <div className="relative z-10 w-12 h-12 mx-auto rounded-full bg-slate-900 border border-amber-500/40 overflow-hidden flex items-center justify-center">
-                                                    {item.userImage ? (
-                                                        <img src={item.userImage} alt={item.userName} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <User className="w-6 h-6 text-amber-400/60" />
-                                                    )}
-                                                </div>
-
-                                                {/* Player Name */}
-                                                <div className="relative z-10 text-center">
-                                                    <p className="text-[10px] font-black text-amber-300 truncate uppercase">
-                                                        {item.userName.split(' ')[0] || 'PLAYER'}
-                                                    </p>
-                                                </div>
-
-                                                {/* Mini Stats 6 attributes */}
-                                                <div className="relative z-10 grid grid-cols-2 gap-x-1 text-[8px] font-bold text-white/80 border-t border-amber-500/30 pt-1 text-center font-mono">
-                                                    <span>{skills.pace} PAC</span>
-                                                    <span>{skills.dribbling} DRI</span>
-                                                    <span>{skills.shooting} SHO</span>
-                                                    <span>{skills.defending} DEF</span>
-                                                    <span>{skills.passing} PAS</span>
-                                                    <span>{skills.physical} PHY</span>
-                                                </div>
                                             </div>
-                                        </div>
-
-                                        {/* Card Details Right */}
-                                        <div className="flex-1 space-y-2">
-                                            <div className="flex items-center gap-2">
-                                                <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${tier.bgCls}`}>
-                                                    {tier.label}
-                                                </span>
-                                                <span className="text-xs text-slate-400 font-bold">
-                                                    بطاقة الأداء الرياضي
-                                                </span>
-                                            </div>
-
-                                            <p className="text-xs text-slate-300 leading-relaxed font-medium">
-                                                متوسط المهارات الست المعتمدة لمركز ({item.position || 'اللاعب'}) مع التحديث اللحظي المباشر.
-                                            </p>
 
                                             {/* Dominant Foot Selection */}
-                                            <div className="pt-1 flex items-center gap-2">
-                                                <span className="text-[11px] font-bold text-slate-400">القدم المفضلة:</span>
-                                                <div className="flex bg-slate-800 p-0.5 rounded-lg border border-slate-700">
-                                                    {['يمين', 'يسار', 'كلتاهما'].map(foot => (
+                                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                                                <span className="text-xs text-slate-600 font-bold">القدم المفضلة:</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    {['يمين', 'يسار', 'كلتا القدمين'].map(f => (
                                                         <button
-                                                            key={foot}
+                                                            key={f}
                                                             type="button"
-                                                            onClick={() => setDominantFoot(foot)}
-                                                            className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
-                                                                dominantFoot === foot
-                                                                    ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
-                                                                    : 'text-slate-400 hover:text-white'
+                                                            onClick={() => setDominantFoot(f)}
+                                                            className={`px-3 py-1 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                                                                dominantFoot === f
+                                                                    ? 'bg-emerald-600 text-white border-emerald-600 font-black shadow-xs'
+                                                                    : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
                                                             }`}
                                                         >
-                                                            {foot}
+                                                            {f}
                                                         </button>
                                                     ))}
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
 
-                                {/* 3. THE 6 FOOTBALL CORE SKILLS (SLIDERS WITH FINE-TUNING) */}
-                                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-3">
-                                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                                        <div className="flex items-center gap-1.5">
-                                            <Sliders className="w-4 h-4 text-emerald-400" />
-                                            <h3 className="text-xs font-black text-white">المهارات الست الأساسية (EA Sports FC Matrix)</h3>
-                                        </div>
-                                        <span className="text-[10px] text-slate-400">تحديث لحظي لـ OVR</span>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                        {[
-                                            { key: 'pace',      label: '⚡ السرعة (PAC)', desc: 'الانطلاق وسرعة الجري بالكرة' },
-                                            { key: 'shooting',  label: '⚽ التسديد (SHO)', desc: 'قوة وإنهاء الكرات بالمرمى' },
-                                            { key: 'passing',   label: '🎯 التمرير (PAS)', desc: 'صناعة اللعب والرؤية' },
-                                            { key: 'dribbling', label: '👟 المراوغة (DRI)', desc: 'الرشاقة وحفظ الكرة تحت الضغط' },
-                                            { key: 'defending', label: '🛡️ الدفاع (DEF)', desc: 'التمركز وقطع الكرات' },
-                                            { key: 'physical',  label: '💪 البدنية (PHY)', desc: 'الالتحام والارتقاء والتحمل' },
-                                        ].map(s => {
-                                            const val = skills[s.key as keyof FootballSkills];
-                                            const badgeCls = getSkillColor(val);
-                                            return (
-                                                <div key={s.key} className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2.5 flex flex-col justify-between">
-                                                    <div className="flex items-center justify-between mb-1.5">
-                                                        <span className="text-[11px] font-bold text-slate-200">{s.label}</span>
-                                                        <div className="flex items-center gap-1">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleSkillChange(s.key as keyof FootballSkills, val - 1)}
-                                                                className="w-5 h-5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center cursor-pointer"
-                                                            >
-                                                                -
-                                                            </button>
-                                                            <span className={`text-xs font-black px-1.5 py-0.5 rounded-md border font-mono ${badgeCls}`}>
-                                                                {val}
-                                                            </span>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleSkillChange(s.key as keyof FootballSkills, val + 1)}
-                                                                className="w-5 h-5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center cursor-pointer"
-                                                            >
-                                                                +
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <input
-                                                        type="range"
-                                                        min="30"
-                                                        max="99"
-                                                        value={val}
-                                                        onChange={e => handleSkillChange(s.key as keyof FootballSkills, parseInt(e.target.value) || 50)}
-                                                        className="w-full accent-emerald-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
-                                                    />
-                                                    <span className="text-[9px] text-slate-400 mt-1 truncate">{s.desc}</span>
+                                        {/* Skill Sliders Grid */}
+                                        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3">
+                                            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                                                <div className="flex items-center gap-1.5">
+                                                    <Sliders className="w-4 h-4 text-emerald-600" />
+                                                    <h4 className="text-xs font-black text-slate-900">مصفوفة المهارات الكروية (معايير الحلم الدولية)</h4>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
+                                                <span className="text-[11px] text-slate-500">اسحب للضبط اليدوي</span>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                                {SKILL_DEFS.map(s => {
+                                                    const val = skills[s.key as keyof FootballSkills];
+                                                    const badgeCls = getSkillBadgeColor(val);
+                                                    return (
+                                                        <div key={s.key} className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex flex-col justify-between">
+                                                            <div className="flex items-center justify-between mb-1.5">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="text-xs">{s.icon}</span>
+                                                                    <span className="text-xs font-bold text-slate-800">{s.label}</span>
+                                                                    <span className="text-[10px] text-slate-400 font-mono">({s.short})</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-1">
+                                                                    <span className={`text-xs font-mono font-black px-1.5 py-0.2 rounded border ${badgeCls}`}>
+                                                                        {val}
+                                                                    </span>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleSkillChange(s.key as keyof FootballSkills, Math.min(99, val + 1))}
+                                                                        className="w-5 h-5 text-slate-600 hover:text-slate-900 bg-slate-200/80 hover:bg-slate-300 rounded flex items-center justify-center text-xs font-black cursor-pointer"
+                                                                    >
+                                                                        +
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleSkillChange(s.key as keyof FootballSkills, Math.max(30, val - 1))}
+                                                                        className="w-5 h-5 text-slate-600 hover:text-slate-900 bg-slate-200/80 hover:bg-slate-300 rounded flex items-center justify-center text-xs font-black cursor-pointer"
+                                                                    >
+                                                                        -
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <input
+                                                                type="range"
+                                                                min="30"
+                                                                max="99"
+                                                                value={val}
+                                                                onChange={e => handleSkillChange(s.key as keyof FootballSkills, parseInt(e.target.value) || 50)}
+                                                                className="w-full accent-emerald-600 cursor-pointer h-1.5 bg-slate-200 rounded-lg"
+                                                            />
+                                                            <span className="text-[10px] text-slate-500 mt-1 truncate">{s.desc}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
 
                                         {/* Performance Analyst Technical Recommendation & Notes */}
-                                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-2">
+                                        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-2">
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-1.5">
-                                                    <Award className="w-4 h-4 text-emerald-400" />
-                                                    <h4 className="text-xs font-black text-white">توصيات وملاحظات الكشاف المعتمد</h4>
+                                                    <Award className="w-4 h-4 text-emerald-600" />
+                                                    <h4 className="text-xs font-black text-slate-900">توصيات وملاحظات الكشاف المعتمد</h4>
                                                 </div>
-                                                <span className="text-[10px] text-slate-400">تظهر في تقرير اللاعب والبروفايل</span>
+                                                <span className="text-[11px] text-slate-500">تظهر في تقرير اللاعب والبروفايل</span>
                                             </div>
                                             <Textarea
                                                 rows={3}
                                                 value={analystNotes}
                                                 onChange={e => setAnalystNotes(e.target.value)}
                                                 placeholder="اكتب التوصيات الفنية أو الملاحظات التكتيكية التي تريد توجيهها للاعب والأندية..."
-                                                className="text-xs bg-slate-950 border-slate-800 text-slate-200 leading-relaxed resize-none focus:border-emerald-500"
+                                                className="text-xs bg-slate-50 border-slate-200 text-slate-800 leading-relaxed resize-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                                             />
                                         </div>
                                     </>
@@ -1290,15 +1243,15 @@ export function MediaDrawer({
                                 ============================================================== */}
                                 {activeTab === 'dossier' && (
                                     <>
-                                        <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-emerald-500/30 rounded-2xl p-4 shadow-xl space-y-3">
-                                            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                                        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3">
+                                            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center">
                                                         <FileText className="w-4 h-4" />
                                                     </div>
                                                     <div>
-                                                        <h3 className="text-xs font-black text-white">ملف الكشاف المعتمد — منصة الحلم</h3>
-                                                        <p className="text-[10px] text-slate-400">El7lm Pro Scouting Dossier</p>
+                                                        <h3 className="text-xs font-black text-slate-900">ملف الكشاف المعتمد — منصة الحلم</h3>
+                                                        <p className="text-[10px] text-slate-500 font-mono">El7lm Pro Scouting Dossier</p>
                                                     </div>
                                                 </div>
 
@@ -1307,7 +1260,7 @@ export function MediaDrawer({
                                                         onClick={handleShareWhatsApp}
                                                         size="sm"
                                                         variant="outline"
-                                                        className="h-8 px-2.5 text-[11px] font-bold border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 gap-1 cursor-pointer"
+                                                        className="h-8 px-2.5 text-xs font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 gap-1 cursor-pointer"
                                                         title="مشاركة التقرير عبر واتساب للأندية والوكلاء"
                                                     >
                                                         <Share2 className="w-3.5 h-3.5" />
@@ -1317,10 +1270,10 @@ export function MediaDrawer({
                                                     <Button
                                                         onClick={handleCopyDossier}
                                                         size="sm"
-                                                        className={`h-8 px-3 text-xs font-black gap-1.5 transition-all cursor-pointer shadow-md ${
+                                                        className={`h-8 px-3 text-xs font-bold gap-1.5 transition-all cursor-pointer shadow-xs ${
                                                             copiedReport
-                                                                ? 'bg-emerald-600 text-white'
-                                                                : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
+                                                                ? 'bg-emerald-700 text-white'
+                                                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
                                                         }`}
                                                     >
                                                         {copiedReport ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
@@ -1330,7 +1283,7 @@ export function MediaDrawer({
                                             </div>
 
                                             {/* El7lm Dossier Preview Monospace Box */}
-                                            <div className="bg-slate-950/95 border border-slate-800 rounded-xl p-3.5 text-xs font-mono text-slate-200 leading-relaxed whitespace-pre-line max-h-80 overflow-y-auto custom-scrollbar select-all shadow-inner">
+                                            <div className="bg-slate-950 text-slate-100 border border-slate-800 rounded-xl p-4 text-xs font-mono leading-relaxed whitespace-pre-line max-h-80 overflow-y-auto select-all shadow-inner">
                                                 {currentDossierText}
                                             </div>
                                         </div>
@@ -1339,13 +1292,13 @@ export function MediaDrawer({
                                         {(tacticalStrengths.length > 0 || developmentAreas.length > 0) && (
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 {tacticalStrengths.length > 0 && (
-                                                    <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-3">
-                                                        <p className="text-[11px] font-bold text-emerald-400 mb-1.5 flex items-center gap-1">
-                                                            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> نقاط القوة التكتيكية:
+                                                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5">
+                                                        <p className="text-xs font-bold text-emerald-800 mb-1.5 flex items-center gap-1">
+                                                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> نقاط القوة التكتيكية:
                                                         </p>
                                                         <div className="flex flex-wrap gap-1">
                                                             {tacticalStrengths.map((str, idx) => (
-                                                                <span key={idx} className="bg-emerald-500/15 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-500/30">
+                                                                <span key={idx} className="bg-white text-emerald-800 text-[11px] font-bold px-2 py-0.5 rounded-md border border-emerald-200 shadow-2xs">
                                                                     {str}
                                                                 </span>
                                                             ))}
@@ -1354,13 +1307,13 @@ export function MediaDrawer({
                                                 )}
 
                                                 {developmentAreas.length > 0 && (
-                                                    <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-3">
-                                                        <p className="text-[11px] font-bold text-amber-400 mb-1.5 flex items-center gap-1">
-                                                            <Target className="w-3.5 h-3.5 text-amber-400" /> جوانب بحاجة لتطوير:
+                                                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5">
+                                                        <p className="text-xs font-bold text-amber-800 mb-1.5 flex items-center gap-1">
+                                                            <Target className="w-3.5 h-3.5 text-amber-600" /> جوانب بحاجة لتطوير:
                                                         </p>
                                                         <div className="flex flex-wrap gap-1">
                                                             {developmentAreas.map((dev, idx) => (
-                                                                <span key={idx} className="bg-amber-500/15 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-500/30">
+                                                                <span key={idx} className="bg-white text-amber-800 text-[11px] font-bold px-2 py-0.5 rounded-md border border-amber-200 shadow-2xs">
                                                                     {dev}
                                                                 </span>
                                                             ))}
@@ -1372,11 +1325,11 @@ export function MediaDrawer({
 
                                         {/* AI Detailed Breakdown */}
                                         {aiText && (
-                                            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+                                            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2 shadow-xs">
                                                 <button
                                                     type="button"
                                                     onClick={() => setShowFullAiReport(prev => !prev)}
-                                                    className="w-full text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center justify-between cursor-pointer"
+                                                    className="w-full text-xs text-emerald-700 hover:text-emerald-800 font-bold flex items-center justify-between cursor-pointer"
                                                 >
                                                     <span className="flex items-center gap-1.5">
                                                         <Sparkles className="w-3.5 h-3.5" />
@@ -1385,7 +1338,7 @@ export function MediaDrawer({
                                                     {showFullAiReport ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                                 </button>
                                                 {showFullAiReport && (
-                                                    <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 mt-2 text-slate-300 leading-relaxed text-xs whitespace-pre-line max-h-56 overflow-y-auto">
+                                                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mt-2 text-slate-700 leading-relaxed text-xs whitespace-pre-line max-h-56 overflow-y-auto">
                                                         {aiText}
                                                     </div>
                                                 )}
@@ -1400,65 +1353,65 @@ export function MediaDrawer({
                                 {activeTab === 'contact' && (
                                     <>
                                         {/* Player Direct Contact Card */}
-                                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-                                            <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
-                                                <User className="w-4 h-4 text-emerald-400" />
-                                                <h4 className="text-xs font-black text-white">قنوات التواصل المباشر مع اللاعب</h4>
+                                        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-xs">
+                                            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                                                <User className="w-4 h-4 text-emerald-600" />
+                                                <h4 className="text-xs font-black text-slate-900">قنوات التواصل المباشر مع اللاعب</h4>
                                             </div>
 
-                                            <div className="bg-slate-950 rounded-xl p-3.5 space-y-2.5 text-xs">
+                                            <div className="bg-slate-50 rounded-xl p-3.5 space-y-2.5 text-xs border border-slate-200/80">
                                                 {item.userPhone ? (
-                                                    <div className="flex items-center justify-between text-slate-300">
+                                                    <div className="flex items-center justify-between text-slate-800">
                                                         <span className="flex items-center gap-2 font-mono">
-                                                            <Phone className="w-3.5 h-3.5 text-slate-500" /> {item.userPhone}
+                                                            <Phone className="w-3.5 h-3.5 text-slate-400" /> {item.userPhone}
                                                         </span>
                                                         <a
                                                             href={`https://wa.me/${item.userPhone.replace(/\D/g, '')}`}
                                                             target="_blank"
                                                             rel="noreferrer"
-                                                            className="text-xs font-bold text-emerald-400 hover:underline flex items-center gap-1"
+                                                            className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-md transition-colors flex items-center gap-1"
                                                         >
                                                             <span>مراسلة واتساب 💬</span>
                                                         </a>
                                                     </div>
                                                 ) : (
-                                                    <p className="text-slate-500 text-xs">لا يوجد رقم هاتف مسجل</p>
+                                                    <p className="text-slate-400 text-xs">لا يوجد رقم هاتف مسجل</p>
                                                 )}
 
                                                 {item.userEmail && (
-                                                    <div className="flex items-center gap-2 text-slate-300">
-                                                        <Mail className="w-3.5 h-3.5 text-slate-500" />
+                                                    <div className="flex items-center gap-2 text-slate-700">
+                                                        <Mail className="w-3.5 h-3.5 text-slate-400" />
                                                         <span className="font-mono">{item.userEmail}</span>
                                                     </div>
                                                 )}
 
-                                                <div className="pt-1 text-[11px] text-slate-400 border-t border-slate-900 flex items-center justify-between">
+                                                <div className="pt-2 text-[11px] text-slate-500 border-t border-slate-200/80 flex items-center justify-between">
                                                     <span>النادي / الأكاديمية:</span>
-                                                    <span className="text-white font-bold">{item.organization || 'لاعب حر'}</span>
+                                                    <span className="text-slate-900 font-bold">{item.organization || 'لاعب حر'}</span>
                                                 </div>
                                             </div>
                                         </div>
 
                                         {/* Instant Mobile Notification Box */}
-                                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
-                                            <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
-                                                <MessageSquare className="w-4 h-4 text-teal-400" />
-                                                <h4 className="text-xs font-black text-white">إرسال إشعار فوري لهاتف اللاعب</h4>
+                                        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-xs">
+                                            <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+                                                <MessageSquare className="w-4 h-4 text-teal-600" />
+                                                <h4 className="text-xs font-black text-slate-900">إرسال إشعار فوري لهاتف اللاعب</h4>
                                             </div>
-                                            <p className="text-[11px] text-slate-400">
-                                                يصل الإشعار فوراً في شريط إشعارات الهاتف لـ ({item.userName}).
+                                            <p className="text-[11px] text-slate-500">
+                                                يصل الإشعار فوراً في شريط إشعارات هاتف ({item.userName}).
                                             </p>
                                             <Textarea
                                                 rows={3}
                                                 value={message}
                                                 onChange={e => setMessage(e.target.value)}
                                                 placeholder="اكتب التوجيه الفني أو التنبيه المباشر للاعب..."
-                                                className="text-xs bg-slate-950 border-slate-800 text-slate-200 resize-none focus:border-teal-500"
+                                                className="text-xs bg-slate-50 border-slate-200 text-slate-800 resize-none focus:bg-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
                                             />
                                             <Button
                                                 onClick={handleSendMessage}
                                                 disabled={sendingMsg || !message.trim()}
-                                                className="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold h-9 text-xs gap-2 cursor-pointer"
+                                                className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold h-9 text-xs gap-2 cursor-pointer shadow-xs"
                                             >
                                                 <Send className={`w-3.5 h-3.5 ${sendingMsg ? 'animate-spin' : ''}`} />
                                                 <span>{sendingMsg ? 'جاري الإرسال...' : 'إرسال الإشعار لهاتف اللاعب'}</span>
@@ -1466,17 +1419,17 @@ export function MediaDrawer({
                                         </div>
 
                                         {/* Danger Zone: Delete Video */}
-                                        <div className="bg-rose-950/20 border border-rose-500/20 rounded-2xl p-4 flex items-center justify-between">
+                                        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 flex items-center justify-between">
                                             <div>
-                                                <p className="text-xs font-bold text-rose-300">حذف هذا الفيديو</p>
-                                                <p className="text-[10px] text-rose-400/70">إزالة ملف الفيديو والبيانات المرتبطة نهائياً من الخادم</p>
+                                                <p className="text-xs font-bold text-rose-900">حذف هذا الفيديو</p>
+                                                <p className="text-[11px] text-rose-700">إزالة ملف الفيديو والبيانات المرتبطة به نهائياً من المنصة</p>
                                             </div>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={handleDelete}
                                                 disabled={deleting}
-                                                className="border border-rose-500/40 text-rose-400 hover:bg-rose-500/20 text-xs font-bold h-8.5 cursor-pointer"
+                                                className="border border-rose-300 text-rose-700 hover:bg-rose-100 text-xs font-bold h-8.5 cursor-pointer"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5 ml-1" />
                                                 {confirmDelete ? 'تأكيد الحذف النهائي؟' : 'حذف الفيديو'}
@@ -1490,16 +1443,16 @@ export function MediaDrawer({
                             {/* ═══════════════════════════════════════════════════════════════
                                 STICKY STUDIO ACTION FOOTER (ALWAYS VISIBLE - NEVER CUT OFF)
                             ═══════════════════════════════════════════════════════════════ */}
-                            <div className="border-t border-slate-800 bg-slate-900/95 backdrop-blur-md px-4 py-3.5 space-y-2 flex-shrink-0 z-20">
+                            <div className="border-t border-slate-200 bg-white px-4 py-3.5 space-y-2 flex-shrink-0 z-20 shadow-lg">
                                 {/* Primary Approval Button */}
                                 <Button
                                     onClick={handleApproveAndSync}
                                     disabled={syncing}
-                                    className="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black h-11 text-sm gap-2 shadow-xl shadow-emerald-600/25 active:scale-98 transition-all cursor-pointer"
+                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black h-11 text-sm gap-2 shadow-sm shadow-emerald-600/20 active:scale-98 transition-all cursor-pointer"
                                 >
                                     <ShieldCheck className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
                                     <span>
-                                        {syncing ? 'جاري الاعتماد وتحديث كارت اللاعب...' : `🌟 اعتماد ومزامنة كارت اللاعب (${calculatedOverall} OVR)`}
+                                        {syncing ? 'جاري الاعتماد وتحديث كارت اللاعب...' : `🌟 اعتماد ومزامنة تقييم اللاعب (${calculatedOverall} OVR)`}
                                     </span>
                                 </Button>
 
@@ -1510,9 +1463,9 @@ export function MediaDrawer({
                                         size="sm"
                                         onClick={() => handleQuickStatus('flagged')}
                                         disabled={updating}
-                                        className="gap-1.5 text-xs font-bold border-amber-500/30 text-amber-400 hover:bg-amber-500/10 h-8.5 cursor-pointer"
+                                        className="gap-1.5 text-xs font-bold border-amber-300 text-amber-800 bg-amber-50/50 hover:bg-amber-100/60 h-8.5 cursor-pointer"
                                     >
-                                        <Flag className="w-3.5 h-3.5 text-amber-400" />
+                                        <Flag className="w-3.5 h-3.5 text-amber-600" />
                                         <span>تنبيه / طلب إعادة</span>
                                     </Button>
 
@@ -1521,9 +1474,9 @@ export function MediaDrawer({
                                         size="sm"
                                         onClick={() => handleQuickStatus('rejected')}
                                         disabled={updating}
-                                        className="gap-1.5 text-xs font-bold border-rose-500/30 text-rose-400 hover:bg-rose-500/10 h-8.5 cursor-pointer"
+                                        className="gap-1.5 text-xs font-bold border-rose-300 text-rose-800 bg-rose-50/50 hover:bg-rose-100/60 h-8.5 cursor-pointer"
                                     >
-                                        <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                                        <XCircle className="w-3.5 h-3.5 text-rose-600" />
                                         <span>رفض الفيديو</span>
                                     </Button>
                                 </div>
