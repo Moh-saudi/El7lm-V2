@@ -1,18 +1,8 @@
 /**
  * /api/media/list-r2
  * يجلب كل الميديا من مصدرين:
- *   1. Cloudflare R2  — فيديوهات مرفوعة مباشرة (videos/{userId}/...)
- *   2. Supabase       — فيديوهات خارجية (YouTube/TikTok/Vimeo) + صور مخزونة في players.videos/images
- *
- * SQL مطلوب (مرة واحدة في Supabase):
- * ──────────────────────────────────
- * CREATE TABLE IF NOT EXISTS media_moderation (
- *   r2_key TEXT PRIMARY KEY,
- *   status TEXT NOT NULL DEFAULT 'pending',
- *   reviewed_by TEXT, reviewed_at TIMESTAMPTZ,
- *   ai_analysis TEXT, ai_rating NUMERIC(3,1), ai_analyzed_at TIMESTAMPTZ,
- *   created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
- * );
+ *   1. Cloudflare R2  — فيديوهات مرفوعة مباشرة (videos/{userId}/..., avatars/videos/...)
+ *   2. Supabase       — فيديوهات مسجلة في ملفات اللاعبين + صور
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -25,8 +15,14 @@ export const dynamic     = 'force-dynamic';
 export const maxDuration = 45;
 
 // ─── R2 Client ───────────────────────────────────────────────
-const CF_ENDPOINT   = process.env.CLOUDFLARE_R2_ENDPOINT || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ENDPOINT
-    || `https://${process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID
+    || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID
+    || '14521cdfec73fa908fbf7e760fae362a';
+
+const CF_ENDPOINT   = process.env.CLOUDFLARE_R2_ENDPOINT
+    || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ENDPOINT
+    || `https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+
 const CF_ACCESS_KEY = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID;
 const CF_SECRET_KEY = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_SECRET_ACCESS_KEY;
 
@@ -37,10 +33,16 @@ const s3 = new S3Client({
         accessKeyId:     CF_ACCESS_KEY!,
         secretAccessKey: CF_SECRET_KEY!,
     },
+    forcePathStyle: true,
 });
 
 const BUCKET     = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform';
-const PUBLIC_URL = (process.env.CLOUDFLARE_R2_PUBLIC_URL || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL || 'https://assets.el7lm.com').replace(/\/$/, '');
+const PUBLIC_URL = (
+    process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL ||
+    process.env.CLOUDFLARE_R2_PUBLIC_URL ||
+    'https://assets.el7lm.com'
+).replace(/\/$/, '');
+
 const PUBLIC_ORIGIN = (() => {
     try {
         return new URL(PUBLIC_URL).origin;
@@ -60,30 +62,26 @@ const resolveUrl = (val: unknown): string => {
     if (!s || s === 'null' || s === 'undefined') return '';
     if (s.startsWith('data:') || s.startsWith('blob:')) return s;
 
-    // استبعاد النطاقات الوهمية والتجريبية (تمنع أخطاء ERR_NAME_NOT_RESOLVED في المتصفح)
+    // استبعاد النطاقات الوهمية والتجريبية
     const DUMMY_DOMAINS = ['test.com', 'example.com', 'sample.com', 'placeholder.com'];
     if (DUMMY_DOMAINS.some(d => s.toLowerCase().includes(d))) return '';
 
     // Supabase Storage → Cloudflare R2
-    // مثال: https://xxx.supabase.co/storage/v1/object/public/avatars/userId.jpg
-    //     → https://assets.el7lm.com/avatars/userId.jpg  (نحتفظ باسم المجلد)
     if (s.includes('supabase.co/storage/v1/object/public/')) {
         const after = s.split('/storage/v1/object/public/')[1] || '';
         return after ? `${PUBLIC_URL}/${after}` : '';
     }
 
-    // روابط خارجية عادية (Google، Firebase Storage، إلخ) — تُعاد كما هي
     if (s.startsWith('http://') || s.startsWith('https://')) return s;
     if (s.startsWith('//')) return `https:${s}`;
 
-    // مسار نسبي → R2
     return `${PUBLIC_URL}/${s.replace(/^\//, '')}`;
 };
 
 const extractAssetKey = (url: string): string | null => {
     try {
         const parsed = new URL(url);
-        if (parsed.origin !== PUBLIC_ORIGIN) return null;
+        if (parsed.origin !== PUBLIC_ORIGIN && !parsed.hostname.includes('r2.dev') && !parsed.hostname.includes('assets.el7lm.com')) return null;
         return decodeURIComponent(parsed.pathname.replace(/^\/+/, ''));
     } catch {
         return null;
@@ -116,7 +114,6 @@ const getYtThumb = (url: string): string | undefined => {
 const filenameToTitle = (filename: string) =>
     filename.replace(/^\d+_?/, '').replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
 
-/** hash بسيط من string لإنشاء معرّف ثابت */
 function shortHash(str: string): string {
     let h = 0;
     for (let i = 0; i < str.length; i++) {
@@ -128,24 +125,37 @@ function shortHash(str: string): string {
 // ─── R2 listing ──────────────────────────────────────────────
 function parseKey(key: string): { userId: string; filename: string } | null {
     const parts = key.split('/');
-    if (parts.length < 3) return null;
-    if (parts[0] === 'videos' && parts[1] === 'videos' && parts.length >= 4)
-        return { userId: parts[2], filename: parts.slice(3).join('/') };
-    if (parts[0] === 'videos')
-        return { userId: parts[1], filename: parts.slice(2).join('/') };
-    return null;
+    if (parts.length < 2) return null;
+    const filename = parts[parts.length - 1];
+    let userId = '';
+    for (let i = parts.length - 2; i >= 0; i--) {
+        const seg = parts[i];
+        if (!['videos', 'avatars', 'additional-images', 'documents', 'uploads'].includes(seg)) {
+            userId = seg;
+            break;
+        }
+    }
+    if (!userId && parts.length >= 2) {
+        userId = parts[parts.length - 2];
+    }
+    return { userId, filename };
 }
 
-async function listAll(prefix: string, maxItems = 2000) {
+async function listAll(maxItems = 5000) {
     const results: { key: string; size: number; date: Date }[] = [];
     let token: string | undefined;
     do {
         const res = await s3.send(new ListObjectsV2Command({
-            Bucket: BUCKET, Prefix: prefix, MaxKeys: 1000, ContinuationToken: token,
+            Bucket: BUCKET, MaxKeys: 1000, ContinuationToken: token,
         }));
         for (const obj of res.Contents || []) {
-            if (!obj.Key || obj.Key.endsWith('/') || obj.Key === prefix) continue;
-            results.push({ key: obj.Key, size: obj.Size || 0, date: obj.LastModified || new Date() });
+            if (!obj.Key || obj.Key.endsWith('/')) continue;
+            // فحص امتدادات الفيديو أو المسارات الخاصة بالفيديوهات
+            const isVideo = /\.(mp4|mov|webm|m4v|avi|3gp|mkv)$/i.test(obj.Key) ||
+                (obj.Key.includes('/videos/') && !/\.(jpg|jpeg|png|webp|gif|svg|pdf|doc|txt)$/i.test(obj.Key));
+            if (isVideo) {
+                results.push({ key: obj.Key, size: obj.Size || 0, date: obj.LastModified || new Date() });
+            }
         }
         token = res.IsTruncated ? res.NextContinuationToken : undefined;
         if (results.length >= maxItems) break;
@@ -161,32 +171,28 @@ export async function GET(req: NextRequest) {
         const db = getSupabaseAdmin();
 
         // ══════════════════════════════════════════
-        // 1. قائمة فيديوهات R2 (اختياري — لا يوقف الصفحة عند الفشل)
+        // 1. قائمة فيديوهات Cloudflare R2
         // ══════════════════════════════════════════
         let r2Objects: { key: string; size: number; date: Date }[] = [];
         try {
-            r2Objects = await listAll('videos/');
+            r2Objects = await listAll();
         } catch (r2Err: any) {
-            console.warn('[list-r2] R2 listing failed (skipping):', r2Err.message);
+            console.error('[list-r2] R2 listing error:', r2Err.message);
         }
 
-        // استخرج userIds من مسارات R2
+        // استخراج userIds من مسارات R2
         const parsedMap = new Map<string, { userId: string; filename: string }>();
         const r2UserIds = new Set<string>();
         for (const obj of r2Objects) {
             const p = parseKey(obj.key);
             if (!p) continue;
             parsedMap.set(obj.key, p);
-            r2UserIds.add(p.userId);
+            if (p.userId) r2UserIds.add(p.userId);
         }
 
         // ══════════════════════════════════════════
-        // 2. جلب بيانات اللاعبين (كلهم للصور/خارجي، + مطابقة R2)
+        // 2. جلب بيانات اللاعبين من Supabase
         // ══════════════════════════════════════════
-        // جلب كل اللاعبين مع كل حقول الصور المحتملة
-        // جلب جميع اللاعبين — حقول محددة فقط (أسرع وأخف من select('*'))
-        // لا limit — نجلب الكل لأن الفيديوهات قد تنتمي لأي لاعب
-        // جلب جميع اللاعبين بالتكرار عبر الصفحات لضمان شمول 100% من اللاعبين (تخطي حد الـ 1000 في PostgREST)
         const allPlayers: any[] = [];
         const pageSize = 1000;
         let from = 0;
@@ -245,10 +251,41 @@ export async function GET(req: NextRequest) {
             if (p.firebase_uid) playerMap.set(p.firebase_uid, info);
         }
 
+        // مطابقة المعرفات غير الموجودة في players مع جدول users (حسابات المدربين، الأكاديميات، إلخ)
+        const unmappedUserIds = Array.from(r2UserIds).filter(uid => !playerMap.has(uid));
+        if (unmappedUserIds.length > 0) {
+            try {
+                for (let i = 0; i < unmappedUserIds.length; i += 100) {
+                    const chunkIds = unmappedUserIds.slice(i, i + 100);
+                    const { data: userRows } = await db
+                        .from('users')
+                        .select('id, name, full_name, email, phone, phone_number, role, account_type, avatar_url, profile_image')
+                        .in('id', chunkIds);
+                    for (const u of userRows || []) {
+                        const info: PlayerInfo = {
+                            supabaseId: u.id,
+                            name: u.full_name || u.name || 'مستخدم المنصة',
+                            email: u.email || '',
+                            phone: u.phone || u.phone_number || '',
+                            image: resolveUrl(u.avatar_url || u.profile_image || ''),
+                            country: '',
+                            position: u.role || u.account_type || 'لاعب',
+                            videos: null,
+                            images: null,
+                        };
+                        playerMap.set(u.id, info);
+                    }
+                }
+            } catch (uErr: any) {
+                console.warn('[list-r2] unmapped users lookup warning:', uErr.message);
+            }
+        }
+
         // ══════════════════════════════════════════
-        // 3. بناء MediaItems من R2
+        // 3. بناء MediaItems من Cloudflare R2
         // ══════════════════════════════════════════
         const allItems: any[] = [];
+        const seenUrls = new Set<string>();
 
         for (let idx = 0; idx < r2Objects.length; idx++) {
             const obj    = r2Objects[idx];
@@ -258,12 +295,14 @@ export async function GET(req: NextRequest) {
             const { userId, filename } = parsed;
             const player = playerMap.get(userId);
             const url    = `${PUBLIC_URL}/${obj.key}`;
+            seenUrls.add(url.toLowerCase());
+            seenUrls.add(obj.key.toLowerCase());
 
             allItems.push({
                 id:          `r2_${Buffer.from(obj.key).toString('base64').replace(/[+/=]/g, '').substring(0, 40)}`,
                 r2Key:       obj.key,
                 type:        'video',
-                title:       filenameToTitle(filename) || `فيديو ${idx + 1}`,
+                title:       filenameToTitle(filename) || `فيديو R2 ${idx + 1}`,
                 description: '',
                 url,
                 thumbnailUrl: undefined,
@@ -279,15 +318,14 @@ export async function GET(req: NextRequest) {
                 position:    player?.position || '',
                 views: 0, likes: 0,
                 sourceType:  'r2',
-                category:    'عام',
+                category:    'رفع سحابي R2',
                 fileSize:    obj.size,
             });
         }
 
         // ══════════════════════════════════════════
-        // 4. فيديوهات خارجية + صور من Supabase
+        // 4. فيديوهات وصور مسجلة في ملفات اللاعبين
         // ══════════════════════════════════════════
-        // نكرر على اللاعبين مباشرة (لا على playerMap لتجنب التكرار)
         const processedIds = new Set<string>();
         for (const p of allPlayers) {
             if (processedIds.has(p.id)) continue;
@@ -295,25 +333,32 @@ export async function GET(req: NextRequest) {
             const player = playerMap.get(p.id);
             if (!player) continue;
 
-            // ── فيديوهات خارجية (YouTube / TikTok / Vimeo) ──
+            // ── فيديوهات بروفايل اللاعب ──
             const vids = extractArr(player.videos);
             for (let i = 0; i < vids.length; i++) {
                 const v = vids[i];
                 const raw = typeof v === 'string' ? { url: v } : v;
                 const url = resolveUrl(raw?.url);
-                if (!url || !isExternal(url)) continue;
+                if (!url) continue;
 
-                // معرّف ثابت مبني على URL (لا يتغير لو أضاف اللاعب فيديو جديد)
+                // تخطي الفيديوهات التي تم جلبها مباشرة من R2 لمنع التكرار
+                if (seenUrls.has(url.toLowerCase())) continue;
+                seenUrls.add(url.toLowerCase());
+
+                const external = isExternal(url);
                 const urlHash = shortHash(url);
-                const r2Key = `ext/${player.supabaseId}/video/${urlHash}`;
+                const r2Key = external
+                    ? `ext/${player.supabaseId}/video/${urlHash}`
+                    : (extractAssetKey(url) || `direct/${player.supabaseId}/video/${urlHash}`);
+
                 allItems.push({
-                    id:          `extv_${player.supabaseId}_${urlHash}`,
+                    id:          `${external ? 'extv' : 'r2v'}_${player.supabaseId}_${urlHash}`,
                     r2Key,
                     type:        'video',
-                    title:       raw.title || raw.desc?.substring(0, 60) || `فيديو خارجي ${i + 1}`,
+                    title:       raw.title || raw.desc?.substring(0, 60) || (external ? `فيديو خارجي ${i + 1}` : `فيديو مرفوع ${i + 1}`),
                     description: raw.desc || raw.description || '',
                     url,
-                    thumbnailUrl: getYtThumb(url),
+                    thumbnailUrl: external ? getYtThumb(url) : undefined,
                     uploadDate:  raw.uploadedAt || raw.createdAt || new Date().toISOString(),
                     status:      raw.status || 'pending',
                     userId:      player.supabaseId,
@@ -326,19 +371,22 @@ export async function GET(req: NextRequest) {
                     position:    player.position,
                     views: raw.views || 0,
                     likes: raw.likes || 0,
-                    sourceType:  'firebase',
-                    category:    isExternal(url) ? 'خارجي' : 'عام',
+                    sourceType:  external ? 'firebase' : 'r2',
+                    category:    external ? 'خارجي' : 'رفع سحابي R2',
                     fileSize:    undefined,
                 });
             }
 
-            // ── صور ──
+            // ── صور بروفايل اللاعب ──
             const imgs = extractArr(player.images);
             for (let i = 0; i < imgs.length; i++) {
                 const img = imgs[i];
                 const raw = typeof img === 'string' ? { url: img } : img;
                 const url = resolveUrl(raw?.url);
                 if (!url) continue;
+
+                if (seenUrls.has(url.toLowerCase())) continue;
+                seenUrls.add(url.toLowerCase());
 
                 const urlHash = shortHash(url);
                 const r2Key = `ext/${player.supabaseId}/image/${urlHash}`;
@@ -402,9 +450,8 @@ export async function GET(req: NextRequest) {
         final.sort((a: any, b: any) =>
             new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()
         );
-        const cleaned = final;
 
-        return NextResponse.json({ success: true, items: cleaned, total: cleaned.length }, {
+        return NextResponse.json({ success: true, items: final, total: final.length }, {
             headers: { 'Cache-Control': 'no-store' },
         });
 

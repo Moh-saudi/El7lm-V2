@@ -69,7 +69,7 @@ export function SkillsMatrix({
                                     🤖 رصد الرؤية الحاسوبية (Computer Vision Telemetry)
                                 </h3>
                                 <span className="text-[10px] font-mono font-bold text-cyan-700 bg-cyan-100 border border-cyan-300 px-2 py-0.5 rounded-full">
-                                    Gemini 3.8 Vision
+                                    El7lm Vision Engine
                                 </span>
                             </div>
                             <p className="text-[11px] text-cyan-800/80 mt-0.5">

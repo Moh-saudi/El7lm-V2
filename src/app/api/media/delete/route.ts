@@ -12,14 +12,19 @@ import { authorizeAdmin } from '@/lib/api/admin-auth';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID
+    || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID
+    || '14521cdfec73fa908fbf7e760fae362a';
+
 const s3 = new S3Client({
     region: 'auto',
     endpoint: process.env.CLOUDFLARE_R2_ENDPOINT || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ENDPOINT
-        || `https://${process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+        || `https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com`,
     credentials: {
         accessKeyId:     (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID)!,
         secretAccessKey: (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_SECRET_ACCESS_KEY)!,
     },
+    forcePathStyle: true,
 });
 
 const BUCKET = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform';
