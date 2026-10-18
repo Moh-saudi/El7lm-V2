@@ -1115,13 +1115,25 @@ export function MediaDrawer({
                                                     <Sparkles className="w-4 h-4" />
                                                 </div>
                                                 <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs font-black text-slate-900">مساعد الكشاف التكتيكي</span>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="text-xs font-black text-slate-900">
+                                                            {detectedSource === 'direct'
+                                                                ? 'مساعد الكشاف — فحص اللقطات المباشرة (Computer Vision)'
+                                                                : detectedSource === 'youtube'
+                                                                    ? 'مساعد الكشاف — فحص لقطات YouTube 🔴'
+                                                                    : 'مساعد الكشاف — التقييم التكتيكي التخصصي 🌐'}
+                                                        </span>
                                                         <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded shadow-2xs">
                                                             {isGK ? 'تحليل حراسة المرمى 🧤' : 'تحليل الأداء الرياضي ⚽'}
                                                         </span>
                                                     </div>
-                                                    <p className="text-[11px] text-slate-600 mt-0.5">فحص تخصصي لمركز ({item.position || 'اللاعب'}) وتوزيع الدرجات بدقة</p>
+                                                    <p className="text-[11px] text-slate-600 mt-0.5">
+                                                        {detectedSource === 'direct'
+                                                            ? `فيديو مرفوع سحابياً • استخراج الإطارات الحركية لمركز (${item.position || 'اللاعب'}) وتوزيع المهارات`
+                                                            : detectedSource === 'youtube'
+                                                                ? `رابط YouTube • استخراج اللقطات الزمنية من الفيديو وتوليد تقرير كشفي لمركز (${item.position || 'اللاعب'})`
+                                                                : `رابط خارجي • تطبيق معايير الكشافة الفنية المتخصصة لمركز (${item.position || 'اللاعب'})`}
+                                                    </p>
                                                 </div>
                                             </div>
                                             <Button
@@ -1130,7 +1142,15 @@ export function MediaDrawer({
                                                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-8.5 px-3.5 text-xs gap-1.5 shadow-xs active:scale-95 transition-all cursor-pointer flex-shrink-0"
                                             >
                                                 <Sparkles className={`w-3.5 h-3.5 ${analyzing ? 'animate-spin' : ''}`} />
-                                                <span>{analyzing ? 'جاري الفحص التكتيكي...' : 'تشغيل الفحص الفني ⚡'}</span>
+                                                <span>
+                                                    {analyzing
+                                                        ? 'جاري الفحص التكتيكي...'
+                                                        : detectedSource === 'direct'
+                                                            ? 'تشغيل الفحص البصري التكتيكي ⚡'
+                                                            : detectedSource === 'youtube'
+                                                                ? 'تحليل لقطات YouTube ⚡'
+                                                                : 'تطبيق التقييم المقترح 📋'}
+                                                </span>
                                             </Button>
                                         </div>
 

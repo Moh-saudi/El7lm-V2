@@ -322,12 +322,15 @@ export async function POST(req: NextRequest) {
         if (imageParts.length === 0 && videoUrl) {
             const ytId = extractYouTubeId(videoUrl);
             if (ytId) {
-                const maxRes = await urlToBase64Part(`https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`);
-                if (maxRes) {
-                    imageParts.push(maxRes);
-                } else {
-                    const hqRes = await urlToBase64Part(`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`);
-                    if (hqRes) imageParts.push(hqRes);
+                // جلب غلاف الفيديو عالي الدقة
+                const cover = (await urlToBase64Part(`https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`)) ||
+                              (await urlToBase64Part(`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`));
+                if (cover) imageParts.push(cover);
+
+                // جلب لقطات وإطارات حية من أوقات متفرقة بالفيديو (بداية ومنتصف ونهاية اللقطات)
+                for (const frameNum of ['1.jpg', '2.jpg', '3.jpg']) {
+                    const fPart = await urlToBase64Part(`https://img.youtube.com/vi/${ytId}/${frameNum}`);
+                    if (fPart) imageParts.push(fPart);
                 }
             }
         }
