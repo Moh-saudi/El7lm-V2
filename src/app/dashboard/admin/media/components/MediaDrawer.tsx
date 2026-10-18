@@ -327,7 +327,7 @@ export function MediaDrawer({
                 }
             }
 
-            const res = await fetch('/api/media/analyze-video', {
+            const res = await authenticatedFetch('/api/media/analyze-video', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
