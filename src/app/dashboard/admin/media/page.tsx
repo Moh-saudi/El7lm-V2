@@ -95,6 +95,23 @@ export default function MediaPage() {
         return sortItems(base, sortKey);
     }, [items, typeFilter, statusFilter, accountFilter, searchTerm, sortKey, dateFilter]);
 
+    // ─── Queue Navigation (السابق / التالي) ───────────────────
+    const currentIndex = selected ? filtered.findIndex(i => i.id === selected.id) : -1;
+    const hasNext = currentIndex >= 0 && currentIndex < filtered.length - 1;
+    const hasPrev = currentIndex > 0;
+
+    const handleNext = useCallback(() => {
+        if (currentIndex >= 0 && currentIndex < filtered.length - 1) {
+            setSelected(filtered[currentIndex + 1]);
+        }
+    }, [currentIndex, filtered]);
+
+    const handlePrev = useCallback(() => {
+        if (currentIndex > 0) {
+            setSelected(filtered[currentIndex - 1]);
+        }
+    }, [currentIndex, filtered]);
+
     // ─── Stats ────────────────────────────────────────────────
     const stats = useMemo(() => ({
         total:    items.length,
@@ -266,6 +283,12 @@ export default function MediaPage() {
                 onAIResult={(id, analysis, rating) => updateItemAI(id, analysis, rating)}
                 onDelete={async (item) => { await deleteItem(item); setSelected(null); }}
                 userId={user?.id || ''}
+                onNext={handleNext}
+                onPrev={handlePrev}
+                hasNext={hasNext}
+                hasPrev={hasPrev}
+                currentIndex={currentIndex + 1}
+                totalCount={filtered.length}
             />
 
             {/* ── Floating Bulk Action Bar ───────────────────── */}
