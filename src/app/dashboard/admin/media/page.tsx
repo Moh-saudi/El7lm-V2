@@ -16,7 +16,7 @@ import { MediaHeader }  from './components/MediaHeader';
 import { MediaKPIBar }  from './components/MediaKPIBar';
 import { MediaToolbar } from './components/MediaToolbar';
 import { MediaGrid }    from './components/MediaGrid';
-import { MediaDrawer }  from './components/MediaDrawer';
+import { StudioModal }  from './components/StudioModal';
 import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 // ─── ترتيب العناصر ────────────────────────────────────────────
@@ -307,7 +307,7 @@ export default function MediaPage() {
 
             </div>
 
-            <MediaDrawer
+            <StudioModal
                 item={selected}
                 onClose={() => setSelected(null)}
                 onUpdateStatus={handleUpdateStatus}
