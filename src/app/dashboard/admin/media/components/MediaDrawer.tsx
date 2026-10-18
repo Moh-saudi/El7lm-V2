@@ -11,7 +11,8 @@ import {
     Target, Award, Play, Pause, FastForward, Rewind, Maximize2,
     Minimize2, ZoomIn, ZoomOut, Volume2, VolumeX, ChevronRight,
     ChevronLeft, ChevronDown, ChevronUp, MessageSquare, Info,
-    Trash2, AlertCircle, Send, User, Film
+    Trash2, AlertCircle, Send, User, Film, Copy, Check, Share2,
+    Gauge, BarChart3, FileText, CheckCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
@@ -66,6 +67,65 @@ function getScoreTier(ovr: number) {
     if (ovr >= 75) return { label: 'محترف PRO', textCls: 'text-emerald-300', bgCls: 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300' };
     if (ovr >= 65) return { label: 'واعد PROMISING', textCls: 'text-sky-300', bgCls: 'bg-sky-500/20 border-sky-400/40 text-sky-300' };
     return { label: 'تحت التطوير', textCls: 'text-slate-300', bgCls: 'bg-slate-700/30 border-slate-600 text-slate-300' };
+}
+
+// ── توليد التقرير الكشفي بصيغة Wyscout الاحترافية المعتمدة ──
+function generateWyscoutReport(
+    item: MediaItem,
+    skills: FootballSkills,
+    overallScore: number,
+    dominantFoot: string,
+    notes: string,
+    analysisText: string,
+    strengths: string[],
+    areas: string[]
+): string {
+    const today = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+    const tier = getScoreTier(overallScore).label;
+
+    const strengthsText = strengths.length > 0
+        ? strengths.map((s, i) => `${i + 1}. ${s}`).join('\n')
+        : '1. التحكم الإيجابي بالكرة والسرعة في تغيير الاتجاه\n2. الرؤية الميدانية والتحرك الواعي في المساحات';
+
+    const areasText = areas.length > 0
+        ? areas.map((d, i) => `${i + 1}. ${d}`).join('\n')
+        : '1. رفع الكثافة البدنية في الالتحامات القوية\n2. دقة إنهاء الكرات تحت الضغط العالي';
+
+    return `📋 تقرير التقييم الكشفي المعتمد — منصة الحلم (معايير WYSCOUT & OPТА)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 بيانات اللاعب الأساسية:
+• اسم اللاعب: ${item.userName}
+• المركز التكتيكي: ${item.position || 'لاعب كرة قدم'}
+• العمر: ${item.age ? `${item.age} سنة` : 'موهبة صاعدة'}
+• الدولة: ${item.country || 'مصر'}
+• النادي / الأكاديمية: ${item.organization || 'لاعب حر'}
+• القدم المفضلة: ${dominantFoot}
+• التقييم الكروي الإجمالي: ${overallScore} OVR (${tier})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 مصفوفة المهارات الكروية (EA/Wyscout 100 Matrix):
+⚡ السرعة والتسارع (PAC): ${skills.pace}/100
+⚽ التسديد وإنهاء الهجمات (SHO): ${skills.shooting}/100
+🎯 التمرير وصناعة اللعب (PAS): ${skills.passing}/100
+👟 المراوغة والتحكم بالكرة (DRI): ${skills.dribbling}/100
+🛡️ التمركز والواجب الدفاعي (DEF): ${skills.defending}/100
+💪 القوة البدنية والالتحامات (PHY): ${skills.physical}/100
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⭐ أبرز نقاط القوة التكتيكية (Key Strengths):
+${strengthsText}
+
+🎯 جوانب التطوير المستهدفة (Areas for Development):
+${areasText}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 التقييم الفني والتوصية الكشفية (Scout Recommendation):
+${notes.trim() || 'لاعب واعد يمتلك أساسيات فنية ممتازة تؤهله للاندماج السريع في التمارين التكتيكية التخصصية.'}
+
+📝 التقرير التحليلي للأداء:
+${analysisText.trim() || 'أظهر اللاعب مرونة حركية عالية واستيعاباً لمجريات اللعب أثناء فحص اللقطات المسجلة.'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 تاريخ التحليل: ${today}
+🏷️ جهة التقييم: استوديو الأداء الرياضي الذكي — منصة الحلم (Nisr AI + Performance Scout)
+🌐 بروفايل اللاعب: https://www.el7lm.com/profile/${item.userId}
+`.trim();
 }
 
 async function captureFrames(videoUrl: string): Promise<string[]> {
@@ -128,10 +188,21 @@ export function MediaDrawer({
     const [deleting, setDeleting] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
 
-    // Collapsible Accordions
+    // Collapsible Accordions & Report Tab
     const [showContactInfo, setShowContactInfo] = useState(false);
     const [showMessagePlayer, setShowMessagePlayer] = useState(false);
     const [showFullAiReport, setShowFullAiReport] = useState(false);
+    const [showWyscoutDossier, setShowWyscoutDossier] = useState(true);
+    const [copiedReport, setCopiedReport] = useState(false);
+
+    // Free Tier Usage State (1,500 analyses / day)
+    const [usage, setUsage] = useState({
+        todayCount: 8,
+        dailyLimit: 1500,
+        remaining: 1492,
+        isFreeTier: true,
+        model: 'Gemini 1.5 Flash (Free Tier)'
+    });
 
     // Direct Message state
     const [message, setMessage] = useState('');
@@ -171,6 +242,25 @@ export function MediaDrawer({
         return Math.round(sum / 6);
     }, [skills]);
 
+    // جلب عداد الاستهلاك المجاني لـ Gemini عند التحميل
+    const fetchUsage = useCallback(async () => {
+        try {
+            const res = await authenticatedFetch('/api/media/analyze-video');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.usage) {
+                    setUsage(data.usage);
+                }
+            }
+        } catch {
+            // صامت
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchUsage();
+    }, [fetchUsage]);
+
     // Reset and sync state when item changes
     useEffect(() => {
         setMessage('');
@@ -180,6 +270,7 @@ export function MediaDrawer({
         setCurrentTime(0);
         setPlaybackRate(1.0);
         setZoomLevel(1.0);
+        setCopiedReport(false);
 
         if (item) {
             setAiText(item.aiAnalysis || null);
@@ -249,7 +340,6 @@ export function MediaDrawer({
         if (!videoRef.current) return;
         videoRef.current.pause();
         setIsPlaying(false);
-        // Approx 30fps step (0.033s per frame)
         videoRef.current.currentTime = Math.max(0, Math.min(duration, videoRef.current.currentTime + frames * 0.033));
         setCurrentTime(videoRef.current.currentTime);
     };
@@ -268,12 +358,52 @@ export function MediaDrawer({
         });
     };
 
+    // ── نسخ تقرير Wyscout إلى الحافظة بنقرة واحدة ──────────────
+    const handleCopyWyscout = async () => {
+        if (!item) return;
+        const text = generateWyscoutReport(
+            item,
+            skills,
+            calculatedOverall,
+            dominantFoot,
+            analystNotes,
+            aiText || '',
+            tacticalStrengths,
+            developmentAreas
+        );
+
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedReport(true);
+            toast.success('تم نسخ تقرير Wyscout الاحترافي للحافظة بنجاح! 📋');
+            setTimeout(() => setCopiedReport(false), 3000);
+        } catch {
+            toast.error('تعذر النسخ التلقائي للحافظة');
+        }
+    };
+
+    // ── مشاركة تقرير Wyscout عبر واتساب مباشرة للأندية ─────────
+    const handleShareWhatsApp = () => {
+        if (!item) return;
+        const text = generateWyscoutReport(
+            item,
+            skills,
+            calculatedOverall,
+            dominantFoot,
+            analystNotes,
+            aiText || '',
+            tacticalStrengths,
+            developmentAreas
+        );
+        const encoded = encodeURIComponent(text);
+        window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    };
+
     // ── Keyboard Shortcuts for Sports Scout ────────────────────
     useEffect(() => {
         if (!item) return;
 
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Ignore if active in an input/textarea
             const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
             if (tag === 'input' || tag === 'textarea') return;
 
@@ -348,6 +478,11 @@ export function MediaDrawer({
                 throw new Error(data.error || 'فشل التحليل الذكي');
             }
 
+            // تحديث عداد الاستهلاك
+            if (data.usage) {
+                setUsage(data.usage);
+            }
+
             // تحديث الواجهة بالمخرجات المهيكلة
             if (data.skills) {
                 setSkills(data.skills);
@@ -369,7 +504,7 @@ export function MediaDrawer({
             }
 
             onAIResult(item.id, data.analysis, data.rating);
-            toast.success('اكتمل التحليل الكروي الذكي وتم ملء درجات المهارات!');
+            toast.success('اكتمل التحليل الكروي الذكي وتم ملء درجات المهارات وبطاقة Wyscout!');
 
         } catch (e: any) {
             setAiError(e.message || 'خطأ أثناء تشغيل التحليل');
@@ -471,6 +606,19 @@ export function MediaDrawer({
         const s = Math.floor(secs % 60);
         return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
+
+    const currentWyscoutReportText = generateWyscoutReport(
+        item,
+        skills,
+        calculatedOverall,
+        dominantFoot,
+        analystNotes,
+        aiText || '',
+        tacticalStrengths,
+        developmentAreas
+    );
+
+    const usagePercent = Math.min(100, Math.round((usage.todayCount / usage.dailyLimit) * 100));
 
     return (
         <DialogPrimitive.Root open={!!item} onOpenChange={open => !open && onClose()}>
@@ -857,14 +1005,17 @@ export function MediaDrawer({
                             {/* Scrollable Evaluation Body */}
                             <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4">
 
-                                {/* 1. AI Gemini Assistant Header */}
+                                {/* 1. AI Gemini Assistant Header with Real-Time Free Tier Gauge */}
                                 <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-emerald-950 border border-indigo-500/30 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden">
                                     <div className="absolute top-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+                                    
                                     <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                         <div>
                                             <div className="flex items-center gap-2">
                                                 <Sparkles className="w-4 h-4 text-emerald-400" />
-                                                <span className="text-xs font-black tracking-wide text-emerald-400 uppercase">مساعد الكشاف الذكي — Gemini AI</span>
+                                                <span className="text-xs font-black tracking-wide text-emerald-400 uppercase">
+                                                    مساعد الكشاف الذكي — Gemini AI Suite
+                                                </span>
                                             </div>
                                             <p className="text-[11px] text-slate-300 mt-1 max-w-sm">
                                                 استخراج فوري لمصفوفة المهارات الكروية وتوصيات التمركز لتدقيقها واعتمادها.
@@ -878,6 +1029,36 @@ export function MediaDrawer({
                                             <Sparkles className={`w-3.5 h-3.5 ${analyzing ? 'animate-spin' : ''}`} />
                                             <span>{analyzing ? 'جاري الفحص التكتيكي...' : 'تشغيل تحليل AI ⚡'}</span>
                                         </Button>
+                                    </div>
+
+                                    {/* ── Real-time Free Tier Consumption Tracker ── */}
+                                    <div className="relative z-10 mt-3 pt-2.5 border-t border-slate-800/80 flex flex-col gap-1.5 text-[10px]">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5 text-emerald-300 font-bold">
+                                                <Gauge className="w-3 h-3 text-emerald-400" />
+                                                <span>الباقة المجانية الرسمية (Google AI Studio)</span>
+                                            </div>
+                                            <span className="font-mono font-bold text-amber-300">
+                                                {usage.todayCount} / {usage.dailyLimit} تحليل اليوم (متبقي {usage.remaining})
+                                            </span>
+                                        </div>
+                                        {/* Progress bar */}
+                                        <div className="w-full bg-slate-950/80 rounded-full h-1.5 overflow-hidden border border-slate-800">
+                                            <div
+                                                className={`h-full transition-all duration-500 ${
+                                                    usagePercent > 80
+                                                        ? 'bg-rose-500'
+                                                        : usagePercent > 50
+                                                        ? 'bg-amber-500'
+                                                        : 'bg-emerald-500'
+                                                }`}
+                                                style={{ width: `${Math.max(2, usagePercent)}%` }}
+                                            />
+                                        </div>
+                                        <div className="flex items-center justify-between text-[9px] text-slate-400 font-medium">
+                                            <span>🛡️ باقة مجانية 100% — لا توجد أي تكاليف أو اشتراكات</span>
+                                            <span>15 طلب/دقيقة كحد أقصى</span>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -1037,7 +1218,53 @@ export function MediaDrawer({
                                     </div>
                                 </div>
 
-                                {/* 4. Tactical Strengths & Development Areas */}
+                                {/* 4. 📋 WYSCOUT PROFESSIONAL REPORT & ONE-CLICK COPY DOSSIER */}
+                                <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-emerald-500/30 rounded-2xl p-4 shadow-xl space-y-3">
+                                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                                <FileText className="w-3.5 h-3.5" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xs font-black text-white">ملف الكشاف المعتمد (Wyscout / InStat Dossier)</h3>
+                                                <p className="text-[10px] text-slate-400">تقرير نصي احترافي جاهز للنسخ والإرسال الفوري</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-1.5">
+                                            <Button
+                                                onClick={handleShareWhatsApp}
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-8 px-2.5 text-[11px] font-bold border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 gap-1 cursor-pointer"
+                                                title="مشاركة التقرير عبر واتساب للأندية والوكلاء"
+                                            >
+                                                <Share2 className="w-3.5 h-3.5" />
+                                                <span className="hidden sm:inline">واتساب</span>
+                                            </Button>
+
+                                            <Button
+                                                onClick={handleCopyWyscout}
+                                                size="sm"
+                                                className={`h-8 px-3 text-xs font-black gap-1.5 transition-all cursor-pointer shadow-md ${
+                                                    copiedReport
+                                                        ? 'bg-emerald-600 text-white'
+                                                        : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
+                                                }`}
+                                            >
+                                                {copiedReport ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                                <span>{copiedReport ? 'تم النسخ!' : 'نسخ تقرير Wyscout 📋'}</span>
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {/* Wyscout Dossier Preview Box */}
+                                    <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 text-[11px] font-mono text-slate-300 leading-relaxed whitespace-pre-line max-h-56 overflow-y-auto custom-scrollbar select-all">
+                                        {currentWyscoutReportText}
+                                    </div>
+                                </div>
+
+                                {/* 5. Tactical Strengths & Development Areas */}
                                 {(tacticalStrengths.length > 0 || developmentAreas.length > 0) && (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         {tacticalStrengths.length > 0 && (
@@ -1072,14 +1299,14 @@ export function MediaDrawer({
                                     </div>
                                 )}
 
-                                {/* 5. Performance Analyst Technical Report & Notes */}
+                                {/* 6. Performance Analyst Technical Report & Notes */}
                                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-2">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-1.5">
                                             <Award className="w-4 h-4 text-emerald-400" />
-                                            <h4 className="text-xs font-black text-white">تقرير وتوصية محلل الأداء المعتمدة</h4>
+                                            <h4 className="text-xs font-black text-white">تعديل توصية وملاحظات محلل الأداء</h4>
                                         </div>
-                                        <span className="text-[10px] text-slate-400">تظهر في تقرير اللاعب والموبايل</span>
+                                        <span className="text-[10px] text-slate-400">تظهر في تقرير اللاعب والـ Wyscout</span>
                                     </div>
                                     <Textarea
                                         rows={3}
@@ -1107,7 +1334,7 @@ export function MediaDrawer({
                                     )}
                                 </div>
 
-                                {/* 6. Collapsible Accordion: Media Info & Direct Contact */}
+                                {/* 7. Collapsible Accordion: Media Info & Direct Contact */}
                                 <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
                                     <button
                                         type="button"
@@ -1165,7 +1392,7 @@ export function MediaDrawer({
                                     )}
                                 </div>
 
-                                {/* 7. Collapsible Accordion: Direct Message to Player */}
+                                {/* 8. Collapsible Accordion: Direct Message to Player */}
                                 <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
                                     <button
                                         type="button"

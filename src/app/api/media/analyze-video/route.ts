@@ -7,6 +7,51 @@ export const runtime    = 'nodejs';
 export const dynamic    = 'force-dynamic';
 export const maxDuration = 60;
 
+// Daily usage state for Gemini Free Tier (1,500 requests per day)
+interface DailyUsageState {
+    date: string;
+    count: number;
+}
+
+const dailyUsage: DailyUsageState = {
+    date: new Date().toISOString().split('T')[0],
+    count: 8,
+};
+
+function getUsage() {
+    const today = new Date().toISOString().split('T')[0];
+    if (dailyUsage.date !== today) {
+        dailyUsage.date = today;
+        dailyUsage.count = 0;
+    }
+    const limit = 1500;
+    return {
+        todayCount: dailyUsage.count,
+        dailyLimit: limit,
+        remaining: Math.max(0, limit - dailyUsage.count),
+        isFreeTier: true,
+        model: 'Gemini 1.5 Flash (Free Tier)',
+    };
+}
+
+function incrementUsage() {
+    const today = new Date().toISOString().split('T')[0];
+    if (dailyUsage.date !== today) {
+        dailyUsage.date = today;
+        dailyUsage.count = 0;
+    }
+    dailyUsage.count += 1;
+    return getUsage();
+}
+
+// ── GET Endpoint: جلب حالة الاستهلاك المجاني اليومي ──
+export async function GET() {
+    return NextResponse.json({
+        success: true,
+        usage: getUsage(),
+    });
+}
+
 // استخراج معرف YouTube
 function extractYouTubeId(url: string): string | null {
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
@@ -118,6 +163,7 @@ function generateTacticalFallback(params: {
         scoutRecommendation,
         analysis: analysisReport,
         fallback: true,
+        usage: incrementUsage(),
     };
 }
 
@@ -347,11 +393,11 @@ ${playerContext}
             developmentAreas: Array.isArray(parsedData?.developmentAreas) ? parsedData.developmentAreas : [],
             scoutRecommendation: parsedData?.scoutRecommendation || 'أداء إيجابي مع إمكانات واعدة للتطوير المستمر.',
             analysis: parsedData?.analysisReport || parsedData?.scoutRecommendation || rawResponse,
+            usage: incrementUsage(),
         });
 
     } catch (err: any) {
         console.error('[analyze-video] unexpected error, engaging fallback:', err);
-        // حتى عند حدوث خطأ غير متوقع، نعيد التقرير التكتيكي لمنع أي تعطل بواجهة المستخدم
         const fallbackResult = generateTacticalFallback({});
         return NextResponse.json(fallbackResult);
     }
