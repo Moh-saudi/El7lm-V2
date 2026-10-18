@@ -25,8 +25,8 @@ export function MediaHeader({ onRefresh, loading, lastFetched }: Props) {
                             <span className="hidden sm:inline-flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
                                 <Cpu className="w-3 h-3 text-cyan-400" /> رصد حاسوبي + كشاف معتمد
                             </span>
-                            <span className="hidden lg:inline-flex items-center gap-1 bg-slate-900 border border-slate-700 text-slate-300 text-[10px] font-mono px-2 py-0.5 rounded-full">
-                                <MessageSquareText className="w-3 h-3 text-emerald-400" /> ChatAman WhatsApp API
+                            <span className="hidden lg:inline-flex items-center gap-1 bg-slate-900 border border-slate-700 text-emerald-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                                <MessageSquareText className="w-3 h-3 text-emerald-400" /> مراسلة واتساب مباشرة 💬
                             </span>
                         </div>
                         <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5 font-medium">

@@ -4,10 +4,9 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { MediaItem } from '../types';
-import { User, Phone, Mail, MessageSquare, Send, Trash2, MessageSquareText, Loader2, ShieldCheck, CheckCheck } from 'lucide-react';
+import { User, Phone, Mail, MessageSquare, Send, Trash2, MessageSquareText, Loader2, CheckCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
-import { ChatAmanService } from '@/lib/services/chataman-service';
 
 interface Props {
     item: MediaItem;
@@ -20,42 +19,32 @@ export function PlayerContact({ item, userId, onDelete, onClose }: Props) {
     const [message, setMessage] = useState('');
     const [targetPhone, setTargetPhone] = useState(item.userPhone || '');
     const [sendingPush, setSendingPush] = useState(false);
-    const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
 
-    // ── إرسال رسالة واتساب رسمية عبر ChatAman API ──
-    const handleSendWhatsAppChatAman = async () => {
+    // ── فتح محادثة واتساب المباشرة مع اللاعب ──
+    const handleOpenWhatsAppDirect = () => {
         const cleanPhone = (targetPhone || item.userPhone || '').trim().replace(/\D/g, '');
         if (!cleanPhone || cleanPhone.length < 8) {
             toast.error('يرجى التأكد من كتابة رقم هاتف صحيح مع مفتاح الدولة');
             return;
         }
-        if (!message.trim()) {
-            toast.error('يرجى كتابة نص الرسالة أولاً');
-            return;
-        }
 
-        setSendingWhatsApp(true);
-        try {
-            const formattedMsg = `مرحباً ${item.userName}،\n\nتواصل إدارة الكشافة وتحليل الأداء بمنصة الحلم الدولية:\n\n${message.trim()}\n\nرابط بروفايلك: https://el7lm.com/profile/${item.userId}`;
-            const res = await ChatAmanService.sendMessage(cleanPhone, formattedMsg);
-            if (res.success) {
-                toast.success(`تم إرسال رسالة الواتساب بنجاح عبر ChatAman API إلى (${cleanPhone})`);
-                setMessage('');
-            } else {
-                toast.error('فشل إرسال واتساب عبر ChatAman: ' + (res.error || 'خطأ غير معروف'));
-            }
-        } catch (e: any) {
-            toast.error('خطأ في الاتصال بخدمة واتساب: ' + e.message);
-        } finally {
-            setSendingWhatsApp(false);
-        }
+        const textToSend = message.trim()
+            ? `مرحباً ${item.userName}،\n\nتواصل إدارة الكشافة وتحليل الأداء بمنصة الحلم الدولية:\n\n${message.trim()}\n\nرابط بروفايلك: https://el7lm.com/profile/${item.userId}`
+            : `مرحباً ${item.userName}، تواصل إدارة الكشافة وتحليل الأداء بمنصة الحلم بخصوص فيديوهاتك ومستواك الفني.`;
+
+        const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(textToSend)}`;
+        window.open(url, '_blank');
+        toast.success(`تم فتح تطبيق واتساب مع (${cleanPhone}) بنجاح`);
     };
 
     // ── إرسال إشعار فوري داخل التطبيق ──
     const handleSendPushNotification = async () => {
-        if (!message.trim()) return;
+        if (!message.trim()) {
+            toast.error('يرجى كتابة نص الإشعار أولاً');
+            return;
+        }
         setSendingPush(true);
         try {
             const res = await authenticatedFetch('/api/notifications/dispatch', {
@@ -112,7 +101,7 @@ export function PlayerContact({ item, userId, onDelete, onClose }: Props) {
                         <h4 className="text-xs font-black text-white">قنوات التواصل المباشر مع اللاعب</h4>
                     </div>
                     <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                        ChatAman API جاهز ✅
+                        محادثة واتساب مباشرة 💬
                     </span>
                 </div>
 
@@ -149,15 +138,15 @@ export function PlayerContact({ item, userId, onDelete, onClose }: Props) {
                 </div>
             </div>
 
-            {/* Direct Dispatch Center (ChatAman WhatsApp + In-App Push) */}
+            {/* Direct Dispatch Center (Direct WhatsApp Opening + Push Notification) */}
             <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-lg">
                 <div className="flex items-center gap-2 border-b border-slate-800 pb-2.5">
                     <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
                         <MessageSquareText className="w-4 h-4" />
                     </div>
                     <div>
-                        <h4 className="text-xs font-black text-white">إرسال توجيه فني أو تقرير للاعب</h4>
-                        <p className="text-[10px] text-slate-400">الإرسال المباشر برمجياً عبر ChatAman WhatsApp API أو إشعار فوري للتطبيق</p>
+                        <h4 className="text-xs font-black text-white">إرسال توجيه فني أو فتح محادثة</h4>
+                        <p className="text-[10px] text-slate-400">فتح تطبيق واتساب مباشرة مع اللاعب أو إرسال إشعار فوري داخل التطبيق</p>
                     </div>
                 </div>
 
@@ -165,18 +154,17 @@ export function PlayerContact({ item, userId, onDelete, onClose }: Props) {
                     rows={4}
                     value={message}
                     onChange={e => setMessage(e.target.value)}
-                    placeholder="اكتب التوجيه الفني، أو ملاحظات التطوير، أو دعوة للانضمام للاختبارات..."
+                    placeholder="اكتب التوجيه الفني أو الملاحظات التي ترغب بإرسالها في رسالة الواتساب أو الإشعار..."
                     className="text-xs bg-slate-950 border-slate-800 text-slate-200 resize-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl leading-relaxed"
                 />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                     <Button
-                        onClick={handleSendWhatsAppChatAman}
-                        disabled={sendingWhatsApp || !message.trim()}
+                        onClick={handleOpenWhatsAppDirect}
                         className="bg-emerald-600 hover:bg-emerald-500 text-white font-black h-9.5 text-xs gap-2 cursor-pointer shadow-md shadow-emerald-900/20 active:scale-98 transition-all"
                     >
-                        {sendingWhatsApp ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquareText className="w-4 h-4" />}
-                        <span>{sendingWhatsApp ? 'جاري الإرسال عبر API...' : 'إرسال واتساب (ChatAman API)'}</span>
+                        <MessageSquareText className="w-4 h-4" />
+                        <span>مراسلة عبر واتساب (فتح المحادثة) 💬</span>
                     </Button>
 
                     <Button
@@ -186,7 +174,7 @@ export function PlayerContact({ item, userId, onDelete, onClose }: Props) {
                         className="border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold h-9.5 text-xs gap-2 cursor-pointer transition-all"
                     >
                         {sendingPush ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                        <span>{sendingPush ? 'جاري الإرسال...' : 'إشعار فوري للتطبيق (Push)'}</span>
+                        <span>{sendingPush ? 'جاري الإرسال...' : 'إرسال إشعار للتطبيق (Push)'}</span>
                     </Button>
                 </div>
             </div>
