@@ -60,6 +60,10 @@ const resolveUrl = (val: unknown): string => {
     if (!s || s === 'null' || s === 'undefined') return '';
     if (s.startsWith('data:') || s.startsWith('blob:')) return s;
 
+    // استبعاد النطاقات الوهمية والتجريبية (تمنع أخطاء ERR_NAME_NOT_RESOLVED في المتصفح)
+    const DUMMY_DOMAINS = ['test.com', 'example.com', 'sample.com', 'placeholder.com'];
+    if (DUMMY_DOMAINS.some(d => s.toLowerCase().includes(d))) return '';
+
     // Supabase Storage → Cloudflare R2
     // مثال: https://xxx.supabase.co/storage/v1/object/public/avatars/userId.jpg
     //     → https://assets.el7lm.com/avatars/userId.jpg  (نحتفظ باسم المجلد)

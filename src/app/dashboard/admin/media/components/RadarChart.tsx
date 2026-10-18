@@ -14,13 +14,13 @@ interface Props {
 
 /**
  * Radar Chart سداسي بصري مستوحى من Wyscout
- * يعرض 6 محاور مهارات كمضلع SVG مع تدرج لوني
+ * يعرض 6 محاور مهارات كمضلع SVG مع تدرج لوني سينمائي دارك
  */
-export function RadarChart({ skills, isGK, size = 220, baseline }: Props) {
+export function RadarChart({ skills, isGK, size = 200, baseline }: Props) {
     const defs = useMemo(() => getSkillDefinitions(isGK), [isGK]);
     const cx = size / 2;
     const cy = size / 2;
-    const maxR = size * 0.40; // 40% of size for the outer ring
+    const maxR = size * 0.38; // 38% of size for outer ring
     const levels = 4; // 4 concentric rings
 
     // Convert skill value (30-99) to radius (0-maxR)
@@ -65,25 +65,24 @@ export function RadarChart({ skills, isGK, size = 220, baseline }: Props) {
         return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
     }, [skills, defs]);
 
-    const mainColor = avgSkill >= 80 ? '#059669' : avgSkill >= 70 ? '#0d9488' : avgSkill >= 60 ? '#d97706' : '#e11d48';
-    const mainColorLight = avgSkill >= 80 ? 'rgba(5,150,105,0.15)' : avgSkill >= 70 ? 'rgba(13,148,136,0.15)' : avgSkill >= 60 ? 'rgba(217,119,6,0.15)' : 'rgba(225,29,72,0.15)';
+    const mainColor = avgSkill >= 80 ? '#10b981' : avgSkill >= 70 ? '#14b8a6' : avgSkill >= 60 ? '#f59e0b' : '#ef4444';
 
     return (
         <div className="relative flex items-center justify-center select-none">
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="drop-shadow-sm">
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="drop-shadow-md">
                 <defs>
-                    <radialGradient id="radarBg" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stopColor="#f8fafc" />
-                        <stop offset="100%" stopColor="#f1f5f9" />
+                    <radialGradient id="radarDarkBg" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stopColor="#0f172a" />
+                        <stop offset="100%" stopColor="#020617" />
                     </radialGradient>
-                    <linearGradient id="radarFill" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor={mainColor} stopOpacity="0.25" />
-                        <stop offset="100%" stopColor={mainColor} stopOpacity="0.08" />
+                    <linearGradient id="radarDarkFill" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor={mainColor} stopOpacity="0.40" />
+                        <stop offset="100%" stopColor={mainColor} stopOpacity="0.10" />
                     </linearGradient>
                 </defs>
 
                 {/* Background circle */}
-                <circle cx={cx} cy={cy} r={maxR + 2} fill="url(#radarBg)" stroke="#e2e8f0" strokeWidth="1" />
+                <circle cx={cx} cy={cy} r={maxR + 4} fill="url(#radarDarkBg)" stroke="#1e293b" strokeWidth="1" />
 
                 {/* Concentric level rings */}
                 {levelPolygons.map((pts, i) => (
@@ -91,9 +90,10 @@ export function RadarChart({ skills, isGK, size = 220, baseline }: Props) {
                         key={i}
                         points={pts}
                         fill="none"
-                        stroke="#e2e8f0"
-                        strokeWidth={i === levels - 1 ? "1.2" : "0.6"}
+                        stroke="#334155"
+                        strokeWidth={i === levels - 1 ? "1.2" : "0.7"}
                         strokeDasharray={i === levels - 1 ? "none" : "3,3"}
+                        opacity="0.8"
                     />
                 ))}
 
@@ -105,7 +105,7 @@ export function RadarChart({ skills, isGK, size = 220, baseline }: Props) {
                             key={i}
                             x1={cx} y1={cy}
                             x2={p.x} y2={p.y}
-                            stroke="#cbd5e1"
+                            stroke="#334155"
                             strokeWidth="0.8"
                         />
                     );
@@ -115,8 +115,8 @@ export function RadarChart({ skills, isGK, size = 220, baseline }: Props) {
                 {baselinePoints && (
                     <polygon
                         points={baselinePoints}
-                        fill="rgba(148,163,184,0.08)"
-                        stroke="#94a3b8"
+                        fill="rgba(100,116,139,0.06)"
+                        stroke="#64748b"
                         strokeWidth="1"
                         strokeDasharray="4,3"
                     />
@@ -125,9 +125,9 @@ export function RadarChart({ skills, isGK, size = 220, baseline }: Props) {
                 {/* Player skill polygon */}
                 <polygon
                     points={playerPoints}
-                    fill="url(#radarFill)"
+                    fill="url(#radarDarkFill)"
                     stroke={mainColor}
-                    strokeWidth="2"
+                    strokeWidth="2.2"
                     strokeLinejoin="round"
                     className="transition-all duration-500 ease-out"
                 />
@@ -141,8 +141,8 @@ export function RadarChart({ skills, isGK, size = 220, baseline }: Props) {
                     return (
                         <g key={d.key}>
                             <circle
-                                cx={x} cy={y} r="4"
-                                fill="white"
+                                cx={x} cy={y} r="3.5"
+                                fill="#020617"
                                 stroke={mainColor}
                                 strokeWidth="2"
                                 className="transition-all duration-500 ease-out"
@@ -153,7 +153,7 @@ export function RadarChart({ skills, isGK, size = 220, baseline }: Props) {
 
                 {/* Axis labels */}
                 {defs.map((d, i) => {
-                    const p = getAxisPoint(i, maxR + 18);
+                    const p = getAxisPoint(i, maxR + 15);
                     return (
                         <text
                             key={d.key}
@@ -161,7 +161,7 @@ export function RadarChart({ skills, isGK, size = 220, baseline }: Props) {
                             y={p.y}
                             textAnchor="middle"
                             dominantBaseline="central"
-                            className="fill-slate-600 text-[9px] font-bold"
+                            className="fill-slate-300 text-[9px] font-bold"
                         >
                             {d.short}
                         </text>
@@ -171,7 +171,7 @@ export function RadarChart({ skills, isGK, size = 220, baseline }: Props) {
                 {/* Skill values near the dots */}
                 {defs.map((d, i) => {
                     const angle = (Math.PI * 2 * i) / defs.length - Math.PI / 2;
-                    const r = valueToRadius(skills[d.key]) + 14;
+                    const r = valueToRadius(skills[d.key]) + 11;
                     const x = cx + r * Math.cos(angle);
                     const y = cy + r * Math.sin(angle);
                     return (
@@ -181,7 +181,7 @@ export function RadarChart({ skills, isGK, size = 220, baseline }: Props) {
                             y={y}
                             textAnchor="middle"
                             dominantBaseline="central"
-                            className="fill-slate-800 text-[8px] font-black"
+                            className="fill-emerald-400 text-[8px] font-mono font-black"
                         >
                             {skills[d.key]}
                         </text>

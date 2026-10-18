@@ -53,6 +53,12 @@ export interface MediaItem {
     aiAnalysis?: string;
     aiRating?: number;
     aiAnalyzedAt?: Date;
+    aiTelemetry?: {
+        observedActivity?: string;
+        ageCategory?: string;
+        visionConfidence?: number;
+        movementNotes?: string;
+    };
     skills?: FootballSkills;
     overallScore?: number;
     dominantFoot?: string;

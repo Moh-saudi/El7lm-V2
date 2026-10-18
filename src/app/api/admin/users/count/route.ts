@@ -2,10 +2,22 @@ import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { authorizeAdmin } from '@/lib/api/admin-auth';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
+
+// كاش في الذاكرة لمدة 60 ثانية لحماية الخادم من مهلة 504
+let cachedData: { data: any; expiry: number } | null = null;
+
 export async function GET(request: NextRequest) {
   const authorization = await authorizeAdmin(request);
   if (!authorization.ok) return authorization.response;
   try {
+    const now = Date.now();
+    if (cachedData && cachedData.expiry > now) {
+      return NextResponse.json({ success: true, data: cachedData.data });
+    }
+
     if (process.env.NEXT_PHASE === 'phase-production-build') {
       return NextResponse.json({
         success: true,
@@ -47,9 +59,12 @@ export async function GET(request: NextRequest) {
 
     const activeUsers = activeResult;
 
+    const responseData = { totalUsers, activeUsers, inactiveUsers: Math.max(0, totalUsers - activeUsers), breakdown: counts, lastUpdated: new Date().toISOString() };
+    cachedData = { data: responseData, expiry: Date.now() + 60_000 };
+
     return NextResponse.json({
       success: true,
-      data: { totalUsers, activeUsers, inactiveUsers: Math.max(0, totalUsers - activeUsers), breakdown: counts, lastUpdated: new Date().toISOString() },
+      data: responseData,
     });
   } catch (error) {
     return NextResponse.json(

@@ -251,17 +251,17 @@ export default function MediaPage() {
     // ─── Guard ────────────────────────────────────────────────
     if (!can('read', 'media')) return <AccessDenied resource="مركز الوسائط" />;
     if (error) return (
-        <div className="flex items-center justify-center min-h-screen bg-slate-50" dir="rtl">
-            <div className="bg-white rounded-2xl shadow p-8 max-w-lg text-center space-y-3">
-                <p className="text-rose-600 font-bold text-lg">فشل تحميل الوسائط</p>
-                <p className="text-slate-500 text-sm font-mono">{error}</p>
+        <div className="flex items-center justify-center min-h-screen bg-slate-950 text-white" dir="rtl">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-8 max-w-lg text-center space-y-3">
+                <p className="text-rose-400 font-bold text-lg">فشل تحميل الوسائط</p>
+                <p className="text-slate-400 text-sm font-mono">{error}</p>
                 <button onClick={fetchAll} className="mt-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-500 cursor-pointer">إعادة المحاولة</button>
             </div>
         </div>
     );
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col" dir="rtl">
+        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-slate-950" dir="rtl">
 
             <MediaHeader
                 onRefresh={fetchAll}

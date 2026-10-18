@@ -3,7 +3,8 @@
 import React from 'react';
 import {
     Search, SlidersHorizontal, ArrowUpDown, CalendarRange, X,
-    Film, Image, Cloud, Globe, PlaySquare, Music2
+    Film, Image, Cloud, Globe, PlaySquare, Music2, CheckCircle2,
+    Clock, AlertTriangle, XCircle, Filter
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { MediaType, MediaStatus, MediaSortKey, DateFilter, MediaSourceFilter } from '../types';
@@ -26,26 +27,20 @@ interface Props {
     total: number;
 }
 
-const TYPE_OPTS: { value: MediaType | 'all'; label: string; icon: React.ElementType }[] = [
-    { value: 'all',   label: 'الكل',     icon: SlidersHorizontal },
-    { value: 'video', label: 'فيديوهات', icon: Film },
-    { value: 'image', label: 'صور',      icon: Image },
-];
-
-const SOURCE_OPTS: { value: MediaSourceFilter; label: string; icon: React.ElementType; color?: string }[] = [
+const SOURCE_TABS: { value: MediaSourceFilter; label: string; icon: React.ElementType; color?: string }[] = [
     { value: 'all',      label: 'كل المصادر',       icon: Globe },
-    { value: 'direct',   label: 'رفع سحابي مباشر',   icon: Cloud,       color: 'text-emerald-600' },
-    { value: 'youtube',  label: 'يوتيوب (YouTube)', icon: PlaySquare,  color: 'text-red-600' },
-    { value: 'tiktok',   label: 'تيك توك (TikTok)', icon: Music2,      color: 'text-slate-900' },
-    { value: 'external', label: 'روابط خارجية أخرى', icon: Globe,       color: 'text-sky-600' },
+    { value: 'direct',   label: 'رفع سحابي مباشر',   icon: Cloud,      color: 'text-emerald-400' },
+    { value: 'youtube',  label: 'YouTube',          icon: PlaySquare, color: 'text-red-400' },
+    { value: 'tiktok',   label: 'TikTok',           icon: Music2,     color: 'text-cyan-400' },
+    { value: 'external', label: 'روابط خارجية',      icon: Globe,      color: 'text-slate-400' },
 ];
 
-const STATUS_OPTS: { value: MediaStatus | 'all'; label: string; activeClass: string }[] = [
-    { value: 'all',      label: 'الكل',         activeClass: 'bg-slate-900 text-white border-slate-900' },
-    { value: 'pending',  label: 'بانتظار التحليل', activeClass: 'bg-amber-500 text-white border-amber-500' },
-    { value: 'approved', label: 'معتمد ومزامَن', activeClass: 'bg-emerald-600 text-white border-emerald-600' },
-    { value: 'rejected', label: 'مرفوض',        activeClass: 'bg-rose-600 text-white border-rose-600' },
-    { value: 'flagged',  label: 'تنبيه / إعادة', activeClass: 'bg-orange-500 text-white border-orange-500' },
+const STATUS_OPTS: { value: MediaStatus | 'all'; label: string; badgeCls: string }[] = [
+    { value: 'all',      label: 'كل الحالات',    badgeCls: 'bg-slate-800 text-slate-200' },
+    { value: 'pending',  label: 'بانتظار التحليل', badgeCls: 'bg-amber-500/20 text-amber-400 border border-amber-500/30' },
+    { value: 'approved', label: 'معتمد ومزامَن', badgeCls: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' },
+    { value: 'flagged',  label: 'تنبيه / مراقبة', badgeCls: 'bg-orange-500/20 text-orange-400 border border-orange-500/30' },
+    { value: 'rejected', label: 'مرفوض',         badgeCls: 'bg-rose-500/20 text-rose-400 border border-rose-500/30' },
 ];
 
 const ACCOUNT_OPTS = [
@@ -63,7 +58,6 @@ const SORT_OPTS: { value: MediaSortKey; label: string }[] = [
     { value: 'name_asc',  label: 'الاسم (أ-ي)' },
     { value: 'status',    label: 'الحالة (بانتظار التحليل)' },
     { value: 'size_desc', label: 'الحجم (الأكبر)' },
-    { value: 'type',      label: 'النوع' },
 ];
 
 export function MediaToolbar({
@@ -79,97 +73,72 @@ export function MediaToolbar({
     const hasDateFilter = !!(dateFilter.from || dateFilter.to);
 
     return (
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs space-y-3.5">
-            {/* ── ROW 1: SEARCH & COUNT ── */}
-            <div className="flex items-center gap-3">
-                <div className="relative flex-1">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 shadow-xl space-y-3 text-right">
+            {/* ── ROW 1: SEARCH + SOURCE PILLS + RESULT COUNT ── */}
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+                {/* Search Box */}
+                <div className="relative flex-1 min-w-[280px]">
+                    <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input
                         value={searchTerm}
                         onChange={e => onSearch(e.target.value)}
                         placeholder="ابحث بالاسم، الإيميل، الأكاديمية/النادي، المركز، الدولة، عنوان الفيديو..."
-                        className="pr-9 pl-8 h-10 bg-slate-50/80 border-slate-200 rounded-xl text-sm focus:bg-white focus:border-emerald-500"
+                        className="pr-10 pl-8 h-9.5 bg-slate-950/80 border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:bg-slate-950 focus:border-emerald-500"
                     />
                     {searchTerm && (
                         <button
                             onClick={() => onSearch('')}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
                         >
                             <X className="w-3.5 h-3.5" />
                         </button>
                     )}
                 </div>
 
-                <div className="px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 whitespace-nowrap">
-                    <span className="text-emerald-700 font-black">{total}</span> نتيجة مطابقة
-                </div>
-            </div>
-
-            {/* ── ROW 2: PRIMARY FILTER BUTTONS (TYPE + SOURCE + STATUS) ── */}
-            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
-                {/* Media Type Segmented Control */}
-                <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/60">
-                    {TYPE_OPTS.map(o => {
-                        const Icon = o.icon;
-                        const isSelected = typeFilter === o.value;
+                {/* Segmented Source Tabs (Wyscout-Style) */}
+                <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800 overflow-x-auto scrollbar-none flex-shrink-0">
+                    {SOURCE_TABS.map(tab => {
+                        const Icon = tab.icon;
+                        const isSelected = sourceFilter === tab.value;
                         return (
                             <button
-                                key={o.value}
-                                onClick={() => onTypeFilter(o.value)}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                key={tab.value}
+                                onClick={() => onSourceFilter(tab.value)}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                                     isSelected
-                                        ? 'bg-white shadow-xs text-slate-900 font-black'
-                                        : 'text-slate-500 hover:text-slate-800'
+                                        ? 'bg-slate-800 text-white shadow-sm font-black border border-slate-700'
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-900'
                                 }`}
                             >
-                                <Icon className="w-3.5 h-3.5" />
-                                <span>{o.label}</span>
+                                <Icon className={`w-3.5 h-3.5 ${tab.color || 'text-slate-400'}`} />
+                                <span>{tab.label}</span>
                             </button>
                         );
                     })}
                 </div>
 
-                <div className="hidden sm:block w-px h-6 bg-slate-200 mx-1" />
-
-                {/* Video Source Segmented Control (New Essential Differentiator) */}
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/60 flex-wrap">
-                    <span className="text-[11px] font-bold text-slate-400 px-2 select-none">المصدر:</span>
-                    {SOURCE_OPTS.map(o => {
-                        const Icon = o.icon;
-                        const isSelected = sourceFilter === o.value;
-                        return (
-                            <button
-                                key={o.value}
-                                onClick={() => onSourceFilter(o.value)}
-                                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                    isSelected
-                                        ? 'bg-white shadow-xs text-slate-900 border border-slate-200 font-black'
-                                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                                }`}
-                            >
-                                <Icon className={`w-3.5 h-3.5 ${o.color || 'text-slate-500'}`} />
-                                <span>{o.label}</span>
-                            </button>
-                        );
-                    })}
+                {/* Match Counter Badge */}
+                <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs font-bold text-slate-300 whitespace-nowrap flex-shrink-0">
+                    <span className="text-emerald-400 font-mono font-black text-sm">{total}</span>
+                    <span className="text-slate-400 text-[11px]">عنصر مطابق</span>
                 </div>
             </div>
 
-            {/* ── ROW 3: STATUS PILLS + ACCOUNTS + SORT + DATES ── */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                {/* Moderation Status */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[11px] font-bold text-slate-400 pl-1">الحالة:</span>
+            {/* ── ROW 2: MODERATION STATUS PILLS + TYPE + FILTERS ── */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-800/80">
+                {/* Moderation Status Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+                    <span className="text-[10px] font-bold text-slate-500 pl-1 select-none">الحالة:</span>
                     {STATUS_OPTS.map(o => {
                         const isSelected = statusFilter === o.value;
                         return (
                             <button
                                 key={o.value}
                                 onClick={() => onStatusFilter(o.value)}
-                                className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                                     isSelected
-                                        ? o.activeClass + ' shadow-xs font-black'
-                                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                                        ? 'bg-emerald-600 text-white font-black shadow-sm'
+                                        : 'bg-slate-950/60 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
                                 }`}
                             >
                                 {o.label}
@@ -178,52 +147,73 @@ export function MediaToolbar({
                     })}
                 </div>
 
-                {/* Dropdowns & Date */}
+                {/* Dropdowns, Type & Dates */}
                 <div className="flex items-center gap-2 flex-wrap">
+                    {/* Media Type (Video vs Image) */}
+                    <div className="flex items-center bg-slate-950/80 p-0.5 rounded-lg border border-slate-800">
+                        <button
+                            onClick={() => onTypeFilter('all')}
+                            className={`px-2 py-1 text-xs font-bold rounded-md cursor-pointer ${typeFilter === 'all' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            الكل
+                        </button>
+                        <button
+                            onClick={() => onTypeFilter('video')}
+                            className={`px-2 py-1 text-xs font-bold rounded-md flex items-center gap-1 cursor-pointer ${typeFilter === 'video' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            <Film className="w-3 h-3 text-indigo-400" />
+                            <span>فيديو</span>
+                        </button>
+                        <button
+                            onClick={() => onTypeFilter('image')}
+                            className={`px-2 py-1 text-xs font-bold rounded-md flex items-center gap-1 cursor-pointer ${typeFilter === 'image' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'}`}
+                        >
+                            <Image className="w-3 h-3 text-sky-400" />
+                            <span>صور</span>
+                        </button>
+                    </div>
+
                     {/* Account Type */}
                     <select
                         value={accountFilter}
                         onChange={e => onAccountFilter(e.target.value)}
-                        className="h-8 text-xs font-bold border border-slate-200 rounded-xl px-2.5 bg-slate-50/80 text-slate-700 cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500 hover:bg-white"
+                        className="h-7.5 text-xs font-bold border border-slate-800 rounded-lg px-2 bg-slate-950/80 text-slate-300 cursor-pointer focus:outline-none focus:border-emerald-500"
                     >
                         {ACCOUNT_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
 
                     {/* Sort Order */}
-                    <div className="flex items-center gap-1 bg-slate-50/80 border border-slate-200 rounded-xl px-2 h-8">
-                        <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                    <div className="flex items-center gap-1 bg-slate-950/80 border border-slate-800 rounded-lg px-2 h-7.5">
+                        <ArrowUpDown className="w-3 h-3 text-slate-500" />
                         <select
                             value={sortKey}
                             onChange={e => onSort(e.target.value as MediaSortKey)}
-                            className="text-xs font-bold bg-transparent text-slate-700 cursor-pointer focus:outline-none"
+                            className="text-xs font-bold bg-transparent text-slate-300 cursor-pointer focus:outline-none"
                         >
                             {SORT_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
                     </div>
 
-                    {/* Date Pickers */}
-                    <div className="flex items-center gap-1.5 bg-slate-50/80 border border-slate-200 rounded-xl px-2.5 h-8">
-                        <CalendarRange className="w-3.5 h-3.5 text-slate-400" />
+                    {/* Date Filter */}
+                    <div className="flex items-center gap-1 bg-slate-950/80 border border-slate-800 rounded-lg px-2 h-7.5 text-slate-300">
+                        <CalendarRange className="w-3 h-3 text-slate-500" />
                         <input
                             type="date"
                             value={dateFilter.from}
                             onChange={e => onDateFilter({ ...dateFilter, from: e.target.value })}
-                            className="text-xs font-medium bg-transparent text-slate-700 cursor-pointer focus:outline-none"
-                            title="تاريخ البداية"
+                            className="text-[11px] font-medium bg-transparent text-slate-300 cursor-pointer focus:outline-none"
                         />
-                        <span className="text-[10px] text-slate-400">-</span>
+                        <span className="text-[10px] text-slate-500">-</span>
                         <input
                             type="date"
                             value={dateFilter.to}
                             onChange={e => onDateFilter({ ...dateFilter, to: e.target.value })}
-                            className="text-xs font-medium bg-transparent text-slate-700 cursor-pointer focus:outline-none"
-                            title="تاريخ النهاية"
+                            className="text-[11px] font-medium bg-transparent text-slate-300 cursor-pointer focus:outline-none"
                         />
                         {hasDateFilter && (
                             <button
                                 onClick={() => onDateFilter({ from: '', to: '' })}
-                                className="text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                                title="إلغاء فلتر التاريخ"
+                                className="text-slate-400 hover:text-rose-400 cursor-pointer"
                             >
                                 <X className="w-3 h-3" />
                             </button>

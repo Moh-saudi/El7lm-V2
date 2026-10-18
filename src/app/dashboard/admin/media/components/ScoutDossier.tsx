@@ -11,6 +11,9 @@ import {
 } from './studio-utils';
 import { RadarChart } from './RadarChart';
 
+import { ChatAmanService } from '@/lib/services/chataman-service';
+import { Send, MessageSquareText, PhoneCall, Loader2 } from 'lucide-react';
+
 interface Props {
     item: MediaItem;
     skills: FootballSkills;
@@ -27,6 +30,9 @@ export function ScoutDossier({
 }: Props) {
     const [copiedReport, setCopiedReport] = useState(false);
     const [showRawDossier, setShowRawDossier] = useState(false);
+    const [targetPhone, setTargetPhone] = useState(item.userPhone || '');
+    const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
+    const [showPhoneEditor, setShowPhoneEditor] = useState(false);
 
     const isGK = useMemo(() => checkIsGoalkeeper(item.position), [item.position]);
     const skillDefs = useMemo(() => getSkillDefinitions(isGK), [isGK]);
@@ -45,8 +51,36 @@ export function ScoutDossier({
         setTimeout(() => setCopiedReport(false), 3000);
     };
 
-    const handleShareWhatsApp = () => {
-        const url = `https://wa.me/?text=${encodeURIComponent(currentDossierText)}`;
+    // إرسال مباشر عبر ChatAman API الرسمي دون فتح نوافذ خارجية
+    const handleSendChatAmanWhatsApp = async () => {
+        const phone = targetPhone.trim() || item.userPhone?.trim();
+        if (!phone) {
+            toast.error('يرجى تحديد رقم الهاتف لإرسال التقرير عبر واتساب');
+            setShowPhoneEditor(true);
+            return;
+        }
+
+        setSendingWhatsApp(true);
+        try {
+            const res = await ChatAmanService.sendMessage(phone, currentDossierText);
+            if (res.success) {
+                toast.success(`تم إرسال التقرير الكشفي بنجاح عبر خدمة ChatAman WhatsApp إلى (${phone})`);
+                setShowPhoneEditor(false);
+            } else {
+                toast.error('فشل إرسال واتساب عبر ChatAman: ' + (res.error || 'خطأ غير معروف'));
+            }
+        } catch (e: any) {
+            toast.error('خطأ في الاتصال بخدمة واتساب: ' + e.message);
+        } finally {
+            setSendingWhatsApp(false);
+        }
+    };
+
+    const handleManualWhatsAppFallback = () => {
+        const phone = targetPhone.trim().replace(/\D/g, '') || item.userPhone?.replace(/\D/g, '') || '';
+        const url = phone
+            ? `https://wa.me/${phone}?text=${encodeURIComponent(currentDossierText)}`
+            : `https://wa.me/?text=${encodeURIComponent(currentDossierText)}`;
         window.open(url, '_blank');
     };
 
@@ -61,27 +95,86 @@ export function ScoutDossier({
     return (
         <div className="space-y-4">
             {/* Dossier Header Bar */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex items-center justify-between gap-3 flex-wrap">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-md flex items-center justify-between gap-3 flex-wrap text-white">
                 <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shadow-xs">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shadow-xs">
                         <FileText className="w-5 h-5" />
                     </div>
                     <div>
-                        <h3 className="text-xs font-black text-slate-900">ملف الكشاف المعتمد — منصة الحلم</h3>
-                        <p className="text-[10px] text-slate-500 font-mono">El7lm Pro Scouting Dossier</p>
+                        <h3 className="text-xs font-black text-white">ملف الكشاف المعتمد — منصة الحلم الدولية</h3>
+                        <p className="text-[10px] text-slate-400 font-mono">El7lm Executive Scouting Dossier (Wyscout Grade)</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button onClick={handleShareWhatsApp} size="sm" variant="outline" className="h-8 px-2.5 text-xs font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 gap-1.5 cursor-pointer" title="مشاركة التقرير عبر واتساب">
-                        <Share2 className="w-3.5 h-3.5" />
-                        <span>واتساب للأندية</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                        onClick={handleSendChatAmanWhatsApp}
+                        disabled={sendingWhatsApp}
+                        size="sm"
+                        className="h-8 px-3 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-sm cursor-pointer transition-all active:scale-95"
+                        title="إرسال التقرير رسمياً عبر ChatAman WhatsApp API"
+                    >
+                        {sendingWhatsApp ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                            <MessageSquareText className="w-3.5 h-3.5" />
+                        )}
+                        <span>{sendingWhatsApp ? 'جاري الإرسال...' : 'إرسال واتساب (ChatAman API)'}</span>
                     </Button>
-                    <Button onClick={handleCopyDossier} size="sm" className={`h-8 px-3 text-xs font-bold gap-1.5 transition-all cursor-pointer shadow-xs ${copiedReport ? 'bg-emerald-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}`}>
-                        {copiedReport ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedReport ? 'تم النسخ!' : 'نسخ التقرير الكشفي 📋'}</span>
+
+                    <Button
+                        onClick={() => setShowPhoneEditor(prev => !prev)}
+                        size="sm"
+                        variant="outline"
+                        className="h-8 px-2 text-xs font-bold border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-slate-700 hover:text-white cursor-pointer"
+                        title="تعديل رقم المستلم"
+                    >
+                        <PhoneCall className="w-3 h-3 text-slate-400" />
+                        <span className="hidden sm:inline">تعديل الرقم</span>
+                    </Button>
+
+                    <Button
+                        onClick={handleCopyDossier}
+                        size="sm"
+                        variant="outline"
+                        className={`h-8 px-2.5 text-xs font-bold gap-1.5 transition-all cursor-pointer border-slate-700 bg-slate-800/80 text-slate-200 hover:bg-slate-700 ${copiedReport ? 'bg-emerald-900/60 border-emerald-500 text-emerald-300' : ''}`}
+                    >
+                        {copiedReport ? <CheckCheck className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span>{copiedReport ? 'تم النسخ!' : 'نسخ 📋'}</span>
                     </Button>
                 </div>
             </div>
+
+            {/* Phone Editor / Target WhatsApp Bar */}
+            {showPhoneEditor && (
+                <div className="bg-slate-800/90 border border-slate-700 rounded-xl p-3 flex items-center justify-between gap-3 text-xs text-white">
+                    <div className="flex items-center gap-2 flex-1">
+                        <span className="text-[11px] text-slate-400 font-bold whitespace-nowrap">رقم واتساب المستلم (لاعب / نادي):</span>
+                        <input
+                            type="text"
+                            value={targetPhone}
+                            onChange={e => setTargetPhone(e.target.value)}
+                            placeholder="+2010... أو +974..."
+                            className="bg-slate-900 border border-slate-600 rounded-lg px-2.5 py-1 text-xs text-white font-mono flex-1 max-w-xs focus:outline-none focus:border-emerald-500"
+                        />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleSendChatAmanWhatsApp}
+                            disabled={sendingWhatsApp}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1 rounded-lg transition-colors cursor-pointer"
+                        >
+                            إرسال الآن 🚀
+                        </button>
+                        <button
+                            onClick={handleManualWhatsAppFallback}
+                            className="text-slate-400 hover:text-white underline text-[11px] cursor-pointer"
+                            title="فتح نافذة واتساب العادية في المتصفح"
+                        >
+                            أو عبر الرابط المباشر
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Dossier Sheet */}
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
