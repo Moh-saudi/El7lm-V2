@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { authorizeAdmin } from '@/lib/api/admin-auth';
+import { invalidateMediaCache } from '@/app/api/media/list-r2/route';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -55,6 +56,8 @@ export async function POST(req: NextRequest) {
         }
 
         if (error) throw new Error(error.message);
+
+        invalidateMediaCache();
 
         return NextResponse.json({ success: true });
 
