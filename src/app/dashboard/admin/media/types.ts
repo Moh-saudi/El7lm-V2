@@ -82,7 +82,7 @@ export function detectMediaSource(item: { url?: string; type?: MediaType; source
     if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
     if (url.includes('tiktok.com')) return 'tiktok';
     if (url.includes('vimeo.com')) return 'vimeo';
-    if (item.sourceType === 'r2' || /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url) || url.includes('assets.el7lm.com') || url.includes('r2.cloudflarestorage.com')) {
+    if (item.sourceType === 'r2' || /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url) || url.includes('assets.el7lm.com') || url.includes('r2.cloudflarestorage.com') || url.includes('r2.dev')) {
         return 'direct';
     }
     return 'external';

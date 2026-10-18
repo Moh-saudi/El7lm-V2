@@ -56,7 +56,7 @@ export default function MediaPage() {
     // ─── Filters ──────────────────────────────────────────────
     const [typeFilter,    setTypeFilter]    = useState<MediaType | 'all'>('all');
     const [sourceFilter,  setSourceFilter]  = useState<MediaSourceFilter>('all');
-    const [statusFilter,  setStatusFilter]  = useState<MediaStatus | 'all'>('pending');
+    const [statusFilter,  setStatusFilter]  = useState<MediaStatus | 'all'>('all');
     const [accountFilter, setAccountFilter] = useState<string>('all');
     const [searchTerm,    setSearchTerm]    = useState('');
     const [sortKey,       setSortKey]       = useState<MediaSortKey>('date_desc');

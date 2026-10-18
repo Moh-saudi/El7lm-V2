@@ -34,7 +34,7 @@ export function MediaKPIBar({ stats, activeStatus, onStatusClick }: Props) {
             border: 'border-slate-200',
             ring: 'ring-indigo-400',
             filterKey: 'all',
-            clickable: false,
+            clickable: true,
         },
         {
             label: 'صور ومستندات',

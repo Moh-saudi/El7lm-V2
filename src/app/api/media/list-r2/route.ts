@@ -180,12 +180,31 @@ export async function GET(req: NextRequest) {
         // 2. جلب بيانات اللاعبين (كلهم للصور/خارجي، + مطابقة R2)
         // ══════════════════════════════════════════
         // جلب كل اللاعبين مع كل حقول الصور المحتملة
-        const { data: allPlayers, error: playersError } = await db
-            .from('players')
-            .select('*')
-            .limit(500);
-
-        if (playersError) console.error('[list-r2] players fetch error:', playersError.message);
+        // جلب جميع اللاعبين — حقول محددة فقط (أسرع وأخف من select('*'))
+        // لا limit — نجلب الكل لأن الفيديوهات قد تنتمي لأي لاعب
+        // جلب جميع اللاعبين بالتكرار عبر الصفحات لضمان شمول 100% من اللاعبين (تخطي حد الـ 1000 في PostgREST)
+        const allPlayers: any[] = [];
+        const pageSize = 1000;
+        let from = 0;
+        while (true) {
+            const { data: chunk, error: chunkErr } = await db
+                .from('players')
+                .select(
+                    'id, uid, full_name, name, email, phone, phoneNumber, ' +
+                    'profile_image_url, profile_image, ' +
+                    'country, nationality, position, primary_position, ' +
+                    'videos, images, additional_images, media, gallery, firebaseUid'
+                )
+                .range(from, from + pageSize - 1);
+            if (chunkErr) {
+                console.error('[list-r2] players fetch error:', chunkErr.message);
+                break;
+            }
+            if (!chunk || chunk.length === 0) break;
+            allPlayers.push(...chunk);
+            if (chunk.length < pageSize) break;
+            from += pageSize;
+        }
 
         type PlayerInfo = {
             supabaseId: string; name: string; email: string;
@@ -214,11 +233,11 @@ export async function GET(req: NextRequest) {
             };
         };
 
-        for (const p of allPlayers || []) {
-            const info = buildInfo(p as any);
+        for (const p of allPlayers) {
+            const info = buildInfo(p);
             playerMap.set(p.id, info);
-            if (p.uid)         playerMap.set(p.uid, info);
-            if (p.firebaseUid) playerMap.set(p.firebaseUid, info);
+            if (p.uid)          playerMap.set(p.uid, info);
+            if (p.firebaseUid)  playerMap.set(p.firebaseUid, info);
             if (p.firebase_uid) playerMap.set(p.firebase_uid, info);
         }
 
@@ -266,7 +285,7 @@ export async function GET(req: NextRequest) {
         // ══════════════════════════════════════════
         // نكرر على اللاعبين مباشرة (لا على playerMap لتجنب التكرار)
         const processedIds = new Set<string>();
-        for (const p of allPlayers || []) {
+        for (const p of allPlayers) {
             if (processedIds.has(p.id)) continue;
             processedIds.add(p.id);
             const player = playerMap.get(p.id);
