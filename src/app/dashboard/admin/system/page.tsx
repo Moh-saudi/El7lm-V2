@@ -192,7 +192,7 @@ export default function SystemMonitoring() {
           </h1>
           <p className="text-gray-500 mt-2 flex items-center gap-2">
             <Activity className="h-4 w-4" />
-            لوحة معلومات حية لحالة الخوادم والخدمات (Cloudflare Primary)
+            لوحة معلومات حية لحالة الخوادم والخدمات السحابية
           </p>
         </div>
         <div className="flex gap-3">
@@ -229,7 +229,7 @@ export default function SystemMonitoring() {
         <Card className="border-l-4 border-l-orange-500 shadow-sm col-span-1 md:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-500 flex items-center justify-between">
-              نظام التخزين الرئيسي (Cloudflare R2)
+              نظام التخزين السحابي المباشر
               <Cloud className="h-4 w-4 text-orange-500" />
             </CardTitle>
           </CardHeader>
@@ -309,10 +309,10 @@ export default function SystemMonitoring() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl text-orange-900">
             <HardDrive className="w-5 h-5" />
-            نظام التخزين (Cloudflare Storage)
+            نظام التخزين السحابي الموحد
           </CardTitle>
           <CardDescription>
-            تم ترحيل كافة العمليات لتعمل حصرياً على Cloudflare R2 لضمان استقرار الخدمة
+            تم ترحيل كافة العمليات لتعمل سحابياً لضمان أعلى استقرار للخدمة
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -335,7 +335,7 @@ export default function SystemMonitoring() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={stat.provider === 'cloudflare' ? 'border-orange-200 text-orange-700 bg-orange-50' : 'border-gray-200 text-gray-500 bg-gray-50'}>
-                      {stat.provider === 'cloudflare' ? 'Cloudflare R2' : 'Supabase (Legacy)'}
+                      {stat.provider === 'cloudflare' ? 'سحابي متقدم (Primary)' : 'قاعدة البيانات (Legacy)'}
                     </Badge>
                   </TableCell>
                   <TableCell>

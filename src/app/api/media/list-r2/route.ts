@@ -15,6 +15,7 @@ import {
     getInFlightFetch,
     setInFlightFetch,
 } from '@/lib/media/media-cache';
+import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -166,7 +167,7 @@ async function fetchMediaData(): Promise<{ items: any[]; total: number }> {
                             name: p.full_name || p.name || 'لاعب مسجل',
                             email: p.email || '',
                             phone: p.phone || p.phoneNumber || '',
-                            image: p.profile_image_url || p.profile_image || '',
+                            image: fixReceiptUrl(p.profile_image_url || p.profile_image) || '',
                             country: p.country || p.nationality || '',
                             position: p.position || p.primary_position || 'لاعب',
                         };
@@ -190,7 +191,7 @@ async function fetchMediaData(): Promise<{ items: any[]; total: number }> {
                                 name: p.full_name || p.name || 'لاعب مسجل',
                                 email: p.email || '',
                                 phone: p.phone || p.phoneNumber || '',
-                                image: p.profile_image_url || p.profile_image || '',
+                                image: fixReceiptUrl(p.profile_image_url || p.profile_image) || '',
                                 country: p.country || p.nationality || '',
                                 position: p.position || p.primary_position || 'لاعب',
                             };
@@ -255,7 +256,7 @@ async function fetchMediaData(): Promise<{ items: any[]; total: number }> {
             id: `r2_${Buffer.from(obj.key).toString('base64').replace(/[+/=]/g, '').substring(0, 40)}`,
             r2Key: obj.key,
             type: 'video',
-            title: filenameToTitle(filename) || `فيديو R2 ${idx + 1}`,
+            title: filenameToTitle(filename) || `فيديو المنصة ${idx + 1}`,
             description: '',
             url,
             thumbnailUrl: undefined,
@@ -276,7 +277,7 @@ async function fetchMediaData(): Promise<{ items: any[]; total: number }> {
             views: 0,
             likes: 0,
             sourceType: 'r2',
-            category: 'رفع سحابي R2',
+            category: 'سحابي مباشر',
             fileSize: obj.size,
         });
     }

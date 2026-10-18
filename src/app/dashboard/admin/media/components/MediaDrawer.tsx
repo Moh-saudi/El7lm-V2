@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
+import { MediaAvatar } from './MediaAvatar';
 
 interface Props {
     item: MediaItem | null;
@@ -674,15 +675,7 @@ export function MediaDrawer({
                         {/* Player Profile & Identity */}
                         <div className="flex items-center gap-3 min-w-0">
                             <div className="relative flex-shrink-0">
-                                <div className="w-11 h-11 rounded-full p-0.5 bg-slate-100 border border-slate-300 shadow-xs">
-                                    {item.userImage ? (
-                                        <img src={item.userImage} alt={item.userName} className="w-full h-full rounded-full object-cover bg-slate-100" />
-                                    ) : (
-                                        <div className="w-full h-full rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-700 text-sm">
-                                            {item.userName.charAt(0) || 'ل'}
-                                        </div>
-                                    )}
-                                </div>
+                                <MediaAvatar src={item.userImage} alt={item.userName} size="lg" />
                                 <span className="absolute -bottom-1 -right-1 bg-emerald-600 border border-white text-[10px] font-black text-white px-1.5 py-0.2 rounded-full shadow-xs">
                                     {calculatedOverall}
                                 </span>
@@ -1027,7 +1020,7 @@ export function MediaDrawer({
                                 <div className="flex items-center gap-3 text-[10px] text-slate-400 flex-shrink-0">
                                     {detectedSource === 'direct' && (
                                         <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-bold">
-                                            ☁️ رفع سحابي مباشر (Cloudflare R2)
+                                            ☁️ رفع سحابي مباشر
                                         </span>
                                     )}
                                     {detectedSource === 'youtube' && (
@@ -1168,13 +1161,7 @@ export function MediaDrawer({
                                         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3">
                                             <div className="flex items-center justify-between gap-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-14 h-14 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center flex-shrink-0 shadow-2xs">
-                                                        {item.userImage ? (
-                                                            <img src={item.userImage} alt={item.userName} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <User className="w-7 h-7 text-slate-400" />
-                                                        )}
-                                                    </div>
+                                                    <MediaAvatar src={item.userImage} alt={item.userName} size="xl" />
                                                     <div>
                                                         <h3 className="font-black text-slate-900 text-sm">{item.userName}</h3>
                                                         <p className="text-xs text-slate-500 font-bold">{isGK ? '🧤 حارس مرمى' : (item.position || 'لاعب كرة قدم')} • {item.age ? `${item.age} سنة` : 'موهبة صاعدة'}</p>

@@ -268,7 +268,7 @@ export function VideoPlayer({ item }: Props) {
                 <div className="flex items-center gap-3 text-[10px] text-slate-600 flex-shrink-0">
                     {detectedSource === 'direct' && (
                         <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-bold">
-                            ☁️ رفع سحابي (R2)
+                            ☁️ تشغيل سحابي مباشر
                         </span>
                     )}
                     {detectedSource === 'youtube' && (

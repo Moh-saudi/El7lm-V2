@@ -13,6 +13,7 @@ import {
     getScoreTier, calculateOverall, DEFAULT_SKILLS_GK
 } from './studio-utils';
 import { RadarChart } from './RadarChart';
+import { MediaAvatar } from './MediaAvatar';
 
 interface Props {
     item: MediaItem;
@@ -180,13 +181,7 @@ export function SkillsMatrix({
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex-1 space-y-3 w-full">
                         <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-full bg-white border border-slate-300 overflow-hidden flex items-center justify-center flex-shrink-0 shadow-xs">
-                                {item.userImage ? (
-                                    <img src={item.userImage} alt={item.userName} className="w-full h-full object-cover" />
-                                ) : (
-                                    <User className="w-6 h-6 text-slate-400" />
-                                )}
-                            </div>
+                            <MediaAvatar src={item.userImage} alt={item.userName} size="lg" />
                             <div className="min-w-0">
                                 <h4 className="font-black text-slate-900 text-sm truncate">{item.userName}</h4>
                                 <p className="text-xs text-slate-600 font-bold mt-0.5">

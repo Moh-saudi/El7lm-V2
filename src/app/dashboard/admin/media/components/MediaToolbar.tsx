@@ -28,7 +28,7 @@ interface Props {
 
 const SOURCE_TABS: { value: MediaSourceFilter; label: string; icon: React.ElementType; color?: string }[] = [
     { value: 'all',      label: 'كل المصادر',              icon: Globe },
-    { value: 'direct',   label: 'مرفوعة على Cloudflare R2', icon: Cloud,      color: 'text-emerald-600' },
+    { value: 'direct',   label: 'فيديوهات المنصة المباشرة', icon: Cloud,      color: 'text-emerald-600' },
     { value: 'youtube',  label: 'YouTube',                 icon: PlaySquare, color: 'text-red-600' },
     { value: 'tiktok',   label: 'TikTok',                  icon: Music2,     color: 'text-slate-900' },
     { value: 'external', label: 'روابط خارجية',             icon: Globe,      color: 'text-sky-600' },

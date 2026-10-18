@@ -21,6 +21,7 @@ import { VideoPlayer } from './VideoPlayer';
 import { SkillsMatrix } from './SkillsMatrix';
 import { ScoutDossier } from './ScoutDossier';
 import { PlayerContact } from './PlayerContact';
+import { MediaAvatar } from './MediaAvatar';
 
 interface Props {
     item: MediaItem | null;
@@ -224,15 +225,7 @@ export function StudioModal({
                         {/* Player Identity */}
                         <div className="flex items-center gap-3 min-w-0">
                             <div className="relative flex-shrink-0">
-                                <div className="w-10 h-10 rounded-full p-0.5 bg-slate-100 border border-slate-300 shadow-xs">
-                                    {item.userImage ? (
-                                        <img src={item.userImage} alt={item.userName} className="w-full h-full rounded-full object-cover bg-slate-100" />
-                                    ) : (
-                                        <div className="w-full h-full rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-700 text-sm">
-                                            {item.userName.charAt(0) || 'ل'}
-                                        </div>
-                                    )}
-                                </div>
+                                <MediaAvatar src={item.userImage} alt={item.userName} size="md" />
                                 <span className="absolute -bottom-1 -right-1 bg-emerald-600 border border-white text-[9px] font-black text-white px-1.5 py-0.2 rounded-full shadow-xs">
                                     {calculatedOverall}
                                 </span>

@@ -19,6 +19,8 @@ export const getYouTubeId = (url: string): string | null => {
     return null;
 };
 
+import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
+
 export const getYouTubeThumbnail = (url: string): string | null => {
     const id = getYouTubeId(url);
     return id ? `https://img.youtube.com/vi/${id}/mqdefault.jpg` : null;
@@ -29,6 +31,15 @@ const sanitizeMediaUrl = (value: unknown): string | undefined => {
 
     const trimmed = value.trim();
     if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return undefined;
+
+    // Fix legacy defunct Supabase storage URLs
+    if (trimmed.includes('supabase.co')) {
+        const fixed = fixReceiptUrl(trimmed);
+        if (fixed && !fixed.includes('supabase.co')) {
+            return fixed;
+        }
+        return undefined; // Dead host - prevent browser DNS resolution error
+    }
 
     if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) return trimmed;
     if (/^https?:\/\//i.test(trimmed)) return trimmed;

@@ -102,7 +102,7 @@ function getThumbnailUrl(item: MediaItem): string | null {
 function getSourceBadge(source: DetectedSource) {
     switch (source) {
         case 'direct':
-            return { label: 'سحابي R2', cls: 'bg-emerald-600 text-white', icon: Cloud };
+            return { label: 'سحابي مباشر', cls: 'bg-emerald-600 text-white', icon: Cloud };
         case 'youtube':
             return { label: 'YouTube', cls: 'bg-red-600 text-white', icon: PlaySquare };
         case 'tiktok':

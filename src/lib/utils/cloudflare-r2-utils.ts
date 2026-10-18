@@ -20,8 +20,6 @@ export function fixReceiptUrl(url: any): string | null {
 
     // 1. إذا كان الرابط قديماً من Supabase
     if (correctedUrl.includes('supabase.co')) {
-        console.log('🔄 cloudflare-r2-utils: Fixing Supabase URL:', correctedUrl);
-
         // البحث عن المسار الفعلي بعد object/
         const objectMarker = '/object/';
         const markerIndex = correctedUrl.indexOf(objectMarker);
@@ -38,24 +36,20 @@ export function fixReceiptUrl(url: any): string | null {
             }
 
             if (pathPart) {
-                const fixed = `${CLOUDFLARE_BASE}/${pathPart}`;
-                console.log('✅ cloudflare-r2-utils: Fixed to:', fixed);
-                return fixed;
+                return `${CLOUDFLARE_BASE}/${pathPart}`;
             }
         } else {
             // محاولة استخراج الحاوية والملف حتى بدون /object/
-            // مثال: https://.../avatars/file.png
-            const buckets = ['avatars', 'profile-images', 'videos', 'documents', 'wallet', 'ads'];
+            const buckets = ['avatars', 'playertrainer', 'profile-images', 'videos', 'documents', 'wallet', 'ads'];
             for (const bucket of buckets) {
                 if (correctedUrl.includes(`/${bucket}/`)) {
                     const bucketIndex = correctedUrl.indexOf(`/${bucket}/`);
                     const pathPart = correctedUrl.substring(bucketIndex + 1);
-                    const fixed = `${CLOUDFLARE_BASE}/${pathPart}`;
-                    console.log('✅ cloudflare-r2-utils: Fixed (no-marker) to:', fixed);
-                    return fixed;
+                    return `${CLOUDFLARE_BASE}/${pathPart}`;
                 }
             }
         }
+        return null;
     }
 
     // 2. إذا كان مجرد مسار نسبي (مثلاً wallet/image.jpg)
