@@ -68,14 +68,34 @@ function getScoreTier(ovr: number) {
     return { label: 'تحت التطوير', textCls: 'text-slate-600', bgCls: 'bg-slate-100 border-slate-200 text-slate-700' };
 }
 
-const SKILL_DEFS: { key: keyof FootballSkills; label: string; short: string; icon: string; desc: string }[] = [
-    { key: 'pace',      label: 'السرعة والتسارع',         short: 'PAC', icon: '⚡', desc: 'الانطلاق وسرعة الجري بالكرة' },
-    { key: 'shooting',  label: 'التسديد وإنهاء الهجمات', short: 'SHO', icon: '⚽', desc: 'قوة وإنهاء الكرات في المرمى' },
-    { key: 'passing',   label: 'التمرير وصناعة اللعب',   short: 'PAS', icon: '🎯', desc: 'صناعة اللعب ودقة التمريرات' },
-    { key: 'dribbling', label: 'المراوغة والتحكم',       short: 'DRI', icon: '👟', desc: 'الرشاقة وحفظ الكرة تحت الضغط' },
-    { key: 'defending', label: 'التمركز والواجب الدفاعي', short: 'DEF', icon: '🛡️', desc: 'التمركز السليم وافتكاك الكرة' },
-    { key: 'physical',  label: 'القوة البدنية والالتحام', short: 'PHY', icon: '💪', desc: 'الالتحامات القوية والارتقاء' },
-];
+/** تحديد هل المركز هو حراسة مرمى */
+function checkIsGoalkeeper(position?: string): boolean {
+    const p = (position || '').toLowerCase();
+    return p.includes('حارس') || p.includes('gk') || p.includes('keeper') || p.includes('مرمى');
+}
+
+/** مصفوفة المهارات المخصصة للمركز (حارس مرمى vs لاعب ميدان) */
+function getSkillDefinitions(isGK: boolean): { key: keyof FootballSkills; label: string; short: string; icon: string; desc: string }[] {
+    if (isGK) {
+        return [
+            { key: 'pace',      label: 'الارتماء والتصدي المباشر', short: 'DIV', icon: '🧤', desc: 'التصدي للتسديدات وزوايا المرمى الصعبة' },
+            { key: 'shooting',  label: 'الإمساك والتعامل مع الكرة', short: 'HAN', icon: '🤲', desc: 'الإمساك ومنع الارتداد والتقاط العرضيات' },
+            { key: 'passing',   label: 'التوزيع وبناء اللعب بالقدم', short: 'KIC', icon: '🎯', desc: 'دقة ركل وتوزيع الكرات الطويلة والقصيرة' },
+            { key: 'dribbling', label: 'سرعة ردود الفعل الخاطفة', short: 'REF', icon: '⚡', desc: 'الاستجابة الفورية في الانفرادات والتسديد القريب' },
+            { key: 'defending', label: 'الخروج والتغطية كحارس قشاش', short: 'SPD', icon: '🏃', desc: 'توقيت الخروج لقطع الانفرادات وخارج الصندوق' },
+            { key: 'physical',  label: 'التمركز وتوجيه خط الدفاع', short: 'POS', icon: '🛡️', desc: 'حسن التمركز بين القائمين والقيادة للمدافعين' },
+        ];
+    }
+
+    return [
+        { key: 'pace',      label: 'السرعة والتسارع والانطلاق', short: 'PAC', icon: '⚡', desc: 'الانطلاق وسرعة الجري بالكرة في المساحات' },
+        { key: 'shooting',  label: 'التسديد وإنهاء الهجمات',    short: 'SHO', icon: '⚽', desc: 'قوة ودقة إنهاء الكرات في الشباك' },
+        { key: 'passing',   label: 'التمرير وصناعة اللعب',      short: 'PAS', icon: '🎯', desc: 'دقة التمرير وصناعة الفرص وكسر الخطوط' },
+        { key: 'dribbling', label: 'المراوغة والتحكم بالكرة',   short: 'DRI', icon: '👟', desc: 'الرشاقة وحفظ الكرة وتجاوز المنافسين' },
+        { key: 'defending', label: 'التمركز والواجب الدفاعي',   short: 'DEF', icon: '🛡️', desc: 'التمركز السليم وافتكاك الكرة والضغط' },
+        { key: 'physical',  label: 'القوة البدنية والالتحامات',  short: 'PHY', icon: '💪', desc: 'الصراعات البدنية والارتقاء والتحمل' },
+    ];
+}
 
 // ── توليد التقرير الكشفي المعتمد لمنصة الحلم (El7lm Pro Scouting Dossier) ──
 function generateEl7lmDossier(
@@ -90,14 +110,47 @@ function generateEl7lmDossier(
 ): string {
     const today = new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
     const tier = getScoreTier(overallScore).label;
+    const isGK = checkIsGoalkeeper(item.position);
 
     const strengthsText = strengths.length > 0
         ? strengths.map((s, i) => `${i + 1}. ${s}`).join('\n')
-        : '1. التحكم الإيجابي بالكرة والسرعة في تغيير الاتجاه\n2. الرؤية الميدانية والتحرك الواعي في المساحات';
+        : isGK
+            ? '1. سرعة رد الفعل والتصدي في المواقف الفردية (1v1)\n2. التمركز السليم بين القائمين وحماية زوايا المرمى'
+            : '1. التحكم الإيجابي بالكرة والسرعة في تغيير الاتجاه\n2. الرؤية الميدانية والتحرك الواعي في المساحات';
 
     const areasText = areas.length > 0
         ? areas.map((d, i) => `${i + 1}. ${d}`).join('\n')
-        : '1. رفع الكثافة البدنية في الالتحامات القوية\n2. دقة إنهاء الكرات تحت الضغط العالي';
+        : isGK
+            ? '1. دقة التمرير بالقدمين تحت الضغط لبناء الهجمة من الخلف\n2. زيادة التواصل الصوتي المستمر مع قلبي الدفاع'
+            : '1. رفع الكثافة البدنية في الالتحامات القوية\n2. دقة إنهاء الكرات تحت الضغط العالي';
+
+    const matrixSection = isGK
+        ? `📊 مصفوفة الحلم لحراسة المرمى (El7lm Goalkeeper Performance Matrix):
+🧤 الارتماء والتصدي المباشر (DIV): ${skills.pace}/100
+🤲 الإمساك والتعامل مع الكرة (HAN): ${skills.shooting}/100
+🎯 التوزيع وبناء اللعب بالقدم (KIC): ${skills.passing}/100
+⚡ سرعة ردود الفعل الخاطفة (REF): ${skills.dribbling}/100
+🏃 الخروج والتغطية كحارس قشاش (SPD): ${skills.defending}/100
+🛡️ التمركز وتوجيه خط الدفاع (POS): ${skills.physical}/100`
+        : `📊 مصفوفة الحلم للأداء الكروي (El7lm Performance Matrix):
+⚡ السرعة والتسارع والانطلاق (PAC): ${skills.pace}/100
+⚽ التسديد وإنهاء الهجمات (SHO): ${skills.shooting}/100
+🎯 التمرير وصناعة اللعب (PAS): ${skills.passing}/100
+👟 المراوغة والتحكم بالكرة (DRI): ${skills.dribbling}/100
+🛡️ التمركز والواجب الدفاعي (DEF): ${skills.defending}/100
+💪 القوة البدنية والالتحامات (PHY): ${skills.physical}/100`;
+
+    const defaultRecommendation = isGK
+        ? 'حارس مرمى واعد يمتلك ردود أفعال رشيقة وشجاعة في المواجهات المباشرة. يُوصى بالتركيز على تدريبات بناء اللعب بالقدمين لتطويره إلى حارس قشاش عصري.'
+        : 'لاعب واعد يمتلك أساسيات فنية ممتازة تؤهله للاندماج السريع في التمارين التكتيكية التخصصية للأندية المحترفة.';
+
+    const defaultAnalysis = isGK
+        ? `التقرير الفني التكتيكي (تحليل حراسة المرمى):
+أظهر الحارس ثباتاً انفعالياً مميزاً وسرعة استجابة عالية في الذود عن مرماه، مع قدرة لافتة على تقدير مسار الكرات العرضية وسرعة العودة لخط المرمى.
+يتميز الحارس بالمرونة والتوازن الحركي أثناء الارتقاء، ويحتاج إلى مواصلة العمل على توقيت الخروج خارج منطقة الجزاء والتعامل بالقدمين.`
+        : `التقرير الفني التكتيكي:
+أظهر اللاعب مستوى واعداً في التحكم بالكرة والمرونة الحركية، مع قدرة واضحة على قراءة مجريات اللعب والتفاعل الإيجابي مع زملائه في الملعب.
+يوصى بتكثيف الحصص التدريبية لرفع اللياقة البدنية والسرعة التكتيكية.`;
 
     return `📋 تقرير التقييم الكشفي المعتمد — منصة الحلم (El7lm Pro Scouting Dossier)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -110,13 +163,7 @@ function generateEl7lmDossier(
 • القدم المفضلة: ${dominantFoot}
 • التقييم الكروي الإجمالي: ${overallScore} OVR (${tier})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 مصفوفة الحلم للأداء الكروي (El7lm 100 Performance Matrix):
-⚡ السرعة والتسارع (PAC): ${skills.pace}/100
-⚽ التسديد وإنهاء الهجمات (SHO): ${skills.shooting}/100
-🎯 التمرير وصناعة اللعب (PAS): ${skills.passing}/100
-👟 المراوغة والتحكم بالكرة (DRI): ${skills.dribbling}/100
-🛡️ التمركز والواجب الدفاعي (DEF): ${skills.defending}/100
-💪 القوة البدنية والالتحامات (PHY): ${skills.physical}/100
+${matrixSection}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⭐ أبرز نقاط القوة التكتيكية (Key Strengths):
 ${strengthsText}
@@ -125,10 +172,10 @@ ${strengthsText}
 ${areasText}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔍 التقييم الفني والتوصية الكشفية (Scout Recommendation):
-${notes.trim() || 'لاعب واعد يمتلك أساسيات فنية ممتازة تؤهله للاندماج السريع في التمارين التكتيكية التخصصية.'}
+${notes.trim() || defaultRecommendation}
 
 📝 التقرير التحليلي للأداء:
-${analysisText.trim() || 'أظهر اللاعب مرونة حركية عالية واستيعاباً لمجريات اللعب أثناء فحص اللقطات المسجلة.'}
+${analysisText.trim() || defaultAnalysis}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📅 تاريخ التحليل: ${today}
 🏷️ جهة التقييم: استوديو الأداء الرياضي الذكي — منصة الحلم (El7lm AI Studio)
@@ -231,12 +278,16 @@ export function MediaDrawer({
 
     // ── AI Usage Tracker ──
     const [usage, setUsage] = useState<{ used: number; total: number; remaining: number }>({
-        used: 12, total: 1500, remaining: 1488,
+        used: 14, total: 1500, remaining: 1486,
     });
 
     // ── Direct Notification ──
     const [message, setMessage] = useState('');
     const [sendingMsg, setSendingMsg] = useState(false);
+
+    // هل اللاعب حارس مرمى؟
+    const isGK = useMemo(() => checkIsGoalkeeper(item?.position), [item?.position]);
+    const skillDefs = useMemo(() => getSkillDefinitions(isGK), [isGK]);
 
     // Detect media source
     const detectedSource = useMemo(() => {
@@ -246,6 +297,19 @@ export function MediaDrawer({
 
     // Calculate OVR dynamically
     const calculatedOverall = useMemo(() => {
+        if (isGK) {
+            // حارس المرمى: وزن أعلى للتصدي والانعكاس والتمركز
+            const avg = Math.round(
+                (skills.pace * 0.22) +      // DIV
+                (skills.shooting * 0.20) +  // HAN
+                (skills.passing * 0.14) +   // KIC
+                (skills.dribbling * 0.22) + // REF
+                (skills.defending * 0.10) + // SPD
+                (skills.physical * 0.12)    // POS
+            );
+            return Math.min(99, Math.max(40, avg));
+        }
+
         const avg = Math.round(
             (skills.pace * 0.20) +
             (skills.shooting * 0.18) +
@@ -255,19 +319,27 @@ export function MediaDrawer({
             (skills.physical * 0.12)
         );
         return Math.min(99, Math.max(40, avg));
-    }, [skills]);
+    }, [skills, isGK]);
 
     // Sync state on item change
     useEffect(() => {
         if (item) {
-            setSkills(item.skills || {
+            const playerIsGk = checkIsGoalkeeper(item.position);
+            setSkills(item.skills || (playerIsGk ? {
+                pace: 82,      // DIV
+                shooting: 78,  // HAN
+                passing: 74,   // KIC
+                dribbling: 85, // REF
+                defending: 72, // SPD
+                physical: 80,  // POS
+            } : {
                 pace: 75,
                 shooting: 70,
                 passing: 72,
                 dribbling: 78,
                 defending: 65,
                 physical: 74,
-            });
+            }));
             setDominantFoot(item.dominantFoot || 'يمين');
             setTacticalStrengths(item.tacticalStrengths || []);
             setDevelopmentAreas(item.developmentAreas || []);
@@ -396,7 +468,7 @@ export function MediaDrawer({
         setAiError(null);
 
         try {
-            toast.info('جاري فحص لقطات الفيديو واستخراج المهارات الفنية بالذكاء الاصطناعي...');
+            toast.info(`جاري فحص لقطات اللاعب (${item.userName}) واستخراج التقييم الكشفي المتخصص...`);
 
             let frames: string[] = [];
             const isStoredVideo = detectedSource === 'direct';
@@ -414,13 +486,21 @@ export function MediaDrawer({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     r2Key: item.r2Key,
+                    videoUrl: item.url,
                     url: item.url,
                     title: item.title,
                     description: item.description,
+                    playerPosition: item.position,
                     position: item.position,
+                    playerAge: item.age,
                     age: item.age,
+                    playerName: item.userName,
                     userName: item.userName,
+                    playerCountry: item.country,
+                    country: item.country,
+                    frameUrls: frames.length > 0 ? frames : undefined,
                     frames: frames.length > 0 ? frames : undefined,
+                    category: item.category,
                 }),
             });
 
@@ -447,12 +527,12 @@ export function MediaDrawer({
             if (data.usage) setUsage(data.usage);
 
             if (data.analysis) setAiText(data.analysis);
-            if (data.scoutRecommendation && !analystNotes) {
+            if (data.scoutRecommendation) {
                 setAnalystNotes(data.scoutRecommendation);
             }
 
             onAIResult(item.id, data.analysis, data.rating);
-            toast.success('اكتمل التحليل الكروي الذكي وتم ملء درجات المهارات والتقرير الكشفي!');
+            toast.success(`اكتمل التحليل الكروي لمركز (${item.position || 'اللاعب'}) وتم تحديث التقرير الكشفي بنجاح!`);
 
         } catch (e: any) {
             setAiError(e.message || 'خطأ أثناء تشغيل التحليل');
@@ -568,10 +648,10 @@ export function MediaDrawer({
     return (
         <DialogPrimitive.Root open={!!item} onOpenChange={open => !open && onClose()}>
             <DialogPrimitive.Portal>
-                {/* Clean, Subtle Executive Modal Backdrop */}
+                {/* Backdrop */}
                 <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200" />
                 
-                {/* Executive White Container matching the El7lm Dashboard */}
+                {/* Executive Container */}
                 <DialogPrimitive.Content
                     className={`fixed z-50 outline-none flex flex-col bg-white text-slate-900 border border-slate-200 shadow-2xl overflow-hidden duration-200 animate-in fade-in zoom-in-95 ${
                         isFullscreen
@@ -614,8 +694,8 @@ export function MediaDrawer({
                                     <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${STATUS_COLOR[item.status]}`}>
                                         {STATUS_LABEL[item.status]}
                                     </span>
-                                    <span className="hidden sm:inline-flex text-[11px] font-bold px-2 py-0.5 rounded-md border bg-slate-100 text-slate-700 border-slate-200">
-                                        {item.position || 'لاعب كرة قدم'}
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border bg-slate-100 text-slate-800 border-slate-200">
+                                        {isGK ? '🧤 حارس مرمى' : (item.position || 'لاعب كرة قدم')}
                                     </span>
 
                                     {/* Video Source Tag in Header */}
@@ -937,7 +1017,7 @@ export function MediaDrawer({
                                 </div>
                             )}
 
-                            {/* Video Metadata Ribbon (With Accurate Source Delineation) */}
+                            {/* Video Metadata Ribbon */}
                             <div className="bg-slate-900 px-4 py-2.5 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 flex-shrink-0">
                                 <div className="flex items-center gap-2 truncate">
                                     <Film className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
@@ -973,7 +1053,7 @@ export function MediaDrawer({
                         ───────────────────────────────────────────────────────────── */}
                         <div className="lg:col-span-5 xl:col-span-5 flex flex-col min-h-0 bg-white border-r border-slate-200">
                             
-                            {/* ── TOP SEGMENTED TAB SWITCHER (EXECUTIVE CLEAN TABS) ── */}
+                            {/* ── TOP SEGMENTED TAB SWITCHER ── */}
                             <div className="p-3 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-2 flex-shrink-0">
                                 <div className="grid grid-cols-3 gap-1 bg-slate-200/80 p-1 rounded-xl w-full">
                                     <button
@@ -986,7 +1066,7 @@ export function MediaDrawer({
                                         }`}
                                     >
                                         <Sliders className="w-3.5 h-3.5 text-emerald-600" />
-                                        <span>مصفوفة المهارات</span>
+                                        <span>{isGK ? 'مصفوفة الحراسة' : 'مصفوفة المهارات'}</span>
                                     </button>
 
                                     <button
@@ -1036,12 +1116,12 @@ export function MediaDrawer({
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-xs font-black text-slate-900">مساعد الكشاف الذكي</span>
+                                                        <span className="text-xs font-black text-slate-900">مساعد الكشاف التكتيكي</span>
                                                         <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded shadow-2xs">
-                                                            متبقي {usage.remaining} مجاناً اليوم
+                                                            {isGK ? 'تحليل حراسة المرمى 🧤' : 'تحليل الأداء الرياضي ⚽'}
                                                         </span>
                                                     </div>
-                                                    <p className="text-[11px] text-slate-600 mt-0.5">فحص لقطات الفيديو وتوزيع درجات المهارات تلقائياً</p>
+                                                    <p className="text-[11px] text-slate-600 mt-0.5">فحص تخصصي لمركز ({item.position || 'اللاعب'}) وتوزيع الدرجات بدقة</p>
                                                 </div>
                                             </div>
                                             <Button
@@ -1077,7 +1157,7 @@ export function MediaDrawer({
                                                     </div>
                                                     <div>
                                                         <h3 className="font-black text-slate-900 text-sm">{item.userName}</h3>
-                                                        <p className="text-xs text-slate-500">{item.position || 'لاعب كرة قدم'} • {item.age ? `${item.age} سنة` : 'موهبة صاعدة'}</p>
+                                                        <p className="text-xs text-slate-500 font-bold">{isGK ? '🧤 حارس مرمى' : (item.position || 'لاعب كرة قدم')} • {item.age ? `${item.age} سنة` : 'موهبة صاعدة'}</p>
                                                         <p className="text-[11px] text-slate-400 mt-0.5">{item.organization || item.country || 'لاعب حر'}</p>
                                                     </div>
                                                 </div>
@@ -1116,18 +1196,20 @@ export function MediaDrawer({
                                             </div>
                                         </div>
 
-                                        {/* Skill Sliders Grid */}
+                                        {/* Skill Sliders Grid (Goalkeeper Aware) */}
                                         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3">
                                             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                                                 <div className="flex items-center gap-1.5">
                                                     <Sliders className="w-4 h-4 text-emerald-600" />
-                                                    <h4 className="text-xs font-black text-slate-900">مصفوفة المهارات الكروية (معايير الحلم الدولية)</h4>
+                                                    <h4 className="text-xs font-black text-slate-900">
+                                                        {isGK ? 'مصفوفة حراسة المرمى الدولية (GK Core Matrix)' : 'مصفوفة المهارات الكروية (معايير الحلم الدولية)'}
+                                                    </h4>
                                                 </div>
                                                 <span className="text-[11px] text-slate-500">اسحب للضبط اليدوي</span>
                                             </div>
 
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                                {SKILL_DEFS.map(s => {
+                                                {skillDefs.map(s => {
                                                     const val = skills[s.key as keyof FootballSkills];
                                                     const badgeCls = getSkillBadgeColor(val);
                                                     return (
@@ -1186,7 +1268,7 @@ export function MediaDrawer({
                                                 rows={3}
                                                 value={analystNotes}
                                                 onChange={e => setAnalystNotes(e.target.value)}
-                                                placeholder="اكتب التوصيات الفنية أو الملاحظات التكتيكية التي تريد توجيهها للاعب والأندية..."
+                                                placeholder={isGK ? "اكتب التوصيات التكتيكية لمركز حراسة المرمى (التمركز، ردود الفعل، توجيه الدفاع)..." : "اكتب التوصيات الفنية أو الملاحظات التكتيكية التي تريد توجيهها للاعب والأندية..."}
                                                 className="text-xs bg-slate-50 border-slate-200 text-slate-800 leading-relaxed resize-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                                             />
                                         </div>
@@ -1194,7 +1276,7 @@ export function MediaDrawer({
                                 )}
 
                                 {/* ==============================================================
-                                    TAB 2: EL7LM PRO SCOUTING DOSSIER (الملف الكشفي المعتمد - ناصع البياض)
+                                    TAB 2: EL7LM PRO SCOUTING DOSSIER (الملف الكشفي المعتمد)
                                 ============================================================== */}
                                 {activeTab === 'dossier' && (
                                     <>
@@ -1237,14 +1319,14 @@ export function MediaDrawer({
                                             </div>
                                         </div>
 
-                                        {/* Executive White Dossier Sheet (No Black Terminal!) */}
+                                        {/* Executive White Dossier Sheet */}
                                         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
                                             {/* Sheet Header */}
                                             <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-base font-black text-slate-900">📋 بطاقة التقييم الكشفي الرسمي</span>
                                                     <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                                        معتمد رسمياً
+                                                        {isGK ? 'تحليل حراسة مرمى معتمد' : 'معتمد رسمياً'}
                                                     </span>
                                                 </div>
                                                 <button
@@ -1270,7 +1352,7 @@ export function MediaDrawer({
                                                         </div>
                                                         <div>
                                                             <span className="text-[10px] text-slate-400 block">المركز التكتيكي</span>
-                                                            <span className="font-bold text-slate-800">{item.position || 'لاعب كرة قدم'}</span>
+                                                            <span className="font-bold text-slate-800">{isGK ? '🧤 حارس مرمى' : (item.position || 'لاعب كرة قدم')}</span>
                                                         </div>
                                                         <div>
                                                             <span className="text-[10px] text-slate-400 block">العمر والدولة</span>
@@ -1292,9 +1374,11 @@ export function MediaDrawer({
 
                                                     {/* Skills Performance Badges */}
                                                     <div className="space-y-1.5">
-                                                        <span className="text-xs font-black text-slate-800 block">مصفوفة الأداء الكروي (معايير الحلم الدولية):</span>
+                                                        <span className="text-xs font-black text-slate-800 block">
+                                                            {isGK ? 'مصفوفة الحراسة (El7lm GK Matrix):' : 'مصفوفة الأداء الكروي (معايير الحلم الدولية):'}
+                                                        </span>
                                                         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                                                            {SKILL_DEFS.map(s => {
+                                                            {skillDefs.map(s => {
                                                                 const val = skills[s.key as keyof FootballSkills];
                                                                 const badgeCls = getSkillBadgeColor(val);
                                                                 return (
@@ -1314,10 +1398,14 @@ export function MediaDrawer({
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                                                         <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-3">
                                                             <p className="text-xs font-bold text-emerald-800 mb-1 flex items-center gap-1">
-                                                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> نقاط القوة التكتيكية:
-                              </p>
+                                                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> نقاط القوة التكتيكية للمركز:
+                                                            </p>
                                                             <div className="space-y-1">
-                                                                {(tacticalStrengths.length > 0 ? tacticalStrengths : ['التحكم الإيجابي بالكرة والسرعة في تغيير الاتجاه', 'الرؤية الميدانية والتحرك في المساحات']).map((str, idx) => (
+                                                                {(tacticalStrengths.length > 0 ? tacticalStrengths : (
+                                                                    isGK
+                                                                        ? ['سرعة رد الفعل والتصدي في المواقف الفردية (1v1)', 'التمركز السليم بين القائمين']
+                                                                        : ['التحكم الإيجابي بالكرة والسرعة في تغيير الاتجاه', 'الرؤية الميدانية والتحرك في المساحات']
+                                                                )).map((str, idx) => (
                                                                     <p key={idx} className="text-[11px] text-emerald-950 font-medium leading-tight">
                                                                         • {str}
                                                                     </p>
@@ -1330,7 +1418,11 @@ export function MediaDrawer({
                                                                 <Target className="w-3.5 h-3.5 text-amber-600" /> جوانب التطوير المستهدفة:
                                                             </p>
                                                             <div className="space-y-1">
-                                                                {(developmentAreas.length > 0 ? developmentAreas : ['رفع الكثافة البدنية في الالتحامات', 'دقة إنهاء الكرات تحت الضغط العالي']).map((dev, idx) => (
+                                                                {(developmentAreas.length > 0 ? developmentAreas : (
+                                                                    isGK
+                                                                        ? ['دقة التوزيع بالقدمين تحت الضغط لبناء الهجمة من الخلف', 'توجيه المدافعين والتواصل الصوتي']
+                                                                        : ['رفع الكثافة البدنية في الالتحامات', 'دقة إنهاء الكرات تحت الضغط العالي']
+                                                                )).map((dev, idx) => (
                                                                     <p key={idx} className="text-[11px] text-amber-950 font-medium leading-tight">
                                                                         • {dev}
                                                                     </p>
@@ -1343,7 +1435,10 @@ export function MediaDrawer({
                                                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
                                                         <span className="text-xs font-bold text-slate-800 block">التوصية الفنية للكشاف:</span>
                                                         <p className="text-xs text-slate-700 leading-relaxed">
-                                                            {analystNotes.trim() || 'لاعب واعد يمتلك أساسيات فنية ممتازة تؤهله للاندماج السريع في التمارين التكتيكية التخصصية.'}
+                                                            {analystNotes.trim() || (isGK
+                                                                ? 'حارس مرمى واعد يمتلك ردود أفعال رشيقة وشجاعة في المواجهات المباشرة. يُوصى بالتركيز على تدريبات بناء اللعب بالقدمين لتطويره إلى حارس قشاش عصري.'
+                                                                : 'لاعب واعد يمتلك أساسيات فنية ممتازة تؤهله للاندماج السريع في التمارين التكتيكية التخصصية للأندية المحترفة.'
+                                                            )}
                                                         </p>
                                                     </div>
 
@@ -1456,7 +1551,7 @@ export function MediaDrawer({
                             </div>
 
                             {/* ═══════════════════════════════════════════════════════════════
-                                STICKY STUDIO ACTION FOOTER (ALWAYS VISIBLE - NEVER CUT OFF)
+                                STICKY STUDIO ACTION FOOTER (ALWAYS VISIBLE)
                             ═══════════════════════════════════════════════════════════════ */}
                             <div className="border-t border-slate-200 bg-white px-4 py-3.5 space-y-2 flex-shrink-0 z-20 shadow-lg">
                                 {/* Primary Approval Button */}
