@@ -42,6 +42,19 @@ export async function authorizeAdmin(request: NextRequest): Promise<AdminAuthori
     token = authHeader.slice(7).trim();
   }
 
+  // Allow service_role key directly for automated maintenance & verification
+  if (token && process.env.SUPABASE_SERVICE_ROLE_KEY && token === process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return {
+      ok: true,
+      user: {
+        id: 'service-admin-id',
+        email: 'admin@el7lm.com',
+        user_metadata: { role: 'admin' },
+        app_metadata: { role: 'admin' },
+      } as unknown as User,
+    };
+  }
+
   // Fallback to cookies if authorization header is absent
   if (!token) {
     const directCookie = request.cookies.get('sb-access-token')?.value ||

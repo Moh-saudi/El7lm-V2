@@ -47,7 +47,12 @@ const s3 = new S3Client({
     forcePathStyle: true,
 });
 
-const BUCKET = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform';
+const rawBucket = (
+    process.env.CLOUDFLARE_R2_BUCKET ||
+    process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET ||
+    'el7lmplatform'
+).trim();
+const BUCKET = (!rawBucket || rawBucket === 'assets' || rawBucket === 'ads') ? 'el7lmplatform' : rawBucket;
 const PUBLIC_URL = (
     process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL ||
     process.env.CLOUDFLARE_R2_PUBLIC_URL ||

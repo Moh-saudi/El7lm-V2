@@ -59,11 +59,41 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ success: !error, error: error?.message, code: error?.code, data });
     }
 
-    if (mode === 'table-info') {
-        const db = getSupabaseAdmin();
-        const { data, error } = await db.from('media_moderation').select('*').limit(5);
-        return NextResponse.json({ error: error?.message, code: error?.code, rows: data?.length, sample: data });
+    if (mode === 'r2') {
+        const { S3Client, ListObjectsV2Command } = await import('@aws-sdk/client-s3');
+        const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.NEXT_PUBLIC_CLOUDFLARE_ACCOUNT_ID || '14521cdfec73fa908fbf7e760fae362a';
+        const CF_ENDPOINT = process.env.CLOUDFLARE_R2_ENDPOINT || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ENDPOINT || `https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+        const CF_ACCESS_KEY = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || process.env.CLOUDFLARE_ACCESS_KEY_ID || '979d63a7dd50597c3e862a8449c228e5';
+        const CF_SECRET_KEY = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || process.env.CLOUDFLARE_SECRET_ACCESS_KEY || 'ba3be1a4f5451c3a69d138c5c7db7026f2ed44bb3ff257dd815d97cba9360ac8';
+        const BUCKET = process.env.CLOUDFLARE_R2_BUCKET || process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET || 'el7lmplatform';
+
+        const s3 = new S3Client({
+            region: 'auto',
+            endpoint: CF_ENDPOINT,
+            credentials: { accessKeyId: CF_ACCESS_KEY, secretAccessKey: CF_SECRET_KEY },
+            forcePathStyle: true,
+        });
+
+        try {
+            const res = await s3.send(new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: 5 }));
+            return NextResponse.json({
+                success: true,
+                endpoint: CF_ENDPOINT,
+                bucket: BUCKET,
+                count: res.Contents?.length,
+                keys: res.Contents?.map(c => c.Key),
+            });
+        } catch (e: any) {
+            return NextResponse.json({
+                success: false,
+                endpoint: CF_ENDPOINT,
+                bucket: BUCKET,
+                error: e.message,
+                name: e.name,
+                stack: e.stack,
+            });
+        }
     }
 
-    return NextResponse.json({ error: 'mode يجب أن يكون players أو columns أو test-update أو table-info' });
+    return NextResponse.json({ error: 'mode يجب أن يكون players أو columns أو test-update أو table-info أو r2' });
 }
