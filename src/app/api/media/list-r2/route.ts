@@ -83,28 +83,36 @@ const filenameToTitle = (filename: string) =>
 
 // ─── Fetch All R2 Objects Directly ───────────────────────────
 async function listAllR2Videos(maxItems = 5000): Promise<{ key: string; size: number; date: Date }[]> {
-    const results: { key: string; size: number; date: Date }[] = [];
-    let token: string | undefined;
-    try {
-        do {
-            const res = await s3.send(new ListObjectsV2Command({
-                Bucket: BUCKET, MaxKeys: 1000, ContinuationToken: token,
-            }));
-            for (const obj of res.Contents || []) {
-                if (!obj.Key || obj.Key.endsWith('/')) continue;
-                const isVideo = /\.(mp4|mov|webm|m4v|avi|3gp|mkv)$/i.test(obj.Key) ||
-                    (obj.Key.includes('/videos/') && !/\.(jpg|jpeg|png|webp|gif|svg|pdf|doc|txt)$/i.test(obj.Key));
-                if (isVideo) {
-                    results.push({ key: obj.Key, size: obj.Size || 0, date: obj.LastModified || new Date() });
+    const candidateBuckets = Array.from(new Set([BUCKET, 'el7lmplatform'].filter(Boolean)));
+    
+    for (const b of candidateBuckets) {
+        try {
+            const results: { key: string; size: number; date: Date }[] = [];
+            let token: string | undefined;
+            do {
+                const res = await s3.send(new ListObjectsV2Command({
+                    Bucket: b, MaxKeys: 1000, ContinuationToken: token,
+                }));
+                for (const obj of res.Contents || []) {
+                    if (!obj.Key || obj.Key.endsWith('/')) continue;
+                    const isVideo = /\.(mp4|mov|webm|m4v|avi|3gp|mkv)$/i.test(obj.Key) ||
+                        (obj.Key.includes('/videos/') && !/\.(jpg|jpeg|png|webp|gif|svg|pdf|doc|txt)$/i.test(obj.Key));
+                    if (isVideo) {
+                        results.push({ key: obj.Key, size: obj.Size || 0, date: obj.LastModified || new Date() });
+                    }
                 }
+                token = res.IsTruncated ? res.NextContinuationToken : undefined;
+                if (results.length >= maxItems) break;
+            } while (token);
+
+            if (results.length > 0) {
+                return results;
             }
-            token = res.IsTruncated ? res.NextContinuationToken : undefined;
-            if (results.length >= maxItems) break;
-        } while (token);
-    } catch (s3Err: any) {
-        console.error('[list-r2] Cloudflare R2 listing error:', s3Err?.message || s3Err);
+        } catch (s3Err: any) {
+            console.error(`[list-r2] Cloudflare R2 listing error for bucket "${b}":`, s3Err?.message || s3Err);
+        }
     }
-    return results;
+    return [];
 }
 
 // ─── Execute Fetch Core With Protection ───────────────────────
@@ -284,23 +292,30 @@ export async function GET(req: NextRequest) {
     if (!authorization.ok) return authorization.response;
 
     try {
-        // 1. التحقق من الكاش الساري
-        const cached = getCachedMedia(3 * 60 * 1000);
-        if (cached) {
-            return NextResponse.json({
-                success: true,
-                items: cached.items,
-                total: cached.total,
-                cached: true,
-            });
+        const isBust = req.nextUrl.searchParams.get('refresh') === '1' || req.nextUrl.searchParams.get('refresh') === 'true';
+
+        // 1. التحقق من الكاش الساري (إذا لم يكن هناك طلب تحديث قسري)
+        if (!isBust) {
+            const cached = getCachedMedia(3 * 60 * 1000);
+            if (cached && cached.items && cached.items.length > 0) {
+                return NextResponse.json({
+                    success: true,
+                    items: cached.items,
+                    total: cached.total,
+                    cached: true,
+                });
+            }
         }
 
         // 2. دمج الطلبات المتزامنة لمنع تكرار الاستعلامات
         let fetchPromise = getInFlightFetch();
-        if (!fetchPromise) {
+        if (!fetchPromise || isBust) {
             fetchPromise = fetchMediaData()
                 .then(result => {
-                    setCachedMedia(result.items, result.total);
+                    // فقط نخزن بالكاش إذا توفرت بيانات حقيقية لتجنب قفل الكاش على نتائج فارغة
+                    if (result.items && result.items.length > 0) {
+                        setCachedMedia(result.items, result.total);
+                    }
                     setInFlightFetch(null);
                     return result;
                 })
@@ -308,7 +323,7 @@ export async function GET(req: NextRequest) {
                     setInFlightFetch(null);
                     console.error('[list-r2] In-flight fetch error:', err);
                     const stale = getStaleCachedMedia();
-                    if (stale) return { items: stale.items, total: stale.total };
+                    if (stale && stale.items && stale.items.length > 0) return { items: stale.items, total: stale.total };
                     return { items: [], total: 0 };
                 });
             setInFlightFetch(fetchPromise);

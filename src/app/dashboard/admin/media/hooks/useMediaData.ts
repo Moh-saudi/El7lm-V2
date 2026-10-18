@@ -43,11 +43,12 @@ export function useMediaData() {
     const [lastFetched, setLastFetched] = useState<Date | null>(null);
 
     // ── جلب كل الميديا من R2 و Supabase ──────────────────────
-    const fetchAll = useCallback(async () => {
+    const fetchAll = useCallback(async (forceRefresh = false) => {
         setLoading(true);
         setError(null);
         try {
-            const res  = await authenticatedFetch('/api/media/list-r2', { cache: 'no-store' });
+            const url = forceRefresh ? '/api/media/list-r2?refresh=1' : '/api/media/list-r2';
+            const res  = await authenticatedFetch(url, { cache: 'no-store' });
             const data = await res.json();
             if (!data.success) throw new Error(data.error || 'فشل جلب البيانات');
 

@@ -264,7 +264,7 @@ export default function MediaPage() {
         <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col selection:bg-emerald-500 selection:text-white" dir="rtl">
 
             <MediaHeader
-                onRefresh={fetchAll}
+                onRefresh={() => fetchAll(true)}
                 loading={loading}
                 lastFetched={lastFetched}
             />
