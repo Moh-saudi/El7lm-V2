@@ -69,8 +69,8 @@ function getScoreTier(ovr: number) {
     return { label: 'تحت التطوير', textCls: 'text-slate-300', bgCls: 'bg-slate-700/30 border-slate-600 text-slate-300' };
 }
 
-// ── توليد التقرير الكشفي بصيغة Wyscout الاحترافية المعتمدة ──
-function generateWyscoutReport(
+// ── توليد التقرير الكشفي المعتمد لمنصة الحلم (El7lm Pro Scouting Dossier) ──
+function generateEl7lmDossier(
     item: MediaItem,
     skills: FootballSkills,
     overallScore: number,
@@ -91,7 +91,7 @@ function generateWyscoutReport(
         ? areas.map((d, i) => `${i + 1}. ${d}`).join('\n')
         : '1. رفع الكثافة البدنية في الالتحامات القوية\n2. دقة إنهاء الكرات تحت الضغط العالي';
 
-    return `📋 تقرير التقييم الكشفي المعتمد — منصة الحلم (معايير WYSCOUT & OPТА)
+    return `📋 تقرير التقييم الكشفي المعتمد — منصة الحلم (El7lm Pro Scouting Dossier)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 👤 بيانات اللاعب الأساسية:
 • اسم اللاعب: ${item.userName}
@@ -102,7 +102,7 @@ function generateWyscoutReport(
 • القدم المفضلة: ${dominantFoot}
 • التقييم الكروي الإجمالي: ${overallScore} OVR (${tier})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 مصفوفة المهارات الكروية (EA/Wyscout 100 Matrix):
+📊 مصفوفة الحلم للأداء الكروي (El7lm 100 Performance Matrix):
 ⚡ السرعة والتسارع (PAC): ${skills.pace}/100
 ⚽ التسديد وإنهاء الهجمات (SHO): ${skills.shooting}/100
 🎯 التمرير وصناعة اللعب (PAS): ${skills.passing}/100
@@ -123,7 +123,7 @@ ${notes.trim() || 'لاعب واعد يمتلك أساسيات فنية ممتا
 ${analysisText.trim() || 'أظهر اللاعب مرونة حركية عالية واستيعاباً لمجريات اللعب أثناء فحص اللقطات المسجلة.'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📅 تاريخ التحليل: ${today}
-🏷️ جهة التقييم: استوديو الأداء الرياضي الذكي — منصة الحلم (Nisr AI + Performance Scout)
+🏷️ جهة التقييم: استوديو الأداء الرياضي الذكي — منصة الحلم (El7lm AI Studio)
 🌐 بروفايل اللاعب: https://www.el7lm.com/profile/${item.userId}
 `.trim();
 }
@@ -188,11 +188,9 @@ export function MediaDrawer({
     const [deleting, setDeleting] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
 
-    // Collapsible Accordions & Report Tab
-    const [showContactInfo, setShowContactInfo] = useState(false);
-    const [showMessagePlayer, setShowMessagePlayer] = useState(false);
+    // ── Clean 3-Tab Segmented Workspace (Zero Bloat, Zero Crowding) ──
+    const [activeTab, setActiveTab] = useState<'matrix' | 'dossier' | 'contact'>('matrix');
     const [showFullAiReport, setShowFullAiReport] = useState(false);
-    const [showWyscoutDossier, setShowWyscoutDossier] = useState(true);
     const [copiedReport, setCopiedReport] = useState(false);
 
     // Free Tier Usage State (1,500 analyses / day)
@@ -358,10 +356,10 @@ export function MediaDrawer({
         });
     };
 
-    // ── نسخ تقرير Wyscout إلى الحافظة بنقرة واحدة ──────────────
-    const handleCopyWyscout = async () => {
+    // ── نسخ التقرير الكشفي المعتمد إلى الحافظة بنقرة واحدة ─────────
+    const handleCopyDossier = async () => {
         if (!item) return;
-        const text = generateWyscoutReport(
+        const text = generateEl7lmDossier(
             item,
             skills,
             calculatedOverall,
@@ -375,17 +373,17 @@ export function MediaDrawer({
         try {
             await navigator.clipboard.writeText(text);
             setCopiedReport(true);
-            toast.success('تم نسخ تقرير Wyscout الاحترافي للحافظة بنجاح! 📋');
+            toast.success('تم نسخ التقرير الكشفي المعتمد لمنصة الحلم بنجاح! 📋');
             setTimeout(() => setCopiedReport(false), 3000);
         } catch {
             toast.error('تعذر النسخ التلقائي للحافظة');
         }
     };
 
-    // ── مشاركة تقرير Wyscout عبر واتساب مباشرة للأندية ─────────
+    // ── مشاركة التقرير الكشفي المعتمد عبر واتساب مباشرة للأندية ────
     const handleShareWhatsApp = () => {
         if (!item) return;
-        const text = generateWyscoutReport(
+        const text = generateEl7lmDossier(
             item,
             skills,
             calculatedOverall,
@@ -504,7 +502,7 @@ export function MediaDrawer({
             }
 
             onAIResult(item.id, data.analysis, data.rating);
-            toast.success('اكتمل التحليل الكروي الذكي وتم ملء درجات المهارات وبطاقة Wyscout!');
+            toast.success('اكتمل التحليل الكروي الذكي وتم ملء درجات المهارات والتقرير الكشفي!');
 
         } catch (e: any) {
             setAiError(e.message || 'خطأ أثناء تشغيل التحليل');
@@ -589,7 +587,6 @@ export function MediaDrawer({
             if (!res.ok || !data.success) throw new Error(data.error || 'فشل الإرسال');
             toast.success(`تم إرسال الإشعار إلى هاتف ${item.userName}`);
             setMessage('');
-            setShowMessagePlayer(false);
         } catch (e: any) {
             toast.error('فشل إرسال الرسالة: ' + e.message);
         } finally {
@@ -607,7 +604,7 @@ export function MediaDrawer({
         return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
 
-    const currentWyscoutReportText = generateWyscoutReport(
+    const currentDossierText = generateEl7lmDossier(
         item,
         skills,
         calculatedOverall,
@@ -1001,9 +998,59 @@ export function MediaDrawer({
                         {/* ─────────────────────────────────────────────────────────────
                             COLUMN 2: SCOUTING & PERFORMANCE CONSOLE (5 Cols = ~40%)
                         ───────────────────────────────────────────────────────────── */}
-                        <div className="lg:col-span-5 xl:col-span-5 flex flex-col min-h-0 bg-slate-900/50">
+                        <div className="lg:col-span-5 xl:col-span-5 flex flex-col min-h-0 bg-slate-900/60 border-r border-slate-800">
+                            {/* ── TOP SEGMENTED TAB SWITCHER (3 TABS) ── */}
+                            <div className="p-3 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between gap-2 flex-shrink-0">
+                                <div className="grid grid-cols-3 gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800 w-full">
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('matrix')}
+                                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                            activeTab === 'matrix'
+                                                ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+                                                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                                        }`}
+                                    >
+                                        <Sliders className="w-3.5 h-3.5" />
+                                        <span>مصفوفة المهارات</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('dossier')}
+                                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer relative ${
+                                            activeTab === 'dossier'
+                                                ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+                                                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                                        }`}
+                                    >
+                                        <FileText className="w-3.5 h-3.5" />
+                                        <span>الملف الكشفي المعتمد</span>
+                                        {aiText && (
+                                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-0.5" />
+                                        )}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab('contact')}
+                                        className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                            activeTab === 'contact'
+                                                ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+                                                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                                        }`}
+                                    >
+                                        <User className="w-3.5 h-3.5" />
+                                        <span>التواصل والإشعار</span>
+                                    </button>
+                                </div>
+                            </div>
+
                             {/* Scrollable Evaluation Body */}
                             <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4">
+
+                                {activeTab === 'matrix' && (
+                                    <>
 
                                 {/* 1. AI Gemini Assistant Header with Real-Time Free Tier Gauge */}
                                 <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-emerald-950 border border-indigo-500/30 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden">
@@ -1218,196 +1265,186 @@ export function MediaDrawer({
                                     </div>
                                 </div>
 
-                                {/* 4. 📋 WYSCOUT PROFESSIONAL REPORT & ONE-CLICK COPY DOSSIER */}
-                                <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-emerald-500/30 rounded-2xl p-4 shadow-xl space-y-3">
-                                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                                                <FileText className="w-3.5 h-3.5" />
-                                            </div>
-                                            <div>
-                                                <h3 className="text-xs font-black text-white">ملف الكشاف المعتمد (Wyscout / InStat Dossier)</h3>
-                                                <p className="text-[10px] text-slate-400">تقرير نصي احترافي جاهز للنسخ والإرسال الفوري</p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-1.5">
-                                            <Button
-                                                onClick={handleShareWhatsApp}
-                                                size="sm"
-                                                variant="outline"
-                                                className="h-8 px-2.5 text-[11px] font-bold border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 gap-1 cursor-pointer"
-                                                title="مشاركة التقرير عبر واتساب للأندية والوكلاء"
-                                            >
-                                                <Share2 className="w-3.5 h-3.5" />
-                                                <span className="hidden sm:inline">واتساب</span>
-                                            </Button>
-
-                                            <Button
-                                                onClick={handleCopyWyscout}
-                                                size="sm"
-                                                className={`h-8 px-3 text-xs font-black gap-1.5 transition-all cursor-pointer shadow-md ${
-                                                    copiedReport
-                                                        ? 'bg-emerald-600 text-white'
-                                                        : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
-                                                }`}
-                                            >
-                                                {copiedReport ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                                                <span>{copiedReport ? 'تم النسخ!' : 'نسخ تقرير Wyscout 📋'}</span>
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                    {/* Wyscout Dossier Preview Box */}
-                                    <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 text-[11px] font-mono text-slate-300 leading-relaxed whitespace-pre-line max-h-56 overflow-y-auto custom-scrollbar select-all">
-                                        {currentWyscoutReportText}
-                                    </div>
-                                </div>
-
-                                {/* 5. Tactical Strengths & Development Areas */}
-                                {(tacticalStrengths.length > 0 || developmentAreas.length > 0) && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {tacticalStrengths.length > 0 && (
-                                            <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-3">
-                                                <p className="text-[11px] font-bold text-emerald-400 mb-1.5 flex items-center gap-1">
-                                                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> نقاط القوة التكتيكية:
-                                                </p>
-                                                <div className="flex flex-wrap gap-1">
-                                                    {tacticalStrengths.map((str, idx) => (
-                                                        <span key={idx} className="bg-emerald-500/15 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-500/30">
-                                                            {str}
-                                                        </span>
-                                                    ))}
+                                        {/* Performance Analyst Technical Recommendation & Notes */}
+                                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-1.5">
+                                                    <Award className="w-4 h-4 text-emerald-400" />
+                                                    <h4 className="text-xs font-black text-white">توصيات وملاحظات الكشاف المعتمد</h4>
                                                 </div>
+                                                <span className="text-[10px] text-slate-400">تظهر في تقرير اللاعب والبروفايل</span>
                                             </div>
-                                        )}
-
-                                        {developmentAreas.length > 0 && (
-                                            <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-3">
-                                                <p className="text-[11px] font-bold text-amber-400 mb-1.5 flex items-center gap-1">
-                                                    <Target className="w-3.5 h-3.5 text-amber-400" /> جوانب بحاجة لتطوير:
-                                                </p>
-                                                <div className="flex flex-wrap gap-1">
-                                                    {developmentAreas.map((dev, idx) => (
-                                                        <span key={idx} className="bg-amber-500/15 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-500/30">
-                                                            {dev}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
+                                            <Textarea
+                                                rows={3}
+                                                value={analystNotes}
+                                                onChange={e => setAnalystNotes(e.target.value)}
+                                                placeholder="اكتب التوصيات الفنية أو الملاحظات التكتيكية التي تريد توجيهها للاعب والأندية..."
+                                                className="text-xs bg-slate-950 border-slate-800 text-slate-200 leading-relaxed resize-none focus:border-emerald-500"
+                                            />
+                                        </div>
+                                    </>
                                 )}
 
-                                {/* 6. Performance Analyst Technical Report & Notes */}
-                                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1.5">
-                                            <Award className="w-4 h-4 text-emerald-400" />
-                                            <h4 className="text-xs font-black text-white">تعديل توصية وملاحظات محلل الأداء</h4>
-                                        </div>
-                                        <span className="text-[10px] text-slate-400">تظهر في تقرير اللاعب والـ Wyscout</span>
-                                    </div>
-                                    <Textarea
-                                        rows={3}
-                                        value={analystNotes}
-                                        onChange={e => setAnalystNotes(e.target.value)}
-                                        placeholder="اكتب التوصيات الفنية أو الملاحظات التكتيكية التي تريد توجيهها للاعب والمدربين..."
-                                        className="text-xs bg-slate-950 border-slate-800 text-slate-200 leading-relaxed resize-none focus:border-emerald-500"
-                                    />
-                                    {aiText && (
-                                        <div className="pt-1">
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowFullAiReport(prev => !prev)}
-                                                className="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer"
-                                            >
-                                                <span>{showFullAiReport ? 'إخفاء تقرير Gemini المفصل' : 'عرض التقرير المفصل الصادر من الذكاء الاصطناعي (Gemini)'}</span>
-                                                {showFullAiReport ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                                            </button>
-                                            {showFullAiReport && (
-                                                <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 mt-2 text-slate-300 leading-relaxed text-[11px] whitespace-pre-line max-h-48 overflow-y-auto">
-                                                    {aiText}
+                                {/* ==============================================================
+                                    TAB 2: EL7LM PRO SCOUTING DOSSIER (الملف الكشفي المعتمد)
+                                ============================================================== */}
+                                {activeTab === 'dossier' && (
+                                    <>
+                                        <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-emerald-500/30 rounded-2xl p-4 shadow-xl space-y-3">
+                                            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                                        <FileText className="w-4 h-4" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-xs font-black text-white">ملف الكشاف المعتمد — منصة الحلم</h3>
+                                                        <p className="text-[10px] text-slate-400">El7lm Pro Scouting Dossier</p>
+                                                    </div>
                                                 </div>
-                                            )}
+
+                                                <div className="flex items-center gap-1.5">
+                                                    <Button
+                                                        onClick={handleShareWhatsApp}
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="h-8 px-2.5 text-[11px] font-bold border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 gap-1 cursor-pointer"
+                                                        title="مشاركة التقرير عبر واتساب للأندية والوكلاء"
+                                                    >
+                                                        <Share2 className="w-3.5 h-3.5" />
+                                                        <span className="hidden sm:inline">واتساب للأندية</span>
+                                                    </Button>
+
+                                                    <Button
+                                                        onClick={handleCopyDossier}
+                                                        size="sm"
+                                                        className={`h-8 px-3 text-xs font-black gap-1.5 transition-all cursor-pointer shadow-md ${
+                                                            copiedReport
+                                                                ? 'bg-emerald-600 text-white'
+                                                                : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
+                                                        }`}
+                                                    >
+                                                        {copiedReport ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                                        <span>{copiedReport ? 'تم النسخ!' : 'نسخ التقرير الكشفي 📋'}</span>
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            {/* El7lm Dossier Preview Monospace Box */}
+                                            <div className="bg-slate-950/95 border border-slate-800 rounded-xl p-3.5 text-xs font-mono text-slate-200 leading-relaxed whitespace-pre-line max-h-80 overflow-y-auto custom-scrollbar select-all shadow-inner">
+                                                {currentDossierText}
+                                            </div>
                                         </div>
-                                    )}
-                                </div>
 
-                                {/* 7. Collapsible Accordion: Media Info & Direct Contact */}
-                                <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowContactInfo(prev => !prev)}
-                                        className="w-full px-4 py-3 flex items-center justify-between text-xs font-bold text-slate-200 hover:bg-slate-850 cursor-pointer"
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            <Info className="w-3.5 h-3.5 text-indigo-400" />
-                                            <span>تفاصيل الوسيط وقنوات الاتصال المباشر</span>
-                                        </span>
-                                        {showContactInfo ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                                    </button>
+                                        {/* Tactical Strengths & Development Areas */}
+                                        {(tacticalStrengths.length > 0 || developmentAreas.length > 0) && (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                {tacticalStrengths.length > 0 && (
+                                                    <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-3">
+                                                        <p className="text-[11px] font-bold text-emerald-400 mb-1.5 flex items-center gap-1">
+                                                            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> نقاط القوة التكتيكية:
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {tacticalStrengths.map((str, idx) => (
+                                                                <span key={idx} className="bg-emerald-500/15 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-500/30">
+                                                                    {str}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
 
-                                    {showContactInfo && (
-                                        <div className="p-4 pt-1 border-t border-slate-800/80 space-y-3">
-                                            <div className="bg-slate-950 rounded-xl p-3 space-y-2 text-xs">
-                                                {item.userPhone && (
+                                                {developmentAreas.length > 0 && (
+                                                    <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-3">
+                                                        <p className="text-[11px] font-bold text-amber-400 mb-1.5 flex items-center gap-1">
+                                                            <Target className="w-3.5 h-3.5 text-amber-400" /> جوانب بحاجة لتطوير:
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {developmentAreas.map((dev, idx) => (
+                                                                <span key={idx} className="bg-amber-500/15 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-500/30">
+                                                                    {dev}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* AI Detailed Breakdown */}
+                                        {aiText && (
+                                            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowFullAiReport(prev => !prev)}
+                                                    className="w-full text-xs text-emerald-400 hover:text-emerald-300 font-bold flex items-center justify-between cursor-pointer"
+                                                >
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Sparkles className="w-3.5 h-3.5" />
+                                                        <span>عرض التقرير الفني المفصل المستخرج بالذكاء الاصطناعي</span>
+                                                    </span>
+                                                    {showFullAiReport ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                                </button>
+                                                {showFullAiReport && (
+                                                    <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 mt-2 text-slate-300 leading-relaxed text-xs whitespace-pre-line max-h-56 overflow-y-auto">
+                                                        {aiText}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
+                                {/* ==============================================================
+                                    TAB 3: CONTACT & NOTIFICATION (التواصل وإشعار اللاعب)
+                                ============================================================== */}
+                                {activeTab === 'contact' && (
+                                    <>
+                                        {/* Player Direct Contact Card */}
+                                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                                            <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+                                                <User className="w-4 h-4 text-emerald-400" />
+                                                <h4 className="text-xs font-black text-white">قنوات التواصل المباشر مع اللاعب</h4>
+                                            </div>
+
+                                            <div className="bg-slate-950 rounded-xl p-3.5 space-y-2.5 text-xs">
+                                                {item.userPhone ? (
                                                     <div className="flex items-center justify-between text-slate-300">
-                                                        <span className="flex items-center gap-2">
+                                                        <span className="flex items-center gap-2 font-mono">
                                                             <Phone className="w-3.5 h-3.5 text-slate-500" /> {item.userPhone}
                                                         </span>
                                                         <a
                                                             href={`https://wa.me/${item.userPhone.replace(/\D/g, '')}`}
                                                             target="_blank"
                                                             rel="noreferrer"
-                                                            className="text-[11px] font-bold text-emerald-400 hover:underline"
+                                                            className="text-xs font-bold text-emerald-400 hover:underline flex items-center gap-1"
                                                         >
-                                                            مراسلة عبر واتساب 💬
+                                                            <span>مراسلة واتساب 💬</span>
                                                         </a>
                                                     </div>
+                                                ) : (
+                                                    <p className="text-slate-500 text-xs">لا يوجد رقم هاتف مسجل</p>
                                                 )}
+
                                                 {item.userEmail && (
                                                     <div className="flex items-center gap-2 text-slate-300">
                                                         <Mail className="w-3.5 h-3.5 text-slate-500" />
-                                                        <span>{item.userEmail}</span>
+                                                        <span className="font-mono">{item.userEmail}</span>
                                                     </div>
                                                 )}
-                                            </div>
 
-                                            {/* Delete Action */}
-                                            <div className="flex items-center justify-between pt-1">
-                                                <span className="text-[11px] text-slate-400">إزالة الوسيط من المنصة:</span>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={handleDelete}
-                                                    disabled={deleting}
-                                                    className="border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs font-bold h-8"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5 ml-1" />
-                                                    {confirmDelete ? 'تأكيد الحذف النهائي؟' : 'حذف الوسيط'}
-                                                </Button>
+                                                <div className="pt-1 text-[11px] text-slate-400 border-t border-slate-900 flex items-center justify-between">
+                                                    <span>النادي / الأكاديمية:</span>
+                                                    <span className="text-white font-bold">{item.organization || 'لاعب حر'}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    )}
-                                </div>
 
-                                {/* 8. Collapsible Accordion: Direct Message to Player */}
-                                <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowMessagePlayer(prev => !prev)}
-                                        className="w-full px-4 py-3 flex items-center justify-between text-xs font-bold text-slate-200 hover:bg-slate-850 cursor-pointer"
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            <MessageSquare className="w-3.5 h-3.5 text-teal-400" />
-                                            <span>إرسال إشعار فوري لهاتف اللاعب</span>
-                                        </span>
-                                        {showMessagePlayer ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                                    </button>
-
-                                    {showMessagePlayer && (
-                                        <div className="p-4 pt-1 border-t border-slate-800/80 space-y-3">
+                                        {/* Instant Mobile Notification Box */}
+                                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                                            <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+                                                <MessageSquare className="w-4 h-4 text-teal-400" />
+                                                <h4 className="text-xs font-black text-white">إرسال إشعار فوري لهاتف اللاعب</h4>
+                                            </div>
                                             <p className="text-[11px] text-slate-400">
                                                 يصل الإشعار فوراً في شريط إشعارات الهاتف لـ ({item.userName}).
                                             </p>
@@ -1427,8 +1464,26 @@ export function MediaDrawer({
                                                 <span>{sendingMsg ? 'جاري الإرسال...' : 'إرسال الإشعار لهاتف اللاعب'}</span>
                                             </Button>
                                         </div>
-                                    )}
-                                </div>
+
+                                        {/* Danger Zone: Delete Video */}
+                                        <div className="bg-rose-950/20 border border-rose-500/20 rounded-2xl p-4 flex items-center justify-between">
+                                            <div>
+                                                <p className="text-xs font-bold text-rose-300">حذف هذا الفيديو</p>
+                                                <p className="text-[10px] text-rose-400/70">إزالة ملف الفيديو والبيانات المرتبطة نهائياً من الخادم</p>
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={handleDelete}
+                                                disabled={deleting}
+                                                className="border border-rose-500/40 text-rose-400 hover:bg-rose-500/20 text-xs font-bold h-8.5 cursor-pointer"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5 ml-1" />
+                                                {confirmDelete ? 'تأكيد الحذف النهائي؟' : 'حذف الفيديو'}
+                                            </Button>
+                                        </div>
+                                    </>
+                                )}
 
                             </div>
 
