@@ -251,17 +251,17 @@ export default function MediaPage() {
     // ─── Guard ────────────────────────────────────────────────
     if (!can('read', 'media')) return <AccessDenied resource="مركز الوسائط" />;
     if (error) return (
-        <div className="flex items-center justify-center min-h-screen bg-slate-950 text-white" dir="rtl">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-8 max-w-lg text-center space-y-3">
-                <p className="text-rose-400 font-bold text-lg">فشل تحميل الوسائط</p>
-                <p className="text-slate-400 text-sm font-mono">{error}</p>
+        <div className="flex items-center justify-center min-h-screen bg-slate-50 text-slate-900" dir="rtl">
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-xl p-8 max-w-lg text-center space-y-3">
+                <p className="text-rose-600 font-bold text-lg">فشل تحميل الوسائط</p>
+                <p className="text-slate-500 text-sm font-mono">{error}</p>
                 <button onClick={fetchAll} className="mt-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-500 cursor-pointer">إعادة المحاولة</button>
             </div>
         </div>
     );
 
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-slate-950" dir="rtl">
+        <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col selection:bg-emerald-500 selection:text-white" dir="rtl">
 
             <MediaHeader
                 onRefresh={fetchAll}
@@ -323,20 +323,20 @@ export default function MediaPage() {
                 totalCount={filtered.length}
             />
 
-            {/* ── Floating Bulk Action Bar ───────────────────── */}
+            {/* ── Floating Bulk Action Bar (Daylight) ───────────────────── */}
             {selectedIds.size > 0 && (
                 <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2
-                    bg-slate-900 text-white rounded-2xl shadow-2xl px-4 py-3 border border-slate-700"
+                    bg-white text-slate-900 rounded-2xl shadow-2xl px-4 py-3 border border-slate-300 ring-1 ring-slate-900/5"
                     dir="rtl"
                 >
-                    <span className="text-sm font-bold text-slate-200 pl-2 border-l border-slate-700 ml-2">
+                    <span className="text-sm font-bold text-slate-800 pl-2 border-l border-slate-200 ml-2">
                         {selectedIds.size} محدد
                     </span>
 
                     <button
                         onClick={() => handleBulkUpdate('approved')}
                         disabled={bulkLoading}
-                        className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                        className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer shadow-xs"
                     >
                         <CheckCircle className="w-4 h-4" /> اعتماد الكل
                     </button>
@@ -344,7 +344,7 @@ export default function MediaPage() {
                     <button
                         onClick={() => handleBulkUpdate('rejected')}
                         disabled={bulkLoading}
-                        className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                        className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer shadow-xs"
                     >
                         <XCircle className="w-4 h-4" /> رفض الكل
                     </button>
@@ -352,14 +352,14 @@ export default function MediaPage() {
                     <button
                         onClick={() => handleBulkUpdate('flagged')}
                         disabled={bulkLoading}
-                        className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer"
+                        className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer shadow-xs"
                     >
                         <Flag className="w-4 h-4" /> تنبيه الكل
                     </button>
 
                     <button
                         onClick={() => setSelectedIds(new Set())}
-                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 rounded-xl transition-colors cursor-pointer"
+                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
                         title="إلغاء التحديد"
                     >
                         <X className="w-4 h-4" />

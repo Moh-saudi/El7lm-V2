@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { MediaItem, detectMediaSource } from '../types';
 import {
     Play, Pause, FastForward, Rewind, ZoomIn,
-    Volume2, VolumeX, Film, Cloud, PlaySquare,
-    Music2, Globe, ExternalLink
+    Volume2, VolumeX, Film, PlaySquare,
+    Globe, ExternalLink
 } from 'lucide-react';
 import { formatTime } from './studio-utils';
 
@@ -88,7 +88,7 @@ export function VideoPlayer({ item }: Props) {
 
     return (
         <div className="flex flex-col min-h-0 bg-slate-950 relative h-full">
-            {/* Video Viewport */}
+            {/* Video Viewport (Black letterboxed canvas for video aspect ratio) */}
             <div className="flex-1 relative flex items-center justify-center bg-black overflow-hidden group select-none">
                 {item.type === 'video' ? (
                     (() => {
@@ -102,10 +102,10 @@ export function VideoPlayer({ item }: Props) {
                                         preload="auto"
                                         onClick={togglePlay}
                                         onTimeUpdate={() => {
-                                            if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
+                                             if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
                                         }}
                                         onLoadedMetadata={() => {
-                                            if (videoRef.current) setDuration(videoRef.current.duration);
+                                             if (videoRef.current) setDuration(videoRef.current.duration);
                                         }}
                                         onEnded={() => setIsPlaying(false)}
                                         style={{
@@ -123,7 +123,7 @@ export function VideoPlayer({ item }: Props) {
                                         </div>
                                     )}
                                     {zoomLevel > 1 && (
-                                        <div className="absolute top-3 left-3 bg-slate-900/90 border border-slate-700 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-md pointer-events-none">
+                                        <div className="absolute top-3 left-3 bg-white/95 border border-slate-300 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md shadow-md pointer-events-none">
                                             تكبير {zoomLevel}x
                                         </div>
                                     )}
@@ -142,9 +142,9 @@ export function VideoPlayer({ item }: Props) {
                                     allowFullScreen
                                 />
                             ) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-6 text-center">
-                                    <PlaySquare className="w-12 h-12 text-red-500" />
-                                    <a href={item.url} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline text-sm font-bold">
+                                <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-6 text-center bg-white text-slate-900">
+                                    <PlaySquare className="w-12 h-12 text-red-600" />
+                                    <a href={item.url} target="_blank" rel="noreferrer" className="text-emerald-700 hover:underline text-sm font-bold">
                                         فتح الفيديو في منصة YouTube ↗
                                     </a>
                                 </div>
@@ -152,14 +152,14 @@ export function VideoPlayer({ item }: Props) {
                         }
 
                         return (
-                            <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-6 text-center">
-                                <Globe className="w-12 h-12 text-sky-400" />
-                                <p className="text-white/80 text-sm font-semibold">فيديو عبر رابط خارجي</p>
+                            <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-6 text-center bg-white text-slate-900">
+                                <Globe className="w-12 h-12 text-sky-600" />
+                                <p className="text-slate-700 text-sm font-semibold">فيديو عبر رابط خارجي</p>
                                 <a
                                     href={item.url}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow"
+                                    className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs"
                                 >
                                     مشاهدة الرابط الأصلي <ExternalLink className="w-3.5 h-3.5" />
                                 </a>
@@ -177,11 +177,11 @@ export function VideoPlayer({ item }: Props) {
                 )}
             </div>
 
-            {/* HUD Controls (only for direct stored videos) */}
+            {/* HUD Controls (Daylight theme) */}
             {item.type === 'video' && detectedSource === 'direct' && (
-                <div className="bg-slate-900/95 border-t border-slate-800 p-3 space-y-2 flex-shrink-0">
+                <div className="bg-white border-t border-slate-200 p-3 space-y-2 flex-shrink-0">
                     {/* Timeline Scrubber */}
-                    <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
+                    <div className="flex items-center gap-2 text-[11px] font-mono text-slate-600 font-bold">
                         <span className="w-10 text-left">{formatTime(currentTime)}</span>
                         <input
                             type="range"
@@ -190,7 +190,7 @@ export function VideoPlayer({ item }: Props) {
                             step="0.1"
                             value={currentTime}
                             onChange={e => handleSeek(parseFloat(e.target.value))}
-                            className="flex-1 h-1.5 accent-emerald-500 bg-slate-800 rounded-lg cursor-pointer"
+                            className="flex-1 h-1.5 accent-emerald-600 bg-slate-200 rounded-lg cursor-pointer"
                         />
                         <span className="w-10 text-right">{formatTime(duration)}</span>
                     </div>
@@ -202,23 +202,23 @@ export function VideoPlayer({ item }: Props) {
                             <Button
                                 variant="ghost" size="sm"
                                 onClick={togglePlay}
-                                className="h-8 px-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-lg gap-1.5 cursor-pointer"
+                                className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg gap-1.5 cursor-pointer shadow-xs"
                             >
-                                {isPlaying ? <Pause className="w-4 h-4 text-emerald-400" /> : <Play className="w-4 h-4 fill-emerald-400 text-emerald-400" />}
+                                {isPlaying ? <Pause className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 fill-white" />}
                                 <span className="text-xs">{isPlaying ? 'إيقاف' : 'تشغيل'}</span>
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleSeek(currentTime - 5)} className="w-8 h-8 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg cursor-pointer" title="رجوع 5 ثوانٍ">
+                            <Button variant="ghost" size="icon" onClick={() => handleSeek(currentTime - 5)} className="w-8 h-8 text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer border border-slate-200" title="رجوع 5 ثوانٍ">
                                 <Rewind className="w-3.5 h-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleSeek(currentTime + 5)} className="w-8 h-8 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg cursor-pointer" title="تقديم 5 ثوانٍ">
+                            <Button variant="ghost" size="icon" onClick={() => handleSeek(currentTime + 5)} className="w-8 h-8 text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer border border-slate-200" title="تقديم 5 ثوانٍ">
                                 <FastForward className="w-3.5 h-3.5" />
                             </Button>
                             {/* Frame Stepper */}
-                            <div className="hidden sm:flex items-center border border-slate-800 rounded-lg overflow-hidden ml-1">
-                                <button onClick={() => handleStepFrame(-1)} className="px-2 py-1 text-[10px] text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer" title="إطار للخلف">
+                            <div className="hidden sm:flex items-center border border-slate-300 rounded-lg overflow-hidden ml-1 bg-white">
+                                <button onClick={() => handleStepFrame(-1)} className="px-2 py-1 text-[10px] text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer" title="إطار للخلف">
                                     ◄ إطار
                                 </button>
-                                <button onClick={() => handleStepFrame(1)} className="px-2 py-1 text-[10px] text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer border-r border-slate-800" title="إطار للأمام">
+                                <button onClick={() => handleStepFrame(1)} className="px-2 py-1 text-[10px] text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer border-r border-slate-300" title="إطار للأمام">
                                     إطار ►
                                 </button>
                             </div>
@@ -226,13 +226,13 @@ export function VideoPlayer({ item }: Props) {
 
                         {/* Speed & Zoom */}
                         <div className="flex items-center gap-1.5">
-                            <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[10px]">
+                            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[10px]">
                                 {[0.25, 0.5, 1.0, 1.5].map(rate => (
                                     <button
                                         key={rate}
                                         onClick={() => handleSpeedChange(rate)}
                                         className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
-                                            playbackRate === rate ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                                            playbackRate === rate ? 'bg-emerald-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                                         }`}
                                     >
                                         {rate === 1.0 ? '1x' : `${rate}x`}
@@ -242,42 +242,42 @@ export function VideoPlayer({ item }: Props) {
                             <Button
                                 variant="ghost" size="sm"
                                 onClick={toggleZoom}
-                                className={`h-7 px-2 text-[10px] font-bold rounded-lg border border-slate-800 cursor-pointer ${
-                                    zoomLevel > 1 ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'text-slate-400 hover:text-white'
+                                className={`h-7 px-2 text-[10px] font-bold rounded-lg border border-slate-300 bg-white cursor-pointer ${
+                                    zoomLevel > 1 ? 'bg-amber-100 text-amber-900 border-amber-300 font-black' : 'text-slate-700 hover:bg-slate-100'
                                 }`}
                                 title="تكبير اللقطة"
                             >
                                 <ZoomIn className="w-3 h-3 ml-1" />
                                 <span>{zoomLevel}x</span>
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={toggleMute} className="w-7 h-7 text-slate-400 hover:text-white rounded-lg cursor-pointer">
-                                {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5" />}
+                            <Button variant="ghost" size="icon" onClick={toggleMute} className="w-7 h-7 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
+                                {isMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-600" /> : <Volume2 className="w-3.5 h-3.5" />}
                             </Button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Video Metadata Ribbon */}
-            <div className="bg-slate-900 px-4 py-2.5 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 flex-shrink-0">
+            {/* Video Metadata Ribbon (Daylight) */}
+            <div className="bg-slate-50 px-4 py-2.5 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600 flex-shrink-0">
                 <div className="flex items-center gap-2 truncate">
-                    <Film className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                    <span className="font-bold text-white truncate">{item.title}</span>
-                    <span className="text-[10px] text-slate-400">• {item.category || 'فيديو مهارات'}</span>
+                    <Film className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                    <span className="font-bold text-slate-900 truncate">{item.title}</span>
+                    <span className="text-[10px] text-slate-500">• {item.category || 'فيديو مهارات'}</span>
                 </div>
-                <div className="flex items-center gap-3 text-[10px] text-slate-400 flex-shrink-0">
+                <div className="flex items-center gap-3 text-[10px] text-slate-600 flex-shrink-0">
                     {detectedSource === 'direct' && (
-                        <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-bold">
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-bold">
                             ☁️ رفع سحابي (R2)
                         </span>
                     )}
                     {detectedSource === 'youtube' && (
-                        <span className="bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded font-bold">
+                        <span className="bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded font-bold">
                             🔴 YouTube
                         </span>
                     )}
                     {detectedSource === 'tiktok' && (
-                        <span className="bg-slate-800 text-slate-200 border border-slate-700 px-2 py-0.5 rounded font-bold">
+                        <span className="bg-slate-100 text-slate-800 border border-slate-300 px-2 py-0.5 rounded font-bold">
                             🖤 TikTok
                         </span>
                     )}

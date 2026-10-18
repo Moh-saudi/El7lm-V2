@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { MediaItem, FootballSkills, detectMediaSource } from '../types';
 import {
     X, Maximize2, Minimize2, ChevronRight, ChevronLeft,
-    ExternalLink, Sliders, FileText, User, Cloud, PlaySquare,
-    Music2, ShieldCheck, Flag, XCircle, Eye, Sparkles, MessageSquareText
+    ExternalLink, Sliders, FileText, User, ShieldCheck,
+    Flag, XCircle, Eye, Sparkles, MessageSquareText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
@@ -202,13 +202,13 @@ export function StudioModal({
     return (
         <DialogPrimitive.Root open={!!item} onOpenChange={open => !open && onClose()}>
             <DialogPrimitive.Portal>
-                <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md transition-opacity animate-in fade-in duration-200" />
+                <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200" />
 
                 <DialogPrimitive.Content
-                    className={`fixed z-50 outline-none flex flex-col bg-slate-950 text-slate-100 border border-slate-800 shadow-2xl overflow-hidden duration-200 animate-in fade-in zoom-in-95 ${
+                    className={`fixed z-50 outline-none flex flex-col bg-white text-slate-900 border border-slate-200 shadow-2xl overflow-hidden duration-200 animate-in fade-in zoom-in-95 ${
                         isFullscreen
                             ? 'inset-0 rounded-none'
-                            : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[98vw] max-w-[1580px] h-[95vh] rounded-2xl md:rounded-3xl'
+                            : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[98vw] max-w-[1550px] h-[94vh] rounded-2xl md:rounded-3xl'
                     }`}
                     dir="rtl"
                 >
@@ -216,39 +216,39 @@ export function StudioModal({
                         {item.title} — استوديو تحليل أداء اللاعب
                     </DialogPrimitive.Title>
                     <DialogPrimitive.Description className="sr-only">
-                        استوديو الكشافة الفني وتحليل أداء اللاعبين بالذكاء الاصطناعي (Wyscout Edition)
+                        استوديو الكشافة الفني وتحليل أداء اللاعبين بالذكاء الاصطناعي
                     </DialogPrimitive.Description>
 
-                    {/* ═══ TOP TITANIUM COMMAND BAR ═══ */}
-                    <div className="bg-slate-900/90 border-b border-slate-800 px-5 py-3 flex items-center justify-between gap-3 flex-shrink-0 z-30">
+                    {/* ═══ TOP DAYLIGHT BAR ═══ */}
+                    <div className="bg-white border-b border-slate-200 px-5 py-3 flex items-center justify-between gap-3 flex-shrink-0 z-30">
                         {/* Player Identity */}
                         <div className="flex items-center gap-3 min-w-0">
                             <div className="relative flex-shrink-0">
-                                <div className="w-10 h-10 rounded-full p-0.5 bg-slate-800 border border-slate-700 shadow-md">
+                                <div className="w-10 h-10 rounded-full p-0.5 bg-slate-100 border border-slate-300 shadow-xs">
                                     {item.userImage ? (
-                                        <img src={item.userImage} alt={item.userName} className="w-full h-full rounded-full object-cover bg-slate-800" />
+                                        <img src={item.userImage} alt={item.userName} className="w-full h-full rounded-full object-cover bg-slate-100" />
                                     ) : (
-                                        <div className="w-full h-full rounded-full bg-slate-800 flex items-center justify-center font-black text-slate-300 text-sm">
+                                        <div className="w-full h-full rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-700 text-sm">
                                             {item.userName.charAt(0) || 'ل'}
                                         </div>
                                     )}
                                 </div>
-                                <span className="absolute -bottom-1 -right-1 bg-emerald-600 border border-slate-900 text-[9px] font-black text-white px-1.5 py-0.2 rounded-full shadow-xs">
+                                <span className="absolute -bottom-1 -right-1 bg-emerald-600 border border-white text-[9px] font-black text-white px-1.5 py-0.2 rounded-full shadow-xs">
                                     {calculatedOverall}
                                 </span>
                             </div>
                             <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <h2 className="font-black text-white text-sm truncate">{item.userName}</h2>
+                                    <h2 className="font-black text-slate-900 text-sm truncate">{item.userName}</h2>
                                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${STATUS_COLOR[item.status]}`}>
                                         {STATUS_LABEL[item.status]}
                                     </span>
-                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border bg-slate-800 text-slate-300 border-slate-700">
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md border bg-slate-100 text-slate-800 border-slate-200">
                                         {isGK ? '🧤 حارس مرمى' : (item.position || 'لاعب')}
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5 truncate">
-                                    {item.age && <span className="text-amber-400 font-bold">{item.age} سنة</span>}
+                                <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5 truncate">
+                                    {item.age && <span className="text-amber-700 font-bold">{item.age} سنة</span>}
                                     {item.country && <span>• {item.country}</span>}
                                     {item.organization && <span>• {item.organization}</span>}
                                 </div>
@@ -256,17 +256,17 @@ export function StudioModal({
                         </div>
 
                         {/* Queue Navigator */}
-                        <div className="hidden md:flex items-center gap-2 bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-1">
+                        <div className="hidden md:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1">
                             <Button
                                 variant="ghost" size="sm"
                                 onClick={onPrev}
                                 disabled={!hasPrev}
-                                className="h-7 px-2 text-xs font-bold text-slate-400 hover:text-white disabled:opacity-30 gap-1 cursor-pointer"
+                                className="h-7 px-2 text-xs font-bold text-slate-600 hover:text-slate-900 disabled:opacity-30 gap-1 cursor-pointer"
                             >
                                 <ChevronRight className="w-3.5 h-3.5" /><span>السابق</span>
                             </Button>
                             {totalCount > 0 && (
-                                <span className="text-xs font-mono font-bold text-slate-300 px-2 border-x border-slate-800">
+                                <span className="text-xs font-mono font-bold text-slate-800 px-2 border-x border-slate-200">
                                     {currentIndex} / {totalCount}
                                 </span>
                             )}
@@ -274,7 +274,7 @@ export function StudioModal({
                                 variant="ghost" size="sm"
                                 onClick={onNext}
                                 disabled={!hasNext}
-                                className="h-7 px-2 text-xs font-bold text-slate-400 hover:text-white disabled:opacity-30 gap-1 cursor-pointer"
+                                className="h-7 px-2 text-xs font-bold text-slate-600 hover:text-slate-900 disabled:opacity-30 gap-1 cursor-pointer"
                             >
                                 <span>التالي</span><ChevronLeft className="w-3.5 h-3.5" />
                             </Button>
@@ -286,53 +286,53 @@ export function StudioModal({
                                 href={`/profile/${item.userId}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="hidden sm:flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-2.5 py-1.5 rounded-lg transition-colors"
+                                className="hidden sm:flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1.5 rounded-lg transition-colors"
                             >
                                 <ExternalLink className="w-3.5 h-3.5" /><span>بروفايل اللاعب</span>
                             </a>
                             <Button
                                 variant="ghost" size="icon"
                                 onClick={() => setIsFullscreen(prev => !prev)}
-                                className="w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+                                className="w-8 h-8 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 cursor-pointer"
                             >
                                 {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                             </Button>
                             <Button
                                 variant="ghost" size="icon"
                                 onClick={onClose}
-                                className="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 cursor-pointer"
+                                className="w-8 h-8 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
                             >
                                 <X className="w-4 h-4" />
                             </Button>
                         </div>
                     </div>
 
-                    {/* ═══ CINEMA SPLIT SCREEN ═══ */}
-                    <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 overflow-hidden bg-slate-950">
+                    {/* ═══ SPLIT SCREEN ═══ */}
+                    <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 overflow-hidden bg-slate-100">
 
-                        {/* COL 1: Cinema Video Player (7 cols) */}
-                        <div className="lg:col-span-7 xl:col-span-7 flex flex-col min-h-0 border-b lg:border-b-0 lg:border-l border-slate-800 bg-black">
+                        {/* COL 1: Video Player (7 cols) */}
+                        <div className="lg:col-span-7 xl:col-span-7 flex flex-col min-h-0 border-b lg:border-b-0 lg:border-l border-slate-200 bg-black">
                             <VideoPlayer item={item} />
                         </div>
 
                         {/* COL 2: Scouting Console (5 cols) */}
-                        <div className="lg:col-span-5 xl:col-span-5 flex flex-col min-h-0 bg-slate-900 border-r border-slate-800">
+                        <div className="lg:col-span-5 xl:col-span-5 flex flex-col min-h-0 bg-white border-r border-slate-200">
 
                             {/* Tab Switcher */}
-                            <div className="p-3 border-b border-slate-800 bg-slate-950/60 flex-shrink-0">
-                                <div className="grid grid-cols-3 gap-1 bg-slate-900 p-1 rounded-xl w-full border border-slate-800">
+                            <div className="p-3 border-b border-slate-200 bg-slate-50/80 flex-shrink-0">
+                                <div className="grid grid-cols-3 gap-1 bg-slate-200/80 p-1 rounded-xl w-full">
                                     {[
-                                        { key: 'matrix' as const, label: isGK ? 'مصفوفة الحراسة' : 'مصفوفة المهارات', icon: Sliders, color: 'text-emerald-400' },
-                                        { key: 'dossier' as const, label: 'التقرير الكشفي', icon: FileText, color: 'text-indigo-400' },
-                                        { key: 'contact' as const, label: 'التواصل وواتساب', icon: MessageSquareText, color: 'text-sky-400' },
+                                        { key: 'matrix' as const, label: isGK ? 'مصفوفة الحراسة' : 'مصفوفة المهارات', icon: Sliders, color: 'text-emerald-600' },
+                                        { key: 'dossier' as const, label: 'التقرير الكشفي', icon: FileText, color: 'text-indigo-600' },
+                                        { key: 'contact' as const, label: 'التواصل وواتساب', icon: MessageSquareText, color: 'text-sky-600' },
                                     ].map(tab => (
                                         <button
                                             key={tab.key} type="button"
                                             onClick={() => setActiveTab(tab.key)}
                                             className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                                                 activeTab === tab.key
-                                                    ? 'bg-slate-800 text-white shadow-sm border border-slate-700 font-black'
-                                                    : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                                                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80 font-black'
+                                                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                                             }`}
                                         >
                                             <tab.icon className={`w-3.5 h-3.5 ${tab.color}`} />
@@ -343,7 +343,7 @@ export function StudioModal({
                             </div>
 
                             {/* Tab Content Area */}
-                            <div className="flex-1 overflow-y-auto p-4 md:p-5 bg-slate-950/40">
+                            <div className="flex-1 overflow-y-auto p-4 md:p-5 bg-slate-50/60">
                                 {activeTab === 'matrix' && (
                                     <SkillsMatrix
                                         item={item}
@@ -380,13 +380,13 @@ export function StudioModal({
                                 )}
                             </div>
 
-                            {/* ═══ 4 Executive Decision Action Buttons ═══ */}
-                            <div className="border-t border-slate-800 bg-slate-950/90 px-4 py-3 space-y-2 flex-shrink-0 z-20 shadow-2xl">
+                            {/* ═══ 4 Daylight Decision Action Buttons ═══ */}
+                            <div className="border-t border-slate-200 bg-white px-4 py-3 space-y-2 flex-shrink-0 z-20 shadow-lg">
                                 {/* 1. Main Action: Approve & Sync to Profile */}
                                 <Button
                                     onClick={handleApproveAndSync}
                                     disabled={syncing}
-                                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black h-11 text-sm gap-2 shadow-lg shadow-emerald-900/30 active:scale-98 transition-all cursor-pointer"
+                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black h-11 text-sm gap-2 shadow-sm shadow-emerald-600/20 active:scale-98 transition-all cursor-pointer"
                                 >
                                     <ShieldCheck className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
                                     <span>{syncing ? 'جاري الاعتماد والمزامنة...' : `🌟 اعتماد التقييم ومزامنة البروفايل (${calculatedOverall} OVR)`}</span>
@@ -398,10 +398,10 @@ export function StudioModal({
                                         variant="outline" size="sm"
                                         onClick={() => handleQuickStatus('flagged', 'مطلوب إدراجه في قائمة المراقبة والمتابعة الدورية')}
                                         disabled={updating}
-                                        className="gap-1 text-xs font-bold border-cyan-800/80 text-cyan-300 bg-cyan-950/40 hover:bg-cyan-900/50 h-8.5 cursor-pointer"
+                                        className="gap-1 text-xs font-bold border-cyan-300 text-cyan-800 bg-cyan-50/50 hover:bg-cyan-100/60 h-8.5 cursor-pointer"
                                         title="وضع اللاعب تحت الملاحظة ومتابعة التطور"
                                     >
-                                        <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                                        <Eye className="w-3.5 h-3.5 text-cyan-600" />
                                         <span>مراقبة 👁️</span>
                                     </Button>
 
@@ -409,10 +409,10 @@ export function StudioModal({
                                         variant="outline" size="sm"
                                         onClick={() => handleQuickStatus('flagged', 'مطلوب تحسين جودة التصوير أو إعادة إرسال فيديو إضافي')}
                                         disabled={updating}
-                                        className="gap-1 text-xs font-bold border-amber-800/80 text-amber-300 bg-amber-950/40 hover:bg-amber-900/50 h-8.5 cursor-pointer"
+                                        className="gap-1 text-xs font-bold border-amber-300 text-amber-800 bg-amber-50/50 hover:bg-amber-100/60 h-8.5 cursor-pointer"
                                         title="طلب إعادة تصوير أو تحسين الجودة"
                                     >
-                                        <Flag className="w-3.5 h-3.5 text-amber-400" />
+                                        <Flag className="w-3.5 h-3.5 text-amber-600" />
                                         <span>طلب تحسين ⚠️</span>
                                     </Button>
 
@@ -420,10 +420,10 @@ export function StudioModal({
                                         variant="outline" size="sm"
                                         onClick={() => handleQuickStatus('rejected', 'الفيديو غير مطابق لمعايير القبول الفني')}
                                         disabled={updating}
-                                        className="gap-1 text-xs font-bold border-rose-800/80 text-rose-300 bg-rose-950/40 hover:bg-rose-900/50 h-8.5 cursor-pointer"
+                                        className="gap-1 text-xs font-bold border-rose-300 text-rose-800 bg-rose-50/50 hover:bg-rose-100/60 h-8.5 cursor-pointer"
                                         title="رفض الفيديو"
                                     >
-                                        <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                                        <XCircle className="w-3.5 h-3.5 text-rose-600" />
                                         <span>رفض ❌</span>
                                     </Button>
                                 </div>

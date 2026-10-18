@@ -13,8 +13,8 @@ interface Props {
 }
 
 /**
- * Radar Chart سداسي بصري مستوحى من Wyscout
- * يعرض 6 محاور مهارات كمضلع SVG مع تدرج لوني سينمائي دارك
+ * Radar Chart سداسي بصري مستوحى من معايير الكشافة الدولية (Wyscout)
+ * بنسخة نهارية واضحة وعالية التباين (Daylight Luxury Hexagon)
  */
 export function RadarChart({ skills, isGK, size = 200, baseline }: Props) {
     const defs = useMemo(() => getSkillDefinitions(isGK), [isGK]);
@@ -65,24 +65,24 @@ export function RadarChart({ skills, isGK, size = 200, baseline }: Props) {
         return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
     }, [skills, defs]);
 
-    const mainColor = avgSkill >= 80 ? '#10b981' : avgSkill >= 70 ? '#14b8a6' : avgSkill >= 60 ? '#f59e0b' : '#ef4444';
+    const mainColor = avgSkill >= 80 ? '#059669' : avgSkill >= 70 ? '#0d9488' : avgSkill >= 60 ? '#d97706' : '#e11d48';
 
     return (
         <div className="relative flex items-center justify-center select-none">
-            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="drop-shadow-md">
+            <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="drop-shadow-xs">
                 <defs>
-                    <radialGradient id="radarDarkBg" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stopColor="#0f172a" />
-                        <stop offset="100%" stopColor="#020617" />
+                    <radialGradient id="radarDaylightBg" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stopColor="#ffffff" />
+                        <stop offset="100%" stopColor="#f1f5f9" />
                     </radialGradient>
-                    <linearGradient id="radarDarkFill" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor={mainColor} stopOpacity="0.40" />
-                        <stop offset="100%" stopColor={mainColor} stopOpacity="0.10" />
+                    <linearGradient id="radarDaylightFill" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor={mainColor} stopOpacity="0.30" />
+                        <stop offset="100%" stopColor={mainColor} stopOpacity="0.08" />
                     </linearGradient>
                 </defs>
 
                 {/* Background circle */}
-                <circle cx={cx} cy={cy} r={maxR + 4} fill="url(#radarDarkBg)" stroke="#1e293b" strokeWidth="1" />
+                <circle cx={cx} cy={cy} r={maxR + 4} fill="url(#radarDaylightBg)" stroke="#e2e8f0" strokeWidth="1" />
 
                 {/* Concentric level rings */}
                 {levelPolygons.map((pts, i) => (
@@ -90,10 +90,10 @@ export function RadarChart({ skills, isGK, size = 200, baseline }: Props) {
                         key={i}
                         points={pts}
                         fill="none"
-                        stroke="#334155"
+                        stroke="#cbd5e1"
                         strokeWidth={i === levels - 1 ? "1.2" : "0.7"}
                         strokeDasharray={i === levels - 1 ? "none" : "3,3"}
-                        opacity="0.8"
+                        opacity="0.9"
                     />
                 ))}
 
@@ -105,7 +105,7 @@ export function RadarChart({ skills, isGK, size = 200, baseline }: Props) {
                             key={i}
                             x1={cx} y1={cy}
                             x2={p.x} y2={p.y}
-                            stroke="#334155"
+                            stroke="#cbd5e1"
                             strokeWidth="0.8"
                         />
                     );
@@ -115,8 +115,8 @@ export function RadarChart({ skills, isGK, size = 200, baseline }: Props) {
                 {baselinePoints && (
                     <polygon
                         points={baselinePoints}
-                        fill="rgba(100,116,139,0.06)"
-                        stroke="#64748b"
+                        fill="rgba(148,163,184,0.10)"
+                        stroke="#94a3b8"
                         strokeWidth="1"
                         strokeDasharray="4,3"
                     />
@@ -125,9 +125,9 @@ export function RadarChart({ skills, isGK, size = 200, baseline }: Props) {
                 {/* Player skill polygon */}
                 <polygon
                     points={playerPoints}
-                    fill="url(#radarDarkFill)"
+                    fill="url(#radarDaylightFill)"
                     stroke={mainColor}
-                    strokeWidth="2.2"
+                    strokeWidth="2.4"
                     strokeLinejoin="round"
                     className="transition-all duration-500 ease-out"
                 />
@@ -142,7 +142,7 @@ export function RadarChart({ skills, isGK, size = 200, baseline }: Props) {
                         <g key={d.key}>
                             <circle
                                 cx={x} cy={y} r="3.5"
-                                fill="#020617"
+                                fill="#ffffff"
                                 stroke={mainColor}
                                 strokeWidth="2"
                                 className="transition-all duration-500 ease-out"
@@ -161,7 +161,7 @@ export function RadarChart({ skills, isGK, size = 200, baseline }: Props) {
                             y={p.y}
                             textAnchor="middle"
                             dominantBaseline="central"
-                            className="fill-slate-300 text-[9px] font-bold"
+                            className="fill-slate-700 text-[9px] font-bold"
                         >
                             {d.short}
                         </text>
@@ -181,7 +181,7 @@ export function RadarChart({ skills, isGK, size = 200, baseline }: Props) {
                             y={y}
                             textAnchor="middle"
                             dominantBaseline="central"
-                            className="fill-emerald-400 text-[8px] font-mono font-black"
+                            className="fill-slate-900 text-[8px] font-mono font-black"
                         >
                             {skills[d.key]}
                         </text>
