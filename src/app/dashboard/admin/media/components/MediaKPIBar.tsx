@@ -1,6 +1,7 @@
 'use client';
 
-import { Film, Image, Clock, CheckCircle2, XCircle, AlertTriangle, Sparkles } from 'lucide-react';
+import React from 'react';
+import { Film, Image, Clock, CheckCircle2, XCircle, AlertTriangle, Cloud, PlaySquare } from 'lucide-react';
 import { MediaStats, MediaStatus } from '../types';
 
 interface Props {
@@ -21,10 +22,11 @@ export function MediaKPIBar({ stats, activeStatus, onStatusClick }: Props) {
         ring: string;
         filterKey: MediaStatus | 'all';
         clickable: boolean;
+        extraPill?: string;
     }[] = [
         {
-            label: 'فيديوهات المهارات',
-            subLabel: 'المرفوعة بالمنصة',
+            label: 'إجمالي الفيديوهات',
+            subLabel: `${stats.directVideos || 0} رفع مباشر • ${stats.youtubeVideos || 0} يوتيوب`,
             value: stats.videos,
             icon: Film,
             color: 'text-indigo-600',
@@ -36,7 +38,7 @@ export function MediaKPIBar({ stats, activeStatus, onStatusClick }: Props) {
         },
         {
             label: 'صور ومستندات',
-            subLabel: 'الأصول البصرية',
+            subLabel: 'الأصول والشهادات',
             value: stats.images,
             icon: Image,
             color: 'text-sky-600',
@@ -60,7 +62,7 @@ export function MediaKPIBar({ stats, activeStatus, onStatusClick }: Props) {
         },
         {
             label: 'معتمد ومزامَن',
-            subLabel: 'في رادار المهارات',
+            subLabel: 'محدث في بروفايل اللاعب',
             value: stats.approved,
             icon: CheckCircle2,
             color: 'text-emerald-600',
@@ -68,18 +70,6 @@ export function MediaKPIBar({ stats, activeStatus, onStatusClick }: Props) {
             border: 'border-emerald-200',
             ring: 'ring-emerald-500',
             filterKey: 'approved',
-            clickable: true,
-        },
-        {
-            label: 'مرفوض',
-            subLabel: 'غير مطابق للمعايير',
-            value: stats.rejected,
-            icon: XCircle,
-            color: 'text-rose-600',
-            bg: 'bg-rose-50/50',
-            border: 'border-rose-200',
-            ring: 'ring-rose-500',
-            filterKey: 'rejected',
             clickable: true,
         },
         {
@@ -92,6 +82,18 @@ export function MediaKPIBar({ stats, activeStatus, onStatusClick }: Props) {
             border: 'border-orange-200',
             ring: 'ring-orange-500',
             filterKey: 'flagged',
+            clickable: true,
+        },
+        {
+            label: 'مرفوض',
+            subLabel: 'غير مطابق للمعايير',
+            value: stats.rejected,
+            icon: XCircle,
+            color: 'text-rose-600',
+            bg: 'bg-rose-50/50',
+            border: 'border-rose-200',
+            ring: 'ring-rose-500',
+            filterKey: 'rejected',
             clickable: true,
         },
     ];
@@ -119,8 +121,8 @@ export function MediaKPIBar({ stats, activeStatus, onStatusClick }: Props) {
                                 <c.icon className="w-4 h-4" />
                             </span>
                             {c.clickable && (
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-all ${
-                                    isActive ? 'bg-slate-900 text-white' : 'text-slate-400 opacity-60'
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-all ${
+                                    isActive ? 'bg-slate-900 text-white' : 'text-slate-400 opacity-60 bg-white border border-slate-200'
                                 }`}>
                                     {isActive ? 'نشط' : 'تصفية'}
                                 </span>
@@ -134,7 +136,9 @@ export function MediaKPIBar({ stats, activeStatus, onStatusClick }: Props) {
                                 </span>
                             </div>
                             <p className="text-[11px] font-bold text-slate-800 truncate mt-0.5">{c.label}</p>
-                            <p className="text-[10px] text-slate-400 font-medium truncate">{c.subLabel}</p>
+                            <p className="text-[10px] text-slate-500 font-medium truncate mt-0.5" title={c.subLabel}>
+                                {c.subLabel}
+                            </p>
                         </div>
                     </button>
                 );

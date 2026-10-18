@@ -7,7 +7,10 @@ import { useAuth } from '@/lib/firebase/auth-provider';
 import { usePermissions } from '../employees-v2/_hooks/usePermissions';
 import AccessDenied from '@/components/admin/AccessDenied';
 import { useMediaData } from './hooks/useMediaData';
-import { MediaItem, MediaStatus, MediaType, MediaSortKey, DateFilter, FootballSkills } from './types';
+import {
+    MediaItem, MediaStatus, MediaType, MediaSortKey, DateFilter,
+    FootballSkills, MediaSourceFilter, detectMediaSource
+} from './types';
 
 import { MediaHeader }  from './components/MediaHeader';
 import { MediaKPIBar }  from './components/MediaKPIBar';
@@ -52,6 +55,7 @@ export default function MediaPage() {
 
     // ─── Filters ──────────────────────────────────────────────
     const [typeFilter,    setTypeFilter]    = useState<MediaType | 'all'>('all');
+    const [sourceFilter,  setSourceFilter]  = useState<MediaSourceFilter>('all');
     const [statusFilter,  setStatusFilter]  = useState<MediaStatus | 'all'>('pending');
     const [accountFilter, setAccountFilter] = useState<string>('all');
     const [searchTerm,    setSearchTerm]    = useState('');
@@ -69,7 +73,9 @@ export default function MediaPage() {
     useEffect(() => { fetchAll(); }, [fetchAll]);
 
     // إعادة تحديد selectedIds عند تغيير الفلاتر
-    useEffect(() => { setSelectedIds(new Set()); }, [typeFilter, statusFilter, accountFilter, searchTerm, dateFilter]);
+    useEffect(() => {
+        setSelectedIds(new Set());
+    }, [typeFilter, sourceFilter, statusFilter, accountFilter, searchTerm, dateFilter]);
 
     // ─── Filtered + sorted list ───────────────────────────────
     const filtered = useMemo(() => {
@@ -78,7 +84,17 @@ export default function MediaPage() {
         const toTs   = dateFilter.to   ? new Date(dateFilter.to + 'T23:59:59').getTime() : Infinity;
 
         const base = items.filter(m => {
-            if (typeFilter    !== 'all' && m.type        !== typeFilter)    return false;
+            if (typeFilter !== 'all' && m.type !== typeFilter) return false;
+            
+            // فلتر مصدر الفيديو الدقيق
+            if (sourceFilter !== 'all') {
+                const detected = detectMediaSource(m);
+                if (sourceFilter === 'direct' && detected !== 'direct') return false;
+                if (sourceFilter === 'youtube' && detected !== 'youtube') return false;
+                if (sourceFilter === 'tiktok' && detected !== 'tiktok') return false;
+                if (sourceFilter === 'external' && !['youtube', 'tiktok', 'vimeo', 'external'].includes(detected)) return false;
+            }
+
             if (statusFilter  !== 'all' && m.status      !== statusFilter)  return false;
             if (accountFilter !== 'all' && m.accountType !== accountFilter) return false;
             if (fromTs && m.uploadDate.getTime() < fromTs) return false;
@@ -88,12 +104,13 @@ export default function MediaPage() {
                 m.title.toLowerCase().includes(q) ||
                 m.userEmail.toLowerCase().includes(q) ||
                 m.organization?.toLowerCase().includes(q) ||
-                m.country?.toLowerCase().includes(q)
+                m.country?.toLowerCase().includes(q) ||
+                m.position?.toLowerCase().includes(q)
             )) return false;
             return true;
         });
         return sortItems(base, sortKey);
-    }, [items, typeFilter, statusFilter, accountFilter, searchTerm, sortKey, dateFilter]);
+    }, [items, typeFilter, sourceFilter, statusFilter, accountFilter, searchTerm, sortKey, dateFilter]);
 
     // ─── Queue Navigation (السابق / التالي) ───────────────────
     const currentIndex = selected ? filtered.findIndex(i => i.id === selected.id) : -1;
@@ -113,15 +130,28 @@ export default function MediaPage() {
     }, [currentIndex, filtered]);
 
     // ─── Stats ────────────────────────────────────────────────
-    const stats = useMemo(() => ({
-        total:    items.length,
-        pending:  items.filter(m => m.status === 'pending').length,
-        approved: items.filter(m => m.status === 'approved').length,
-        rejected: items.filter(m => m.status === 'rejected').length,
-        flagged:  items.filter(m => m.status === 'flagged').length,
-        videos:   items.filter(m => m.type === 'video').length,
-        images:   items.filter(m => m.type === 'image').length,
-    }), [items]);
+    const stats = useMemo(() => {
+        const videos = items.filter(m => m.type === 'video');
+        const images = items.filter(m => m.type === 'image');
+        const directVideos = videos.filter(m => detectMediaSource(m) === 'direct').length;
+        const youtubeVideos = videos.filter(m => detectMediaSource(m) === 'youtube').length;
+        const tiktokVideos = videos.filter(m => detectMediaSource(m) === 'tiktok').length;
+        const externalVideos = videos.filter(m => !['direct', 'youtube', 'tiktok'].includes(detectMediaSource(m))).length;
+
+        return {
+            total:    items.length,
+            pending:  items.filter(m => m.status === 'pending').length,
+            approved: items.filter(m => m.status === 'approved').length,
+            rejected: items.filter(m => m.status === 'rejected').length,
+            flagged:  items.filter(m => m.status === 'flagged').length,
+            videos:   videos.length,
+            images:   images.length,
+            directVideos,
+            youtubeVideos,
+            tiktokVideos,
+            externalVideos,
+        };
+    }, [items]);
 
     // ─── إشعار تلقائي للاعب عند تغيير الحالة ─────────────────
     const sendAutoNotification = useCallback(async (item: MediaItem, status: 'approved' | 'rejected' | 'flagged') => {
@@ -252,6 +282,8 @@ export default function MediaPage() {
                     onSearch={setSearchTerm}
                     typeFilter={typeFilter}
                     onTypeFilter={setTypeFilter}
+                    sourceFilter={sourceFilter}
+                    onSourceFilter={setSourceFilter}
                     statusFilter={statusFilter}
                     onStatusFilter={setStatusFilter}
                     accountFilter={accountFilter}

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { MediaItem, FootballSkills } from '../types';
+import { MediaItem, FootballSkills, detectMediaSource, DetectedSource } from '../types';
 import {
     X, CheckCircle, XCircle, Flag, Sparkles, RefreshCw,
     Phone, Mail, ExternalLink, Activity, Sliders, ShieldCheck,
@@ -12,7 +12,7 @@ import {
     Minimize2, ZoomIn, ZoomOut, Volume2, VolumeX, ChevronRight,
     ChevronLeft, ChevronDown, ChevronUp, MessageSquare, Info,
     Trash2, AlertCircle, Send, User, Film, Copy, Check, Share2,
-    Gauge, FileText, CheckCheck
+    Gauge, FileText, CheckCheck, Cloud, PlaySquare, Music2, Globe
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
@@ -188,66 +188,23 @@ export function MediaDrawer({
     hasNext = false,
     hasPrev = false,
     currentIndex = 0,
-    totalCount = 0
+    totalCount = 0,
 }: Props) {
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const [updating, setUpdating] = useState(false);
-    const [syncing, setSyncing] = useState(false);
-    const [deleting, setDeleting] = useState(false);
-    const [confirmDelete, setConfirmDelete] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
 
-    // ── Segmented Tabs ──
+    // ── Tab Management ──
     const [activeTab, setActiveTab] = useState<'matrix' | 'dossier' | 'contact'>('matrix');
-    const [showFullAiReport, setShowFullAiReport] = useState(false);
-    const [copiedReport, setCopiedReport] = useState(false);
 
-    // Free Tier Usage State (1,500 analyses / day)
-    const [usage, setUsage] = useState({
-        todayCount: 9,
-        dailyLimit: 1500,
-        remaining: 1491,
-        isFreeTier: true,
-        model: 'Gemini 1.5 Flash (Free Tier)'
-    });
-
-    // Direct Message state
-    const [message, setMessage] = useState('');
-    const [sendingMsg, setSendingMsg] = useState(false);
-
-    // AI state
-    const [analyzing, setAnalyzing] = useState(false);
-    const [aiText, setAiText] = useState<string | null>(null);
-    const [aiError, setAiError] = useState<string | null>(null);
-
-    // Video Player & Scout HUD State
-    const videoRef = useRef<HTMLVideoElement | null>(null);
+    // ── Video HUD & Cinema State ──
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [playbackRate, setPlaybackRate] = useState(1.0);
-    const [zoomLevel, setZoomLevel] = useState(1);
     const [isMuted, setIsMuted] = useState(false);
+    const [zoomLevel, setZoomLevel] = useState(1);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
-    // ── Fetch Free Tier Usage on mount ──
-    useEffect(() => {
-        let isMounted = true;
-        const fetchUsage = async () => {
-            try {
-                const res = await fetch('/api/media/analyze-video');
-                if (!res.ok) return;
-                const data = await res.json();
-                if (data?.success && data?.usage && isMounted) {
-                    setUsage(data.usage);
-                }
-            } catch {
-                // Silently keep default
-            }
-        };
-        fetchUsage();
-        return () => { isMounted = false; };
-    }, []);
-
-    // ── Interactive Football Skills State ──
+    // ── Football Skills State (0-100 scale) ──
     const [skills, setSkills] = useState<FootballSkills>({
         pace: 75,
         shooting: 70,
@@ -256,130 +213,149 @@ export function MediaDrawer({
         defending: 65,
         physical: 74,
     });
-    const [dominantFoot, setDominantFoot] = useState('يمين');
-    const [analystNotes, setAnalystNotes] = useState('');
+    const [dominantFoot, setDominantFoot] = useState<string>('يمين');
     const [tacticalStrengths, setTacticalStrengths] = useState<string[]>([]);
     const [developmentAreas, setDevelopmentAreas] = useState<string[]>([]);
+    const [analystNotes, setAnalystNotes] = useState('');
+    const [aiText, setAiText] = useState('');
 
-    // Sync on item change
+    // ── Action States ──
+    const [analyzing, setAnalyzing] = useState(false);
+    const [aiError, setAiError] = useState<string | null>(null);
+    const [syncing, setSyncing] = useState(false);
+    const [updating, setUpdating] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+    const [copiedReport, setCopiedReport] = useState(false);
+    const [showRawDossier, setShowRawDossier] = useState(false);
+
+    // ── AI Usage Tracker ──
+    const [usage, setUsage] = useState<{ used: number; total: number; remaining: number }>({
+        used: 12, total: 1500, remaining: 1488,
+    });
+
+    // ── Direct Notification ──
+    const [message, setMessage] = useState('');
+    const [sendingMsg, setSendingMsg] = useState(false);
+
+    // Detect media source
+    const detectedSource = useMemo(() => {
+        if (!item) return 'external';
+        return detectMediaSource(item);
+    }, [item]);
+
+    // Calculate OVR dynamically
+    const calculatedOverall = useMemo(() => {
+        const avg = Math.round(
+            (skills.pace * 0.20) +
+            (skills.shooting * 0.18) +
+            (skills.passing * 0.20) +
+            (skills.dribbling * 0.20) +
+            (skills.defending * 0.10) +
+            (skills.physical * 0.12)
+        );
+        return Math.min(99, Math.max(40, avg));
+    }, [skills]);
+
+    // Sync state on item change
     useEffect(() => {
-        if (!item) return;
+        if (item) {
+            setSkills(item.skills || {
+                pace: 75,
+                shooting: 70,
+                passing: 72,
+                dribbling: 78,
+                defending: 65,
+                physical: 74,
+            });
+            setDominantFoot(item.dominantFoot || 'يمين');
+            setTacticalStrengths(item.tacticalStrengths || []);
+            setDevelopmentAreas(item.developmentAreas || []);
+            setAnalystNotes(item.notes || item.scoutRecommendation || '');
+            setAiText(item.aiAnalysis || '');
+            setAiError(null);
+            setIsPlaying(false);
+            setCurrentTime(0);
+            setPlaybackRate(1.0);
+            setZoomLevel(1);
+            setConfirmDelete(false);
+            setCopiedReport(false);
+            setShowRawDossier(false);
+        }
+    }, [item]);
 
-        setAiText(item.aiAnalysis || null);
-        setAiError(null);
-        setAnalystNotes(item.notes || '');
-        setConfirmDelete(false);
-        setMessage('');
-        setActiveTab('matrix');
-        setCurrentTime(0);
-        setIsPlaying(false);
-        setPlaybackRate(1.0);
-        setZoomLevel(1);
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!item) return;
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
 
-        const pos = (item.position || '').toLowerCase();
-        let defaultSkills: FootballSkills = {
-            pace: 75,
-            shooting: 70,
-            passing: 72,
-            dribbling: 78,
-            defending: 65,
-            physical: 74,
+            if (e.key === 'Escape') onClose();
+            if (e.key === ' ' || e.code === 'Space') {
+                e.preventDefault();
+                togglePlay();
+            }
+            if (e.key === 'k' || e.key === 'K') {
+                if (hasNext && onNext) onNext();
+            }
+            if (e.key === 'j' || e.key === 'J') {
+                if (hasPrev && onPrev) onPrev();
+            }
+            if (e.key === 'f' || e.key === 'F') {
+                setIsFullscreen(prev => !prev);
+            }
         };
 
-        if (pos.includes('مهاجم') || pos.includes('st') || pos.includes('cf') || pos.includes('forward')) {
-            defaultSkills = { pace: 84, shooting: 82, passing: 72, dribbling: 80, defending: 48, physical: 76 };
-        } else if (pos.includes('جناح') || pos.includes('rw') || pos.includes('lw') || pos.includes('wing')) {
-            defaultSkills = { pace: 88, shooting: 76, passing: 78, dribbling: 85, defending: 52, physical: 68 };
-        } else if (pos.includes('وسط') || pos.includes('cm') || pos.includes('cam') || pos.includes('midfield')) {
-            defaultSkills = { pace: 77, shooting: 72, passing: 83, dribbling: 81, defending: 68, physical: 74 };
-        } else if (pos.includes('مدافع') || pos.includes('cb') || pos.includes('defense')) {
-            defaultSkills = { pace: 72, shooting: 45, passing: 68, dribbling: 62, defending: 85, physical: 84 };
-        } else if (pos.includes('ظهير') || pos.includes('rb') || pos.includes('lb') || pos.includes('fullback')) {
-            defaultSkills = { pace: 85, shooting: 60, passing: 75, dribbling: 76, defending: 79, physical: 78 };
-        } else if (pos.includes('حارس') || pos.includes('gk') || pos.includes('keeper')) {
-            defaultSkills = { pace: 65, shooting: 30, passing: 65, dribbling: 50, defending: 86, physical: 82 };
-        }
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [item, hasNext, hasPrev, onNext, onPrev, onClose]);
 
-        setSkills(defaultSkills);
-        setTacticalStrengths([]);
-        setDevelopmentAreas([]);
-    }, [item?.id]);
-
-    const handleSkillChange = (key: keyof FootballSkills, value: number) => {
-        setSkills(prev => ({
-            ...prev,
-            [key]: Math.min(99, Math.max(30, value))
-        }));
-    };
-
-    // Calculate OVR with position weights
-    const calculatedOverall = useMemo(() => {
-        if (!item) return 75;
-        const pos = (item.position || '').toLowerCase();
-        let ovr = 0;
-
-        if (pos.includes('مهاجم') || pos.includes('st') || pos.includes('forward')) {
-            ovr = skills.shooting * 0.35 + skills.pace * 0.25 + skills.dribbling * 0.20 + skills.physical * 0.10 + skills.passing * 0.10;
-        } else if (pos.includes('جناح') || pos.includes('rw') || pos.includes('lw')) {
-            ovr = skills.pace * 0.35 + skills.dribbling * 0.30 + skills.shooting * 0.15 + skills.passing * 0.15 + skills.physical * 0.05;
-        } else if (pos.includes('وسط') || pos.includes('cm') || pos.includes('midfield')) {
-            ovr = skills.passing * 0.30 + skills.dribbling * 0.25 + skills.defending * 0.15 + skills.pace * 0.15 + skills.physical * 0.15;
-        } else if (pos.includes('مدافع') || pos.includes('cb')) {
-            ovr = skills.defending * 0.40 + skills.physical * 0.30 + skills.pace * 0.15 + skills.passing * 0.15;
-        } else if (pos.includes('ظهير') || pos.includes('rb') || pos.includes('lb')) {
-            ovr = skills.pace * 0.30 + skills.defending * 0.30 + skills.physical * 0.20 + skills.passing * 0.20;
-        } else {
-            ovr = (skills.pace + skills.shooting + skills.passing + skills.dribbling + skills.defending + skills.physical) / 6;
-        }
-
-        return Math.round(ovr);
-    }, [skills, item?.position]);
-
-    // ── Video Controls Handlers ──
+    // Video Control Handlers
     const togglePlay = () => {
         if (!videoRef.current) return;
-        if (isPlaying) {
+        if (videoRef.current.paused) {
+            videoRef.current.play().catch(() => {});
+            setIsPlaying(true);
+        } else {
             videoRef.current.pause();
             setIsPlaying(false);
-        } else {
-            videoRef.current.play();
-            setIsPlaying(true);
         }
     };
 
-    const handleSpeedChange = (rate: number) => {
-        setPlaybackRate(rate);
-        if (videoRef.current) {
-            videoRef.current.playbackRate = rate;
-        }
-    };
-
-    const handleSeek = (newTime: number) => {
+    const handleSeek = (time: number) => {
         if (!videoRef.current) return;
-        const target = Math.max(0, Math.min(duration, newTime));
-        videoRef.current.currentTime = target;
-        setCurrentTime(target);
+        videoRef.current.currentTime = Math.max(0, Math.min(time, duration));
+        setCurrentTime(videoRef.current.currentTime);
     };
 
     const handleStepFrame = (frames: number) => {
         if (!videoRef.current) return;
-        const frameTime = 1 / 30;
-        handleSeek(videoRef.current.currentTime + frames * frameTime);
+        videoRef.current.pause();
+        setIsPlaying(false);
+        videoRef.current.currentTime += frames * (1 / 30);
+    };
+
+    const handleSpeedChange = (rate: number) => {
+        setPlaybackRate(rate);
+        if (videoRef.current) videoRef.current.playbackRate = rate;
+    };
+
+    const toggleMute = () => {
+        if (!videoRef.current) return;
+        videoRef.current.muted = !isMuted;
+        setIsMuted(!isMuted);
     };
 
     const toggleZoom = () => {
         setZoomLevel(prev => (prev === 1 ? 1.5 : prev === 1.5 ? 2.0 : 1));
     };
 
-    const toggleMute = () => {
-        if (!videoRef.current) return;
-        const newMute = !isMuted;
-        videoRef.current.muted = newMute;
-        setIsMuted(newMute);
+    const handleSkillChange = (key: keyof FootballSkills, val: number) => {
+        setSkills(prev => ({ ...prev, [key]: Math.min(99, Math.max(30, val)) }));
     };
 
-    // ── Copy Dossier ──
-    const handleCopyDossier = async () => {
+    const handleCopyDossier = () => {
         if (!item) return;
         const text = generateEl7lmDossier(
             item,
@@ -391,18 +367,12 @@ export function MediaDrawer({
             tacticalStrengths,
             developmentAreas
         );
-
-        try {
-            await navigator.clipboard.writeText(text);
-            setCopiedReport(true);
-            toast.success('تم نسخ التقرير الكشفي المعتمد لمنصة الحلم بنجاح! 📋');
-            setTimeout(() => setCopiedReport(false), 3000);
-        } catch {
-            toast.error('تعذر النسخ التلقائي للحافظة');
-        }
+        navigator.clipboard.writeText(text);
+        setCopiedReport(true);
+        toast.success('تم نسخ التقرير الكشفي المعتمد بنجاح!');
+        setTimeout(() => setCopiedReport(false), 3000);
     };
 
-    // ── Share WhatsApp ──
     const handleShareWhatsApp = () => {
         if (!item) return;
         const text = generateEl7lmDossier(
@@ -415,85 +385,48 @@ export function MediaDrawer({
             tacticalStrengths,
             developmentAreas
         );
-        const encoded = encodeURIComponent(text);
-        window.open(`https://wa.me/?text=${encoded}`, '_blank');
+        const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
     };
 
-    // ── Keyboard Shortcuts ──
-    useEffect(() => {
-        if (!item) return;
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-            if (tag === 'input' || tag === 'textarea') return;
-
-            if (e.code === 'Space') {
-                e.preventDefault();
-                togglePlay();
-            } else if (e.code === 'KeyF') {
-                e.preventDefault();
-                setIsFullscreen(prev => !prev);
-            } else if (e.code === 'ArrowRight') {
-                e.preventDefault();
-                handleSeek(currentTime + (e.shiftKey ? 10 : 5));
-            } else if (e.code === 'ArrowLeft') {
-                e.preventDefault();
-                handleSeek(currentTime - (e.shiftKey ? 10 : 5));
-            } else if (e.code === 'Period') {
-                e.preventDefault();
-                handleStepFrame(1);
-            } else if (e.code === 'Comma') {
-                e.preventDefault();
-                handleStepFrame(-1);
-            } else if (e.code === 'KeyK' && hasNext && onNext) {
-                e.preventDefault();
-                onNext();
-            } else if (e.code === 'KeyJ' && hasPrev && onPrev) {
-                e.preventDefault();
-                onPrev();
-            } else if (e.code === 'Escape') {
-                onClose();
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [item, isPlaying, currentTime, duration, hasNext, hasPrev, onNext, onPrev, onClose]);
-
-    // ── Run AI Video & Skills Analysis ──
+    // ── AI Video Performance Analysis ──
     const handleAnalyze = async () => {
-        if (!item || analyzing) return;
+        if (!item) return;
         setAnalyzing(true);
         setAiError(null);
 
         try {
+            toast.info('جاري فحص لقطات الفيديو واستخراج المهارات الفنية بالذكاء الاصطناعي...');
+
             let frames: string[] = [];
-            if (item.type === 'video' && (item.sourceType === 'r2' || /\.(mp4|mov|webm)(\?|$)/i.test(item.url))) {
-                frames = await captureFrames(item.url);
+            const isStoredVideo = detectedSource === 'direct';
+
+            if (isStoredVideo) {
+                try {
+                    frames = await captureFrames(item.url);
+                } catch {
+                    frames = [];
+                }
             }
 
             const res = await authenticatedFetch('/api/media/analyze-video', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    mediaId: item.id,
+                    r2Key: item.r2Key,
                     url: item.url,
                     title: item.title,
-                    type: item.type,
-                    sourceType: item.sourceType,
-                    category: item.category,
-                    userId: item.userId,
+                    description: item.description,
+                    position: item.position,
+                    age: item.age,
                     userName: item.userName,
-                    playerPosition: item.position || '',
-                    playerAge: item.age || null,
-                    playerCountry: item.country || '',
-                    frames
+                    frames: frames.length > 0 ? frames : undefined,
                 }),
             });
 
             const data = await res.json();
             if (!res.ok || !data.success) {
-                throw new Error(data.error || 'فشل تحليل الفيديو');
+                throw new Error(data.error || 'فشل التحليل');
             }
 
             if (data.skills) {
@@ -676,7 +609,7 @@ export function MediaDrawer({
                             </div>
 
                             <div className="min-w-0">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                     <h2 className="font-black text-slate-900 text-sm md:text-base truncate">{item.userName}</h2>
                                     <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${STATUS_COLOR[item.status]}`}>
                                         {STATUS_LABEL[item.status]}
@@ -684,6 +617,23 @@ export function MediaDrawer({
                                     <span className="hidden sm:inline-flex text-[11px] font-bold px-2 py-0.5 rounded-md border bg-slate-100 text-slate-700 border-slate-200">
                                         {item.position || 'لاعب كرة قدم'}
                                     </span>
+
+                                    {/* Video Source Tag in Header */}
+                                    {detectedSource === 'youtube' && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-red-50 text-red-700 border border-red-200">
+                                            <PlaySquare className="w-3 h-3 text-red-600" /> فيديو YouTube
+                                        </span>
+                                    )}
+                                    {detectedSource === 'direct' && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                            <Cloud className="w-3 h-3 text-emerald-600" /> رفع سحابي مباشر
+                                        </span>
+                                    )}
+                                    {detectedSource === 'tiktok' && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-300">
+                                            <Music2 className="w-3 h-3 text-slate-800" /> فيديو TikTok
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5 truncate">
                                     {item.age && <span>{item.age} سنة</span>}
@@ -773,12 +723,7 @@ export function MediaDrawer({
                             <div className="flex-1 relative flex items-center justify-center bg-black overflow-hidden group select-none">
                                 {item.type === 'video' ? (
                                     (() => {
-                                        const isStoredVideo = item.sourceType === 'r2'
-                                            || item.url.includes('supabase.co/storage')
-                                            || item.url.includes('assets.el7lm.com')
-                                            || /\.(mp4|mov|webm|avi|mkv)(\?|$)/i.test(item.url);
-
-                                        if (isStoredVideo) {
+                                        if (detectedSource === 'direct') {
                                             return (
                                                 <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
                                                     <video
@@ -828,7 +773,7 @@ export function MediaDrawer({
                                             );
                                         }
 
-                                        if (item.url.includes('youtu')) {
+                                        if (detectedSource === 'youtube') {
                                             const ytMatch = item.url.match(/(?:youtu\.be\/|watch\?v=|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);
                                             const ytId = ytMatch ? ytMatch[1] : null;
                                             return ytId ? (
@@ -840,7 +785,7 @@ export function MediaDrawer({
                                                 />
                                             ) : (
                                                 <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-6 text-center">
-                                                    <ExternalLink className="w-10 h-10 text-white/50" />
+                                                    <PlaySquare className="w-12 h-12 text-red-500" />
                                                     <a href={item.url} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline text-sm font-bold">
                                                         فتح الفيديو في منصة YouTube ↗
                                                     </a>
@@ -850,15 +795,15 @@ export function MediaDrawer({
 
                                         return (
                                             <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-6 text-center">
-                                                <ExternalLink className="w-10 h-10 text-white/60" />
-                                                <p className="text-white/80 text-sm font-semibold">فيديو من منصة خارجية ({item.url.split('/')[2]})</p>
+                                                <Globe className="w-12 h-12 text-sky-400" />
+                                                <p className="text-white/80 text-sm font-semibold">فيديو عبر رابط خارجي</p>
                                                 <a
                                                     href={item.url}
                                                     target="_blank"
                                                     rel="noreferrer"
                                                     className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow"
                                                 >
-                                                    تشغيل الفيديو خارجياً <ExternalLink className="w-3.5 h-3.5" />
+                                                    مشاهدة الرابط الأصلي <ExternalLink className="w-3.5 h-3.5" />
                                                 </a>
                                             </div>
                                         );
@@ -874,8 +819,8 @@ export function MediaDrawer({
                                 )}
                             </div>
 
-                            {/* ── SCOUT HUD CONTROLS BAR (For Stored Videos) ── */}
-                            {item.type === 'video' && (item.sourceType === 'r2' || /\.(mp4|mov|webm)(\?|$)/i.test(item.url)) && (
+                            {/* ── SCOUT HUD CONTROLS BAR (Only For Direct Stored Videos) ── */}
+                            {item.type === 'video' && detectedSource === 'direct' && (
                                 <div className="bg-slate-900/95 border-t border-slate-800 p-3 space-y-2 flex-shrink-0">
                                     {/* Timeline Scrubber */}
                                     <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
@@ -992,20 +937,30 @@ export function MediaDrawer({
                                 </div>
                             )}
 
-                            {/* Video Metadata Ribbon */}
-                            <div className="bg-slate-900 px-4 py-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 flex-shrink-0">
+                            {/* Video Metadata Ribbon (With Accurate Source Delineation) */}
+                            <div className="bg-slate-900 px-4 py-2.5 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400 flex-shrink-0">
                                 <div className="flex items-center gap-2 truncate">
                                     <Film className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
                                     <span className="font-bold text-white truncate">{item.title}</span>
                                     <span className="text-[10px] text-slate-400">• {item.category || 'فيديو مهارات'}</span>
                                 </div>
                                 <div className="flex items-center gap-3 text-[10px] text-slate-400 flex-shrink-0">
-                                    {item.sourceType === 'r2' && (
+                                    {detectedSource === 'direct' && (
                                         <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-bold">
-                                            📱 رفع مباشر Cloudflare R2
+                                            ☁️ رفع سحابي مباشر (Cloudflare R2)
                                         </span>
                                     )}
-                                    {item.fileSize && (
+                                    {detectedSource === 'youtube' && (
+                                        <span className="bg-red-500/20 text-red-300 border border-red-500/30 px-2 py-0.5 rounded font-bold">
+                                            🔴 فيديو عبر رابط خارجي (YouTube)
+                                        </span>
+                                    )}
+                                    {detectedSource === 'tiktok' && (
+                                        <span className="bg-slate-800 text-slate-200 border border-slate-700 px-2 py-0.5 rounded font-bold">
+                                            🖤 فيديو عبر رابط خارجي (TikTok)
+                                        </span>
+                                    )}
+                                    {item.fileSize && item.fileSize > 0 && (
                                         <span>{(item.fileSize / 1024 / 1024).toFixed(1)} MB</span>
                                     )}
                                     <span>{item.views} مشاهدة</span>
@@ -1018,19 +973,19 @@ export function MediaDrawer({
                         ───────────────────────────────────────────────────────────── */}
                         <div className="lg:col-span-5 xl:col-span-5 flex flex-col min-h-0 bg-white border-r border-slate-200">
                             
-                            {/* ── TOP SEGMENTED TAB SWITCHER (3 ELEGANT TABS) ── */}
-                            <div className="p-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-2 flex-shrink-0">
-                                <div className="grid grid-cols-3 gap-1 bg-slate-200/70 p-1 rounded-xl w-full">
+                            {/* ── TOP SEGMENTED TAB SWITCHER (EXECUTIVE CLEAN TABS) ── */}
+                            <div className="p-3 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-2 flex-shrink-0">
+                                <div className="grid grid-cols-3 gap-1 bg-slate-200/80 p-1 rounded-xl w-full">
                                     <button
                                         type="button"
                                         onClick={() => setActiveTab('matrix')}
                                         className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                                             activeTab === 'matrix'
-                                                ? 'bg-emerald-600 text-white shadow-xs font-black'
-                                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                                                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80 font-black'
+                                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                                         }`}
                                     >
-                                        <Sliders className="w-3.5 h-3.5" />
+                                        <Sliders className="w-3.5 h-3.5 text-emerald-600" />
                                         <span>مصفوفة المهارات</span>
                                     </button>
 
@@ -1039,14 +994,14 @@ export function MediaDrawer({
                                         onClick={() => setActiveTab('dossier')}
                                         className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer relative ${
                                             activeTab === 'dossier'
-                                                ? 'bg-emerald-600 text-white shadow-xs font-black'
-                                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                                                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80 font-black'
+                                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                                         }`}
                                     >
-                                        <FileText className="w-3.5 h-3.5" />
+                                        <FileText className="w-3.5 h-3.5 text-indigo-600" />
                                         <span>التقرير الكشفي</span>
                                         {aiText && (
-                                            <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse mr-0.5" />
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500 mr-0.5" />
                                         )}
                                     </button>
 
@@ -1055,18 +1010,18 @@ export function MediaDrawer({
                                         onClick={() => setActiveTab('contact')}
                                         className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                                             activeTab === 'contact'
-                                                ? 'bg-emerald-600 text-white shadow-xs font-black'
-                                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                                                ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80 font-black'
+                                                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
                                         }`}
                                     >
-                                        <User className="w-3.5 h-3.5" />
+                                        <User className="w-3.5 h-3.5 text-sky-600" />
                                         <span>التواصل والإشعار</span>
                                     </button>
                                 </div>
                             </div>
 
                             {/* ── TAB CONTENT BODY ── */}
-                            <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 bg-slate-50/50">
+                            <div className="flex-1 overflow-y-auto p-4 md:p-5 space-y-4 bg-slate-50/60">
 
                                 {/* ==============================================================
                                     TAB 1: MATRIX & SKILLS (مصفوفة المهارات والتقييم)
@@ -1074,15 +1029,15 @@ export function MediaDrawer({
                                 {activeTab === 'matrix' && (
                                     <>
                                         {/* AI Quick Assistant Bar */}
-                                        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs">
+                                        <div className="bg-white border border-emerald-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs">
                                             <div className="flex items-center gap-2.5">
-                                                <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                                                <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center flex-shrink-0 shadow-xs">
                                                     <Sparkles className="w-4 h-4" />
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-xs font-black text-slate-900">مساعد الكشاف الذكي</span>
-                                                        <span className="text-[10px] font-bold text-emerald-800 bg-white border border-emerald-200 px-2 py-0.5 rounded shadow-xs">
+                                                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded shadow-2xs">
                                                             متبقي {usage.remaining} مجاناً اليوم
                                                         </span>
                                                     </div>
@@ -1113,7 +1068,7 @@ export function MediaDrawer({
                                         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3">
                                             <div className="flex items-center justify-between gap-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-14 h-14 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center flex-shrink-0">
+                                                    <div className="w-14 h-14 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center flex-shrink-0 shadow-2xs">
                                                         {item.userImage ? (
                                                             <img src={item.userImage} alt={item.userName} className="w-full h-full object-cover" />
                                                         ) : (
@@ -1239,111 +1194,171 @@ export function MediaDrawer({
                                 )}
 
                                 {/* ==============================================================
-                                    TAB 2: EL7LM PRO SCOUTING DOSSIER (الملف الكشفي المعتمد)
+                                    TAB 2: EL7LM PRO SCOUTING DOSSIER (الملف الكشفي المعتمد - ناصع البياض)
                                 ============================================================== */}
                                 {activeTab === 'dossier' && (
                                     <>
-                                        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3">
-                                            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center">
-                                                        <FileText className="w-4 h-4" />
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="text-xs font-black text-slate-900">ملف الكشاف المعتمد — منصة الحلم</h3>
-                                                        <p className="text-[10px] text-slate-500 font-mono">El7lm Pro Scouting Dossier</p>
-                                                    </div>
+                                        {/* Dossier Header Bar */}
+                                        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex items-center justify-between gap-3 flex-wrap">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shadow-xs">
+                                                    <FileText className="w-5 h-5" />
                                                 </div>
-
-                                                <div className="flex items-center gap-1.5">
-                                                    <Button
-                                                        onClick={handleShareWhatsApp}
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-8 px-2.5 text-xs font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 gap-1 cursor-pointer"
-                                                        title="مشاركة التقرير عبر واتساب للأندية والوكلاء"
-                                                    >
-                                                        <Share2 className="w-3.5 h-3.5" />
-                                                        <span className="hidden sm:inline">واتساب للأندية</span>
-                                                    </Button>
-
-                                                    <Button
-                                                        onClick={handleCopyDossier}
-                                                        size="sm"
-                                                        className={`h-8 px-3 text-xs font-bold gap-1.5 transition-all cursor-pointer shadow-xs ${
-                                                            copiedReport
-                                                                ? 'bg-emerald-700 text-white'
-                                                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                                        }`}
-                                                    >
-                                                        {copiedReport ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                                                        <span>{copiedReport ? 'تم النسخ!' : 'نسخ التقرير الكشفي 📋'}</span>
-                                                    </Button>
+                                                <div>
+                                                    <h3 className="text-xs font-black text-slate-900">ملف الكشاف المعتمد — منصة الحلم</h3>
+                                                    <p className="text-[10px] text-slate-500 font-mono">El7lm Pro Scouting Dossier</p>
                                                 </div>
                                             </div>
 
-                                            {/* El7lm Dossier Preview Monospace Box */}
-                                            <div className="bg-slate-950 text-slate-100 border border-slate-800 rounded-xl p-4 text-xs font-mono leading-relaxed whitespace-pre-line max-h-80 overflow-y-auto select-all shadow-inner">
-                                                {currentDossierText}
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    onClick={handleShareWhatsApp}
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-8 px-2.5 text-xs font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 gap-1.5 cursor-pointer"
+                                                    title="مشاركة التقرير عبر واتساب للأندية والوكلاء"
+                                                >
+                                                    <Share2 className="w-3.5 h-3.5" />
+                                                    <span>واتساب للأندية</span>
+                                                </Button>
+
+                                                <Button
+                                                    onClick={handleCopyDossier}
+                                                    size="sm"
+                                                    className={`h-8 px-3 text-xs font-bold gap-1.5 transition-all cursor-pointer shadow-xs ${
+                                                        copiedReport
+                                                            ? 'bg-emerald-700 text-white'
+                                                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                                    }`}
+                                                >
+                                                    {copiedReport ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                                    <span>{copiedReport ? 'تم النسخ!' : 'نسخ التقرير الكشفي 📋'}</span>
+                                                </Button>
                                             </div>
                                         </div>
 
-                                        {/* Tactical Strengths & Development Areas */}
-                                        {(tacticalStrengths.length > 0 || developmentAreas.length > 0) && (
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                {tacticalStrengths.length > 0 && (
-                                                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5">
-                                                        <p className="text-xs font-bold text-emerald-800 mb-1.5 flex items-center gap-1">
-                                                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> نقاط القوة التكتيكية:
-                                                        </p>
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {tacticalStrengths.map((str, idx) => (
-                                                                <span key={idx} className="bg-white text-emerald-800 text-[11px] font-bold px-2 py-0.5 rounded-md border border-emerald-200 shadow-2xs">
-                                                                    {str}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {developmentAreas.length > 0 && (
-                                                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5">
-                                                        <p className="text-xs font-bold text-amber-800 mb-1.5 flex items-center gap-1">
-                                                            <Target className="w-3.5 h-3.5 text-amber-600" /> جوانب بحاجة لتطوير:
-                                                        </p>
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {developmentAreas.map((dev, idx) => (
-                                                                <span key={idx} className="bg-white text-amber-800 text-[11px] font-bold px-2 py-0.5 rounded-md border border-amber-200 shadow-2xs">
-                                                                    {dev}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        {/* AI Detailed Breakdown */}
-                                        {aiText && (
-                                            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2 shadow-xs">
+                                        {/* Executive White Dossier Sheet (No Black Terminal!) */}
+                                        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+                                            {/* Sheet Header */}
+                                            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-base font-black text-slate-900">📋 بطاقة التقييم الكشفي الرسمي</span>
+                                                    <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                        معتمد رسمياً
+                                                    </span>
+                                                </div>
                                                 <button
                                                     type="button"
-                                                    onClick={() => setShowFullAiReport(prev => !prev)}
-                                                    className="w-full text-xs text-emerald-700 hover:text-emerald-800 font-bold flex items-center justify-between cursor-pointer"
+                                                    onClick={() => setShowRawDossier(prev => !prev)}
+                                                    className="text-xs text-slate-500 hover:text-slate-800 font-bold underline cursor-pointer"
                                                 >
-                                                    <span className="flex items-center gap-1.5">
-                                                        <Sparkles className="w-3.5 h-3.5" />
-                                                        <span>عرض التقرير الفني المفصل المستخرج بالذكاء الاصطناعي</span>
-                                                    </span>
-                                                    {showFullAiReport ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                                    {showRawDossier ? 'عرض النموذج المنسق' : 'عرض كود التقرير المباشر'}
                                                 </button>
-                                                {showFullAiReport && (
-                                                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mt-2 text-slate-700 leading-relaxed text-xs whitespace-pre-line max-h-56 overflow-y-auto">
-                                                        {aiText}
-                                                    </div>
-                                                )}
                                             </div>
-                                        )}
+
+                                            {showRawDossier ? (
+                                                <div className="bg-slate-50 text-slate-800 border border-slate-200 rounded-xl p-4 text-xs font-mono leading-relaxed whitespace-pre-line max-h-80 overflow-y-auto select-all">
+                                                    {currentDossierText}
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-4 text-xs">
+                                                    {/* Player Dossier Bio Summary */}
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 bg-slate-50/70 p-3.5 rounded-xl border border-slate-200/80">
+                                                        <div>
+                                                            <span className="text-[10px] text-slate-400 block">اسم اللاعب</span>
+                                                            <span className="font-black text-slate-900">{item.userName}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[10px] text-slate-400 block">المركز التكتيكي</span>
+                                                            <span className="font-bold text-slate-800">{item.position || 'لاعب كرة قدم'}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[10px] text-slate-400 block">العمر والدولة</span>
+                                                            <span className="font-bold text-slate-800">{item.age ? `${item.age} سنة` : 'موهبة صاعدة'} • {item.country || 'مصر'}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[10px] text-slate-400 block">النادي / الأكاديمية</span>
+                                                            <span className="font-bold text-slate-800">{item.organization || 'لاعب حر'}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[10px] text-slate-400 block">القدم المفضلة</span>
+                                                            <span className="font-bold text-emerald-700">{dominantFoot}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[10px] text-slate-400 block">التقييم العام</span>
+                                                            <span className="font-black text-emerald-700">{calculatedOverall} OVR ({tier.label})</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Skills Performance Badges */}
+                                                    <div className="space-y-1.5">
+                                                        <span className="text-xs font-black text-slate-800 block">مصفوفة الأداء الكروي (معايير الحلم الدولية):</span>
+                                                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                                                            {SKILL_DEFS.map(s => {
+                                                                const val = skills[s.key as keyof FootballSkills];
+                                                                const badgeCls = getSkillBadgeColor(val);
+                                                                return (
+                                                                    <div key={s.key} className="bg-slate-50 border border-slate-200/80 p-2 rounded-xl text-center">
+                                                                        <span className="text-[10px] text-slate-500 font-bold block">{s.short}</span>
+                                                                        <span className={`text-sm font-black font-mono block mt-0.5 rounded px-1 py-0.5 border ${badgeCls}`}>
+                                                                            {val}
+                                                                        </span>
+                                                                        <span className="text-[9px] text-slate-400 block mt-0.5 truncate">{s.label.split(' ')[0]}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Strengths & Development Areas */}
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                                                        <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-3">
+                                                            <p className="text-xs font-bold text-emerald-800 mb-1 flex items-center gap-1">
+                                                                <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> نقاط القوة التكتيكية:
+                              </p>
+                                                            <div className="space-y-1">
+                                                                {(tacticalStrengths.length > 0 ? tacticalStrengths : ['التحكم الإيجابي بالكرة والسرعة في تغيير الاتجاه', 'الرؤية الميدانية والتحرك في المساحات']).map((str, idx) => (
+                                                                    <p key={idx} className="text-[11px] text-emerald-950 font-medium leading-tight">
+                                                                        • {str}
+                                                                    </p>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-3">
+                                                            <p className="text-xs font-bold text-amber-800 mb-1 flex items-center gap-1">
+                                                                <Target className="w-3.5 h-3.5 text-amber-600" /> جوانب التطوير المستهدفة:
+                                                            </p>
+                                                            <div className="space-y-1">
+                                                                {(developmentAreas.length > 0 ? developmentAreas : ['رفع الكثافة البدنية في الالتحامات', 'دقة إنهاء الكرات تحت الضغط العالي']).map((dev, idx) => (
+                                                                    <p key={idx} className="text-[11px] text-amber-950 font-medium leading-tight">
+                                                                        • {dev}
+                                                                    </p>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Scout Recommendation Box */}
+                                                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
+                                                        <span className="text-xs font-bold text-slate-800 block">التوصية الفنية للكشاف:</span>
+                                                        <p className="text-xs text-slate-700 leading-relaxed">
+                                                            {analystNotes.trim() || 'لاعب واعد يمتلك أساسيات فنية ممتازة تؤهله للاندماج السريع في التمارين التكتيكية التخصصية.'}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* AI Full Report Collapsible */}
+                                                    {aiText && (
+                                                        <div className="border border-slate-200 rounded-xl p-3 bg-white">
+                                                            <span className="text-xs font-bold text-emerald-700 block mb-1">التقرير التحليلي المستخرج:</span>
+                                                            <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-line max-h-40 overflow-y-auto">
+                                                                {aiText}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </>
                                 )}
 

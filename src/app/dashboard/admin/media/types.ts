@@ -2,6 +2,8 @@ export type MediaStatus  = 'pending' | 'approved' | 'rejected' | 'flagged';
 export type MediaType    = 'video' | 'image';
 export type MediaSortKey = 'date_desc' | 'date_asc' | 'name_asc' | 'status' | 'size_desc' | 'type';
 export type AccountType = 'player' | 'coach' | 'academy' | 'club' | 'agent' | 'system';
+export type MediaSourceFilter = 'all' | 'direct' | 'youtube' | 'tiktok' | 'external';
+export type DetectedSource = 'direct' | 'youtube' | 'tiktok' | 'vimeo' | 'external' | 'image';
 
 export interface DateFilter {
     from: string; // YYYY-MM-DD
@@ -67,4 +69,21 @@ export interface MediaStats {
     flagged: number;
     videos: number;
     images: number;
+    directVideos: number;
+    youtubeVideos: number;
+    tiktokVideos: number;
+    externalVideos: number;
+}
+
+/** تحديد مصدر الوسيط بدقة لمنع الخلط بين الملفات المرفوعة والروابط الخارجية */
+export function detectMediaSource(item: { url?: string; type?: MediaType; sourceType?: string }): DetectedSource {
+    if (item.type === 'image') return 'image';
+    const url = (item.url || '').toLowerCase();
+    if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+    if (url.includes('tiktok.com')) return 'tiktok';
+    if (url.includes('vimeo.com')) return 'vimeo';
+    if (item.sourceType === 'r2' || /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url) || url.includes('assets.el7lm.com') || url.includes('r2.cloudflarestorage.com')) {
+        return 'direct';
+    }
+    return 'external';
 }

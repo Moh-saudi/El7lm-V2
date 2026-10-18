@@ -1,8 +1,12 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { Play, Star, BrainCircuit, Clock, CheckCircle, XCircle, Flag, Eye, ChevronDown, ChevronUp, ExternalLink, User, Sparkles } from 'lucide-react';
-import { MediaItem } from '../types';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import {
+    Play, Star, BrainCircuit, Clock, CheckCircle, XCircle, Flag,
+    Eye, ChevronDown, ChevronUp, ExternalLink, User, Sparkles, Cloud,
+    PlaySquare, Music2, Image as ImageIcon
+} from 'lucide-react';
+import { MediaItem, detectMediaSource, DetectedSource } from '../types';
 import { getYouTubeId } from '../hooks/useMediaData';
 
 // كاش مصغرات R2 في الـ client
@@ -82,10 +86,10 @@ interface Props {
 }
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
-    pending:  { label: 'بانتظار التحليل', cls: 'bg-amber-500/95 text-white',   icon: <Clock className="w-2.5 h-2.5" />     },
+    pending:  { label: 'بانتظار التحليل', cls: 'bg-amber-500/95 text-white',   icon: <Clock className="w-2.5 h-2.5" /> },
     approved: { label: 'معتمد ومزامَن', cls: 'bg-emerald-600/95 text-white', icon: <CheckCircle className="w-2.5 h-2.5" /> },
-    rejected: { label: 'مرفوض',         cls: 'bg-rose-500/95 text-white',    icon: <XCircle className="w-2.5 h-2.5" />    },
-    flagged:  { label: 'تنبيه',          cls: 'bg-orange-500/95 text-white',  icon: <Flag className="w-2.5 h-2.5" />       },
+    rejected: { label: 'مرفوض',         cls: 'bg-rose-600/95 text-white',    icon: <XCircle className="w-2.5 h-2.5" /> },
+    flagged:  { label: 'تنبيه',          cls: 'bg-orange-500/95 text-white',  icon: <Flag className="w-2.5 h-2.5" /> },
 };
 
 function getThumbnailUrl(item: MediaItem): string | null {
@@ -96,11 +100,21 @@ function getThumbnailUrl(item: MediaItem): string | null {
     return null;
 }
 
-function getPlatformBadge(url: string) {
-    if (url.includes('youtu')) return { label: 'YouTube', cls: 'bg-red-600', dot: '▶' };
-    if (url.includes('tiktok')) return { label: 'TikTok',  cls: 'bg-black',  dot: '♪' };
-    if (url.includes('vimeo'))  return { label: 'Vimeo',   cls: 'bg-sky-600', dot: '▶' };
-    return null;
+function getSourceBadge(source: DetectedSource) {
+    switch (source) {
+        case 'direct':
+            return { label: 'رفع سحابي مباشر', cls: 'bg-emerald-600 text-white', icon: Cloud };
+        case 'youtube':
+            return { label: 'YouTube', cls: 'bg-red-600 text-white', icon: PlaySquare };
+        case 'tiktok':
+            return { label: 'TikTok', cls: 'bg-black text-white', icon: Music2 };
+        case 'vimeo':
+            return { label: 'Vimeo', cls: 'bg-sky-600 text-white', icon: PlaySquare };
+        case 'image':
+            return { label: 'صورة', cls: 'bg-indigo-600 text-white', icon: ImageIcon };
+        default:
+            return { label: 'رابط خارجي', cls: 'bg-slate-700 text-white', icon: ExternalLink };
+    }
 }
 
 // ── MediaCard ──────────────────────────────────────────────
@@ -111,14 +125,15 @@ function MediaCard({ item, onSelect, isSelected, isChecked, onToggleCheck }: {
     isChecked: boolean;
     onToggleCheck: (e: React.MouseEvent) => void;
 }) {
-    const badge    = STATUS_BADGE[item.status] || STATUS_BADGE.pending;
-    const ytThumb  = getThumbnailUrl(item);
-    const tkThumb  = useTikTokThumb(item.url);
-    const isR2Vid  = item.type === 'video' && item.sourceType === 'r2' && !item.thumbnailUrl;
-    const r2Thumb  = useR2Thumb(item.url, isR2Vid && !ytThumb && !tkThumb);
-    const thumb    = ytThumb || tkThumb || r2Thumb;
-    const platform = getPlatformBadge(item.url);
-    const isExt    = !!(item.url.includes('youtu') || item.url.includes('tiktok') || item.url.includes('vimeo'));
+    const badge      = STATUS_BADGE[item.status] || STATUS_BADGE.pending;
+    const source     = detectMediaSource(item);
+    const sourceInfo = getSourceBadge(source);
+    const ytThumb    = getThumbnailUrl(item);
+    const tkThumb    = useTikTokThumb(item.url);
+    const isR2Vid    = item.type === 'video' && source === 'direct' && !item.thumbnailUrl;
+    const r2Thumb    = useR2Thumb(item.url, isR2Vid && !ytThumb && !tkThumb);
+    const thumb      = ytThumb || tkThumb || r2Thumb;
+    const isExt      = source !== 'direct' && item.type === 'video';
 
     return (
         <div className="relative group">
@@ -156,7 +171,7 @@ function MediaCard({ item, onSelect, isSelected, isChecked, onToggleCheck }: {
                 {/* Gradient overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/35" />
 
-                {/* Top badges */}
+                {/* Top badges: Status & Source */}
                 <div className="absolute top-2 right-2 left-2 flex justify-between items-start gap-1 z-10">
                     <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold shadow-xs ${badge.cls}`}>
                         {badge.icon} {badge.label}
@@ -172,15 +187,11 @@ function MediaCard({ item, onSelect, isSelected, isChecked, onToggleCheck }: {
                             </span>
                         ) : null}
 
-                        {platform ? (
-                            <span className={`${platform.cls} text-white px-1.5 py-0.5 rounded-md text-[10px] font-bold shadow-xs`}>
-                                {platform.label}
-                            </span>
-                        ) : item.sourceType === 'r2' ? (
-                            <span className="bg-slate-900/90 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-md text-[9px] font-bold shadow-xs">
-                                📱 الموبايل
-                            </span>
-                        ) : null}
+                        {/* Explicit Source Badge */}
+                        <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold shadow-xs ${sourceInfo.cls}`}>
+                            <sourceInfo.icon className="w-2.5 h-2.5" />
+                            <span>{sourceInfo.label}</span>
+                        </span>
                     </div>
                 </div>
 
@@ -200,8 +211,8 @@ function MediaCard({ item, onSelect, isSelected, isChecked, onToggleCheck }: {
                 {/* AI analyzed indicator */}
                 {item.aiAnalysis && (
                     <div className="absolute bottom-7 left-2 z-10">
-                        <span className="flex items-center gap-1 bg-purple-600/90 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow-xs">
-                            <BrainCircuit className="w-2.5 h-2.5" /> محلل
+                        <span className="flex items-center gap-1 bg-emerald-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow-xs">
+                            <BrainCircuit className="w-2.5 h-2.5" /> تقرير كشفي معتمد
                         </span>
                     </div>
                 )}
@@ -210,17 +221,17 @@ function MediaCard({ item, onSelect, isSelected, isChecked, onToggleCheck }: {
                 <div className="absolute bottom-0 right-0 left-0 px-2.5 py-2 z-10">
                     <p className="text-white text-[11px] font-bold truncate leading-tight">{item.title}</p>
                     <div className="flex items-center justify-between mt-0.5">
-                        <span className="text-white/60 text-[10px]">{item.category || 'مهارات'}</span>
+                        <span className="text-white/70 text-[10px]">{item.category || 'مهارات كروية'}</span>
                         <div className="flex items-center gap-1.5">
                             {item.fileSize && item.fileSize > 0 && (
-                                <span className="text-white/50 text-[9px]">
+                                <span className="text-white/60 text-[9px]">
                                     {item.fileSize >= 1024 * 1024
                                         ? `${(item.fileSize / 1024 / 1024).toFixed(1)}MB`
                                         : `${(item.fileSize / 1024).toFixed(0)}KB`}
                                 </span>
                             )}
                             {item.views > 0 && (
-                                <span className="text-white/60 text-[10px] flex items-center gap-0.5">
+                                <span className="text-white/70 text-[10px] flex items-center gap-0.5">
                                     <Eye className="w-2.5 h-2.5" /> {item.views}
                                 </span>
                             )}
@@ -246,8 +257,12 @@ function PlayerGroup({ userId, userName, userImage, items, onSelect, selectedId,
 }) {
     const [open, setOpen] = useState(true);
     const [imgError, setImgError] = useState(false);
-    const videos = items.filter(i => i.type === 'video');
-    const images = items.filter(i => i.type === 'image');
+
+    const directVideos = items.filter(i => i.type === 'video' && detectMediaSource(i) === 'direct').length;
+    const youtubeVideos = items.filter(i => i.type === 'video' && detectMediaSource(i) === 'youtube').length;
+    const otherVideos = items.filter(i => i.type === 'video' && !['direct', 'youtube'].includes(detectMediaSource(i))).length;
+    const images = items.filter(i => i.type === 'image').length;
+
     const pending = items.filter(i => i.status === 'pending').length;
     const approved = items.filter(i => i.status === 'approved').length;
     const initial = userName.charAt(0) || '?';
@@ -304,9 +319,27 @@ function PlayerGroup({ userId, userName, userImage, items, onSelect, selectedId,
                                 </span>
                             )}
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                            {videos.length > 0 && <span className="text-[11px] text-slate-400 font-medium">{videos.length} فيديو</span>}
-                            {images.length > 0 && <span className="text-[11px] text-slate-400 font-medium">{images.length} صورة</span>}
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            {directVideos > 0 && (
+                                <span className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded font-bold">
+                                    ☁️ {directVideos} رفع مباشر
+                                </span>
+                            )}
+                            {youtubeVideos > 0 && (
+                                <span className="text-[11px] text-red-700 bg-red-50 border border-red-200 px-1.5 py-0.2 rounded font-bold">
+                                    🔴 {youtubeVideos} يوتيوب
+                                </span>
+                            )}
+                            {otherVideos > 0 && (
+                                <span className="text-[11px] text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded font-medium">
+                                    🌐 {otherVideos} خارجي
+                                </span>
+                            )}
+                            {images > 0 && (
+                                <span className="text-[11px] text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.2 rounded font-medium">
+                                    {images} صورة
+                                </span>
+                            )}
                             {pending > 0 && (
                                 <span className="text-[10px] bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-full border border-amber-200">
                                     {pending} بانتظار التحليل
@@ -389,8 +422,8 @@ export function MediaGrid({ items, loading, onSelect, selectedId, selectedIds, o
             <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mb-3 text-emerald-600">
                 <Play className="w-8 h-8 fill-emerald-600/20" />
             </div>
-            <p className="font-bold text-slate-700 text-sm">لا توجد وسائط مطابقة للبحث</p>
-            <p className="text-xs text-slate-400 mt-1">جرّب تغيير الفلاتر أو البحث باسم لاعب آخر</p>
+            <p className="font-bold text-slate-700 text-sm">لا توجد وسائط مطابقة للبحث أو الفلتر المختار</p>
+            <p className="text-xs text-slate-400 mt-1">جرّب تغيير مصدر الفيديو أو الفلاتر الأخرى</p>
         </div>
     );
 
@@ -398,7 +431,7 @@ export function MediaGrid({ items, loading, onSelect, selectedId, selectedIds, o
         <div className="space-y-4 pb-12">
             <div className="flex items-center justify-between text-xs text-slate-500 font-medium px-1">
                 <span>استعراض الفيديوهات مجمعة لكل لاعب ({grouped.length} لاعب مسجل)</span>
-                <span>إجمالي الملفات: {items.length}</span>
+                <span>إجمالي الملفات المعروضة: {items.length}</span>
             </div>
             {grouped.map(([userId, { userName, userImage, items: playerItems }]) => (
                 <PlayerGroup
