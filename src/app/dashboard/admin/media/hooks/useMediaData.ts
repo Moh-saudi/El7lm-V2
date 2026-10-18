@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { MediaItem, FootballSkills } from '../types';
 import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
+import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
 
 // ── مساعدات YouTube ────────────────────────────────────────────
 export const getYouTubeId = (url: string): string | null => {
@@ -18,8 +19,6 @@ export const getYouTubeId = (url: string): string | null => {
     }
     return null;
 };
-
-import { fixReceiptUrl } from '@/lib/utils/cloudflare-r2-utils';
 
 export const getYouTubeThumbnail = (url: string): string | null => {
     const id = getYouTubeId(url);
@@ -54,11 +53,12 @@ export function useMediaData() {
     const [lastFetched, setLastFetched] = useState<Date | null>(null);
 
     // ── جلب كل الميديا من R2 و Supabase ──────────────────────
-    const fetchAll = useCallback(async (forceRefresh = false) => {
+    const fetchAll = useCallback(async (forceRefresh: boolean | unknown = false) => {
         setLoading(true);
         setError(null);
         try {
-            const url = forceRefresh ? '/api/media/list-r2?refresh=1' : '/api/media/list-r2';
+            const shouldForce = forceRefresh === true;
+            const url = shouldForce ? '/api/media/list-r2?refresh=1' : '/api/media/list-r2';
             const res  = await authenticatedFetch(url, { cache: 'no-store' });
             const data = await res.json();
             if (!data.success) throw new Error(data.error || 'فشل جلب البيانات');

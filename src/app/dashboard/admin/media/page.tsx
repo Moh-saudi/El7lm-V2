@@ -255,7 +255,7 @@ export default function MediaPage() {
             <div className="bg-white border border-slate-200 rounded-2xl shadow-xl p-8 max-w-lg text-center space-y-3">
                 <p className="text-rose-600 font-bold text-lg">فشل تحميل الوسائط</p>
                 <p className="text-slate-500 text-sm font-mono">{error}</p>
-                <button onClick={fetchAll} className="mt-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-500 cursor-pointer">إعادة المحاولة</button>
+                <button onClick={() => fetchAll(true)} className="mt-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-500 cursor-pointer">إعادة المحاولة</button>
             </div>
         </div>
     );
