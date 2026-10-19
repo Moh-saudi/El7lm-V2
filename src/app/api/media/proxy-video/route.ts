@@ -14,12 +14,23 @@ const ALLOWED_DOMAINS = [
     'supabase.co',
 ];
 
+export async function OPTIONS() {
+    return new NextResponse(null, {
+        status: 200,
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+            'Access-Control-Allow-Headers': 'Range, Content-Type, Authorization',
+        },
+    });
+}
+
 export async function GET(req: NextRequest) {
-    // 1. تقييد المعدل بالـ IP لمنع استنزاف الخادم كبروكسي عام
+    // 1. تقييد المعدل بالـ IP لمنع استنزاف الخادم كبروكسي عام (سماحية 300 طلب/دقيقة لتدفق وتخطي أجزاء الفيديو Range Requests)
     const clientIp = getClientIpFromHeaders(req.headers) || 'anonymous';
     const rateCheck = rateLimiter.check(`proxy_video:${clientIp}`, {
         windowMs: 60 * 1000,
-        max: 60,
+        max: 300,
     });
     if (!rateCheck.allowed) {
         return new NextResponse('Too Many Requests', { status: 429 });

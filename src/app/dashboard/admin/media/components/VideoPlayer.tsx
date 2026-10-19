@@ -26,6 +26,20 @@ export function VideoPlayer({ item }: Props) {
 
     const detectedSource = useMemo(() => detectMediaSource(item), [item]);
 
+    // تأمين تشغيل مقاطع التخزين السحابي عبر البروكسي الداخلي لمنع قيود الـ CORS
+    const videoStreamUrl = useMemo(() => {
+        if (!item.url) return '';
+        if (
+            detectedSource === 'direct' ||
+            item.url.includes('r2.dev') ||
+            item.url.includes('assets.el7lm.com') ||
+            item.url.includes('cloudflarestorage.com')
+        ) {
+            return `/api/media/proxy-video?url=${encodeURIComponent(item.url)}`;
+        }
+        return item.url;
+    }, [item.url, detectedSource]);
+
     // Reset state on item change
     useEffect(() => {
         setIsPlaying(false);
@@ -116,7 +130,7 @@ export function VideoPlayer({ item }: Props) {
                                 <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
                                     <video
                                         ref={videoRef}
-                                        src={item.url}
+                                        src={videoStreamUrl}
                                         playsInline
                                         preload="auto"
                                         onClick={togglePlay}

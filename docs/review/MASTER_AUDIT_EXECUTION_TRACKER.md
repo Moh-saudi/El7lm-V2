@@ -862,6 +862,11 @@
       - **إرسال إشعار فوري لموبايل اللاعب:** إدراج إشعار رسمي في جدول `notifications` للاعب، وإرسال إشعار Push عبر Firebase Cloud Messaging (`sendFcmPush`) بهواتف اللاعبين يتضمن سبب الحذف/الرفض فورياً.
       - **شريط الإجراءات ونافذة التأكيد:** إضافة زر "حذف وإشعار" إلى الشريط العائم في استوديو الميديا مع نافذة تأكيد نهائية ومربع نص لكتابة سبب الرفض/الحذف.
 
+  11. **استئصال حظر CORS عن مقاطع التخزين السحابي (CORS Elimination via Same-Origin Streaming):**
+      - **تشخيص أزمة CORS:** خوادم Cloudflare R2 العامة (`pub-d4c7563dad1f41f3adf319c6a25a5f44.r2.dev`) لا تدعم ترويسات `Access-Control-Allow-Origin` لطلبات الفيديو عبر النطاق عند استدعائها من نطاق الإنتاج `https://www.el7lm.com` مع طلبات أجزاء الفيديو الجزئية (206 Partial Content Range Requests).
+      - **التدفق من نفس النطاق (Same-Origin Stream):** إعادة توجيه مقاطع التخزين السحابي المباشرة في مشغل الاستوديو [`VideoPlayer.tsx`](file:///d:/El7lm-V2/src/app/dashboard/admin/media/components/VideoPlayer.tsx) عبر البروكسي الداخلي `/api/media/proxy-video`، مما يجعل الرابط يتبع نفس نطاق الموقع (`Same-Origin`) ويقضي تماماً على حظر المتصفح وسياسة CORS.
+      - **تحصين مسار البروكسي:** رفع سقف تدفق الأجزاء إلى 300 طلب/دقيقة لاستيعاب سحب وتقديم الفيديو (Scrubbing & Range Streaming) وإضافة معالج `OPTIONS` بترويسات CORS كاملة ودعم `206 Partial Content`.
+
 ---
 
 ## 6. خارطة طريق الخطوات القادمة للمشروع (Next Action Steps)
