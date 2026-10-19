@@ -7,6 +7,7 @@ import {
     Target, Eye, Check, User
 } from 'lucide-react';
 import { MediaItem, MediaStatus, detectMediaSource } from '../types';
+import { CountryFlag } from './CountryFlag';
 
 interface Props {
     items: MediaItem[];
@@ -91,17 +92,27 @@ export function ScoutingCanvasGrid({
 
                             {/* Player info */}
                             <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                {item.userImage ? (
-                                    <img
-                                        src={item.userImage}
-                                        alt={item.userName}
-                                        className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0"
-                                    />
-                                ) : (
-                                    <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-600 font-bold text-sm flex items-center justify-center shrink-0">
-                                        {item.userName ? item.userName.charAt(0).toUpperCase() : <User className="w-5 h-5" />}
-                                    </div>
-                                )}
+                                <div className="relative shrink-0">
+                                    {item.userImage ? (
+                                        <img
+                                            src={item.userImage}
+                                            alt={item.userName}
+                                            className="w-10 h-10 rounded-xl object-cover border border-slate-200"
+                                        />
+                                    ) : (
+                                        <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-600 font-bold text-sm flex items-center justify-center">
+                                            {item.userName ? item.userName.charAt(0).toUpperCase() : <User className="w-5 h-5" />}
+                                        </div>
+                                    )}
+                                    {item.country && (
+                                        <div
+                                            className="absolute -bottom-1 -left-1 bg-white p-0.5 rounded-full shadow-xs border border-slate-200 flex items-center justify-center overflow-hidden"
+                                            title={item.country}
+                                        >
+                                            <CountryFlag country={item.country} size="xs" />
+                                        </div>
+                                    )}
+                                </div>
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-1.5">
                                         <h3 className="text-xs font-black text-slate-900 truncate leading-snug">
@@ -111,15 +122,15 @@ export function ScoutingCanvasGrid({
                                             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                                         )}
                                     </div>
-                                    <div className="flex items-center gap-1 text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium truncate mt-0.5">
                                         <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded text-[10px]">
                                             {item.position || 'لاعب'}
                                         </span>
                                         {item.country && (
-                                            <>
-                                                <span>•</span>
-                                                <span className="truncate">{item.country}</span>
-                                            </>
+                                            <span className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200/60 text-slate-700 px-1.5 py-0.5 rounded text-[10px] font-bold border border-slate-200 shrink-0">
+                                                <CountryFlag country={item.country} size="xs" />
+                                                <span className="truncate max-w-[80px]">{item.country}</span>
+                                            </span>
                                         )}
                                         {item.organization && (
                                             <>
@@ -199,6 +210,16 @@ export function ScoutingCanvasGrid({
                                     </span>
                                 )}
                             </div>
+
+                            {/* Floating Country Badge (Top-Left) */}
+                            {item.country && (
+                                <div className="absolute top-2.5 left-2.5 z-10">
+                                    <span className="flex items-center gap-1 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs border border-white/15">
+                                        <CountryFlag country={item.country} size="xs" />
+                                        <span className="truncate max-w-[80px]">{item.country}</span>
+                                    </span>
+                                </div>
+                            )}
 
                             {/* Hover Play Button Glow */}
                             <div className="absolute inset-0 bg-black/35 opacity-0 group-hover/screen:opacity-100 transition-opacity flex items-center justify-center">

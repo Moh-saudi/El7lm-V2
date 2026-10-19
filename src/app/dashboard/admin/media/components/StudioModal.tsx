@@ -22,6 +22,7 @@ import { SkillsMatrix } from './SkillsMatrix';
 import { ScoutDossier } from './ScoutDossier';
 import { PlayerContact } from './PlayerContact';
 import { MediaAvatar } from './MediaAvatar';
+import { CountryFlag } from './CountryFlag';
 
 interface Props {
     item: MediaItem | null;
@@ -246,7 +247,11 @@ export function StudioModal({
                                 </div>
                                 <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5 truncate">
                                     {item.age && <span className="text-amber-700 font-bold">{item.age} سنة</span>}
-                                    {item.country && <span>• {item.country}</span>}
+                                    {item.country && (
+                                        <span className="inline-flex items-center gap-1 font-bold text-slate-700">
+                                            • <CountryFlag country={item.country} size="xs" /> {item.country}
+                                        </span>
+                                    )}
                                     {item.organization && <span>• {item.organization}</span>}
                                 </div>
                             </div>

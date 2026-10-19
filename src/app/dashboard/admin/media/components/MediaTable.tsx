@@ -6,6 +6,7 @@ import {
     MessageCircle, Sparkles, ExternalLink, ShieldCheck, Film, PlaySquare, Music2, Globe
 } from 'lucide-react';
 import { MediaItem, MediaStatus, detectMediaSource } from '../types';
+import { CountryFlag } from './CountryFlag';
 
 interface Props {
     items: MediaItem[];
@@ -203,8 +204,9 @@ export function MediaTable({
                                                         {item.position || 'لاعب'}
                                                     </span>
                                                     {item.country && (
-                                                        <span className="text-slate-400 truncate max-w-[80px]">
-                                                            {item.country}
+                                                        <span className="inline-flex items-center gap-1 text-slate-700 bg-slate-100 px-1 py-0.2 rounded text-[9.5px] font-bold border border-slate-200">
+                                                            <CountryFlag country={item.country} size="xs" />
+                                                            <span className="truncate max-w-[75px]">{item.country}</span>
                                                         </span>
                                                     )}
                                                 </div>
