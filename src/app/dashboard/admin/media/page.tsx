@@ -8,13 +8,15 @@ import { usePermissions } from '../employees-v2/_hooks/usePermissions';
 import AccessDenied from '@/components/admin/AccessDenied';
 import { useMediaData } from './hooks/useMediaData';
 import {
-    MediaItem, MediaStatus, MediaType, MediaSortKey, DateFilter,
+    MediaItem, MediaStatus, MediaType, MediaSortKey,
     FootballSkills, MediaSourceFilter, detectMediaSource
 } from './types';
 
-import { MediaSlimHeader } from './components/MediaSlimHeader';
+import {
+    ScoutingFilterHub, TacticalPositionFilter, AiOvrFilter, SkillTagFilter
+} from './components/ScoutingFilterHub';
+import { ScoutingCanvasGrid } from './components/ScoutingCanvasGrid';
 import { MediaTable } from './components/MediaTable';
-import { PlayerDossierView } from './components/PlayerDossierView';
 import { StudioModal } from './components/StudioModal';
 import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
@@ -30,10 +32,61 @@ function sortItems(items: MediaItem[], key: MediaSortKey): MediaItem[] {
         case 'date_asc':  return arr.sort((a, b) => a.uploadDate.getTime() - b.uploadDate.getTime());
         case 'name_asc':  return arr.sort((a, b) => a.userName.localeCompare(b.userName, 'ar'));
         case 'status':    return arr.sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
-        case 'size_desc': return arr.sort((a, b) => (b.fileSize ?? 0) - (a.fileSize ?? 0));
-        case 'type':      return arr.sort((a, b) => a.type.localeCompare(b.type));
+        case 'size_desc': return arr.sort((a, b) => (b.overallScore ?? b.aiRating ?? 0) - (a.overallScore ?? a.aiRating ?? 0));
         default:          return arr;
     }
+}
+
+function matchesTacticalPosition(position?: string, filter?: TacticalPositionFilter): boolean {
+    if (!filter || filter === 'all') return true;
+    const p = (position || '').toLowerCase();
+    if (filter === 'gk') {
+        return p.includes('حارس') || p.includes('حراسة') || p.includes('gk') || p.includes('goalkeeper');
+    }
+    if (filter === 'def') {
+        return p.includes('دفاع') || p.includes('مدافع') || p.includes('ظهير') || p.includes('cb') || p.includes('rb') || p.includes('lb') || p.includes('lwb') || p.includes('rwb');
+    }
+    if (filter === 'mid') {
+        return p.includes('وسط') || p.includes('ارتكاز') || p.includes('صانع') || p.includes('cm') || p.includes('cdm') || p.includes('cam') || p.includes('lm') || p.includes('rm');
+    }
+    if (filter === 'fwd') {
+        return p.includes('هجوم') || p.includes('مهاجم') || p.includes('جناح') || p.includes('حربة') || p.includes('st') || p.includes('cf') || p.includes('rw') || p.includes('lw');
+    }
+    return true;
+}
+
+function matchesAiOvr(score?: number, filter?: AiOvrFilter): boolean {
+    if (!filter || filter === 'all') return true;
+    const s = score ?? 0;
+    if (filter === 'elite') return s >= 85;
+    if (filter === 'advanced') return s >= 75 && s < 85;
+    if (filter === 'promising') return s >= 60 && s < 75;
+    if (filter === 'pending') return s === 0;
+    return true;
+}
+
+function matchesSkillTag(item: MediaItem, filter?: SkillTagFilter): boolean {
+    if (!filter || filter === 'all') return true;
+    const text = `${item.title} ${item.description || ''} ${item.category || ''}`.toLowerCase();
+    if (filter === 'dribble') {
+        return text.includes('مراوغ') || text.includes('مهار') || text.includes('dribbl') || text.includes('فردي') || text.includes('تحكم') || (item.skills?.dribbling ?? 0) >= 75;
+    }
+    if (filter === 'goals') {
+        return text.includes('هدف') || text.includes('اهداف') || text.includes('تسديد') || text.includes('شوت') || text.includes('shoot') || text.includes('goal') || (item.skills?.shooting ?? 0) >= 75;
+    }
+    if (filter === 'speed') {
+        return text.includes('سرع') || text.includes('انطلاق') || text.includes('سبرنت') || text.includes('speed') || text.includes('pace') || (item.skills?.pace ?? 0) >= 75;
+    }
+    if (filter === 'passing') {
+        return text.includes('تمرير') || text.includes('اسيست') || text.includes('صناع') || text.includes('pass') || text.includes('cross') || (item.skills?.passing ?? 0) >= 75;
+    }
+    if (filter === 'saves') {
+        return text.includes('تصدي') || text.includes('حارس') || text.includes('save') || text.includes('صد');
+    }
+    if (filter === 'defending') {
+        return text.includes('دفاع') || text.includes('قطع') || text.includes('تاكلنج') || (item.skills?.defending ?? 0) >= 75;
+    }
+    return true;
 }
 
 export default function MediaPage() {
@@ -43,7 +96,6 @@ export default function MediaPage() {
         items,
         loading,
         error,
-        lastFetched,
         fetchAll,
         updateItemStatus,
         approveAndSyncSkills,
@@ -53,14 +105,18 @@ export default function MediaPage() {
         bulkDelete
     } = useMediaData();
 
-    // ─── View Switcher (Table vs Dossiers) ──────────────────────
-    const [viewMode, setViewMode] = useState<'table' | 'dossiers'>('table');
+    // ─── View Switcher (Wyscout Canvas vs Table) ────────────────
+    const [viewMode, setViewMode] = useState<'canvas' | 'table'>('canvas');
 
-    // ─── Filters ──────────────────────────────────────────────
-    const [sourceFilter,  setSourceFilter]  = useState<MediaSourceFilter>('all');
-    const [statusFilter,  setStatusFilter]  = useState<MediaStatus | 'all'>('all');
-    const [searchTerm,    setSearchTerm]    = useState('');
-    const [sortKey,       setSortKey]       = useState<MediaSortKey>('date_desc');
+    // ─── Distinctive Football Filters ───────────────────────────
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState<MediaStatus | 'all'>('all');
+    const [positionFilter, setPositionFilter] = useState<TacticalPositionFilter>('all');
+    const [aiOvrFilter, setAiOvrFilter] = useState<AiOvrFilter>('all');
+    const [countryFilter, setCountryFilter] = useState<string>('all');
+    const [skillFilter, setSkillFilter] = useState<SkillTagFilter>('all');
+    const [sourceFilter, setSourceFilter] = useState<MediaSourceFilter>('all');
+    const [sortKey, setSortKey] = useState<MediaSortKey>('date_desc');
 
     // ─── Bulk selection & Actions ─────────────────────────────
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -75,17 +131,29 @@ export default function MediaPage() {
     // ─── Load on mount ────────────────────────────────────────
     useEffect(() => { fetchAll(); }, [fetchAll]);
 
-    // إعادة ضبط التحديد عند تغيير الفلاتر
+    // إعادة ضبط التحديد عند تغيير أي فلتر
     useEffect(() => {
         setSelectedIds(new Set());
-    }, [sourceFilter, statusFilter, searchTerm]);
+    }, [searchTerm, statusFilter, positionFilter, aiOvrFilter, countryFilter, skillFilter, sourceFilter]);
+
+    // ─── Unique Countries ─────────────────────────────────────
+    const availableCountries = useMemo(() => {
+        const map = new Map<string, number>();
+        items.forEach(i => {
+            const c = i.country?.trim();
+            if (c) map.set(c, (map.get(c) || 0) + 1);
+        });
+        return Array.from(map.entries())
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count);
+    }, [items]);
 
     // ─── Filtered + sorted list ───────────────────────────────
     const filtered = useMemo(() => {
         const q = searchTerm.toLowerCase().trim();
 
         const base = items.filter(m => {
-            // فلتر مصدر الفيديو الدقيق
+            // فلتر المصدر
             if (sourceFilter !== 'all') {
                 const detected = detectMediaSource(m);
                 if (sourceFilter === 'direct' && detected !== 'direct') return false;
@@ -94,8 +162,23 @@ export default function MediaPage() {
                 if (sourceFilter === 'external' && !['youtube', 'tiktok', 'vimeo', 'external'].includes(detected)) return false;
             }
 
+            // فلتر الحالة
             if (statusFilter !== 'all' && m.status !== statusFilter) return false;
 
+            // فلتر المركز الكروي
+            if (!matchesTacticalPosition(m.position, positionFilter)) return false;
+
+            // فلتر تقييم نسر الذكي OVR
+            const effectiveScore = m.overallScore ?? m.aiRating ?? 0;
+            if (!matchesAiOvr(effectiveScore, aiOvrFilter)) return false;
+
+            // فلتر الدولة
+            if (countryFilter !== 'all' && m.country !== countryFilter) return false;
+
+            // فلتر المهارة الكروية
+            if (!matchesSkillTag(m, skillFilter)) return false;
+
+            // البحث الشامل
             if (q && !(
                 m.userName.toLowerCase().includes(q) ||
                 m.title.toLowerCase().includes(q) ||
@@ -109,7 +192,19 @@ export default function MediaPage() {
         });
 
         return sortItems(base, sortKey);
-    }, [items, sourceFilter, statusFilter, searchTerm, sortKey]);
+    }, [items, sourceFilter, statusFilter, positionFilter, aiOvrFilter, countryFilter, skillFilter, searchTerm, sortKey]);
+
+    // ─── Reset All Filters ────────────────────────────────────
+    const handleResetFilters = useCallback(() => {
+        setSearchTerm('');
+        setStatusFilter('all');
+        setPositionFilter('all');
+        setAiOvrFilter('all');
+        setCountryFilter('all');
+        setSkillFilter('all');
+        setSourceFilter('all');
+        setSortKey('date_desc');
+    }, []);
 
     // ─── Queue Navigation (السابق / التالي) ───────────────────
     const currentIndex = selected ? filtered.findIndex(i => i.id === selected.id) : -1;
@@ -172,7 +267,7 @@ export default function MediaPage() {
                     metadata:         { mediaTitle: item.title, mediaType: item.type },
                 }),
             });
-        } catch { /* الإشعار اختياري — لا يوقف العملية */ }
+        } catch { /* الإشعار اختياري */ }
     }, [user?.id]);
 
     // ─── Handlers ─────────────────────────────────────────────
@@ -182,7 +277,6 @@ export default function MediaPage() {
             const labels = { approved: 'تم اعتماد', rejected: 'تم رفض', flagged: 'تم تنبيه' };
             toast.success(`${labels[status]} "${item.title}"`);
             sendAutoNotification(item, status);
-            // انتقال تلقائي للعنصر التالي
             const idx  = filtered.findIndex(i => i.id === item.id);
             const next = filtered[idx + 1] || filtered[idx - 1] || null;
             setSelected(next);
@@ -191,11 +285,11 @@ export default function MediaPage() {
         }
     };
 
-    // ─── اعتماد سريع بنقرة واحدة (من الجدول أو البطاقات) ───────
+    // ─── اعتماد سريع بنقرة واحدة ──────────────────────────────
     const handleQuickApprove = useCallback(async (item: MediaItem) => {
         try {
             await updateItemStatus(item, 'approved', user?.id || 'admin');
-            toast.success(`تم اعتماد "${item.title || item.userName}" بنجاح`);
+            toast.success(`تم اعتماد "${item.title || item.userName}" بنجاح ومزامنته بالبروفايل`);
             sendAutoNotification(item, 'approved');
         } catch (e: any) {
             toast.error('فشل الاعتماد: ' + (e.message || 'حدث خطأ'));
@@ -220,7 +314,6 @@ export default function MediaPage() {
         try {
             await approveAndSyncSkills(item, skills, overallScore, dominantFoot, analystNotes, analysisText);
             toast.success(`🌟 تم اعتماد مهارات "${item.userName}" (${overallScore} OVR) وتحديث بروفايله بنجاح!`);
-            // انتقال تلقائي للعنصر التالي
             const idx  = filtered.findIndex(i => i.id === item.id);
             const next = filtered[idx + 1] || filtered[idx - 1] || null;
             setSelected(next);
@@ -246,16 +339,6 @@ export default function MediaPage() {
             return new Set(filtered.map(i => i.id));
         });
     }, [filtered]);
-
-    const handleToggleGroupSelect = useCallback((ids: string[]) => {
-        setSelectedIds(prev => {
-            const allIn = ids.every(id => prev.has(id));
-            const next = new Set(prev);
-            if (allIn) ids.forEach(id => next.delete(id));
-            else       ids.forEach(id => next.add(id));
-            return next;
-        });
-    }, []);
 
     const handleBulkUpdate = async (status: 'approved' | 'rejected' | 'flagged') => {
         if (!selectedIds.size || bulkLoading) return;
@@ -316,7 +399,7 @@ export default function MediaPage() {
     };
 
     // ─── Guard ────────────────────────────────────────────────
-    if (!can('read', 'media')) return <AccessDenied resource="مركز استوديو الكشافة" />;
+    if (!can('read', 'media')) return <AccessDenied resource="استوديو الكشافة الفني" />;
     if (error) return (
         <div className="flex items-center justify-center min-h-screen bg-slate-50 text-slate-900" dir="rtl">
             <div className="bg-white border border-slate-200 rounded-2xl shadow-xl p-8 max-w-lg text-center space-y-3">
@@ -331,28 +414,49 @@ export default function MediaPage() {
         <div className="min-h-screen bg-slate-50/70 text-slate-900 flex flex-col selection:bg-emerald-500 selection:text-white" dir="rtl">
 
             {/* ── Main Container ── */}
-            <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 space-y-4">
+            <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
 
-                {/* ── 1. Slim Executive Header & Dynamic Filter Bar ── */}
-                <MediaSlimHeader
-                    viewMode={viewMode}
-                    onViewModeChange={setViewMode}
-                    stats={stats}
-                    activeStatus={statusFilter}
-                    onStatusChange={setStatusFilter}
+                {/* ── 1. Advanced Scouting Football Filter Hub ── */}
+                <ScoutingFilterHub
                     searchTerm={searchTerm}
                     onSearchChange={setSearchTerm}
+                    activeStatus={statusFilter}
+                    onStatusChange={setStatusFilter}
+                    stats={stats}
+                    positionFilter={positionFilter}
+                    onPositionChange={setPositionFilter}
+                    aiOvrFilter={aiOvrFilter}
+                    onAiOvrChange={setAiOvrFilter}
+                    countryFilter={countryFilter}
+                    onCountryChange={setCountryFilter}
+                    availableCountries={availableCountries}
+                    skillFilter={skillFilter}
+                    onSkillChange={setSkillFilter}
                     sourceFilter={sourceFilter}
                     onSourceChange={setSourceFilter}
                     sortKey={sortKey}
                     onSortChange={setSortKey}
+                    viewMode={viewMode}
+                    onViewModeChange={setViewMode}
+                    onResetFilters={handleResetFilters}
+                    totalFiltered={filtered.length}
+                    totalAll={items.length}
                     loading={loading}
                     onRefresh={() => fetchAll(true)}
-                    lastFetched={lastFetched}
                 />
 
-                {/* ── 2. Primary Views: Table vs Dossiers ── */}
-                {viewMode === 'table' ? (
+                {/* ── 2. Primary Views: Wyscout Canvas vs Table ── */}
+                {viewMode === 'canvas' ? (
+                    <ScoutingCanvasGrid
+                        items={filtered}
+                        selectedIds={selectedIds}
+                        onToggleSelect={handleToggleSelect}
+                        onItemClick={setSelected}
+                        onQuickApprove={handleQuickApprove}
+                        onQuickDelete={handleQuickDelete}
+                        isDeleting={isDeleting}
+                    />
+                ) : (
                     <MediaTable
                         items={filtered}
                         selectedIds={selectedIds}
@@ -363,22 +467,11 @@ export default function MediaPage() {
                         onQuickDelete={handleQuickDelete}
                         isDeleting={isDeleting}
                     />
-                ) : (
-                    <PlayerDossierView
-                        items={filtered}
-                        selectedIds={selectedIds}
-                        onToggleSelect={handleToggleSelect}
-                        onToggleGroupSelect={handleToggleGroupSelect}
-                        onItemClick={setSelected}
-                        onQuickApprove={handleQuickApprove}
-                        onQuickDelete={handleQuickDelete}
-                        isDeleting={isDeleting}
-                    />
                 )}
 
             </div>
 
-            {/* ── 3. Deep Review Studio Modal ── */}
+            {/* ── 3. Deep Review Studio Modal (Wyscout-grade Canvas) ── */}
             <StudioModal
                 item={selected}
                 onClose={() => setSelected(null)}
