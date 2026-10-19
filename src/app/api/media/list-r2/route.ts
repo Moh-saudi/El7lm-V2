@@ -54,11 +54,14 @@ const rawBucket = (
     'el7lmplatform'
 ).trim();
 const BUCKET = (!rawBucket || rawBucket === 'assets' || rawBucket === 'ads') ? 'el7lmplatform' : rawBucket;
-const PUBLIC_URL = (
+const rawPublicUrl = (
     process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL ||
     process.env.CLOUDFLARE_R2_PUBLIC_URL ||
     'https://assets.el7lm.com'
 ).replace(/\/$/, '');
+const PUBLIC_URL = (rawPublicUrl.includes('pub-') && rawPublicUrl.includes('.r2.dev'))
+    ? 'https://assets.el7lm.com'
+    : rawPublicUrl;
 
 // ─── Key Parser ──────────────────────────────────────────────
 function parseKey(key: string): { userId: string; filename: string } | null {
@@ -383,7 +386,7 @@ async function fetchMediaData(): Promise<{ items: any[]; total: number }> {
         const url = `${PUBLIC_URL}/${obj.key}`;
 
         allItems.push({
-            id: `r2_${Buffer.from(obj.key).toString('base64').replace(/[+/=]/g, '').substring(0, 40)}`,
+            id: `r2_${Buffer.from(obj.key).toString('base64url')}`,
             r2Key: obj.key,
             type: 'video',
             title: filenameToTitle(filename) || `فيديو المنصة ${idx + 1}`,
