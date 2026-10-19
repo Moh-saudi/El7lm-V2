@@ -219,7 +219,7 @@ export function useMediaData() {
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'فشل الحذف');
-        setItems(prev => prev.filter(i => i.id !== item.id));
+        setItems(prev => prev.filter(i => i.id !== item.id && i.r2Key !== item.r2Key));
         return data;
     }, []);
 
@@ -244,7 +244,8 @@ export function useMediaData() {
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'فشل الحذف الجماعي');
         const idsToRemove = new Set(targets.map(i => i.id));
-        setItems(prev => prev.filter(i => !idsToRemove.has(i.id)));
+        const keysToRemove = new Set(targets.map(i => i.r2Key));
+        setItems(prev => prev.filter(i => !idsToRemove.has(i.id) && !keysToRemove.has(i.r2Key)));
         return data;
     }, []);
 

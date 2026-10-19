@@ -513,6 +513,11 @@ export async function GET(req: NextRequest) {
                     items: cached.items,
                     total: cached.total,
                     cached: true,
+                }, {
+                    headers: {
+                        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+                        'Pragma': 'no-cache',
+                    },
                 });
             }
         }
@@ -545,6 +550,11 @@ export async function GET(req: NextRequest) {
             success: true,
             items: data.items,
             total: data.total,
+        }, {
+            headers: {
+                'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+                'Pragma': 'no-cache',
+            },
         });
 
     } catch (e: any) {

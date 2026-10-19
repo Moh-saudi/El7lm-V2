@@ -252,7 +252,11 @@ export default function MediaPage() {
         }
     };
 
-    const handleConfirmBulkDelete = async () => {
+    const handleConfirmBulkDelete = async (e?: React.MouseEvent) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         if (!selectedIds.size || isDeleting) return;
         setIsDeleting(true);
         const targets = filtered.filter(i => selectedIds.has(i.id));
@@ -429,13 +433,15 @@ export default function MediaPage() {
 
                         <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                             <button
-                                onClick={() => { setIsBulkDeleteOpen(false); setDeleteReason(''); }}
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsBulkDeleteOpen(false); setDeleteReason(''); }}
                                 disabled={isDeleting}
                                 className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
                             >
                                 إلغاء
                             </button>
                             <button
+                                type="button"
                                 onClick={handleConfirmBulkDelete}
                                 disabled={isDeleting}
                                 className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs"

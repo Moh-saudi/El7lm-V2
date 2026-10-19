@@ -70,7 +70,11 @@ export function PlayerContact({ item, userId, onDelete, onClose }: Props) {
         }
     };
 
-    const handleDelete = async () => {
+    const handleDelete = async (e?: React.MouseEvent) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         if (deleting) return;
         if (!confirmDelete) {
             setConfirmDelete(true);
@@ -186,6 +190,7 @@ export function PlayerContact({ item, userId, onDelete, onClose }: Props) {
                     <p className="text-[11px] text-rose-700">إزالة الفيديو والبيانات المرتبطة به من قاعدة البيانات وسحابة التخزين</p>
                 </div>
                 <Button
+                    type="button"
                     variant="ghost" size="sm"
                     onClick={handleDelete}
                     disabled={deleting}
