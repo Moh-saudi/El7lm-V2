@@ -80,7 +80,7 @@ export async function DELETE(req: NextRequest) {
         const db = getSupabaseAdmin();
         const now = new Date().toISOString();
 
-        // 1. استخراج مفاتيح Cloudflare R2 المستهدفة للحذف
+        // 1. استخراج مفاتيح Cloudflare R2 المستهدفة للحذف الفعلي
         const r2KeysToDelete: string[] = [];
         const allKeys: string[] = [];
 
@@ -93,9 +93,21 @@ export async function DELETE(req: NextRequest) {
             }
         });
 
-        // تنفيذ الحذف من Cloudflare R2 (على دفعات 1000)
-        let deletedFromR2Count = 0;
-        if (r2KeysToDelete.length > 0) {
+        // 2. تجميع العناصر حسب المستخدم/اللاعب لمعالجة البروفايل والإشعار
+        const itemsByUser = new Map<string, DeleteItemInput[]>();
+        rawItems.forEach(item => {
+            const uid = item.userId || extractUserIdFromKey(item.r2Key);
+            if (uid) {
+                const list = itemsByUser.get(uid) || [];
+                list.push(item);
+                itemsByUser.set(uid, list);
+            }
+        });
+
+        // 3. مهمة حذف الملفات الفعلية من Cloudflare R2 (متوازية وسريعة)
+        const deleteR2Task = (async (): Promise<number> => {
+            if (r2KeysToDelete.length === 0) return 0;
+            let deletedCount = 0;
             const CHUNK_SIZE = 1000;
             for (let i = 0; i < r2KeysToDelete.length; i += CHUNK_SIZE) {
                 const chunk = r2KeysToDelete.slice(i, i + CHUNK_SIZE);
@@ -107,53 +119,60 @@ export async function DELETE(req: NextRequest) {
                             Quiet: true,
                         },
                     }));
-                    deletedFromR2Count += chunk.length;
+                    deletedCount += chunk.length;
                 } catch (r2Err) {
-                    console.error('[delete] R2 DeleteObjectsCommand batch error:', r2Err);
-                    // محاولة الحذف الفردي كإجراء احتياطي
-                    for (const k of chunk) {
-                        try {
-                            await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: k }));
-                            deletedFromR2Count++;
-                        } catch {}
-                    }
+                    console.error('[delete] R2 DeleteObjectsCommand batch error, trying parallel fallback:', r2Err);
+                    // تنفيذ متوازي للحذف الفردي في حال تعثر الدفعة
+                    const fallbacks = await Promise.allSettled(
+                        chunk.map(k => s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: k })))
+                    );
+                    deletedCount += fallbacks.filter(r => r.status === 'fulfilled').length;
                 }
             }
-        }
+            return deletedCount;
+        })();
 
-        // 2. إزالة السجلات من جدول media_moderation
-        if (allKeys.length > 0) {
-            await db.from('media_moderation').delete().in('r2_key', allKeys);
-        }
+        // 4. مهمة حذف السجلات من جدول media_moderation
+        const deleteModerationTask = (async () => {
+            if (allKeys.length === 0) return;
+            const { error } = await db.from('media_moderation').delete().in('r2_key', allKeys);
+            if (error) console.error('[delete] media_moderation delete error:', error);
+        })();
 
-        // 3. تجميع العناصر حسب المستخدم/اللاعب لتنظيف ملف اللاعب وإرسال الإشعار
-        const itemsByUser = new Map<string, DeleteItemInput[]>();
-        rawItems.forEach(item => {
-            const uid = item.userId || extractUserIdFromKey(item.r2Key);
-            if (uid) {
-                const list = itemsByUser.get(uid) || [];
-                list.push(item);
-                itemsByUser.set(uid, list);
-            }
-        });
-
-        // 4. تنظيف مصفوفة الفيديوهات في جدول players وإرسال الإشعارات
-        let notificationsCount = 0;
-        for (const [userId, userItems] of itemsByUser.entries()) {
+        // 5. مهمة تنظيف مصفوفة الفيديوهات في جدول players
+        const userIdsList = Array.from(itemsByUser.keys());
+        const cleanupPlayersTask = (async () => {
+            if (userIdsList.length === 0) return;
             try {
-                // أ. جلب فيديوهات اللاعب وتنظيف العناصر المحذوفة
-                const { data: playerData } = await db
-                    .from('players')
-                    .select('id, uid, videos')
-                    .or(`id.eq.${userId},uid.eq.${userId}`)
-                    .limit(1)
-                    .maybeSingle();
+                // جلب اللاعبين المعنيين دفعة واحدة (بالـ id أو الـ uid)
+                const [{ data: playersById }, { data: playersByUid }] = await Promise.all([
+                    db.from('players').select('id, uid, videos').in('id', userIdsList),
+                    db.from('players').select('id, uid, videos').in('uid', userIdsList),
+                ]);
 
-                if (playerData && Array.isArray(playerData.videos)) {
-                    const keysSet = new Set(userItems.map(i => i.r2Key.toLowerCase()));
-                    const urlsSet = new Set(userItems.filter(i => i.videoUrl).map(i => i.videoUrl!.toLowerCase()));
+                const combinedPlayers = [...(playersById || []), ...(playersByUid || [])];
+                const uniquePlayersMap = new Map<string, any>();
+                combinedPlayers.forEach(p => {
+                    if (p && p.id && !uniquePlayersMap.has(p.id)) {
+                        uniquePlayersMap.set(p.id, p);
+                    }
+                });
 
-                    const updatedVideos = playerData.videos.filter((v: any) => {
+                const playerUpdates: Promise<any>[] = [];
+
+                for (const player of uniquePlayersMap.values()) {
+                    if (!Array.isArray(player.videos) || player.videos.length === 0) continue;
+
+                    const playerItems = [
+                        ...(itemsByUser.get(player.id) || []),
+                        ...(player.uid ? (itemsByUser.get(player.uid) || []) : []),
+                    ];
+                    if (playerItems.length === 0) continue;
+
+                    const keysSet = new Set(playerItems.map(i => i.r2Key.toLowerCase()));
+                    const urlsSet = new Set(playerItems.filter(i => i.videoUrl).map(i => i.videoUrl!.toLowerCase()));
+
+                    const updatedVideos = player.videos.filter((v: any) => {
                         if (!v?.url) return true;
                         const vUrl = String(v.url).toLowerCase();
                         if (urlsSet.has(vUrl)) return false;
@@ -163,15 +182,29 @@ export async function DELETE(req: NextRequest) {
                         return true;
                     });
 
-                    if (updatedVideos.length !== playerData.videos.length) {
-                        await db
-                            .from('players')
-                            .update({ videos: updatedVideos, updated_at: now })
-                            .eq('id', playerData.id);
+                    if (updatedVideos.length !== player.videos.length) {
+                        playerUpdates.push(
+                            Promise.resolve(
+                                db.from('players')
+                                    .update({ videos: updatedVideos, updated_at: now })
+                                    .eq('id', player.id)
+                            )
+                        );
                     }
                 }
 
-                // ب. إنشاء إشعار داخلي في جدول notifications لتطبيق الموبايل
+                if (playerUpdates.length > 0) {
+                    await Promise.allSettled(playerUpdates);
+                }
+            } catch (playerErr) {
+                console.error('[delete] Players cleanup error:', playerErr);
+            }
+        })();
+
+        // 6. مهمة إدراج الإشعارات في جدول notifications (دفعة واحدة فائقة السرعة)
+        const insertNotificationsTask = (async (): Promise<number> => {
+            if (itemsByUser.size === 0) return 0;
+            const notificationRecords = Array.from(itemsByUser.entries()).map(([userId, userItems]) => {
                 const titles = userItems
                     .map(i => i.title?.trim() || 'مقطع فيديو')
                     .filter(Boolean)
@@ -183,7 +216,7 @@ export async function DELETE(req: NextRequest) {
                     ? `تمت مراجعة مقطع الفيديو (${titles}) وإزالته: ${reason}`
                     : `تمت مراجعة مقطع الفيديو (${titles}) وإزالته من المنصة لعدم استيفائه معايير النشر.`;
 
-                await db.from('notifications').insert({
+                return {
                     id: crypto.randomUUID(),
                     userId,
                     title: notifTitle,
@@ -200,39 +233,81 @@ export async function DELETE(req: NextRequest) {
                     },
                     createdAt: now,
                     updatedAt: now,
-                });
-                notificationsCount++;
+                };
+            });
 
-                // ج. إرسال إشعار فوري لتطبيق الجوال (FCM Push Notification)
-                const { data: userTokens } = await db
-                    .from('users')
-                    .select('fcmToken, pushToken')
-                    .or(`id.eq.${userId},uid.eq.${userId},supabase_uid.eq.${userId}`);
-
-                const fcmTokens: string[] = [];
-                (userTokens || []).forEach((r: Record<string, unknown>) => {
-                    if (r.fcmToken && typeof r.fcmToken === 'string') fcmTokens.push(r.fcmToken);
-                    if (r.pushToken && typeof r.pushToken === 'string') fcmTokens.push(r.pushToken);
-                });
-
-                const uniqueTokens = Array.from(new Set(fcmTokens)).filter(t => t.length > 10);
-                if (uniqueTokens.length > 0) {
-                    sendFcmPush(uniqueTokens, {
-                        title: notifTitle,
-                        body: notifMessage,
-                        data: {
-                            type: 'media_rejected',
-                            action: 'deleted',
-                            userId,
-                        },
-                    }).catch(pushErr => console.error('[delete] Push notification error:', pushErr));
-                }
-            } catch (userCleanupErr) {
-                console.error(`[delete] Cleanup and notify error for user ${userId}:`, userCleanupErr);
+            try {
+                const { error } = await db.from('notifications').insert(notificationRecords);
+                if (error) console.error('[delete] Batch notification insert error:', error);
+                return notificationRecords.length;
+            } catch (err) {
+                console.error('[delete] Notification insert exception:', err);
+                return 0;
             }
-        }
+        })();
 
+        // تنفيذ كافة العمليات الأساسية بالتوازي الفوري (Ultra-Fast Parallel Execution)
+        const [deletedFromR2Count, , , notificationsCount] = await Promise.all([
+            deleteR2Task,
+            deleteModerationTask,
+            cleanupPlayersTask,
+            insertNotificationsTask,
+        ]);
+
+        // تنظيف الكاش
         invalidateMediaCache();
+
+        // 7. إرسال إشعارات الموبايل (FCM Push Notifications) في الخلفية دون تعطيل الرد للمستخدم
+        if (userIdsList.length > 0) {
+            setImmediate(async () => {
+                try {
+                    const [{ data: tokensById }, { data: tokensByUid }] = await Promise.all([
+                        db.from('users').select('id, uid, supabase_uid, fcmToken, pushToken').in('id', userIdsList),
+                        db.from('users').select('id, uid, supabase_uid, fcmToken, pushToken').in('uid', userIdsList),
+                    ]);
+
+                    const allUserRows = [...(tokensById || []), ...(tokensByUid || [])];
+
+                    for (const [userId, userItems] of itemsByUser.entries()) {
+                        const matchedUsers = allUserRows.filter(u =>
+                            u.id === userId || u.uid === userId || u.supabase_uid === userId
+                        );
+
+                        const fcmTokens: string[] = [];
+                        matchedUsers.forEach((r: Record<string, unknown>) => {
+                            if (r.fcmToken && typeof r.fcmToken === 'string') fcmTokens.push(r.fcmToken.trim());
+                            if (r.pushToken && typeof r.pushToken === 'string') fcmTokens.push(r.pushToken.trim());
+                        });
+
+                        const uniqueTokens = Array.from(new Set(fcmTokens)).filter(t => t.length > 10);
+                        if (uniqueTokens.length > 0) {
+                            const titles = userItems
+                                .map(i => i.title?.trim() || 'مقطع فيديو')
+                                .filter(Boolean)
+                                .slice(0, 3)
+                                .join('، ');
+
+                            const notifTitle = 'تنبيه بخصوص مقاطع الفيديو 🎬';
+                            const notifMessage = reason
+                                ? `تمت مراجعة مقطع الفيديو (${titles}) وإزالته: ${reason}`
+                                : `تمت مراجعة مقطع الفيديو (${titles}) وإزالته من المنصة لعدم استيفائه معايير النشر.`;
+
+                            sendFcmPush(uniqueTokens, {
+                                title: notifTitle,
+                                body: notifMessage,
+                                data: {
+                                    type: 'media_rejected',
+                                    action: 'deleted',
+                                    userId,
+                                },
+                            }).catch(pushErr => console.error(`[delete] FCM push error for user ${userId}:`, pushErr));
+                        }
+                    }
+                } catch (fcmBgErr) {
+                    console.error('[delete] Background FCM notification error:', fcmBgErr);
+                }
+            });
+        }
 
         return NextResponse.json({
             success: true,
