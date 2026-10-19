@@ -6,7 +6,7 @@ import { MediaItem, detectMediaSource } from '../types';
 import {
     Play, Pause, FastForward, Rewind, ZoomIn,
     Volume2, VolumeX, Film, PlaySquare,
-    Globe, ExternalLink
+    Globe, ExternalLink, Music2
 } from 'lucide-react';
 import { formatTime } from './studio-utils';
 
@@ -147,6 +147,36 @@ export function VideoPlayer({ item }: Props) {
                                     <a href={item.url} target="_blank" rel="noreferrer" className="text-emerald-700 hover:underline text-sm font-bold">
                                         فتح الفيديو في منصة YouTube ↗
                                     </a>
+                                </div>
+                            );
+                        }
+
+                        if (detectedSource === 'tiktok') {
+                            return (
+                                <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-6 text-center bg-slate-900 text-white relative overflow-hidden">
+                                    {item.thumbnailUrl && (
+                                        <div
+                                            className="absolute inset-0 bg-cover bg-center opacity-25 blur-sm scale-105"
+                                            style={{ backgroundImage: `url(${item.thumbnailUrl})` }}
+                                        />
+                                    )}
+                                    <div className="relative z-10 flex flex-col items-center gap-3">
+                                        <div className="w-16 h-16 rounded-2xl bg-black/70 border border-slate-700 flex items-center justify-center shadow-lg">
+                                            <Music2 className="w-8 h-8 text-cyan-400" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="font-bold text-base text-white">فيديو منصة TikTok</p>
+                                            <p className="text-slate-400 text-xs max-w-sm truncate">{item.title}</p>
+                                        </div>
+                                        <a
+                                            href={item.url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-pink-500 hover:opacity-90 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-lg transition-all"
+                                        >
+                                            مشاهدة الفيديو على TikTok <ExternalLink className="w-3.5 h-3.5" />
+                                        </a>
+                                    </div>
                                 </div>
                             );
                         }

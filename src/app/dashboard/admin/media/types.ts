@@ -45,7 +45,7 @@ export interface MediaItem {
     views: number;
     likes: number;
     // metadata
-    sourceType: 'r2' | 'firebase';
+    sourceType: 'r2' | 'firebase' | 'external';
     category?: string;
     // ملاحظات الإشراف
     notes?: string;

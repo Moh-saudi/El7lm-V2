@@ -24,7 +24,7 @@ export function MediaKPIBar({ stats, activeStatus, onStatusClick }: Props) {
     }[] = [
         {
             label: 'إجمالي الفيديوهات',
-            subLabel: `${stats.directVideos || 0} فيديو سحابي مباشر • ${stats.youtubeVideos || 0} YouTube`,
+            subLabel: `${stats.directVideos || 0} سحابي • ${stats.youtubeVideos || 0} YouTube • ${stats.tiktokVideos || 0} TikTok`,
             value: stats.videos,
             icon: Film,
             color: 'text-indigo-600',

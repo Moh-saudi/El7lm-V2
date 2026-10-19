@@ -82,6 +82,64 @@ function parseKey(key: string): { userId: string; filename: string } | null {
 const filenameToTitle = (filename: string) =>
     filename.replace(/^\d+_?/, '').replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
 
+// ─── External Video Helpers ───────────────────────────────────
+function cleanExternalVideoUrl(raw: unknown): string | null {
+    if (typeof raw !== 'string') return null;
+    let url = raw.trim().replace(/[\r\n]+/g, ' ');
+    if (!url) return null;
+
+    const httpIdx = url.indexOf('http');
+    if (httpIdx > 0) {
+        url = url.substring(httpIdx).trim();
+    } else if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        if (
+            url.startsWith('www.') ||
+            url.includes('tiktok.com') ||
+            url.includes('youtube.com') ||
+            url.includes('youtu.be') ||
+            url.includes('facebook.com')
+        ) {
+            url = `https://${url}`;
+        } else {
+            return null;
+        }
+    }
+
+    if (
+        url.includes('ekyerljzfokqimbabzxm.supabase.co') ||
+        url.includes('لا/يوجد') ||
+        url.startsWith('la/')
+    ) {
+        return null;
+    }
+
+    const firstSpace = url.search(/\s/);
+    if (firstSpace > 0) {
+        url = url.substring(0, firstSpace);
+    }
+
+    try {
+        new URL(url);
+        return url;
+    } catch {
+        return null;
+    }
+}
+
+function extractYouTubeId(url: string): string | null {
+    const patterns = [
+        /youtu\.be\/([^?&\s]+)/,
+        /youtube\.com\/watch\?v=([^&\s]+)/,
+        /youtube\.com\/shorts\/([^?&\s]+)/,
+        /youtube\.com\/embed\/([^?&\s]+)/,
+    ];
+    for (const p of patterns) {
+        const m = url.match(p);
+        if (m) return m[1];
+    }
+    return null;
+}
+
 // ─── Fetch All R2 Objects Directly ───────────────────────────
 async function listAllR2Videos(maxItems = 5000): Promise<{ key: string; size: number; date: Date }[]> {
     const candidateBuckets = Array.from(new Set([BUCKET, 'el7lmplatform'].filter(Boolean)));
@@ -118,22 +176,23 @@ async function listAllR2Videos(maxItems = 5000): Promise<{ key: string; size: nu
 
 // ─── Execute Fetch Core With Protection ───────────────────────
 async function fetchMediaData(): Promise<{ items: any[]; total: number }> {
-    // 1. جلب الفيديوهات من Cloudflare R2
+    // 1. جلب الفيديوهات من التخزين السحابي
     const r2Objects = await listAllR2Videos();
 
-    // 2. تحليل المفاتيح واستخراج معرفات المستخدمين
+    // 2. تحليل المفاتيح واستخراج معرفات المستخدمين والروابط لمنع التكرار
     const parsedMap = new Map<string, { userId: string; filename: string }>();
     const r2UserIds = new Set<string>();
+    const r2KeysSet = new Set<string>();
+
     for (const obj of r2Objects) {
         const p = parseKey(obj.key);
         if (!p) continue;
         parsedMap.set(obj.key, p);
         if (p.userId) r2UserIds.add(p.userId);
+        r2KeysSet.add(obj.key.toLowerCase());
+        r2KeysSet.add(`${PUBLIC_URL}/${obj.key}`.toLowerCase());
     }
 
-    const uniqueUserIds = Array.from(r2UserIds);
-
-    // 3. مطابقة بيانات اللاعبين المستهدفين (~39 لاعب فقط)
     type PlayerLight = {
         id: string;
         uid?: string;
@@ -146,18 +205,72 @@ async function fetchMediaData(): Promise<{ items: any[]; total: number }> {
     };
     const playerMap = new Map<string, PlayerLight>();
     const moderationMap = new Map<string, any>();
+    const externalVideosList: Array<{ player: PlayerLight; video: any; index: number; cleanUrl: string }> = [];
 
     try {
         const db = getSupabaseAdmin();
 
-        const fetchTargetedPlayers = async () => {
-            if (uniqueUserIds.length === 0) return;
+        // أ. جلب اللاعبين الذين لديهم مصفوفة فيديوهات (YouTube, TikTok, الروابط الخارجية)
+        const fetchPlayersWithVideos = async () => {
+            try {
+                const { data: playersWithVids, error: errVids } = await db
+                    .from('players')
+                    .select('id, uid, full_name, name, email, phone, phoneNumber, profile_image_url, profile_image, country, nationality, position, primary_position, videos')
+                    .not('videos', 'is', null)
+                    .limit(1000);
+
+                if (!errVids && playersWithVids) {
+                    for (const p of playersWithVids) {
+                        const info: PlayerLight = {
+                            id: p.id,
+                            uid: p.uid,
+                            name: p.full_name || p.name || 'لاعب مسجل',
+                            email: p.email || '',
+                            phone: p.phone || p.phoneNumber || '',
+                            image: fixReceiptUrl(p.profile_image_url || p.profile_image) || '',
+                            country: p.country || p.nationality || '',
+                            position: p.position || p.primary_position || 'لاعب',
+                        };
+                        playerMap.set(p.id, info);
+                        if (p.uid) playerMap.set(p.uid, info);
+
+                        if (Array.isArray(p.videos)) {
+                            p.videos.forEach((v: any, idx: number) => {
+                                const clean = cleanExternalVideoUrl(v?.url);
+                                if (!clean) return;
+
+                                // منع تكرار فيديوهات التخزين السحابي المحملة مباشرة
+                                const lower = clean.toLowerCase();
+                                if (r2KeysSet.has(lower) || Array.from(r2KeysSet).some(k => lower.includes(k))) {
+                                    return;
+                                }
+
+                                externalVideosList.push({
+                                    player: info,
+                                    video: v,
+                                    index: idx,
+                                    cleanUrl: clean,
+                                });
+                            });
+                        }
+                    }
+                }
+            } catch (vErr) {
+                console.warn('[list-r2] players with videos query warning:', vErr);
+            }
+        };
+
+        // ب. مطابقة بيانات لاعبي التخزين السحابي الذين لم تشملهم قائمة الفيديوهات
+        const fetchTargetedPlayersForR2 = async () => {
+            const uniqueUserIds = Array.from(r2UserIds);
+            const remainingUids = uniqueUserIds.filter(u => !playerMap.has(u));
+            if (remainingUids.length === 0) return;
 
             try {
                 const { data: playersById, error: errById } = await db
                     .from('players')
                     .select('id, uid, full_name, name, email, phone, phoneNumber, profile_image_url, profile_image, country, nationality, position, primary_position')
-                    .in('id', uniqueUserIds);
+                    .in('id', remainingUids);
 
                 if (!errById && playersById) {
                     for (const p of playersById) {
@@ -176,12 +289,12 @@ async function fetchMediaData(): Promise<{ items: any[]; total: number }> {
                     }
                 }
 
-                const remainingUids = uniqueUserIds.filter(u => !playerMap.has(u));
-                if (remainingUids.length > 0) {
+                const stillRemaining = remainingUids.filter(u => !playerMap.has(u));
+                if (stillRemaining.length > 0) {
                     const { data: playersByUid } = await db
                         .from('players')
                         .select('id, uid, full_name, name, email, phone, phoneNumber, profile_image_url, profile_image, country, nationality, position, primary_position')
-                        .in('uid', remainingUids);
+                        .in('uid', stillRemaining);
 
                     if (playersByUid) {
                         for (const p of playersByUid) {
@@ -205,13 +318,16 @@ async function fetchMediaData(): Promise<{ items: any[]; total: number }> {
             }
         };
 
+        // ج. جلب سجلات الإشراف (media_moderation)
         const fetchModeration = async () => {
             const allR2Keys = r2Objects.map(o => o.key);
-            if (allR2Keys.length === 0) return;
+            const allExtKeys = externalVideosList.map(item => `ext/${item.player.id}/${item.index}`);
+            const allKeys = Array.from(new Set([...allR2Keys, ...allExtKeys]));
+            if (allKeys.length === 0) return;
 
             try {
-                for (let i = 0; i < allR2Keys.length; i += 200) {
-                    const chunk = allR2Keys.slice(i, i + 200);
+                for (let i = 0; i < allKeys.length; i += 200) {
+                    const chunk = allKeys.slice(i, i + 200);
                     const { data } = await db
                         .from('media_moderation')
                         .select('r2_key, status, notes, ai_analysis, ai_rating, ai_analyzed_at')
@@ -227,11 +343,14 @@ async function fetchMediaData(): Promise<{ items: any[]; total: number }> {
         };
 
         const timeoutPromise = new Promise<void>((_, reject) =>
-            setTimeout(() => reject(new Error('Supabase query timeout')), 3000)
+            setTimeout(() => reject(new Error('Supabase query timeout')), 12000)
         );
 
         await Promise.race([
-            Promise.all([fetchTargetedPlayers(), fetchModeration()]),
+            (async () => {
+                await fetchPlayersWithVideos();
+                await Promise.all([fetchTargetedPlayersForR2(), fetchModeration()]);
+            })(),
             timeoutPromise,
         ]).catch(err => {
             console.warn('[list-r2] DB timeout fallback activated:', err?.message);
@@ -240,8 +359,10 @@ async function fetchMediaData(): Promise<{ items: any[]; total: number }> {
         console.warn('[list-r2] Supabase admin init warning:', dbErr?.message);
     }
 
-    // 4. بناء قائمة العناصر
+    // 4. بناء قائمة العناصر الموحدة (الهجين: سحابي مباشر + روابط خارجية)
     const allItems: any[] = [];
+
+    // أ. إضافة عناصر التخزين السحابي المباشر
     for (let idx = 0; idx < r2Objects.length; idx++) {
         const obj = r2Objects[idx];
         const parsed = parsedMap.get(obj.key);
@@ -282,6 +403,82 @@ async function fetchMediaData(): Promise<{ items: any[]; total: number }> {
         });
     }
 
+    // ب. إضافة عناصر الروابط الخارجية (YouTube, TikTok, وغيرها)
+    for (let idx = 0; idx < externalVideosList.length; idx++) {
+        const ext = externalVideosList[idx];
+        const { player, video, index: vidIdx, cleanUrl } = ext;
+        const extKey = `ext/${player.id}/${vidIdx}`;
+        const mod = moderationMap.get(extKey);
+
+        const ytId = extractYouTubeId(cleanUrl);
+        const isYouTube = !!ytId;
+        const isTikTok = cleanUrl.toLowerCase().includes('tiktok.com');
+
+        // أولوية الحالة: جدول الإشراف media_moderation > مصفوفة اللاعب > بانتظار التحليل
+        let status = 'pending';
+        if (mod?.status && ['pending', 'approved', 'rejected', 'flagged'].includes(mod.status)) {
+            status = mod.status;
+        } else if (video.status && ['pending', 'approved', 'rejected', 'flagged'].includes(video.status)) {
+            status = video.status;
+        }
+
+        // تحديد تاريخ الرفع
+        let uploadDate = new Date();
+        const rawDate = video.createdAt || video.created_at || video.updatedAt || video.updated_at || video.reviewDate;
+        if (rawDate) {
+            const parsed = new Date(rawDate);
+            if (!isNaN(parsed.getTime())) uploadDate = parsed;
+        }
+
+        // تحديد الصورة المصغرة
+        let thumb: string | undefined = fixReceiptUrl(video.thumbnail || video.thumbnailUrl);
+        if (!thumb && ytId) {
+            thumb = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+        }
+        if (!thumb && player.image) {
+            thumb = player.image;
+        }
+
+        let title = (video.title || video.desc || '').trim();
+        if (!title || title.length > 80) {
+            title = isYouTube
+                ? `فيديو YouTube (${player.name})`
+                : isTikTok
+                ? `فيديو TikTok (${player.name})`
+                : `فيديو خارجي (${player.name}) ${vidIdx + 1}`;
+        }
+
+        allItems.push({
+            id: `ext_${player.id}_${vidIdx}`,
+            r2Key: extKey,
+            type: 'video',
+            title,
+            description: video.desc || video.description || '',
+            url: cleanUrl,
+            thumbnailUrl: thumb,
+            uploadDate: uploadDate.toISOString(),
+            status,
+            notes: mod?.notes || video.notes || undefined,
+            aiAnalysis: mod?.ai_analysis || video.aiAnalysis || undefined,
+            aiRating: mod?.ai_rating || video.aiRating || undefined,
+            aiAnalyzedAt: mod?.ai_analyzed_at || video.aiAnalyzedAt || undefined,
+            userId: player.id,
+            userName: player.name,
+            userEmail: player.email,
+            userPhone: player.phone,
+            userImage: player.image,
+            accountType: 'player',
+            country: player.country,
+            position: player.position,
+            views: typeof video.views === 'number' ? video.views : 0,
+            likes: typeof video.likes === 'number' ? video.likes : 0,
+            sourceType: 'external',
+            category: isYouTube ? 'YouTube' : isTikTok ? 'TikTok' : 'روابط خارجية',
+            fileSize: 0,
+        });
+    }
+
+    // ترتيب كل الفيديوهات من الأحدث إلى الأقدم
     allItems.sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime());
 
     return { items: allItems, total: allItems.length };
