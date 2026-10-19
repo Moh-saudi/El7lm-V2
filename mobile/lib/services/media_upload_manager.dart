@@ -10,15 +10,19 @@ import 'data_service.dart';
 class VideoMediaItem {
   final String url;
   final String title;
+  final String playerCue;
 
   const VideoMediaItem({
     required this.url,
     this.title = '',
+    this.playerCue = '',
   });
 
   Map<String, dynamic> toJson() => {
     'url': url,
     'title': title,
+    if (playerCue.isNotEmpty) 'playerCue': playerCue,
+    if (playerCue.isNotEmpty) 'targetPlayerCue': playerCue,
   };
 }
 
@@ -104,12 +108,13 @@ class MediaUploadManager {
       if (item is Map) {
         final u = (item['url'] ?? item['video_url'] ?? item['videoUrl'] ?? item['path'] ?? item['src'] ?? item['link'] ?? '').toString().trim();
         final t = (item['title'] ?? item['description'] ?? item['desc'] ?? item['name'] ?? '').toString().trim();
+        final c = (item['playerCue'] ?? item['targetPlayerCue'] ?? item['cue'] ?? '').toString().trim();
         if (u.isNotEmpty && !u.contains('test.com')) {
           final match = _urlRegex.firstMatch(u);
           final clean = match != null ? match.group(0)! : (u.startsWith('http') ? u : null);
           if (clean != null && !seenUrls.contains(clean)) {
             seenUrls.add(clean);
-            results.add(VideoMediaItem(url: clean, title: t));
+            results.add(VideoMediaItem(url: clean, title: t, playerCue: c));
           }
         }
       } else if (item is String) {
@@ -404,6 +409,7 @@ class MediaUploadManager {
       final defaultTitle = 'فيديو مهارات #${existingItems.length + 1}';
       final urlController = TextEditingController();
       final titleController = TextEditingController(text: defaultTitle);
+      final cueController = TextEditingController();
 
       final confirm = await showDialog<bool>(
         context: context,
@@ -460,6 +466,43 @@ class MediaUploadManager {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 ),
               ),
+              const SizedBox(height: 14),
+              const Text(
+                'العلامة المميزة في المقطع (لتوجيه الـ AI):',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.muted),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: cueController,
+                decoration: InputDecoration(
+                  hintText: 'مثلاً: تيشيرت أسود، حذاء ملون، حامل الكرة...',
+                  prefixIcon: const Icon(Icons.my_location_rounded, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final badge in [
+                    'حامل الكرة ⚽',
+                    'حارس المرمى 🧤',
+                    'تيشيرت أسود ⚫',
+                    'تيشيرت أبيض ⚪',
+                    'حذاء ملون 👟',
+                  ])
+                    ActionChip(
+                      label: Text(badge, style: const TextStyle(fontSize: 10)),
+                      padding: EdgeInsets.zero,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      onPressed: () {
+                        cueController.text = badge;
+                      },
+                    ),
+                ],
+              ),
             ],
           ),
           actions: [
@@ -484,6 +527,7 @@ class MediaUploadManager {
       final finalTitle = titleController.text.trim().isNotEmpty
           ? titleController.text.trim()
           : defaultTitle;
+      final finalCue = cueController.text.trim();
 
       if (confirm == true && linkUrl.isNotEmpty) {
         onLoadingChanged?.call(true);
@@ -491,6 +535,8 @@ class MediaUploadManager {
           final newVideoMap = {
             'url': linkUrl,
             'title': finalTitle,
+            if (finalCue.isNotEmpty) 'playerCue': finalCue,
+            if (finalCue.isNotEmpty) 'targetPlayerCue': finalCue,
             'type': 'external',
             'created_at': DateTime.now().toIso8601String(),
           };
@@ -590,13 +636,15 @@ class MediaUploadManager {
     }
 
     String? videoTitle;
+    String videoCue = '';
     if (isVideo) {
       if (!context.mounted) return null;
       final existingItems = extractVideoItems(profile.values['videos'] ?? profile.values['video_urls'] ?? profile.values['uploaded_videos']);
       final defaultTitle = 'فيديو المهارات #${existingItems.length + 1}';
       final titleController = TextEditingController(text: defaultTitle);
+      final cueController = TextEditingController();
 
-      final confirmedTitle = await showDialog<String>(
+      final confirmedData = await showDialog<(String, String)>(
         context: context,
         barrierDismissible: false,
         builder: (dialogCtx) => AlertDialog(
@@ -613,34 +661,83 @@ class MediaUploadManager {
               ),
               const SizedBox(width: 10),
               const Text(
-                'عنوان مقطع الفيديو',
+                'بيانات مقطع الفيديو',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
               ),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'اكتب عنواناً يصف هذا المقطع (مثل: مهارات التسديد، أهداف الموسم...):',
-                style: TextStyle(fontSize: 13, color: AppColors.muted),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: titleController,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'عنوان الفيديو...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'عنوان الفيديو (مثل: مهارات التسديد، أهداف الموسم):',
+                  style: TextStyle(fontSize: 12, color: AppColors.muted),
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                TextField(
+                  controller: titleController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'عنوان الفيديو...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    const Icon(Icons.my_location_rounded, size: 16, color: AppColors.green),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'علامتك المميزة في المقطع (لتوجيه الـ AI):',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'اختياري: يساعد الكشاف والـ AI في التعرف عليك بسهولة',
+                  style: TextStyle(fontSize: 11, color: AppColors.muted),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: cueController,
+                  decoration: InputDecoration(
+                    hintText: 'مثلاً: تيشيرت أسود، حذاء ملون، حامل الكرة...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final badge in [
+                      'حامل الكرة ⚽',
+                      'حارس المرمى 🧤',
+                      'تيشيرت أسود ⚫',
+                      'تيشيرت أبيض ⚪',
+                      'حذاء ملون 👟',
+                    ])
+                      ActionChip(
+                        label: Text(badge, style: const TextStyle(fontSize: 10)),
+                        padding: EdgeInsets.zero,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        onPressed: () {
+                          cueController.text = badge;
+                        },
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(dialogCtx, defaultTitle),
+              onPressed: () => Navigator.pop(dialogCtx, (defaultTitle, '')),
               child: const Text('استخدام الافتراضي'),
             ),
             ElevatedButton(
@@ -651,7 +748,8 @@ class MediaUploadManager {
               ),
               onPressed: () {
                 final txt = titleController.text.trim();
-                Navigator.pop(dialogCtx, txt.isNotEmpty ? txt : defaultTitle);
+                final cue = cueController.text.trim();
+                Navigator.pop(dialogCtx, (txt.isNotEmpty ? txt : defaultTitle, cue));
               },
               child: const Text('متابعة والرفع'),
             ),
@@ -659,10 +757,11 @@ class MediaUploadManager {
         ),
       );
 
-      if (confirmedTitle == null) {
+      if (confirmedData == null) {
         return null;
       }
-      videoTitle = confirmedTitle;
+      videoTitle = confirmedData.$1;
+      videoCue = confirmedData.$2;
     }
 
     if (!context.mounted) return null;
@@ -757,6 +856,8 @@ class MediaUploadManager {
         final newVideoMap = {
           'url': cleanUrl,
           'title': finalTitle,
+          if (videoCue.isNotEmpty) 'playerCue': videoCue,
+          if (videoCue.isNotEmpty) 'targetPlayerCue': videoCue,
           'type': 'uploaded',
           'created_at': DateTime.now().toIso8601String(),
         };

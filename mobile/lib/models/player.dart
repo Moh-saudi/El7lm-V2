@@ -236,6 +236,7 @@ class PlayerVideo {
     required this.url,
     required this.thumbnailUrl,
     required this.title,
+    this.playerCue = '',
     required this.playerId,
     required this.playerName,
     required this.playerPayload,
@@ -246,6 +247,7 @@ class PlayerVideo {
   final String url;
   final String thumbnailUrl;
   final String title;
+  final String playerCue;
   final String playerId;
   final String playerName;
   final Map<String, dynamic> playerPayload;
@@ -262,11 +264,22 @@ class PlayerVideo {
     thumbnailUrl:
         '${json['thumbnail'] ?? json['thumbnailUrl'] ?? json['poster'] ?? json['thumb'] ?? ''}',
     title: '${json['title'] ?? json['description'] ?? json['desc'] ?? ''}',
+    playerCue: '${json['playerCue'] ?? json['targetPlayerCue'] ?? json['cue'] ?? ''}',
     playerId: playerId,
     playerName: playerName,
     playerPayload: Map<String, dynamic>.from(playerPayload),
     rawPayload: Map<String, dynamic>.from(json),
   );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'url': url,
+    'thumbnailUrl': thumbnailUrl,
+    'title': title,
+    if (playerCue.isNotEmpty) 'playerCue': playerCue,
+    'playerId': playerId,
+    'playerName': playerName,
+  };
 }
 
 String transliterateArabicName(String text) {

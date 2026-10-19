@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_theme.dart';
+import '../../core/country_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/player.dart';
 import '../../services/data_service.dart';
@@ -289,6 +290,7 @@ class _PlayerHeroBackground extends StatelessWidget {
                     ),
                   if (player.country.isNotEmpty)
                     _HeroChip(
+                      leadingText: getCountryFlag(player.country),
                       icon: Icons.public,
                       label: _localizedStoredText(context, player.country),
                     ),
@@ -2146,10 +2148,11 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _HeroChip extends StatelessWidget {
-  const _HeroChip({required this.icon, required this.label});
+  const _HeroChip({this.icon, required this.label, this.leadingText});
 
-  final IconData icon;
+  final IconData? icon;
   final String label;
+  final String? leadingText;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -2162,8 +2165,13 @@ class _HeroChip extends StatelessWidget {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: Colors.white),
-        const SizedBox(width: 6),
+        if (leadingText != null && leadingText!.isNotEmpty) ...[
+          Text(leadingText!, style: const TextStyle(fontSize: 14)),
+          const SizedBox(width: 6),
+        ] else if (icon != null) ...[
+          Icon(icon, size: 16, color: Colors.white),
+          const SizedBox(width: 6),
+        ],
         Text(label, style: const TextStyle(color: Colors.white)),
       ],
     ),

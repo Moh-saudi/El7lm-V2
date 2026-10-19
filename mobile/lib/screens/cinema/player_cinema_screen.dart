@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../core/app_theme.dart';
+import '../../core/country_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/player.dart';
 import '../../models/player_filter.dart';
@@ -650,6 +651,35 @@ class _CinemaVideoState extends State<_CinemaVideo> {
                       ),
                     ),
                     const SizedBox(width: 8),
+                    if (widget.player.country.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.white24, width: 0.8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              getCountryFlag(widget.player.country),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              widget.player.country,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
                     if (widget.player.position.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -682,6 +712,32 @@ class _CinemaVideoState extends State<_CinemaVideo> {
                   shadows: [Shadow(blurRadius: 4, color: Colors.black)],
                 ),
               ),
+              if (widget.video.playerCue.isNotEmpty) ...[
+                const SizedBox(height: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                  decoration: BoxDecoration(
+                    color: Colors.cyan.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.7), width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.my_location_rounded, size: 12, color: Colors.cyanAccent),
+                      const SizedBox(width: 4),
+                      Text(
+                        'اللاعب المستهدف: ${widget.video.playerCue}',
+                        style: const TextStyle(
+                          color: Colors.cyanAccent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -714,6 +770,23 @@ class _CinemaVideoState extends State<_CinemaVideo> {
                             : null,
                       ),
                     ),
+                    if (widget.player.country.isNotEmpty)
+                      PositionedDirectional(
+                        bottom: 22,
+                        start: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.75),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1),
+                          ),
+                          child: Text(
+                            getCountryFlag(widget.player.country),
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ),
+                      ),
                     Positioned(
                       bottom: 14,
                       child: Container(
