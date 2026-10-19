@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { toast } from 'sonner';
-import { CheckCircle, XCircle, Flag, X } from 'lucide-react';
+import { CheckCircle, XCircle, Flag, X, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/firebase/auth-provider';
 import { usePermissions } from '../employees-v2/_hooks/usePermissions';
 import AccessDenied from '@/components/admin/AccessDenied';
@@ -50,7 +50,8 @@ export default function MediaPage() {
         approveAndSyncSkills,
         bulkUpdateStatus,
         updateItemAI,
-        deleteItem
+        deleteItem,
+        bulkDelete
     } = useMediaData();
 
     // ─── Filters ──────────────────────────────────────────────
@@ -62,9 +63,12 @@ export default function MediaPage() {
     const [sortKey,       setSortKey]       = useState<MediaSortKey>('date_desc');
     const [dateFilter,    setDateFilter]    = useState<DateFilter>({ from: '', to: '' });
 
-    // ─── Bulk selection ───────────────────────────────────────
+    // ─── Bulk selection & Actions ─────────────────────────────
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [bulkLoading, setBulkLoading] = useState(false);
+    const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+    const [deleteReason, setDeleteReason] = useState('');
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // ─── Drawer ───────────────────────────────────────────────
     const [selected, setSelected] = useState<MediaItem | null>(null);
@@ -248,6 +252,23 @@ export default function MediaPage() {
         }
     };
 
+    const handleConfirmBulkDelete = async () => {
+        if (!selectedIds.size || isDeleting) return;
+        setIsDeleting(true);
+        const targets = filtered.filter(i => selectedIds.has(i.id));
+        try {
+            await bulkDelete(targets, deleteReason);
+            toast.success(`تم حذف ${targets.length} مقطع بنجاح وإرسال الإشعارات للمستخدمين`);
+            setSelectedIds(new Set());
+            setIsBulkDeleteOpen(false);
+            setDeleteReason('');
+        } catch (e: any) {
+            toast.error('فشل الحذف الجماعي: ' + (e.message || 'حدث خطأ'));
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     // ─── Guard ────────────────────────────────────────────────
     if (!can('read', 'media')) return <AccessDenied resource="مركز الوسائط" />;
     if (error) return (
@@ -335,7 +356,7 @@ export default function MediaPage() {
 
                     <button
                         onClick={() => handleBulkUpdate('approved')}
-                        disabled={bulkLoading}
+                        disabled={bulkLoading || isDeleting}
                         className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer shadow-xs"
                     >
                         <CheckCircle className="w-4 h-4" /> اعتماد الكل
@@ -343,7 +364,7 @@ export default function MediaPage() {
 
                     <button
                         onClick={() => handleBulkUpdate('rejected')}
-                        disabled={bulkLoading}
+                        disabled={bulkLoading || isDeleting}
                         className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer shadow-xs"
                     >
                         <XCircle className="w-4 h-4" /> رفض الكل
@@ -351,19 +372,79 @@ export default function MediaPage() {
 
                     <button
                         onClick={() => handleBulkUpdate('flagged')}
-                        disabled={bulkLoading}
+                        disabled={bulkLoading || isDeleting}
                         className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer shadow-xs"
                     >
                         <Flag className="w-4 h-4" /> تنبيه الكل
                     </button>
 
                     <button
+                        onClick={() => setIsBulkDeleteOpen(true)}
+                        disabled={bulkLoading || isDeleting}
+                        className="flex items-center gap-1.5 bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer shadow-xs"
+                    >
+                        <Trash2 className="w-4 h-4" /> حذف وإشعار
+                    </button>
+
+                    <button
                         onClick={() => setSelectedIds(new Set())}
+                        disabled={isDeleting}
                         className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
                         title="إلغاء التحديد"
                     >
                         <X className="w-4 h-4" />
                     </button>
+                </div>
+            )}
+
+            {/* ── نافذة تأكيد الحذف الجماعي والإشعار ───────────────────── */}
+            {isBulkDeleteOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4" dir="rtl">
+                    <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+                        <div className="flex items-center gap-3 text-rose-600">
+                            <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center">
+                                <Trash2 className="w-5 h-5 text-rose-600" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-base text-slate-900">حذف {selectedIds.size} مقطع محدد</h3>
+                                <p className="text-xs text-slate-500">سيتم الحذف نهائياً وتنبيه اللاعب في تطبيق الموبايل</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 flex items-start gap-2">
+                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                            <span>سيتم مسح الفيديوهات من التخزين السحابي وتنظيفها من بروفايل اللاعبين، وإرسال إشعار فوري (Push Notification) لتطبيق الموبايل.</span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-700">سبب الحذف / الرفض (يصل للاعب في التطبيق):</label>
+                            <textarea
+                                rows={2}
+                                value={deleteReason}
+                                onChange={e => setDeleteReason(e.target.value)}
+                                placeholder="مثال: جودة التصوير منخفضة / مخالفة لمعايير التقييم / تكرار المقطع"
+                                className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 resize-none"
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                            <button
+                                onClick={() => { setIsBulkDeleteOpen(false); setDeleteReason(''); }}
+                                disabled={isDeleting}
+                                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                            >
+                                إلغاء
+                            </button>
+                            <button
+                                onClick={handleConfirmBulkDelete}
+                                disabled={isDeleting}
+                                className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs"
+                            >
+                                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                تأكيد الحذف والإشعار
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

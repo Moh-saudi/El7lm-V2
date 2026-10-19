@@ -203,16 +203,49 @@ export function useMediaData() {
         });
     }, []);
 
-    // ── حذف عنصر ─────────────────────────────────────────────
-    const deleteItem = useCallback(async (item: MediaItem) => {
+    // ── حذف عنصر فردي ─────────────────────────────────────────
+    const deleteItem = useCallback(async (item: MediaItem, reason?: string) => {
         const res = await authenticatedFetch('/api/media/delete', {
             method:  'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ r2Key: item.r2Key, sourceType: item.sourceType }),
+            body:    JSON.stringify({
+                r2Key:      item.r2Key,
+                sourceType: item.sourceType,
+                userId:     item.userId,
+                videoUrl:   item.url,
+                title:      item.title,
+                reason:     reason || '',
+            }),
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'فشل الحذف');
         setItems(prev => prev.filter(i => i.id !== item.id));
+        return data;
+    }, []);
+
+    // ── حذف عناصر متعددة دفعة واحدة مع إشعار المستخدمين ─────────
+    const bulkDelete = useCallback(async (targets: MediaItem[], reason?: string) => {
+        if (!targets.length) return;
+        const payloadItems = targets.map(item => ({
+            r2Key:      item.r2Key,
+            sourceType: item.sourceType,
+            userId:     item.userId,
+            videoUrl:   item.url,
+            title:      item.title,
+        }));
+        const res = await authenticatedFetch('/api/media/delete', {
+            method:  'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                items:  payloadItems,
+                reason: reason || '',
+            }),
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'فشل الحذف الجماعي');
+        const idsToRemove = new Set(targets.map(i => i.id));
+        setItems(prev => prev.filter(i => !idsToRemove.has(i.id)));
+        return data;
     }, []);
 
     return {
@@ -225,6 +258,7 @@ export function useMediaData() {
         approveAndSyncSkills,
         bulkUpdateStatus,
         updateItemAI,
-        deleteItem
+        deleteItem,
+        bulkDelete,
     };
 }

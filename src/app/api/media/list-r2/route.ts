@@ -245,6 +245,15 @@ async function fetchMediaData(): Promise<{ items: any[]; total: number }> {
                                     return;
                                 }
 
+                                // إذا كان الرابط يشير لسيرفر التخزين السحابي R2 وغير موجود في r2KeysSet،
+                                // فهو ملف مفقود (404) تم حذفه أو لم يكتمل رفعه سابقاً، ويتم استبعاده
+                                const isStorageDomain = lower.includes('assets.el7lm.com') ||
+                                    lower.includes('r2.dev') ||
+                                    lower.includes('cloudflarestorage.com');
+                                if (isStorageDomain) {
+                                    return;
+                                }
+
                                 externalVideosList.push({
                                     player: info,
                                     video: v,

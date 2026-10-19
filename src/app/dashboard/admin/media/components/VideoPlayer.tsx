@@ -6,7 +6,7 @@ import { MediaItem, detectMediaSource } from '../types';
 import {
     Play, Pause, FastForward, Rewind, ZoomIn,
     Volume2, VolumeX, Film, PlaySquare,
-    Globe, ExternalLink, Music2
+    Globe, ExternalLink, Music2, AlertTriangle
 } from 'lucide-react';
 import { formatTime } from './studio-utils';
 
@@ -22,6 +22,7 @@ export function VideoPlayer({ item }: Props) {
     const [playbackRate, setPlaybackRate] = useState(1.0);
     const [isMuted, setIsMuted] = useState(false);
     const [zoomLevel, setZoomLevel] = useState(1);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const detectedSource = useMemo(() => detectMediaSource(item), [item]);
 
@@ -31,6 +32,7 @@ export function VideoPlayer({ item }: Props) {
         setCurrentTime(0);
         setPlaybackRate(1.0);
         setZoomLevel(1);
+        setLoadError(null);
     }, [item]);
 
     const togglePlay = () => {
@@ -93,6 +95,23 @@ export function VideoPlayer({ item }: Props) {
                 {item.type === 'video' ? (
                     (() => {
                         if (detectedSource === 'direct') {
+                            if (loadError) {
+                                return (
+                                    <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-slate-900 text-white gap-3 select-text">
+                                        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                                            <AlertTriangle className="w-8 h-8" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="font-bold text-base text-slate-100">تعذر تشغيل هذا المقطع</p>
+                                            <p className="text-xs text-slate-400 max-w-md">{loadError}</p>
+                                        </div>
+                                        <div className="bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-[11px] font-mono text-slate-400 max-w-lg break-all">
+                                            {item.url}
+                                        </div>
+                                    </div>
+                                );
+                            }
+
                             return (
                                 <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
                                     <video
@@ -101,6 +120,9 @@ export function VideoPlayer({ item }: Props) {
                                         playsInline
                                         preload="auto"
                                         onClick={togglePlay}
+                                        onError={() => {
+                                            setLoadError('الملف غير موجود على السيرفر السحابي (404 Not Found). قد يكون الرفع قد انقطع أثناء إرسال الفيديو من الموبايل، أو تم حذف الملف مسبقاً.');
+                                        }}
                                         onTimeUpdate={() => {
                                              if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
                                         }}
