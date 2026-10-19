@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_theme.dart';
+import '../../core/country_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/account_type.dart';
 import '../../models/player.dart';
@@ -1124,6 +1125,8 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
                         player['created_at'] ??
                         player['createdAt'];
                     final joinDateText = _formatJoinDate(context, rawJoinDate);
+                    final country = '${player['country'] ?? player['nationality'] ?? ''}'.trim();
+                    final flag = getCountryFlag(country);
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 9),
@@ -1143,27 +1146,62 @@ class _ManagePlayersScreenState extends State<ManagePlayersScreen> {
                                   ),
                                 );
                               },
-                              leading: CircleAvatar(
-                                backgroundColor: isApproved
-                                    ? AppColors.green.withValues(alpha: .12)
-                                    : Colors.amber.withValues(alpha: .12),
-                                backgroundImage: avatarUrl.startsWith('http')
-                                    ? NetworkImage(avatarUrl)
-                                    : null,
-                                child: avatarUrl.startsWith('http')
-                                    ? null
-                                    : Icon(
-                                        Icons.person,
-                                        color: isApproved
-                                            ? AppColors.green
-                                            : Colors.amber.shade800,
+                              leading: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: isApproved
+                                        ? AppColors.green.withValues(alpha: .12)
+                                        : Colors.amber.withValues(alpha: .12),
+                                    backgroundImage: avatarUrl.startsWith('http')
+                                        ? NetworkImage(avatarUrl)
+                                        : null,
+                                    child: avatarUrl.startsWith('http')
+                                        ? null
+                                        : Icon(
+                                            Icons.person,
+                                            color: isApproved
+                                                ? AppColors.green
+                                                : Colors.amber.shade800,
+                                          ),
+                                  ),
+                                  if (flag.isNotEmpty)
+                                    PositionedDirectional(
+                                      bottom: -2,
+                                      end: -4,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.15),
+                                              blurRadius: 3,
+                                            ),
+                                          ],
+                                        ),
+                                        child: Text(flag, style: const TextStyle(fontSize: 10)),
                                       ),
+                                    ),
+                                ],
                               ),
-                              title: Text(
-                                '$name',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                              title: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '$name',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (flag.isNotEmpty) ...[
+                                    const SizedBox(width: 6),
+                                    Text(flag, style: const TextStyle(fontSize: 14)),
+                                  ],
+                                ],
                               ),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,

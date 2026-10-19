@@ -509,6 +509,35 @@ class _PlayerCard extends StatelessWidget {
                     color: const Color(0xFFE9EDF3),
                     child: _buildImage(context),
                   ),
+                  if (player.country.isNotEmpty)
+                    PositionedDirectional(
+                      top: 8,
+                      start: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: .55),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: .3),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: .2),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          getCountryFlag(player.country),
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ),
                   PositionedDirectional(
                     top: 8,
                     end: 8,
