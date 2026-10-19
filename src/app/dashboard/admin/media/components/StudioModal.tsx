@@ -73,6 +73,7 @@ export function StudioModal({
     // ── Action States ──
     const [analyzing, setAnalyzing] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
+    const [targetPlayerCue, setTargetPlayerCue] = useState<string>('');
     const [syncing, setSyncing] = useState(false);
     const [updating, setUpdating] = useState(false);
 
@@ -92,6 +93,7 @@ export function StudioModal({
             setAiText(item.aiAnalysis || '');
             setAiTelemetry(item.aiTelemetry || null);
             setAiError(null);
+            setTargetPlayerCue((item as any).playerCue || '');
         }
     }, [item]);
 
@@ -140,6 +142,8 @@ export function StudioModal({
                     frameUrls: frames.length > 0 ? frames : undefined,
                     frames: frames.length > 0 ? frames : undefined,
                     category: item.category,
+                    targetPlayerCue: targetPlayerCue.trim(),
+                    playerCue: targetPlayerCue.trim(),
                 }),
             });
             const data = await res.json();
@@ -346,6 +350,8 @@ export function StudioModal({
                                         onDominantFootChange={setDominantFoot}
                                         analystNotes={analystNotes}
                                         onAnalystNotesChange={setAnalystNotes}
+                                        targetPlayerCue={targetPlayerCue}
+                                        onTargetPlayerCueChange={setTargetPlayerCue}
                                         analyzing={analyzing}
                                         aiError={aiError}
                                         onAnalyze={handleAnalyze}

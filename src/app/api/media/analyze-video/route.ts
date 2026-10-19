@@ -98,8 +98,10 @@ function generateTacticalScoutAnalysis(params: {
     playerAge?: number;
     playerCountry?: string;
     category?: string;
+    targetPlayerCue?: string;
 }) {
     const name = params.playerName || 'اللاعب';
+    const targetCue = params.targetPlayerCue?.trim();
     const rawPos = (params.playerPosition || '').toLowerCase();
 
     const isGK = rawPos.includes('حارس') || rawPos.includes('gk') || rawPos.includes('keeper') || rawPos.includes('مرمى');
@@ -288,7 +290,9 @@ function generateTacticalScoutAnalysis(params: {
         scoutRecommendation,
         analysis: analysisReport,
         aiTelemetry: {
-            observedActivity: isGrassroots ? 'تدريبات مهارية وتحكم بالكرة في مساحات مصغرة' : 'مناورات كروية ومواقف لعب تكتيكية',
+            observedActivity: targetCue
+                ? `رصد اللاعب (${targetCue}) — ${isGrassroots ? 'تدريبات مهارية وتحكم بالكرة' : 'مناورات كروية ومواقف لعب'}`
+                : (isGrassroots ? 'تدريبات مهارية وتحكم بالكرة في مساحات مصغرة' : 'مناورات كروية ومواقف لعب تكتيكية'),
             ageCategory: isGrassroots ? 'فئة البراعم U-11' : (params.playerAge && params.playerAge <= 17) ? 'ناشئين U-17' : 'كبار',
             visionConfidence: 85,
             movementNotes: isGrassroots ? 'رشاقة حركية جيدة واستجابة سريعة مع حاجة لتعزيز التوافق العضلي العصبي.' : 'سرعة حركية جيدة وتوازن بدني إيجابي.'
@@ -324,6 +328,7 @@ export async function POST(req: NextRequest) {
         const playerAge = body.playerAge || body.age;
         const playerCountry = body.playerCountry || body.country || '';
         const category = body.category || '';
+        const targetPlayerCue = (body.targetPlayerCue || body.playerCue || '').trim();
 
         // التحقق مما إذا كان المفتاح صالحاً وموجوداً
         const isValidGoogleKey = apiKey.length >= 20;
@@ -336,6 +341,7 @@ export async function POST(req: NextRequest) {
                 playerAge,
                 playerCountry,
                 category,
+                targetPlayerCue,
             });
             return NextResponse.json(scoutResult);
         }
@@ -394,13 +400,23 @@ export async function POST(req: NextRequest) {
             `المركز التكتيكي: ${playerPosition || 'غير محدد'}`,
             playerAge ? `العمر: ${playerAge} سنة` : '',
             playerCountry ? `الدولة: ${playerCountry}` : '',
+            targetPlayerCue ? `العلامة المميزة للاعب المستهدف: "${targetPlayerCue}"` : '',
             `الفئة العمرية والمسار: ${ageContextStr}`,
         ].filter(Boolean).join(' | ');
+
+        const playerFocusGuidance = targetPlayerCue
+            ? `⚠️ تنبيه حاسم لتحديد اللاعب المستهدف:
+اللاعب المطلوب تقييمه في هذا المقطع هو حصراً صاحب العلامة: "${targetPlayerCue}".
+يُمنع تقييم أي لاعب آخر، ويجب تجاهل اللاعبين المنافسين أو الزملاء في الملعب والتركيز حصراً على مهارات هذا الشخص بدقة.`
+            : `⚠️ تنبيه اختيار اللاعب:
+إذا ظهر أكثر من شخص في المقطع، ركز على اللاعب الرئيسي الذي يتمحور حوله الفيديو أو الذي يبدأ المقطع بالكرة.`;
 
         const prompt = `أنت كبير كشافي ومحللي الأداء الرياضي في منصة "الحلم" الدولية لاكتشاف المواهب.
 مهمتك فحص لقطات الفيديو وتقديم تقرير كشفي مهني دقيق وواقعي 100% بدون أي عبارات تسويقية مضللة أو تخمينات جزافية.
 
 ${playerContext}
+
+${playerFocusGuidance}
 
 تنبيه تكتيكي إلزامي:
 ${isGK

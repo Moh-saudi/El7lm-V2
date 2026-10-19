@@ -7,7 +7,7 @@ import { MediaItem, FootballSkills, detectMediaSource } from '../types';
 import {
     Sliders, Sparkles, AlertCircle, Award,
     Activity, ShieldAlert, CheckCircle2, Bot, Zap, BarChart3,
-    UserCheck, ExternalLink, ImageIcon
+    UserCheck, ExternalLink, ImageIcon, Crosshair
 } from 'lucide-react';
 import {
     checkIsGoalkeeper, getSkillDefinitions, getSkillBadgeColor,
@@ -24,6 +24,9 @@ interface Props {
     onDominantFootChange: (foot: string) => void;
     analystNotes: string;
     onAnalystNotesChange: (notes: string) => void;
+    /** تحديد أو وصف اللاعب المستهدف في المقطع لتوجيه الـ AI */
+    targetPlayerCue?: string;
+    onTargetPlayerCueChange?: (cue: string) => void;
     analyzing: boolean;
     aiError: string | null;
     onAnalyze: () => void;
@@ -42,6 +45,7 @@ export function SkillsMatrix({
     item, skills, onSkillChange,
     dominantFoot, onDominantFootChange,
     analystNotes, onAnalystNotesChange,
+    targetPlayerCue = '', onTargetPlayerCueChange,
     analyzing, aiError, onAnalyze,
     aiTelemetry,
     aiDailyUsed = 0,
@@ -130,6 +134,51 @@ export function SkillsMatrix({
 
                 {/* ─── نتيجة / حالة الذكاء الاصطناعي ─── */}
                 <div className="p-2.5">
+
+                    {/* ─ حقل تحديد اللاعب في المقطع (لتوجيه الـ AI والكشاف) ─ */}
+                    {isAnalyzable && !analyzing && (
+                        <div className="bg-white border border-cyan-200/90 rounded-lg p-2.5 mb-2.5 shadow-2xs space-y-1.5">
+                            <div className="flex items-center justify-between gap-1">
+                                <label className="text-[10px] font-black text-cyan-950 flex items-center gap-1">
+                                    <Crosshair className="w-3.5 h-3.5 text-cyan-600" />
+                                    <span>تحديد اللاعب المستهدف في المقطع:</span>
+                                </label>
+                                <span className="text-[9px] text-slate-400 font-medium">لتوجيه الـ AI بدقة</span>
+                            </div>
+                            <input
+                                type="text"
+                                value={targetPlayerCue || ''}
+                                onChange={(e) => onTargetPlayerCueChange?.(e.target.value)}
+                                placeholder="مثلاً: تيشيرت أحمر / حذاء أصفر / حامل الكرة في أول ثانيتين..."
+                                className="w-full text-[10px] bg-slate-50 border border-cyan-200 rounded px-2.5 py-1 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-cyan-500 focus:bg-white transition-all text-right"
+                                dir="rtl"
+                            />
+                            {/* اقتراحات سريعة بنقرة واحدة */}
+                            <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                                <span className="text-[8.5px] text-slate-400 font-bold">اقتراحات:</span>
+                                {[
+                                    { label: 'حامل الكرة ⚽', val: 'اللاعب الذي يستحوذ على الكرة في بداية المقطع' },
+                                    { label: 'حارس المرمى 🧤', val: 'حارس المرمى المتواجد داخل منطقة الجزاء' },
+                                    { label: 'تيشيرت أسود ⚫', val: 'اللاعب بالتيشيرت الأسود' },
+                                    { label: 'تيشيرت أبيض ⚪', val: 'اللاعب بالتيشيرت الأبيض' },
+                                    { label: 'حذاء فسفوري/ملون 👟', val: 'اللاعب الذي يرتدي حذاءً ملوناً' },
+                                ].map((tag) => (
+                                    <button
+                                        key={tag.label}
+                                        type="button"
+                                        onClick={() => onTargetPlayerCueChange?.(targetPlayerCue === tag.val ? '' : tag.val)}
+                                        className={`text-[8.5px] px-1.5 py-0.5 rounded border transition-all cursor-pointer font-bold ${
+                                            targetPlayerCue === tag.val
+                                                ? 'bg-cyan-600 text-white border-cyan-600 shadow-2xs'
+                                                : 'bg-white hover:bg-cyan-50 text-slate-600 border-slate-200 hover:border-cyan-300'
+                                        }`}
+                                    >
+                                        {tag.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* ─ جاري التحليل ─ */}
                     {analyzing && (
