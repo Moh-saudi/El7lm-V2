@@ -3,10 +3,11 @@
 import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { MediaItem, FootballSkills } from '../types';
+import { MediaItem, FootballSkills, detectMediaSource } from '../types';
 import {
     Sliders, Sparkles, AlertCircle, Award,
-    Activity, ShieldAlert, CheckCircle2, Bot, Zap, BarChart3
+    Activity, ShieldAlert, CheckCircle2, Bot, Zap, BarChart3,
+    UserCheck, ExternalLink, ImageIcon
 } from 'lucide-react';
 import {
     checkIsGoalkeeper, getSkillDefinitions, getSkillBadgeColor,
@@ -49,6 +50,17 @@ export function SkillsMatrix({
     const isGK = useMemo(() => checkIsGoalkeeper(item.position), [item.position]);
     const skillDefs = useMemo(() => getSkillDefinitions(isGK), [isGK]);
     const calculatedOverall = useMemo(() => calculateOverall(skills, isGK), [skills, isGK]);
+    const mediaSource = useMemo(() => detectMediaSource(item), [item]);
+
+    // هل يمكن للذكاء الاصطناعي تحليل هذا المحتوى؟
+    const isAnalyzable = mediaSource === 'direct';
+    const isExternalLink = ['tiktok', 'youtube', 'vimeo', 'external'].includes(mediaSource);
+    const isImage = mediaSource === 'image';
+
+    const sourceLabel: Record<string, string> = {
+        tiktok: 'TikTok', youtube: 'YouTube', vimeo: 'Vimeo',
+        external: 'رابط خارجي', image: 'صورة', direct: 'فيديو مباشر'
+    };
 
     const inferredCategory = item.age
         ? item.age <= 12 ? 'براعم U-11' : item.age <= 17 ? 'ناشئين U-17' : 'كبار'
@@ -104,12 +116,13 @@ export function SkillsMatrix({
 
                         <Button
                             onClick={onAnalyze}
-                            disabled={analyzing || aiLimitReached}
+                            disabled={analyzing || aiLimitReached || !isAnalyzable}
                             className="bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-300 text-white font-black h-7 px-2.5 text-[10px] gap-1 shadow-xs active:scale-95 transition-all cursor-pointer flex-shrink-0"
+                            title={!isAnalyzable ? 'لا يمكن تحليل الروابط الخارجية — يلزم تدخل بشري' : ''}
                         >
                             <Sparkles className={`w-3 h-3 ${analyzing ? 'animate-spin' : ''}`} />
                             <span>
-                                {analyzing ? 'جاري الفحص...' : aiLimitReached ? 'انتهى الحد اليومي' : 'فحص AI ⚡'}
+                                {analyzing ? 'جاري الفحص...' : aiLimitReached ? 'انتهى الحد اليومي' : !isAnalyzable ? 'غير متاح' : 'فحص AI ⚡'}
                             </span>
                         </Button>
                     </div>
@@ -117,27 +130,66 @@ export function SkillsMatrix({
 
                 {/* ─── نتيجة / حالة الذكاء الاصطناعي ─── */}
                 <div className="p-2.5">
+
+                    {/* ─ جاري التحليل ─ */}
                     {analyzing && (
                         <div className="flex items-center justify-center gap-2 py-3 text-cyan-700">
                             <Sparkles className="w-4 h-4 animate-spin" />
-                            <span className="text-[11px] font-bold">جاري تحليل الفيديو عبر الذكاء الاصطناعي...</span>
+                            <span className="text-[11px] font-bold">جاري تحليل الفيديو...</span>
                         </div>
                     )}
 
-                    {!analyzing && aiTelemetry ? (
+                    {/* ─ رابط خارجي / صورة → تعذر التحليل → توصية بشرية ─ */}
+                    {!analyzing && (isExternalLink || isImage) && (
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+                                <div className="flex-shrink-0">
+                                    {isImage
+                                        ? <ImageIcon className="w-4 h-4 text-amber-600" />
+                                        : <ExternalLink className="w-4 h-4 text-amber-600" />
+                                    }
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-black text-amber-900">
+                                        {isImage ? 'محتوى صورة — لا يوجد فيديو' : `رابط ${sourceLabel[mediaSource] || 'خارجي'} — لا يمكن الوصول`}
+                                    </p>
+                                    <p className="text-[9px] text-amber-700 mt-0.5 leading-snug">
+                                        {isImage
+                                            ? 'الصور لا تحتوي على حركة قابلة للتحليل'
+                                            : 'الذكاء الاصطناعي لا يستطيع فتح الروابط الخارجية أو استخراج إطاراتها'
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* توصية بالتدخل البشري */}
+                            <div className="flex items-start gap-2 bg-indigo-50 border border-indigo-200 rounded-lg p-2.5">
+                                <UserCheck className="w-4 h-4 text-indigo-600 flex-shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-[10px] font-black text-indigo-900">🧑‍⚖️ يُوصى بالتقييم البشري المباشر</p>
+                                    <p className="text-[9px] text-indigo-700 mt-0.5 leading-snug">
+                                        افتح الرابط الخارجي وشاهد الفيديو يدوياً، ثم أدخل درجات المهارات أدناه بناءً على ملاحظتك.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <p className="text-[9px] text-slate-400 text-center">* التحليل الآلي يعمل فقط مع الفيديوهات المرفوعة مباشرة</p>
+                        </div>
+                    )}
+
+                    {/* ─ فيديو مباشر: نتائج AI ─ */}
+                    {!analyzing && isAnalyzable && aiTelemetry && (
                         <div className="space-y-2">
                             <div className="flex items-center gap-1.5">
                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
                                 <span className="text-[10px] font-black text-emerald-800">اكتمل التحليل — نتائج الرؤية الحاسوبية:</span>
                             </div>
-
-                            {/* 3 بطاقات نتائج */}
                             <div className="grid grid-cols-3 gap-1.5">
                                 <div className="bg-white border border-cyan-200 rounded-lg p-2 text-center">
                                     <Activity className="w-3 h-3 text-cyan-600 mx-auto mb-0.5" />
                                     <p className="text-[9px] text-slate-500 leading-tight">النشاط</p>
                                     <p className="text-[10px] font-black text-slate-800 leading-tight truncate">
-                                        {aiTelemetry.observedActivity || 'تدريب كروي'}
+                                        {aiTelemetry.observedActivity || '—'}
                                     </p>
                                 </div>
                                 <div className="bg-white border border-amber-200 rounded-lg p-2 text-center">
@@ -151,20 +203,22 @@ export function SkillsMatrix({
                                     <BarChart3 className="w-3 h-3 text-emerald-600 mx-auto mb-0.5" />
                                     <p className="text-[9px] text-slate-500 leading-tight">دقة AI</p>
                                     <p className="text-[10px] font-black text-emerald-700 leading-tight font-mono">
-                                        {aiTelemetry.visionConfidence || 88}%
+                                        {aiTelemetry.visionConfidence ?? '—'}%
                                     </p>
                                 </div>
                             </div>
-
                             {aiTelemetry.movementNotes && (
                                 <div className="bg-cyan-50 border border-cyan-200/60 rounded-lg p-2 text-[10px] text-cyan-900 leading-relaxed">
-                                    <span className="font-bold text-cyan-700">ملاحظات حركية: </span>
+                                    <span className="font-bold text-cyan-700">ملاحظات: </span>
                                     {aiTelemetry.movementNotes}
                                 </div>
                             )}
-                            <p className="text-[9px] text-slate-400 text-center">* رصد آلي مساعد — القرار النهائي للكشاف</p>
+                            <p className="text-[9px] text-slate-400 text-center">* رصد آلي مساعد — القرار للكشاف</p>
                         </div>
-                    ) : !analyzing && !aiTelemetry && (
+                    )}
+
+                    {/* ─ فيديو مباشر: لم يُفحص بعد ─ */}
+                    {!analyzing && isAnalyzable && !aiTelemetry && (
                         <div className="flex flex-col items-center justify-center py-3 gap-1.5">
                             <div className="w-8 h-8 rounded-full bg-cyan-100 border border-cyan-200 flex items-center justify-center">
                                 <Bot className="w-4 h-4 text-cyan-500" />
@@ -264,6 +318,7 @@ export function SkillsMatrix({
                         {skillDefs.map(s => {
                             const val = skills[s.key];
                             const badgeCls = getSkillBadgeColor(val);
+                            const pct = Math.round(((val - 30) / (99 - 30)) * 100);
                             return (
                                 <div key={s.key} className="bg-slate-50 border border-slate-200 rounded-lg p-2 hover:border-slate-300 transition-colors">
                                     <div className="flex items-center justify-between mb-1">
@@ -272,19 +327,9 @@ export function SkillsMatrix({
                                             <span className="text-[10px] font-bold text-slate-800 truncate">{s.label}</span>
                                             <span className="text-[9px] text-slate-400 font-mono flex-shrink-0">({s.short})</span>
                                         </div>
-                                        <div className="flex items-center gap-0.5 flex-shrink-0">
-                                            <span className={`text-[10px] font-mono font-black px-1 py-0.5 rounded border ${badgeCls}`}>{val}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => onSkillChange(s.key, Math.min(99, val + 1))}
-                                                className="w-4 h-4 text-slate-700 hover:text-white hover:bg-emerald-600 bg-white border border-slate-300 rounded flex items-center justify-center text-[10px] font-black cursor-pointer transition-colors"
-                                            >+</button>
-                                            <button
-                                                type="button"
-                                                onClick={() => onSkillChange(s.key, Math.max(30, val - 1))}
-                                                className="w-4 h-4 text-slate-700 hover:text-white hover:bg-rose-500 bg-white border border-slate-300 rounded flex items-center justify-center text-[10px] font-black cursor-pointer transition-colors"
-                                            >−</button>
-                                        </div>
+                                        <span className={`text-[10px] font-mono font-black px-1.5 py-0.5 rounded border ${badgeCls}`}>
+                                            {val} <span className="text-[8px] opacity-60">{pct}%</span>
+                                        </span>
                                     </div>
                                     <input
                                         type="range" min="30" max="99" value={val}
