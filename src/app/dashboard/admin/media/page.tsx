@@ -12,11 +12,10 @@ import {
     FootballSkills, MediaSourceFilter, detectMediaSource
 } from './types';
 
-import { MediaHeader }  from './components/MediaHeader';
-import { MediaKPIBar }  from './components/MediaKPIBar';
-import { MediaToolbar } from './components/MediaToolbar';
-import { MediaGrid }    from './components/MediaGrid';
-import { StudioModal }  from './components/StudioModal';
+import { MediaSlimHeader } from './components/MediaSlimHeader';
+import { MediaTable } from './components/MediaTable';
+import { PlayerDossierView } from './components/PlayerDossierView';
+import { StudioModal } from './components/StudioModal';
 import { authenticatedFetch } from '@/lib/api/authenticated-fetch';
 
 // ─── ترتيب العناصر ────────────────────────────────────────────
@@ -54,42 +53,38 @@ export default function MediaPage() {
         bulkDelete
     } = useMediaData();
 
+    // ─── View Switcher (Table vs Dossiers) ──────────────────────
+    const [viewMode, setViewMode] = useState<'table' | 'dossiers'>('table');
+
     // ─── Filters ──────────────────────────────────────────────
-    const [typeFilter,    setTypeFilter]    = useState<MediaType | 'all'>('all');
     const [sourceFilter,  setSourceFilter]  = useState<MediaSourceFilter>('all');
     const [statusFilter,  setStatusFilter]  = useState<MediaStatus | 'all'>('all');
-    const [accountFilter, setAccountFilter] = useState<string>('all');
     const [searchTerm,    setSearchTerm]    = useState('');
     const [sortKey,       setSortKey]       = useState<MediaSortKey>('date_desc');
-    const [dateFilter,    setDateFilter]    = useState<DateFilter>({ from: '', to: '' });
 
     // ─── Bulk selection & Actions ─────────────────────────────
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [bulkLoading, setBulkLoading] = useState(false);
-    const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+    const [deleteTargets, setDeleteTargets] = useState<MediaItem[] | null>(null);
     const [deleteReason, setDeleteReason] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // ─── Drawer ───────────────────────────────────────────────
+    // ─── Modal & Deep Review ──────────────────────────────────
     const [selected, setSelected] = useState<MediaItem | null>(null);
 
     // ─── Load on mount ────────────────────────────────────────
     useEffect(() => { fetchAll(); }, [fetchAll]);
 
-    // إعادة تحديد selectedIds عند تغيير الفلاتر
+    // إعادة ضبط التحديد عند تغيير الفلاتر
     useEffect(() => {
         setSelectedIds(new Set());
-    }, [typeFilter, sourceFilter, statusFilter, accountFilter, searchTerm, dateFilter]);
+    }, [sourceFilter, statusFilter, searchTerm]);
 
     // ─── Filtered + sorted list ───────────────────────────────
     const filtered = useMemo(() => {
-        const q = searchTerm.toLowerCase();
-        const fromTs = dateFilter.from ? new Date(dateFilter.from).getTime() : 0;
-        const toTs   = dateFilter.to   ? new Date(dateFilter.to + 'T23:59:59').getTime() : Infinity;
+        const q = searchTerm.toLowerCase().trim();
 
         const base = items.filter(m => {
-            if (typeFilter !== 'all' && m.type !== typeFilter) return false;
-            
             // فلتر مصدر الفيديو الدقيق
             if (sourceFilter !== 'all') {
                 const detected = detectMediaSource(m);
@@ -99,10 +94,8 @@ export default function MediaPage() {
                 if (sourceFilter === 'external' && !['youtube', 'tiktok', 'vimeo', 'external'].includes(detected)) return false;
             }
 
-            if (statusFilter  !== 'all' && m.status      !== statusFilter)  return false;
-            if (accountFilter !== 'all' && m.accountType !== accountFilter) return false;
-            if (fromTs && m.uploadDate.getTime() < fromTs) return false;
-            if (toTs   && m.uploadDate.getTime() > toTs)   return false;
+            if (statusFilter !== 'all' && m.status !== statusFilter) return false;
+
             if (q && !(
                 m.userName.toLowerCase().includes(q) ||
                 m.title.toLowerCase().includes(q) ||
@@ -111,10 +104,12 @@ export default function MediaPage() {
                 m.country?.toLowerCase().includes(q) ||
                 m.position?.toLowerCase().includes(q)
             )) return false;
+
             return true;
         });
+
         return sortItems(base, sortKey);
-    }, [items, typeFilter, sourceFilter, statusFilter, accountFilter, searchTerm, sortKey, dateFilter]);
+    }, [items, sourceFilter, statusFilter, searchTerm, sortKey]);
 
     // ─── Queue Navigation (السابق / التالي) ───────────────────
     const currentIndex = selected ? filtered.findIndex(i => i.id === selected.id) : -1;
@@ -196,6 +191,23 @@ export default function MediaPage() {
         }
     };
 
+    // ─── اعتماد سريع بنقرة واحدة (من الجدول أو البطاقات) ───────
+    const handleQuickApprove = useCallback(async (item: MediaItem) => {
+        try {
+            await updateItemStatus(item, 'approved', user?.id || 'admin');
+            toast.success(`تم اعتماد "${item.title || item.userName}" بنجاح`);
+            sendAutoNotification(item, 'approved');
+        } catch (e: any) {
+            toast.error('فشل الاعتماد: ' + (e.message || 'حدث خطأ'));
+        }
+    }, [updateItemStatus, user?.id, sendAutoNotification]);
+
+    // ─── فتح نافذة تأكيد حذف عنصر فردي ────────────────────────
+    const handleQuickDelete = useCallback((item: MediaItem) => {
+        setDeleteTargets([item]);
+        setDeleteReason('');
+    }, []);
+
     // ─── اعتماد تقييم المهارات والمزامنة المباشرة ─────────────
     const handleApproveAndSync = async (
         item: MediaItem,
@@ -226,6 +238,15 @@ export default function MediaPage() {
         });
     }, []);
 
+    const handleSelectAll = useCallback(() => {
+        setSelectedIds(prev => {
+            if (filtered.length > 0 && filtered.every(i => prev.has(i.id))) {
+                return new Set();
+            }
+            return new Set(filtered.map(i => i.id));
+        });
+    }, [filtered]);
+
     const handleToggleGroupSelect = useCallback((ids: string[]) => {
         setSelectedIds(prev => {
             const allIn = ids.every(id => prev.has(id));
@@ -243,7 +264,7 @@ export default function MediaPage() {
         try {
             await bulkUpdateStatus(targets, status, user?.id || '');
             const labels = { approved: 'اعتماد', rejected: 'رفض', flagged: 'تنبيه' };
-            toast.success(`تم ${labels[status]} ${targets.length} عنصر`);
+            toast.success(`تم ${labels[status]} ${targets.length} عنصر بنجاح`);
             setSelectedIds(new Set());
         } catch (e: any) {
             toast.error('فشل الإجراء الجماعي: ' + e.message);
@@ -252,29 +273,50 @@ export default function MediaPage() {
         }
     };
 
-    const handleConfirmBulkDelete = async (e?: React.MouseEvent) => {
+    const handleBulkDeleteOpen = useCallback(() => {
+        const targets = filtered.filter(i => selectedIds.has(i.id));
+        if (targets.length === 0) return;
+        setDeleteTargets(targets);
+        setDeleteReason('');
+    }, [filtered, selectedIds]);
+
+    const handleConfirmDelete = async (e?: React.MouseEvent) => {
         if (e) {
             e.preventDefault();
             e.stopPropagation();
         }
-        if (!selectedIds.size || isDeleting) return;
+        if (!deleteTargets || deleteTargets.length === 0 || isDeleting) return;
         setIsDeleting(true);
-        const targets = filtered.filter(i => selectedIds.has(i.id));
         try {
-            await bulkDelete(targets, deleteReason);
-            toast.success(`تم حذف ${targets.length} مقطع بنجاح وإرسال الإشعارات للمستخدمين`);
-            setSelectedIds(new Set());
-            setIsBulkDeleteOpen(false);
+            if (deleteTargets.length === 1) {
+                await deleteItem(deleteTargets[0], deleteReason);
+                toast.success(`تم حذف "${deleteTargets[0].title || 'المقطع'}" وإشعار اللاعب بنجاح`);
+                if (selected?.id === deleteTargets[0].id) {
+                    setSelected(null);
+                }
+            } else {
+                await bulkDelete(deleteTargets, deleteReason);
+                toast.success(`تم حذف ${deleteTargets.length} مقطع بنجاح وإرسال الإشعارات للمستخدمين`);
+                if (selected && deleteTargets.some(t => t.id === selected.id)) {
+                    setSelected(null);
+                }
+            }
+            setSelectedIds(prev => {
+                const next = new Set(prev);
+                deleteTargets.forEach(t => next.delete(t.id));
+                return next;
+            });
+            setDeleteTargets(null);
             setDeleteReason('');
         } catch (e: any) {
-            toast.error('فشل الحذف الجماعي: ' + (e.message || 'حدث خطأ'));
+            toast.error('فشل الحذف: ' + (e.message || 'حدث خطأ'));
         } finally {
             setIsDeleting(false);
         }
     };
 
     // ─── Guard ────────────────────────────────────────────────
-    if (!can('read', 'media')) return <AccessDenied resource="مركز الوسائط" />;
+    if (!can('read', 'media')) return <AccessDenied resource="مركز استوديو الكشافة" />;
     if (error) return (
         <div className="flex items-center justify-center min-h-screen bg-slate-50 text-slate-900" dir="rtl">
             <div className="bg-white border border-slate-200 rounded-2xl shadow-xl p-8 max-w-lg text-center space-y-3">
@@ -286,59 +328,67 @@ export default function MediaPage() {
     );
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col selection:bg-emerald-500 selection:text-white" dir="rtl">
+        <div className="min-h-screen bg-slate-50/70 text-slate-900 flex flex-col selection:bg-emerald-500 selection:text-white" dir="rtl">
 
-            <MediaHeader
-                onRefresh={() => fetchAll(true)}
-                loading={loading}
-                lastFetched={lastFetched}
-            />
+            {/* ── Main Container ── */}
+            <div className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 space-y-4">
 
-            <div className="flex-1 max-w-screen-2xl mx-auto w-full px-4 md:px-6 py-6 space-y-5">
-
-                <MediaKPIBar
+                {/* ── 1. Slim Executive Header & Dynamic Filter Bar ── */}
+                <MediaSlimHeader
+                    viewMode={viewMode}
+                    onViewModeChange={setViewMode}
                     stats={stats}
                     activeStatus={statusFilter}
-                    onStatusClick={s => setStatusFilter(prev => prev === s ? 'all' : s)}
-                />
-
-                <MediaToolbar
+                    onStatusChange={setStatusFilter}
                     searchTerm={searchTerm}
-                    onSearch={setSearchTerm}
-                    typeFilter={typeFilter}
-                    onTypeFilter={setTypeFilter}
+                    onSearchChange={setSearchTerm}
                     sourceFilter={sourceFilter}
-                    onSourceFilter={setSourceFilter}
-                    statusFilter={statusFilter}
-                    onStatusFilter={setStatusFilter}
-                    accountFilter={accountFilter}
-                    onAccountFilter={setAccountFilter}
+                    onSourceChange={setSourceFilter}
                     sortKey={sortKey}
-                    onSort={setSortKey}
-                    dateFilter={dateFilter}
-                    onDateFilter={setDateFilter}
-                    total={filtered.length}
+                    onSortChange={setSortKey}
+                    loading={loading}
+                    onRefresh={() => fetchAll(true)}
+                    lastFetched={lastFetched}
                 />
 
-                <MediaGrid
-                    items={filtered}
-                    loading={loading}
-                    onSelect={setSelected}
-                    selectedId={selected?.id}
-                    selectedIds={selectedIds}
-                    onToggleSelect={handleToggleSelect}
-                    onToggleGroupSelect={handleToggleGroupSelect}
-                />
+                {/* ── 2. Primary Views: Table vs Dossiers ── */}
+                {viewMode === 'table' ? (
+                    <MediaTable
+                        items={filtered}
+                        selectedIds={selectedIds}
+                        onToggleSelect={handleToggleSelect}
+                        onSelectAll={handleSelectAll}
+                        onItemClick={setSelected}
+                        onQuickApprove={handleQuickApprove}
+                        onQuickDelete={handleQuickDelete}
+                        isDeleting={isDeleting}
+                    />
+                ) : (
+                    <PlayerDossierView
+                        items={filtered}
+                        selectedIds={selectedIds}
+                        onToggleSelect={handleToggleSelect}
+                        onToggleGroupSelect={handleToggleGroupSelect}
+                        onItemClick={setSelected}
+                        onQuickApprove={handleQuickApprove}
+                        onQuickDelete={handleQuickDelete}
+                        isDeleting={isDeleting}
+                    />
+                )}
 
             </div>
 
+            {/* ── 3. Deep Review Studio Modal ── */}
             <StudioModal
                 item={selected}
                 onClose={() => setSelected(null)}
                 onUpdateStatus={handleUpdateStatus}
                 onApproveAndSync={handleApproveAndSync}
                 onAIResult={(id, analysis, rating) => updateItemAI(id, analysis, rating)}
-                onDelete={async (item) => { await deleteItem(item); setSelected(null); }}
+                onDelete={async (item) => {
+                    await deleteItem(item);
+                    setSelected(null);
+                }}
                 userId={user?.id || ''}
                 onNext={handleNext}
                 onPrev={handlePrev}
@@ -348,13 +398,13 @@ export default function MediaPage() {
                 totalCount={filtered.length}
             />
 
-            {/* ── Floating Bulk Action Bar (Daylight) ───────────────────── */}
+            {/* ── 4. Floating Bulk Action Bar ── */}
             {selectedIds.size > 0 && (
                 <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2
-                    bg-white text-slate-900 rounded-2xl shadow-2xl px-4 py-3 border border-slate-300 ring-1 ring-slate-900/5"
+                    bg-white text-slate-900 rounded-2xl shadow-2xl px-4 py-3 border border-slate-300 ring-1 ring-slate-900/5 animate-in fade-in slide-in-from-bottom-4 duration-200"
                     dir="rtl"
                 >
-                    <span className="text-sm font-bold text-slate-800 pl-2 border-l border-slate-200 ml-2">
+                    <span className="text-sm font-black text-slate-800 pl-2 border-l border-slate-200 ml-2">
                         {selectedIds.size} محدد
                     </span>
 
@@ -383,7 +433,7 @@ export default function MediaPage() {
                     </button>
 
                     <button
-                        onClick={() => setIsBulkDeleteOpen(true)}
+                        onClick={handleBulkDeleteOpen}
                         disabled={bulkLoading || isDeleting}
                         className="flex items-center gap-1.5 bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors cursor-pointer shadow-xs"
                     >
@@ -401,23 +451,27 @@ export default function MediaPage() {
                 </div>
             )}
 
-            {/* ── نافذة تأكيد الحذف الجماعي والإشعار ───────────────────── */}
-            {isBulkDeleteOpen && (
+            {/* ── 5. نافذة تأكيد الحذف والإشعار (فردي وجماعي) ── */}
+            {deleteTargets && deleteTargets.length > 0 && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4" dir="rtl">
                     <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
                         <div className="flex items-center gap-3 text-rose-600">
-                            <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
                                 <Trash2 className="w-5 h-5 text-rose-600" />
                             </div>
                             <div>
-                                <h3 className="font-bold text-base text-slate-900">حذف {selectedIds.size} مقطع محدد</h3>
-                                <p className="text-xs text-slate-500">سيتم الحذف نهائياً وتنبيه اللاعب في تطبيق الموبايل</p>
+                                <h3 className="font-black text-base text-slate-900">
+                                    {deleteTargets.length === 1
+                                        ? `حذف مقطع: "${deleteTargets[0].title || deleteTargets[0].userName}"`
+                                        : `حذف ${deleteTargets.length} مقطع محدد`}
+                                </h3>
+                                <p className="text-xs text-slate-500">سيتم مسح الملف نهائياً وتنبيه اللاعب في تطبيق الموبايل</p>
                             </div>
                         </div>
 
                         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 flex items-start gap-2">
                             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                            <span>سيتم مسح الفيديوهات من التخزين السحابي وتنظيفها من بروفايل اللاعبين، وإرسال إشعار فوري (Push Notification) لتطبيق الموبايل.</span>
+                            <span>سيتم مسح الفيديوهات من التخزين السحابي وتنظيفها من بروفايل اللاعب، مع إرسال إشعار فوري (Push Notification) لتطبيق الموبايل.</span>
                         </div>
 
                         <div className="space-y-1.5">
@@ -434,7 +488,7 @@ export default function MediaPage() {
                         <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                             <button
                                 type="button"
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsBulkDeleteOpen(false); setDeleteReason(''); }}
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeleteTargets(null); setDeleteReason(''); }}
                                 disabled={isDeleting}
                                 className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
                             >
@@ -442,7 +496,7 @@ export default function MediaPage() {
                             </button>
                             <button
                                 type="button"
-                                onClick={handleConfirmBulkDelete}
+                                onClick={handleConfirmDelete}
                                 disabled={isDeleting}
                                 className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs"
                             >
