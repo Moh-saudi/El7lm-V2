@@ -64,6 +64,19 @@ class Opportunity {
   /// هل هي فرصة مدفوعة؟
   bool get isPaid => fee > 0;
 
+  String? get organizationLogo {
+    final v = rawPayload['organizationLogo'] ??
+        rawPayload['organizerLogo'] ??
+        rawPayload['clubLogo'] ??
+        rawPayload['logo'] ??
+        rawPayload['logo_url'] ??
+        rawPayload['image'] ??
+        rawPayload['imageUrl'];
+    return v != null ? '$v' : null;
+  }
+
+  String get organizationName => organizerName;
+
   Map<String, dynamic>? get translations {
     final t = rawPayload['translations'];
     if (t is Map<String, dynamic>) return t;

@@ -7,10 +7,11 @@ import '../../core/country_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/account_type.dart';
 import '../../models/opportunity.dart';
+import '../../services/currency_service.dart';
 import '../../services/data_service.dart';
 import '../../widgets/async_state_view.dart';
+import '../../widgets/payment/unified_payment_sheet.dart';
 import '../messages/chat_detail_screen.dart';
-import '../payment/geidea_payment_screen.dart';
 import '../tournaments/tournaments_screen.dart';
 
 class OpportunitiesScreen extends StatefulWidget {
@@ -97,99 +98,44 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
     }
   }
 
-  // ── Paid application: Geidea payment then auto-submit ─────────────────────
+  // ── Paid application: Unified Payment Sheet (Card, InstaPay, Fawran) ──────
   Future<void> _handlePaidApplication(Opportunity opportunity) async {
     final title = opportunity.localizedTitle(context.languageCode).isEmpty
         ? context.tr('sportsOpportunity')
         : opportunity.localizedTitle(context.languageCode);
 
-    final email = widget.dataService.authService.authUserId != null
-        ? '${widget.dataService.authService.authUserId}@el7lm.app'
-        : 'player@el7lm.com';
-    final name = widget.dataService.authService.currentDisplayName.isNotEmpty
-        ? widget.dataService.authService.currentDisplayName
-        : 'لاعب';
-
-    // Show loading while creating payment session
-    if (!mounted) return;
-    Map<String, dynamic> session;
-    var sessionLoadingShowing = true;
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(
-        child: CircularProgressIndicator(color: AppColors.gold),
-      ),
-    ).then((_) => sessionLoadingShowing = false);
-
-    try {
-      session = await widget.dataService.createGeideaSession(
-        amount: opportunity.fee,
-        currency: opportunity.currency,
-        customerEmail: email,
-        customerName: name,
-        metadata: {
-          'type': 'opportunity_application',
-          'opportunityId': opportunity.id,
-          'opportunityTitle': title,
-        },
-      );
-    } catch (e) {
-      if (sessionLoadingShowing && mounted) {
-        sessionLoadingShowing = false;
-        Navigator.of(context).pop();
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.errorText(e))),
-        );
-      }
-      return;
-    }
-
-    if (sessionLoadingShowing && mounted) {
-      sessionLoadingShowing = false;
-      Navigator.of(context).pop(); // dismiss loading
-    }
-
-    final redirectUrl = session['redirectUrl'] as String?;
-    if (redirectUrl == null || redirectUrl.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('paymentSessionFailed'))),
-        );
-      }
-      return;
-    }
-
-    if (!mounted) return;
-    final result = await Navigator.of(context).push<GeideaPaymentResult>(
-      MaterialPageRoute(
-        builder: (_) => GeideaPaymentScreen(
-          paymentUrl: redirectUrl,
-          sessionId: session['sessionId']?.toString() ?? session['id']?.toString(),
-          amount: (session['convertedAmountEgp'] as num?)?.toDouble() ?? opportunity.fee,
-          currency: 'EGP',
-          title: title,
-          originalAmount: opportunity.fee,
-          originalCurrency: opportunity.currency,
-          exchangeRate: (session['exchangeRate'] as num?)?.toDouble(),
-        ),
-      ),
+    final breakdown = PriceBreakdown(
+      originalPrice: opportunity.fee,
+      discountAmount: 0,
+      discountPercent: 0,
+      finalPrice: opportunity.fee,
+      hasDiscount: false,
+      currency: opportunity.currency,
     );
 
-    if (!mounted) return;
-    final isRealSuccess = result?.success == true &&
-        result?.orderId != null &&
-        result!.orderId!.isNotEmpty &&
-        result.orderId != 'null';
+    final result = await UnifiedPaymentSheet.show(
+      context: context,
+      dataService: widget.dataService,
+      title: title,
+      subtitle: opportunity.organizationName,
+      logoUrl: opportunity.organizationLogo,
+      priceBreakdown: breakdown,
+      itemType: 'opportunity_application',
+      itemId: opportunity.id,
+      extraMetadata: {
+        'opportunityId': opportunity.id,
+        'opportunityTitle': title,
+      },
+    );
 
-    if (isRealSuccess) {
-      // Payment confirmed → submit application automatically
+    if (result == null || !mounted) return;
+
+    if (result.isSuccess) {
+      // Payment confirmed via Card → submit application automatically
       try {
         await widget.dataService.applyForOpportunity(
           opportunity.id,
-          notes: 'تم الدفع عبر Geidea. orderId: ${result.orderId ?? ''}',
+          notes: 'تم الدفع بنجاح عبر البطاقة البنكية (Geidea). رقم المعاملة: ${result.orderId ?? ''}',
         );
       } catch (e) {
         debugPrint('⚠️ [OpportunitiesScreen] applyForOpportunity error: $e');
@@ -198,13 +144,20 @@ class _OpportunitiesScreenState extends State<OpportunitiesScreen> {
       if (!mounted) return;
       setState(() => selectedTab = 2);
       _showPaymentSuccessDialog(title);
-    } else if (result != null && !result.success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.message ?? context.tr('paymentCancelled')),
-          backgroundColor: Colors.red.shade600,
-        ),
-      );
+    } else if (result.isPending) {
+      // Instant transfer (InstaPay or Fawran) → record pending application
+      final methodName = result.method == UnifiedPaymentMethod.instapay ? 'انستاباي (InstaPay)' : 'فوراً (Fawran)';
+      try {
+        await widget.dataService.applyForOpportunity(
+          opportunity.id,
+          notes: 'طلب تقديم مدفوع عبر $methodName (${result.chargedAmount} ${result.chargedCurrency})، بانتظار مراجعة وتأكيد إيصال التحويل.',
+        );
+      } catch (e) {
+        debugPrint('⚠️ [OpportunitiesScreen] applyForOpportunity error: $e');
+      }
+      await _loadAppliedList();
+      if (!mounted) return;
+      setState(() => selectedTab = 2);
     }
   }
 
