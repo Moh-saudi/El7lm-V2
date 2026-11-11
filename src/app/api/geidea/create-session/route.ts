@@ -23,6 +23,12 @@ type CreateSessionBody = {
   metadata?: Record<string, any>;
 };
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
 /**
  * POST - إنشاء جلسة دفع جديدة
  */
@@ -38,7 +44,7 @@ export async function POST(request: NextRequest) {
           error: 'Missing required fields',
           details: 'amount, currency, and customerEmail are required',
         },
-        { status: 400 }
+        { status: 400, headers: CORS_HEADERS }
       );
     }
 
@@ -63,17 +69,20 @@ export async function POST(request: NextRequest) {
           error: result.error || 'Failed to create session',
           details: result.details || 'Unknown error',
         },
-        { status: 400 }
+        { status: 400, headers: CORS_HEADERS }
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      sessionId: result.sessionId,
-      orderId: result.orderId,
-      redirectUrl: result.redirectUrl,
-      message: result.message,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        sessionId: result.sessionId,
+        orderId: result.orderId,
+        redirectUrl: result.redirectUrl,
+        message: result.message,
+      },
+      { status: 200, headers: CORS_HEADERS }
+    );
   } catch (error) {
     console.error('❌ [Geidea Create Session] Error:', error);
     return NextResponse.json(
@@ -81,7 +90,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: error instanceof Error ? error.message : 'Internal server error',
       },
-      { status: 500 }
+      { status: 500, headers: CORS_HEADERS }
     );
   }
 }
@@ -92,10 +101,6 @@ export async function POST(request: NextRequest) {
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
+    headers: CORS_HEADERS,
   });
 }
