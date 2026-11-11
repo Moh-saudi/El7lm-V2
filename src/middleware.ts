@@ -8,6 +8,7 @@ import {
 const ALLOWED_API_ORIGINS = new Set([
     'https://el7lm.com',
     'https://www.el7lm.com',
+    'https://sangoub.el7lm.com',
 ]);
 
 const MOBILE_API_PATHS = new Set([
